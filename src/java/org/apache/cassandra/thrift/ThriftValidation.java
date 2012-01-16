@@ -653,15 +653,17 @@ public class ThriftValidation
             {
                 TypeParser.parse(c.validation_class);
 
-                try
-                {
-                    comparator.validate(c.name);
-                }
-                catch (MarshalException e)
-                {
-                    throw new InvalidRequestException(String.format("Column name %s is not valid for comparator %s",
-                                                                    ByteBufferUtil.bytesToHex(c.name), cf_def.comparator_type));
-                }
+                // TODO: This doesn't work for 'sparse' composite in CQL (that reuse this validation function)
+                // because the name in the metadata is not the full name of the column in that case
+                //try
+                //{
+                //    comparator.validate(c.name);
+                //}
+                //catch (MarshalException e)
+                //{
+                //    throw new InvalidRequestException(String.format("Column name %s is not valid for comparator %s",
+                //                                                    ByteBufferUtil.bytesToHex(c.name), cf_def.comparator_type));
+                //}
 
                 if (c.index_type == null)
                 {

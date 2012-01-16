@@ -59,6 +59,12 @@ public class ClientState
         }
     };
 
+    private Map<Integer, org.apache.cassandra.cql3.CQLStatement> cql3Prepared = new LinkedHashMap<Integer, org.apache.cassandra.cql3.CQLStatement>(16, 0.75f, true) {
+        protected boolean removeEldestEntry(Map.Entry<Integer, org.apache.cassandra.cql3.CQLStatement> eldest) {
+            return size() > MAX_CACHE_PREPARED;
+        }
+    };
+
     private long clock;
 
     /**
@@ -73,7 +79,12 @@ public class ClientState
     {
         return prepared;
     }
-    
+
+    public Map<Integer, org.apache.cassandra.cql3.CQLStatement> getCql3Prepared()
+    {
+        return cql3Prepared;
+    }
+
     public String getRawKeyspace()
     {
         return keyspace;
@@ -131,6 +142,7 @@ public class ClientState
         keyspace = null;
         resourceClear();
         prepared.clear();
+        cql3Prepared.clear();
     }
 
     /**
