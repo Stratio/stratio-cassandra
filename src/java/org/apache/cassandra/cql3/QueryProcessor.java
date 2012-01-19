@@ -21,11 +21,11 @@ package org.apache.cassandra.cql3;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import com.google.common.base.Predicates;
+import com.google.common.collect.Maps;
 import org.antlr.runtime.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.google.common.base.Predicates;
-import com.google.common.collect.Maps;
 
 import org.apache.cassandra.cql3.statements.*;
 import org.apache.cassandra.config.*;
@@ -37,10 +37,11 @@ import org.apache.cassandra.thrift.Column;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
+import org.apache.cassandra.utils.SemanticVersion;
 
 public class QueryProcessor
 {
-    public static final String CQL_VERSION = "3.0.0";
+    public static final SemanticVersion CQL_VERSION = new SemanticVersion("3.0.0-alpha");
 
     private static final Logger logger = LoggerFactory.getLogger(QueryProcessor.class);
 

@@ -716,6 +716,6 @@ service Cassandra {
             2:UnavailableException ue,
             3:TimedOutException te,
             4:SchemaDisagreementException sde)
-           
 
+  void set_cql_version(1: required string version) throws (1:InvalidRequestException ire)
 }
