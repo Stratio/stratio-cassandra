@@ -26,10 +26,11 @@ import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.config.*;
 import org.apache.cassandra.db.migration.avro.CfDef;
 import org.apache.cassandra.db.migration.avro.ColumnDef;
+import org.apache.cassandra.db.migration.Migration;
 import org.apache.cassandra.db.migration.UpdateColumnFamily;
 import org.apache.cassandra.thrift.InvalidRequestException;
 
-public class DropIndexStatement extends CFStatement
+public class DropIndexStatement extends SchemaAlteringStatement
 {
     public final CharSequence index;
 
@@ -39,8 +40,7 @@ public class DropIndexStatement extends CFStatement
         index = new Utf8(indexName);
     }
 
-    public UpdateColumnFamily generateMutation()
-    throws InvalidRequestException, ConfigurationException, IOException
+    public Migration getMigration() throws InvalidRequestException, ConfigurationException, IOException
     {
         CfDef cfDef = null;
 

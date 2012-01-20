@@ -18,6 +18,7 @@
  */
 package org.apache.cassandra.cql3.statements;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -27,9 +28,6 @@ import org.apache.commons.lang.StringUtils;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Multiset;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
@@ -37,14 +35,17 @@ import org.apache.cassandra.config.ConfigurationException;
 import org.apache.cassandra.db.ColumnFamilyType;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CompositeType;
+import org.apache.cassandra.db.migration.AddColumnFamily;
+import org.apache.cassandra.db.migration.Migration;
+import org.apache.cassandra.service.ClientState;
+import org.apache.cassandra.thrift.CqlResult;
 import org.apache.cassandra.thrift.InvalidRequestException;
+import org.apache.cassandra.thrift.ThriftValidation;
 import org.apache.cassandra.io.compress.CompressionParameters;
 
 /** A <code>CREATE COLUMNFAMILY</code> parsed from a CQL query statement. */
-public class CreateColumnFamilyStatement extends CFStatement
+public class CreateColumnFamilyStatement extends SchemaAlteringStatement
 {
-    private static Logger logger = LoggerFactory.getLogger(CreateColumnFamilyStatement.class);
-
     private AbstractType<?> comparator;
     private AbstractType<?> defaultValidator;
     private AbstractType<?> keyValidator;
@@ -83,6 +84,13 @@ public class CreateColumnFamilyStatement extends CFStatement
         }
 
         return columnDefs;
+    }
+
+    public Migration getMigration() throws InvalidRequestException, ConfigurationException, IOException
+    {
+        CFMetaData cfmd = getCFMetaData();
+        ThriftValidation.validateCfDef(cfmd.toThrift(), null);
+        return new AddColumnFamily(cfmd);
     }
 
     /**
@@ -165,6 +173,7 @@ public class CreateColumnFamilyStatement extends CFStatement
                 properties.validate();
 
                 CreateColumnFamilyStatement stmt = new CreateColumnFamilyStatement(cfName, properties);
+                stmt.setBoundTerms(getBoundsTerms());
                 stmt.columns.putAll(definitions); // we'll remove what is not a column below
 
                 // Ensure that exactly one key has been specified.
@@ -270,6 +279,16 @@ public class CreateColumnFamilyStatement extends CFStatement
         public void setCompactStorage()
         {
             useCompactStorage = true;
+        }
+
+        public void checkAccess(ClientState state)
+        {
+            throw new UnsupportedOperationException();
+        }
+
+        public CqlResult execute(ClientState state, List<ByteBuffer> variables)
+        {
+            throw new UnsupportedOperationException();
         }
     }
 }

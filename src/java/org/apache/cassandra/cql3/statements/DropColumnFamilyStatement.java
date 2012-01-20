@@ -18,12 +18,22 @@
  */
 package org.apache.cassandra.cql3.statements;
 
-import org.apache.cassandra.cql3.CFName;
+import java.io.IOException;
 
-public class DropColumnFamilyStatement extends CFStatement
+import org.apache.cassandra.config.ConfigurationException;
+import org.apache.cassandra.cql3.CFName;
+import org.apache.cassandra.db.migration.DropColumnFamily;
+import org.apache.cassandra.db.migration.Migration;
+
+public class DropColumnFamilyStatement extends SchemaAlteringStatement
 {
     public DropColumnFamilyStatement(CFName name)
     {
         super(name);
+    }
+
+    public Migration getMigration() throws ConfigurationException, IOException
+    {
+        return new DropColumnFamily(keyspace(), columnFamily());
     }
 }

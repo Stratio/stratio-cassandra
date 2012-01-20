@@ -20,17 +20,25 @@ package org.apache.cassandra.cql3.statements;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
 
 import org.apache.cassandra.auth.Permission;
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.db.IMutation;
 import org.apache.cassandra.service.ClientState;
+import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.thrift.ConsistencyLevel;
+import org.apache.cassandra.thrift.CqlResult;
 import org.apache.cassandra.thrift.InvalidRequestException;
 import org.apache.cassandra.thrift.RequestType;
 import org.apache.cassandra.thrift.ThriftValidation;
+import org.apache.cassandra.thrift.TimedOutException;
+import org.apache.cassandra.thrift.UnavailableException;
 
-public abstract class AbstractModification extends CFStatement
+/**
+ * Abstract class for statements that apply on a given column family.
+ */
+public abstract class ModificationStatement extends CFStatement
 {
     public static final ConsistencyLevel defaultConsistency = ConsistencyLevel.ONE;
 
@@ -38,12 +46,12 @@ public abstract class AbstractModification extends CFStatement
     protected Long timestamp;
     protected final int timeToLive;
 
-    public AbstractModification(CFName name, Attributes attrs)
+    public ModificationStatement(CFName name, Attributes attrs)
     {
         this(name, attrs.cLevel, attrs.timestamp, attrs.timeToLive);
     }
 
-    public AbstractModification(CFName name, ConsistencyLevel cLevel, Long timestamp, int timeToLive)
+    public ModificationStatement(CFName name, ConsistencyLevel cLevel, Long timestamp, int timeToLive)
     {
         super(name);
         this.cLevel = cLevel;
@@ -51,13 +59,31 @@ public abstract class AbstractModification extends CFStatement
         this.timeToLive = timeToLive;
     }
 
+    public void checkAccess(ClientState state) throws InvalidRequestException
+    {
+        state.hasColumnFamilyAccess(keyspace(), columnFamily(), Permission.WRITE);
+    }
+
+    @Override
     public void validate(ClientState state) throws InvalidRequestException
     {
         if (timeToLive < 0)
             throw new InvalidRequestException("A TTL must be greater or equal to 0");
 
         ThriftValidation.validateConsistencyLevel(keyspace(), getConsistencyLevel(), RequestType.WRITE);
-        state.hasColumnFamilyAccess(keyspace(), columnFamily(), Permission.WRITE);
+    }
+
+    public CqlResult execute(ClientState state, List<ByteBuffer> variables) throws InvalidRequestException, UnavailableException, TimedOutException
+    {
+        try
+        {
+            StorageProxy.mutate(getMutations(state, variables), getConsistencyLevel());
+        }
+        catch (TimeoutException e)
+        {
+            throw new TimedOutException();
+        }
+        return null;
     }
 
     public ConsistencyLevel getConsistencyLevel()

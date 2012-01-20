@@ -18,17 +18,27 @@
  */
 package org.apache.cassandra.cql3.statements;
 
+import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.cassandra.config.ConfigurationException;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.KSMetaData;
+import org.apache.cassandra.db.migration.AddKeyspace;
+import org.apache.cassandra.db.migration.Migration;
 import org.apache.cassandra.locator.AbstractReplicationStrategy;
+import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.thrift.CfDef;
 import org.apache.cassandra.thrift.InvalidRequestException;
+import org.apache.cassandra.thrift.KsDef;
+import org.apache.cassandra.thrift.SchemaDisagreementException;
+import org.apache.cassandra.thrift.ThriftValidation;
 
 /** A <code>CREATE KEYSPACE</code> statement parsed from a CQL query. */
-public class CreateKeyspaceStatement
+public class CreateKeyspaceStatement extends SchemaAlteringStatement
 {
     private final String name;
     private final Map<String, String> attrs;
@@ -44,6 +54,7 @@ public class CreateKeyspaceStatement
      */
     public CreateKeyspaceStatement(String name, Map<String, String> attrs)
     {
+        super();
         this.name = name;
         this.attrs = attrs;
     }
@@ -51,12 +62,15 @@ public class CreateKeyspaceStatement
     /**
      * The <code>CqlParser</code> only goes as far as extracting the keyword arguments
      * from these statements, so this method is responsible for processing and
-     * validating, and must be called prior to access.
+     * validating.
      *
      * @throws InvalidRequestException if arguments are missing or unacceptable
      */
-    public void validate() throws InvalidRequestException
+    @Override
+    public void validate(ClientState state) throws InvalidRequestException, SchemaDisagreementException
     {
+        super.validate(state);
+
         // keyspace name
         if (!name.matches("\\w+"))
             throw new InvalidRequestException(String.format("\"%s\" is not a valid keyspace name", name));
@@ -88,18 +102,12 @@ public class CreateKeyspaceStatement
         }
     }
 
-    public String keyspace()
+    public Migration getMigration() throws InvalidRequestException, ConfigurationException, IOException
     {
-        return name;
-    }
-
-    public String getStrategyClass()
-    {
-        return strategyClass;
-    }
-
-    public Map<String, String> getStrategyOptions()
-    {
-        return strategyOptions;
+        KsDef ksd = new KsDef(name, strategyClass, Collections.<CfDef>emptyList());
+        ksd.setStrategy_options(strategyOptions);
+        ThriftValidation.validateKsDef(ksd);
+        ThriftValidation.validateKeyspaceNotYetExisting(name);
+        return new AddKeyspace(KSMetaData.fromThrift(ksd));
     }
 }

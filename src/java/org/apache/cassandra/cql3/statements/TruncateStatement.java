@@ -18,12 +18,51 @@
  */
 package org.apache.cassandra.cql3.statements;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.concurrent.TimeoutException;
+
+import org.apache.cassandra.auth.Permission;
 import org.apache.cassandra.cql3.*;
+import org.apache.cassandra.service.ClientState;
+import org.apache.cassandra.service.StorageProxy;
+import org.apache.cassandra.thrift.CqlResult;
+import org.apache.cassandra.thrift.InvalidRequestException;
+import org.apache.cassandra.thrift.ThriftValidation;
+import org.apache.cassandra.thrift.UnavailableException;
 
 public class TruncateStatement extends CFStatement
 {
     public TruncateStatement(CFName name)
     {
         super(name);
+    }
+
+    public void checkAccess(ClientState state) throws InvalidRequestException
+    {
+        state.hasColumnFamilyAccess(keyspace(), columnFamily(), Permission.WRITE);
+    }
+
+    public void validate(ClientState state) throws InvalidRequestException
+    {
+        ThriftValidation.validateColumnFamily(keyspace(), columnFamily());
+    }
+
+    public CqlResult execute(ClientState state, List<ByteBuffer> variables) throws InvalidRequestException, UnavailableException
+    {
+        try
+        {
+            StorageProxy.truncateBlocking(keyspace(), columnFamily());
+        }
+        catch (TimeoutException e)
+        {
+            throw (UnavailableException) new UnavailableException().initCause(e);
+        }
+        catch (IOException e)
+        {
+            throw (UnavailableException) new UnavailableException().initCause(e);
+        }
+        return null;
     }
 }

@@ -18,39 +18,24 @@
  */
 package org.apache.cassandra.cql3.statements;
 
-import org.apache.cassandra.cql3.CFName;
-import org.apache.cassandra.cql3.CQLStatement;
-import org.apache.cassandra.service.ClientState;
-import org.apache.cassandra.thrift.InvalidRequestException;
+import java.io.IOException;
 
-/**
- * Abstract class for statements that apply on a given column family.
- */
-public abstract class CFStatement extends CQLStatement
+import org.apache.cassandra.config.ConfigurationException;
+import org.apache.cassandra.db.migration.DropKeyspace;
+import org.apache.cassandra.db.migration.Migration;
+
+public class DropKeyspaceStatement extends SchemaAlteringStatement
 {
-    protected final CFName cfName;
+    private final String keyspace;
 
-    protected CFStatement(CFName cfName)
+    public DropKeyspaceStatement(String keyspace)
     {
-        this.cfName = cfName;
+        super();
+        this.keyspace = keyspace;
     }
 
-    public void prepareKeyspace(ClientState state) throws InvalidRequestException
+    public Migration getMigration() throws ConfigurationException, IOException
     {
-        if (!cfName.hasKeyspace())
-        {
-            cfName.setKeyspace(state.getKeyspace(), true);
-        }
-    }
-
-    public String keyspace()
-    {
-        assert cfName.hasKeyspace() : "The statement hasn't be prepared correctly";
-        return cfName.getKeyspace();
-    }
-
-    public String columnFamily()
-    {
-        return cfName.getColumnFamily();
+        return new DropKeyspace(keyspace);
     }
 }

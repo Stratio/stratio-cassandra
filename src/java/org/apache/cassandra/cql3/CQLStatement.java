@@ -18,16 +18,53 @@
  */
 package org.apache.cassandra.cql3;
 
-public class CQLStatement
-{
-    public final StatementType type;
-    public final Object statement;
-    public final int boundTerms;
+import java.nio.ByteBuffer;
+import java.util.List;
 
-    public CQLStatement(StatementType type, Object statement, int lastMarker)
+import org.apache.cassandra.service.ClientState;
+import org.apache.cassandra.thrift.CqlResult;
+import org.apache.cassandra.thrift.InvalidRequestException;
+import org.apache.cassandra.thrift.SchemaDisagreementException;
+import org.apache.cassandra.thrift.TimedOutException;
+import org.apache.cassandra.thrift.UnavailableException;
+
+public abstract class CQLStatement
+{
+    private int boundTerms;
+
+    public int getBoundsTerms()
     {
-        this.type = type;
-        this.statement = statement;
-        this.boundTerms = lastMarker + 1;
+        return boundTerms;
     }
+
+    // Used by the parser and preparable statement
+    public void setBoundTerms(int boundTerms)
+    {
+        this.boundTerms = boundTerms;
+    }
+
+    /**
+     * Perform any access verification necessary for the statement.
+     *
+     * @param state the current client state
+     */
+    public abstract void checkAccess(ClientState state) throws InvalidRequestException;
+
+    /**
+     * Perform additional validation required by the statment.
+     * To be overriden by subclasses if needed.
+     *
+     * @param state the current client state
+     */
+    public void validate(ClientState state) throws InvalidRequestException, SchemaDisagreementException
+    {}
+
+    /**
+     * Execute the statement and return the resulting result or null if there is no result.
+     *
+     * @param state the current client state
+     * @param variables the values for bounded variables. The implementation
+     * can assume that each bound term have a corresponding value.
+     */
+    public abstract CqlResult execute(ClientState state, List<ByteBuffer> variables) throws InvalidRequestException, UnavailableException, TimedOutException, SchemaDisagreementException;
 }

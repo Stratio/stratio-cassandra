@@ -33,15 +33,13 @@ import org.apache.cassandra.db.filter.QueryPath;
 import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.thrift.InvalidRequestException;
-
-import static org.apache.cassandra.thrift.ThriftValidation.validateColumnFamily;
-import static org.apache.cassandra.cql.QueryProcessor.validateColumnName;
+import org.apache.cassandra.thrift.ThriftValidation;
 
 /**
  * A <code>DELETE</code> parsed from a CQL query statement.
  *
  */
-public class DeleteStatement extends AbstractModification
+public class DeleteStatement extends ModificationStatement
 {
     private final List<ColumnIdentifier> columns;
     private final List<Relation> whereClause;
@@ -59,7 +57,7 @@ public class DeleteStatement extends AbstractModification
     public List<IMutation> getMutations(ClientState clientState, List<ByteBuffer> variables) throws InvalidRequestException
     {
         clientState.hasColumnFamilyAccess(columnFamily(), Permission.WRITE);
-        CFMetaData metadata = validateColumnFamily(keyspace(), columnFamily());
+        CFMetaData metadata = ThriftValidation.validateColumnFamily(keyspace(), columnFamily());
         CFDefinition cfDef = metadata.getCfDef();
 
         preprocess(cfDef);
@@ -140,7 +138,7 @@ public class DeleteStatement extends AbstractModification
                     for (ColumnIdentifier column : columns)
                     {
                         ByteBuffer columnName = builder == null ? column.key : builder.copy().add(column.key).build();
-                        validateColumnName(columnName);
+                        QueryProcessor.validateColumnName(columnName);
                         rm.delete(new QueryPath(columnFamily(), null, columnName), getTimestamp(clientState));
                     }
                     break;
@@ -149,7 +147,7 @@ public class DeleteStatement extends AbstractModification
                     List<Term> colValues = processedKeys.get(name.name);
                     assert colValues != null && colValues.size() == 1;
                     ByteBuffer columnName = colValues.get(0).getByteBuffer(name.type, variables);
-                    validateColumnName(columnName);
+                    QueryProcessor.validateColumnName(columnName);
                     rm.delete(new QueryPath(columnFamily(), null, columnName), getTimestamp(clientState));
                     break;
                 case DENSE:

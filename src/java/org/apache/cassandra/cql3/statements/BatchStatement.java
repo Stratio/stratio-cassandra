@@ -36,10 +36,10 @@ import org.apache.cassandra.thrift.ThriftValidation;
  * A <code>BATCH</code> statement parsed from a CQL query.
  *
  */
-public class BatchStatement extends AbstractModification
+public class BatchStatement extends ModificationStatement
 {
     // statements to execute
-    protected final List<AbstractModification> statements;
+    protected final List<ModificationStatement> statements;
 
     /**
      * Creates a new BatchStatement from a list of statements and a
@@ -48,7 +48,7 @@ public class BatchStatement extends AbstractModification
      * @param statements a list of UpdateStatements
      * @param attrs additional attributes for statement (CL, timestamp, timeToLive)
      */
-    public BatchStatement(List<AbstractModification> statements, Attributes attrs)
+    public BatchStatement(List<ModificationStatement> statements, Attributes attrs)
     {
         super(null, attrs);
         this.statements = statements;
@@ -57,8 +57,23 @@ public class BatchStatement extends AbstractModification
     @Override
     public void prepareKeyspace(ClientState state) throws InvalidRequestException
     {
-        for (AbstractModification statement : statements)
+        for (ModificationStatement statement : statements)
             statement.prepareKeyspace(state);
+    }
+
+    @Override
+    public void checkAccess(ClientState state) throws InvalidRequestException
+    {
+        Set<String> cfamsSeen = new HashSet<String>();
+        for (ModificationStatement statement : statements)
+        {
+            // Avoid unnecessary authorizations.
+            if (!(cfamsSeen.contains(statement.columnFamily())))
+            {
+                state.hasColumnFamilyAccess(statement.keyspace(), statement.columnFamily(), Permission.WRITE);
+                cfamsSeen.add(statement.columnFamily());
+            }
+        }
     }
 
     @Override
@@ -67,8 +82,7 @@ public class BatchStatement extends AbstractModification
         if (getTimeToLive() != 0)
             throw new InvalidRequestException("Global TTL on the BATCH statement is not supported.");
 
-        Set<String> cfamsSeen = new HashSet<String>();
-        for (AbstractModification statement : statements)
+        for (ModificationStatement statement : statements)
         {
             if (statement.isSetConsistencyLevel())
                 throw new InvalidRequestException("Consistency level must be set on the BATCH, not individual statements");
@@ -80,13 +94,6 @@ public class BatchStatement extends AbstractModification
                 throw new InvalidRequestException("A TTL must be greater or equal to 0");
 
             ThriftValidation.validateConsistencyLevel(statement.keyspace(), getConsistencyLevel(), RequestType.WRITE);
-
-            // Avoid unnecessary authorizations.
-            if (!(cfamsSeen.contains(statement.columnFamily())))
-            {
-                state.hasColumnFamilyAccess(statement.keyspace(), statement.columnFamily(), Permission.WRITE);
-                cfamsSeen.add(statement.columnFamily());
-            }
         }
     }
 
@@ -95,7 +102,7 @@ public class BatchStatement extends AbstractModification
     {
         List<IMutation> batch = new LinkedList<IMutation>();
 
-        for (AbstractModification statement : statements)
+        for (ModificationStatement statement : statements)
         {
             if (isSetTimestamp())
                 statement.timestamp = timestamp;

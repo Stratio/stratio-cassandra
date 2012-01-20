@@ -98,12 +98,21 @@ public class CFPropDefs
     public final Map<String, String> compactionStrategyOptions = new HashMap<String, String>();
     public final Map<String, String> compressionParameters = new HashMap<String, String>();
 
-    public static AbstractType<?> parseType(String type) throws ConfigurationException
+    public static AbstractType<?> parseType(String type) throws InvalidRequestException
     {
-        String className = comparators.get(type);
-        if (className == null)
-            className = type;
-        return TypeParser.parse(className);
+        try
+        {
+            String className = comparators.get(type);
+            if (className == null)
+                className = type;
+            return TypeParser.parse(className);
+        }
+        catch (ConfigurationException e)
+        {
+            InvalidRequestException ex = new InvalidRequestException(e.toString());
+            ex.initCause(e);
+            throw ex;
+        }
     }
 
     /* If not comparator/validator is not specified, default to text (BytesType is the wrong default for CQL

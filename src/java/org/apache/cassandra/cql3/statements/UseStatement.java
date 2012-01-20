@@ -16,10 +16,33 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.cassandra.cql3;
+package org.apache.cassandra.cql3.statements;
 
-public enum StatementType
+import java.nio.ByteBuffer;
+import java.util.List;
+
+import org.apache.cassandra.cql3.CQLStatement;
+import org.apache.cassandra.service.ClientState;
+import org.apache.cassandra.thrift.CqlResult;
+import org.apache.cassandra.thrift.InvalidRequestException;
+
+public class UseStatement extends CQLStatement
 {
-    SELECT, INSERT, UPDATE, BATCH, USE, TRUNCATE, DELETE, CREATE_KEYSPACE, CREATE_COLUMNFAMILY, CREATE_INDEX, DROP_INDEX,
-        DROP_KEYSPACE, DROP_COLUMNFAMILY, ALTER_TABLE;
+    private final String keyspace;
+
+    public UseStatement(String keyspace)
+    {
+        this.keyspace = keyspace;
+    }
+
+    public void checkAccess(ClientState state)
+    {
+        // No specific access
+    }
+
+    public CqlResult execute(ClientState state, List<ByteBuffer> variables) throws InvalidRequestException
+    {
+        state.setKeyspace(keyspace);
+        return null;
+    }
 }

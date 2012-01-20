@@ -119,28 +119,29 @@ query returns [CQLStatement stmnt]
     : st=cqlStatement (';')* EOF { $stmnt = st; }
     ;
 
-cqlStatement returns [CQLStatement stmnt]
-    : st1= selectStatement             { $stmnt = new CQLStatement(StatementType.SELECT,              st1, currentBindMarkerIdx); }
-    | st2= insertStatement             { $stmnt = new CQLStatement(StatementType.INSERT,              st2, currentBindMarkerIdx); }
-    | st3= updateStatement             { $stmnt = new CQLStatement(StatementType.UPDATE,              st3, currentBindMarkerIdx); }
-    | st4= batchStatement              { $stmnt = new CQLStatement(StatementType.BATCH,               st4, currentBindMarkerIdx); }
-    | st5= useStatement                { $stmnt = new CQLStatement(StatementType.USE,                 st5, currentBindMarkerIdx); }
-    | st6= truncateStatement           { $stmnt = new CQLStatement(StatementType.TRUNCATE,            st6, currentBindMarkerIdx); }
-    | st7= deleteStatement             { $stmnt = new CQLStatement(StatementType.DELETE,              st7, currentBindMarkerIdx); }
-    | st8= createKeyspaceStatement     { $stmnt = new CQLStatement(StatementType.CREATE_KEYSPACE,     st8, currentBindMarkerIdx); }
-    | st9= createColumnFamilyStatement { $stmnt = new CQLStatement(StatementType.CREATE_COLUMNFAMILY, st9, currentBindMarkerIdx); }
-    | st10=createIndexStatement        { $stmnt = new CQLStatement(StatementType.CREATE_INDEX,        st10, currentBindMarkerIdx); }
-    | st11=dropIndexStatement          { $stmnt = new CQLStatement(StatementType.DROP_INDEX,          st11, currentBindMarkerIdx); }
-    | st12=dropKeyspaceStatement       { $stmnt = new CQLStatement(StatementType.DROP_KEYSPACE,       st12, currentBindMarkerIdx); }
-    | st13=dropColumnFamilyStatement   { $stmnt = new CQLStatement(StatementType.DROP_COLUMNFAMILY,   st13, currentBindMarkerIdx); }
-    | st14=alterTableStatement         { $stmnt = new CQLStatement(StatementType.ALTER_TABLE,         st14, currentBindMarkerIdx); }
+cqlStatement returns [CQLStatement stmt]
+    @after{ stmt.setBoundTerms(currentBindMarkerIdx + 1); }
+    : st1= selectStatement             { $stmt = st1; }
+    | st2= insertStatement             { $stmt = st2; }
+    | st3= updateStatement             { $stmt = st3; }
+    | st4= batchStatement              { $stmt = st4; }
+    | st5= deleteStatement             { $stmt = st5; }
+    | st6= useStatement                { $stmt = st6; }
+    | st7= truncateStatement           { $stmt = st7; }
+    | st8= createKeyspaceStatement     { $stmt = st8; }
+    | st9= createColumnFamilyStatement { $stmt = st9; }
+    | st10=createIndexStatement        { $stmt = st10; }
+    | st11=dropKeyspaceStatement       { $stmt = st11; }
+    | st12=dropColumnFamilyStatement   { $stmt = st12; }
+    | st13=dropIndexStatement          { $stmt = st13; }
+    | st14=alterTableStatement         { $stmt = st14; }
     ;
 
 /*
  * USE <KEYSPACE>;
  */
-useStatement returns [String keyspace]
-    : K_USE ks=keyspaceName { $keyspace = ks; }
+useStatement returns [UseStatement stmt]
+    : K_USE ks=keyspaceName { $stmt = new UseStatement(ks); }
     ;
 
 /**
@@ -291,7 +292,7 @@ deleteStatement returns [DeleteStatement expr]
 batchStatement returns [BatchStatement expr]
     @init {
         Attributes attrs = new Attributes();
-        List<AbstractModification> statements = new ArrayList<AbstractModification>();
+        List<ModificationStatement> statements = new ArrayList<ModificationStatement>();
     }
     : K_BEGIN K_BATCH ( usingClause[attrs] )?
           s1=batchStatementObjective ';'? { statements.add(s1); } ( sN=batchStatementObjective ';'? { statements.add(sN); } )*
@@ -301,7 +302,7 @@ batchStatement returns [BatchStatement expr]
       }
     ;
 
-batchStatementObjective returns [AbstractModification statement]
+batchStatementObjective returns [ModificationStatement statement]
     : i=insertStatement  { $statement = i; }
     | u=updateStatement  { $statement = u; }
     | d=deleteStatement  { $statement = d; }
@@ -377,8 +378,8 @@ alterTableStatement returns [AlterTableStatement expr]
 /**
  * DROP KEYSPACE <KSP>;
  */
-dropKeyspaceStatement returns [String ksp]
-    : K_DROP K_KEYSPACE ks=keyspaceName { $ksp = ks; }
+dropKeyspaceStatement returns [DropKeyspaceStatement ksp]
+    : K_DROP K_KEYSPACE ks=keyspaceName { $ksp = new DropKeyspaceStatement(ks); }
     ;
 
 /**

@@ -18,9 +18,10 @@
  */
 package org.apache.cassandra.cql3.statements;
 
+import org.apache.cassandra.cql3.CQLStatement;
 import org.apache.cassandra.thrift.InvalidRequestException;
 
 public interface Preprocessable
 {
-    public Object preprocess() throws InvalidRequestException;
+    public CQLStatement preprocess() throws InvalidRequestException;
 }

@@ -18,28 +18,52 @@
  */
 package org.apache.cassandra.cql3.statements;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.concurrent.TimeoutException;
 
+import org.apache.cassandra.auth.Permission;
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.db.IColumn;
 import org.apache.cassandra.db.CounterColumn;
+import org.apache.cassandra.db.RangeSliceCommand;
+import org.apache.cassandra.db.ReadCommand;
 import org.apache.cassandra.db.Row;
+import org.apache.cassandra.db.RowPosition;
+import org.apache.cassandra.db.SliceByNamesReadCommand;
+import org.apache.cassandra.db.SliceFromReadCommand;
 import org.apache.cassandra.db.Table;
 import org.apache.cassandra.db.context.CounterContext;
+import org.apache.cassandra.db.filter.QueryPath;
 import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.db.marshal.TypeParser;
+import org.apache.cassandra.dht.AbstractBounds;
+import org.apache.cassandra.dht.Bounds;
+import org.apache.cassandra.dht.ExcludingBounds;
+import org.apache.cassandra.dht.IPartitioner;
+import org.apache.cassandra.dht.IncludingExcludingBounds;
+import org.apache.cassandra.dht.RandomPartitioner;
+import org.apache.cassandra.dht.Range;
+import org.apache.cassandra.service.ClientState;
+import org.apache.cassandra.service.StorageProxy;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.thrift.Column;
 import org.apache.cassandra.thrift.ConsistencyLevel;
 import org.apache.cassandra.thrift.CqlMetadata;
 import org.apache.cassandra.thrift.CqlResult;
+import org.apache.cassandra.thrift.CqlResultType;
 import org.apache.cassandra.thrift.CqlRow;
 import org.apache.cassandra.thrift.IndexExpression;
 import org.apache.cassandra.thrift.IndexOperator;
 import org.apache.cassandra.thrift.InvalidRequestException;
 import org.apache.cassandra.thrift.RequestType;
+import org.apache.cassandra.thrift.SlicePredicate;
+import org.apache.cassandra.thrift.SliceRange;
 import org.apache.cassandra.thrift.ThriftValidation;
+import org.apache.cassandra.thrift.TimedOutException;
+import org.apache.cassandra.thrift.UnavailableException;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.Pair;
 
@@ -48,7 +72,7 @@ import org.apache.cassandra.utils.Pair;
  * column family, expression, result count, and ordering clause.
  *
  */
-public class SelectStatement
+public class SelectStatement extends CQLStatement
 {
     private final static ByteBuffer countColumn = ByteBufferUtil.bytes("count");
 
@@ -64,6 +88,50 @@ public class SelectStatement
         this.parameters = parameters;
     }
 
+    public void checkAccess(ClientState state) throws InvalidRequestException
+    {
+        state.hasColumnFamilyAccess(keyspace(), columnFamily(), Permission.READ);
+    }
+
+    public CqlResult execute(ClientState state, List<ByteBuffer> variables) throws InvalidRequestException, UnavailableException, TimedOutException
+    {
+        List<Row> rows;
+        // By-key
+        if (!isKeyRange())
+        {
+            rows = getSlice(variables);
+        }
+        else
+        {
+            rows = multiRangeSlice(variables);
+        }
+
+        CqlResult result = new CqlResult();
+        result.type = CqlResultType.ROWS;
+
+        // count resultset is a single column named "count"
+        if (parameters.isCount)
+        {
+            result.schema = new CqlMetadata(Collections.<ByteBuffer, String>emptyMap(),
+                                            Collections.<ByteBuffer, String>emptyMap(),
+                                            "AsciiType",
+                                            "LongType");
+            List<Column> columns = Collections.singletonList(new Column(countColumn).setValue(ByteBufferUtil.bytes((long) rows.size())));
+            result.rows = Collections.singletonList(new CqlRow(countColumn, columns));
+            return result;
+        }
+        else
+        {
+            // otherwise create resultset from query results
+            result.schema = new CqlMetadata(new HashMap<ByteBuffer, String>(),
+                    new HashMap<ByteBuffer, String>(),
+                    TypeParser.getShortName(cfDef.cfm.comparator),
+                    TypeParser.getShortName(cfDef.cfm.getDefaultValidator()));
+            result.rows = process(rows, result.schema);
+            return result;
+        }
+    }
+
     public String keyspace()
     {
         return cfDef.cfm.ksName;
@@ -74,12 +142,142 @@ public class SelectStatement
         return cfDef.cfm.cfName;
     }
 
-    public ConsistencyLevel getConsistencyLevel()
+    private List<Row> getSlice(List<ByteBuffer> variables) throws InvalidRequestException, TimedOutException, UnavailableException
     {
-        return parameters.consistencyLevel;
+        QueryPath queryPath = new QueryPath(columnFamily());
+        List<ReadCommand> commands = new ArrayList<ReadCommand>();
+
+        // ...of a list of column names
+        if (!isColumnRange())
+        {
+            Collection<ByteBuffer> columnNames = getRequestedColumns(variables);
+            QueryProcessor.validateColumnNames(columnNames);
+
+            for (ByteBuffer key: getKeys(variables))
+            {
+                QueryProcessor.validateKey(key);
+                commands.add(new SliceByNamesReadCommand(keyspace(), key, queryPath, columnNames));
+            }
+        }
+        // ...a range (slice) of column names
+        else
+        {
+            ByteBuffer start =getRequestedBound(true, variables);
+            ByteBuffer finish = getRequestedBound(false, variables);
+
+            // Note that we use the total limit for every key. This is
+            // potentially inefficient, but then again, IN + LIMIT is not a
+            // very sensible choice
+            for (ByteBuffer key : getKeys(variables))
+            {
+                QueryProcessor.validateKey(key);
+                QueryProcessor.validateSliceRange(cfDef.cfm, start, finish, parameters.isColumnsReversed);
+                commands.add(new SliceFromReadCommand(keyspace(),
+                                                      key,
+                                                      queryPath,
+                                                      start,
+                                                      finish,
+                                                      parameters.isColumnsReversed,
+                                                      getLimit()));
+            }
+        }
+
+        try
+        {
+            return StorageProxy.read(commands, parameters.consistencyLevel);
+        }
+        catch (TimeoutException e)
+        {
+            throw new TimedOutException();
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
     }
 
-    public int getLimit()
+    private List<Row> multiRangeSlice(List<ByteBuffer> variables) throws InvalidRequestException, TimedOutException, UnavailableException
+    {
+        List<Row> rows;
+        IPartitioner<?> p = StorageService.getPartitioner();
+
+        ByteBuffer startKeyBytes = getKeyStart(variables);
+        ByteBuffer finishKeyBytes = getKeyFinish(variables);
+
+        RowPosition startKey = RowPosition.forKey(startKeyBytes, p);
+        RowPosition finishKey = RowPosition.forKey(finishKeyBytes, p);
+        if (startKey.compareTo(finishKey) > 0 && !finishKey.isMinimum(p))
+        {
+            if (p instanceof RandomPartitioner)
+                throw new InvalidRequestException("Start key sorts after end key. This is not allowed; you probably should not specify end key at all, under RandomPartitioner");
+            else
+                throw new InvalidRequestException("Start key must sort before (or equal to) finish key in your partitioner!");
+        }
+        AbstractBounds<RowPosition> bounds;
+        if (includeStartKey())
+        {
+            bounds = includeFinishKey()
+                   ? new Bounds<RowPosition>(startKey, finishKey)
+                   : new IncludingExcludingBounds<RowPosition>(startKey, finishKey);
+        }
+        else
+        {
+            bounds = includeFinishKey()
+                   ? new Range<RowPosition>(startKey, finishKey)
+                   : new ExcludingBounds<RowPosition>(startKey, finishKey);
+        }
+
+        // XXX: Our use of Thrift structs internally makes me Sad. :(
+        SlicePredicate thriftSlicePredicate = makeSlicePredicate(variables);
+        QueryProcessor.validateSlicePredicate(cfDef.cfm, thriftSlicePredicate);
+
+        List<IndexExpression> expressions = getIndexExpressions(variables);
+
+        try
+        {
+            rows = StorageProxy.getRangeSlice(new RangeSliceCommand(keyspace(),
+                                                                    columnFamily(),
+                                                                    null,
+                                                                    thriftSlicePredicate,
+                                                                    bounds,
+                                                                    expressions,
+                                                                    getLimit(),
+                                                                    true), // limit by columns, not keys
+                                              parameters.consistencyLevel);
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
+        catch (TimeoutException e)
+        {
+            throw new TimedOutException();
+        }
+        return rows;
+    }
+
+    private SlicePredicate makeSlicePredicate(List<ByteBuffer> variables)
+    throws InvalidRequestException
+    {
+        SlicePredicate thriftSlicePredicate = new SlicePredicate();
+
+        if (isColumnRange())
+        {
+            SliceRange sliceRange = new SliceRange();
+            sliceRange.start = getRequestedBound(true, variables);
+            sliceRange.finish = getRequestedBound(false, variables);
+            sliceRange.reversed = parameters.isColumnsReversed;
+            sliceRange.count = 1; // We use this for range slices, where the count is ignored in favor of the global column count
+            thriftSlicePredicate.slice_range = sliceRange;
+        }
+        else
+        {
+            thriftSlicePredicate.column_names = getRequestedColumns(variables);
+        }
+        return thriftSlicePredicate;
+    }
+
+    private int getLimit()
     {
         // For sparse, we'll end up merging all defined colums into the same CqlRow. Thus we should query up
         // to 'defined columns' * 'asked limit' to be sure to have enough columns. We'll trim after query if
@@ -89,12 +287,7 @@ public class SelectStatement
         return parameters.limit;
     }
 
-    public boolean isColumnsReversed()
-    {
-        return parameters.isColumnsReversed;
-    }
-
-    public boolean isKeyRange()
+    private boolean isKeyRange()
     {
         if (hasIndexedExpression)
             return true;
@@ -103,19 +296,19 @@ public class SelectStatement
         return r == null || !r.isEquality();
     }
 
-    public Collection<ByteBuffer> getKeys(final List<ByteBuffer> variables) throws InvalidRequestException
+    private Collection<ByteBuffer> getKeys(final List<ByteBuffer> variables) throws InvalidRequestException
     {
         final Restriction r = restrictions.get(cfDef.key.name);
         if (r == null || !r.isEquality())
             throw new IllegalStateException();
 
-        List<ByteBuffer> keys = new ArrayList(r.eqValues.size());
+        List<ByteBuffer> keys = new ArrayList<ByteBuffer>(r.eqValues.size());
         for (Term t : r.eqValues)
             keys.add(t.getByteBuffer(cfDef.key.type, variables));
         return keys;
     }
 
-    public ByteBuffer getKeyStart(List<ByteBuffer> variables) throws InvalidRequestException
+    private ByteBuffer getKeyStart(List<ByteBuffer> variables) throws InvalidRequestException
     {
         Restriction r = restrictions.get(cfDef.key.name);
         if (r == null)
@@ -133,7 +326,7 @@ public class SelectStatement
         }
     }
 
-    public boolean includeStartKey()
+    private boolean includeStartKey()
     {
         Restriction r = restrictions.get(cfDef.key.name);
         if (r == null || r.isEquality())
@@ -142,7 +335,7 @@ public class SelectStatement
             return r.startInclusive;
     }
 
-    public ByteBuffer getKeyFinish(List<ByteBuffer> variables) throws InvalidRequestException
+    private ByteBuffer getKeyFinish(List<ByteBuffer> variables) throws InvalidRequestException
     {
         Restriction r = restrictions.get(cfDef.key.name);
         if (r == null)
@@ -160,7 +353,7 @@ public class SelectStatement
         }
     }
 
-    public boolean includeFinishKey()
+    private boolean includeFinishKey()
     {
         Restriction r = restrictions.get(cfDef.key.name);
         if (r == null || r.isEquality())
@@ -169,7 +362,7 @@ public class SelectStatement
             return r.endInclusive;
     }
 
-    public boolean isColumnRange()
+    private boolean isColumnRange()
     {
         // Static CF never entails a column slice
         if (cfDef.kind == CFDefinition.Kind.STATIC)
@@ -186,12 +379,12 @@ public class SelectStatement
         return false;
     }
 
-    public boolean isWildcard()
+    private boolean isWildcard()
     {
         return selectedNames.isEmpty();
     }
 
-    public List<ByteBuffer> getRequestedColumns(List<ByteBuffer> variables) throws InvalidRequestException
+    private List<ByteBuffer> getRequestedColumns(List<ByteBuffer> variables) throws InvalidRequestException
     {
         assert !isColumnRange();
 
@@ -232,16 +425,6 @@ public class SelectStatement
                 return Collections.singletonList(builder.build());
         }
         throw new AssertionError();
-    }
-
-    public ByteBuffer getRequestedStart(List<ByteBuffer> variables) throws InvalidRequestException
-    {
-        return getRequestedBound(true, variables);
-    }
-
-    public ByteBuffer getRequestedFinish(List<ByteBuffer> variables) throws InvalidRequestException
-    {
-        return getRequestedBound(false, variables);
     }
 
     private ByteBuffer getRequestedBound(boolean isStart, List<ByteBuffer> variables) throws InvalidRequestException
@@ -291,9 +474,6 @@ public class SelectStatement
                 Term t = isStart ? r.start : r.end;
                 if (t == null)
                     return ByteBufferUtil.EMPTY_BYTE_BUFFER;
-                Relation.Type op = isStart
-                                 ? (r.startInclusive ? Relation.Type.GTE : Relation.Type.GT)
-                                 : (r.endInclusive ? Relation.Type.LTE : Relation.Type.LT);
                 return t.getByteBuffer(name.type, variables);
             case SPARSE:
             case DENSE:
@@ -302,7 +482,7 @@ public class SelectStatement
         throw new AssertionError();
     }
 
-    public List<IndexExpression> getIndexExpressions(List<ByteBuffer> variables) throws InvalidRequestException
+    private List<IndexExpression> getIndexExpressions(List<ByteBuffer> variables) throws InvalidRequestException
     {
         if (!hasIndexedExpression)
             return Collections.<IndexExpression>emptyList();
@@ -366,28 +546,6 @@ public class SelectStatement
         ByteBuffer nameAsRequested = p.right.key;
         schema.name_types.put(nameAsRequested, TypeParser.getShortName(cfDef.cfm.comparator));
         schema.value_types.put(nameAsRequested, TypeParser.getShortName(p.left.type));
-    }
-
-    public void processResult(List<Row> rows, CqlResult result)
-    {
-        // count resultset is a single column named "count"
-        if (parameters.isCount)
-        {
-            result.schema = new CqlMetadata(Collections.<ByteBuffer, String>emptyMap(),
-                                            Collections.<ByteBuffer, String>emptyMap(),
-                                            "AsciiType",
-                                            "LongType");
-            List<Column> columns = Collections.singletonList(new Column(countColumn).setValue(ByteBufferUtil.bytes((long) rows.size())));
-            result.rows = Collections.singletonList(new CqlRow(countColumn, columns));
-            return;
-        }
-
-        // otherwise create resultset from query results
-        result.schema = new CqlMetadata(new HashMap<ByteBuffer, String>(),
-                                        new HashMap<ByteBuffer, String>(),
-                                        TypeParser.getShortName(cfDef.cfm.comparator),
-                                        TypeParser.getShortName(cfDef.cfm.getDefaultValidator()));
-        result.rows = process(rows, result.schema);
     }
 
     private List<CqlRow> process(List<Row> rows, CqlMetadata schema)
@@ -609,6 +767,7 @@ public class SelectStatement
 
             CFDefinition cfDef = cfm.getCfDef();
             SelectStatement stmt = new SelectStatement(cfDef, parameters);
+            stmt.setBoundTerms(getBoundsTerms());
 
             // Select clause
             if (parameters.isCount)
@@ -770,6 +929,16 @@ public class SelectStatement
                     parameters.isCount,
                     parameters.consistencyLevel,
                     parameters.limit);
+        }
+
+        public void checkAccess(ClientState state)
+        {
+            throw new UnsupportedOperationException();
+        }
+
+        public CqlResult execute(ClientState state, List<ByteBuffer> variables)
+        {
+            throw new UnsupportedOperationException();
         }
     }
 

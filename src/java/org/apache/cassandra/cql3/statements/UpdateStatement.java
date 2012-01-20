@@ -42,7 +42,7 @@ import static org.apache.cassandra.thrift.ThriftValidation.validateCommutativeFo
  * An <code>UPDATE</code> statement parsed from a CQL query statement.
  *
  */
-public class UpdateStatement extends AbstractModification
+public class UpdateStatement extends ModificationStatement
 {
     private final Map<ColumnIdentifier, Operation> columns;
     private final List<ColumnIdentifier> columnNames;

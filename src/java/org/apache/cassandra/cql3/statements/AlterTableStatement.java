@@ -18,19 +18,21 @@
  */
 package org.apache.cassandra.cql3.statements;
 
+import java.io.IOException;
 import java.util.*;
 
 import org.apache.avro.util.Utf8;
 
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.config.*;
-import org.apache.cassandra.db.marshal.TypeParser;
+import org.apache.cassandra.db.migration.Migration;
+import org.apache.cassandra.db.migration.UpdateColumnFamily;
 import org.apache.cassandra.db.migration.avro.CfDef;
 import org.apache.cassandra.db.migration.avro.ColumnDef;
 import org.apache.cassandra.thrift.InvalidRequestException;
 import static org.apache.cassandra.thrift.ThriftValidation.validateColumnFamily;
 
-public class AlterTableStatement extends CFStatement
+public class AlterTableStatement extends SchemaAlteringStatement
 {
     public static enum Type
     {
@@ -42,106 +44,113 @@ public class AlterTableStatement extends CFStatement
     public final ColumnIdentifier columnName;
     private final CFPropDefs cfProps = new CFPropDefs();
 
-
     public AlterTableStatement(CFName name, Type type, ColumnIdentifier columnName, String validator, Map<String, String> propertyMap)
     {
         super(name);
         this.oType = type;
         this.columnName = null;
-        this.validator = CFPropDefs.comparators.get(validator); // used only for ADD/ALTER commands
+        this.validator = validator; // used only for ADD/ALTER commands
         this.cfProps.addAll(propertyMap);
     }
 
-    public CfDef getCfDef() throws ConfigurationException, InvalidRequestException
+    public Migration getMigration() throws InvalidRequestException, IOException
     {
-        CFMetaData meta = validateColumnFamily(keyspace(), columnFamily());
-        CfDef avroDef = meta.toAvro();
-
-        CFDefinition cfDef = meta.getCfDef();
-        CFDefinition.Name name = this.oType == Type.OPTS ? null : cfDef.get(columnName);
-        switch (oType)
+        try
         {
-            case ADD:
-                if (cfDef.isCompact())
-                    throw new InvalidRequestException("Cannot add new column to a compact CF");
-                if (name != null)
-                {
+            CFMetaData meta = validateColumnFamily(keyspace(), columnFamily());
+            CfDef avroDef = meta.toAvro();
+
+            CFDefinition cfDef = meta.getCfDef();
+            CFDefinition.Name name = this.oType == Type.OPTS ? null : cfDef.get(columnName);
+            switch (oType)
+            {
+                case ADD:
+                    if (cfDef.isCompact())
+                        throw new InvalidRequestException("Cannot add new column to a compact CF");
+                    if (name != null)
+                    {
+                        switch (name.kind)
+                        {
+                            case KEY_ALIAS:
+                            case COLUMN_ALIAS:
+                                throw new InvalidRequestException(String.format("Invalid column name %s because it conflicts with a PRIMARY KEY part", columnName));
+                            case COLUMN_METADATA:
+                                throw new InvalidRequestException(String.format("Invalid column name %s because it conflicts with an existing column", columnName));
+                        }
+                    }
+                    avroDef.column_metadata.add(new ColumnDefinition(columnName.key,
+                                CFPropDefs.parseType(validator),
+                                null,
+                                null,
+                                null).toAvro());
+                    break;
+
+                case ALTER:
+                    if (name == null)
+                        throw new InvalidRequestException(String.format("Column %s was not found in CF %s", columnName, columnFamily()));
+
                     switch (name.kind)
                     {
                         case KEY_ALIAS:
                         case COLUMN_ALIAS:
-                            throw new InvalidRequestException(String.format("Invalid column name %s because it conflicts with a PRIMARY KEY part", columnName));
+                            throw new InvalidRequestException(String.format("Cannot alter PRIMARY KEY part %s", columnName));
+                        case VALUE_ALIAS:
+                            avroDef.default_validation_class = CFPropDefs.parseType(validator).toString();
+                            break;
                         case COLUMN_METADATA:
-                            throw new InvalidRequestException(String.format("Invalid column name %s because it conflicts with an existing column", columnName));
+                            ColumnDefinition column = meta.getColumnDefinition(columnName.key);
+                            column.setValidator(CFPropDefs.parseType(validator));
+                            avroDef.column_metadata.add(column.toAvro());
+                            break;
                     }
-                }
-                avroDef.column_metadata.add(new ColumnDefinition(columnName.key,
-                                                               TypeParser.parse(validator),
-                                                               null,
-                                                               null,
-                                                               null).toAvro());
-                break;
+                    break;
 
-            case ALTER:
-                if (name == null)
-                    throw new InvalidRequestException(String.format("Column %s was not found in CF %s", columnName, columnFamily()));
+                case DROP:
+                    if (cfDef.isCompact())
+                        throw new InvalidRequestException("Cannot drop columns from a compact CF");
+                    if (name == null)
+                        throw new InvalidRequestException(String.format("Column %s was not found in CF %s", columnName, columnFamily()));
 
-                switch (name.kind)
-                {
-                    case KEY_ALIAS:
-                    case COLUMN_ALIAS:
-                        throw new InvalidRequestException(String.format("Cannot alter PRIMARY KEY part %s", columnName));
-                    case VALUE_ALIAS:
-                        avroDef.default_validation_class = TypeParser.parse(validator).toString();
-                        break;
-                    case COLUMN_METADATA:
-                        ColumnDefinition column = meta.getColumnDefinition(columnName.key);
-                        column.setValidator(TypeParser.parse(validator));
-                        avroDef.column_metadata.add(column.toAvro());
-                        break;
-                }
-                break;
+                    switch (name.kind)
+                    {
+                        case KEY_ALIAS:
+                        case COLUMN_ALIAS:
+                            throw new InvalidRequestException(String.format("Cannot drop PRIMARY KEY part %s", columnName));
+                        case COLUMN_METADATA:
+                            ColumnDef toDelete = null;
+                            for (ColumnDef columnDef : avroDef.column_metadata)
+                            {
+                                if (columnDef.name.equals(columnName.key))
+                                    toDelete = columnDef;
+                            }
+                            assert toDelete != null;
 
-            case DROP:
-                if (cfDef.isCompact())
-                    throw new InvalidRequestException("Cannot drop columns from a compact CF");
-                if (name == null)
-                    throw new InvalidRequestException(String.format("Column %s was not found in CF %s", columnName, columnFamily()));
+                            ColumnDefinition column = meta.getColumnDefinition(columnName.key);
+                            column.setValidator(CFPropDefs.parseType(validator));
+                            avroDef.column_metadata.add(column.toAvro());
+                            // it is impossible to use ColumnDefinition.deflate() in remove() method
+                            // it will throw java.lang.ClassCastException: java.lang.String cannot be cast to org.apache.avro.util.Utf8
+                            // some where deep inside of Avro
+                            avroDef.column_metadata.remove(toDelete);
+                            break;
+                    }
+                    break;
+                case OPTS:
+                    if (cfProps == null)
+                        throw new InvalidRequestException(String.format("ALTER COLUMNFAMILY WITH invoked, but no parameters found"));
 
-                switch (name.kind)
-                {
-                    case KEY_ALIAS:
-                    case COLUMN_ALIAS:
-                        throw new InvalidRequestException(String.format("Cannot drop PRIMARY KEY part %s", columnName));
-                    case COLUMN_METADATA:
-                        ColumnDef toDelete = null;
-                        for (ColumnDef columnDef : avroDef.column_metadata)
-                        {
-                            if (columnDef.name.equals(columnName.key))
-                                toDelete = columnDef;
-                        }
-                        assert toDelete != null;
-
-                        ColumnDefinition column = meta.getColumnDefinition(columnName.key);
-                        column.setValidator(TypeParser.parse(validator));
-                        avroDef.column_metadata.add(column.toAvro());
-                        // it is impossible to use ColumnDefinition.deflate() in remove() method
-                        // it will throw java.lang.ClassCastException: java.lang.String cannot be cast to org.apache.avro.util.Utf8
-                        // some where deep inside of Avro
-                        avroDef.column_metadata.remove(toDelete);
-                        break;
-                }
-                break;
-            case OPTS:
-                if (cfProps == null)
-                    throw new InvalidRequestException(String.format("ALTER COLUMNFAMILY WITH invoked, but no parameters found"));
-
-                cfProps.validate();
-                applyPropertiesToCfDef(avroDef, cfProps);
-                break;
+                    cfProps.validate();
+                    applyPropertiesToCfDef(avroDef, cfProps);
+                    break;
+            }
+            return new UpdateColumnFamily(avroDef);
         }
-
-        return avroDef;
+        catch (ConfigurationException e)
+        {
+            InvalidRequestException ex = new InvalidRequestException(e.toString());
+            ex.initCause(e);
+            throw ex;
+        }
     }
 
     public static void applyPropertiesToCfDef(CfDef cfDef, CFPropDefs cfProps) throws InvalidRequestException
