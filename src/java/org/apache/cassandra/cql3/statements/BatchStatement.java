@@ -19,18 +19,23 @@
 package org.apache.cassandra.cql3.statements;
 
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.cassandra.auth.Permission;
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.db.IMutation;
+import org.apache.cassandra.db.RowMutation;
+import org.apache.cassandra.db.CounterMutation;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.thrift.InvalidRequestException;
 import org.apache.cassandra.thrift.RequestType;
 import org.apache.cassandra.thrift.ThriftValidation;
+import org.apache.cassandra.utils.Pair;
 
 /**
  * A <code>BATCH</code> statement parsed from a CQL query.
@@ -100,20 +105,62 @@ public class BatchStatement extends ModificationStatement
     public List<IMutation> getMutations(ClientState clientState, List<ByteBuffer> variables)
     throws InvalidRequestException
     {
-        List<IMutation> batch = new LinkedList<IMutation>();
 
+        Map<Pair<String, ByteBuffer>, RowAndCounterMutation> mutations = new HashMap<Pair<String, ByteBuffer>, RowAndCounterMutation>();
         for (ModificationStatement statement : statements)
         {
             if (isSetTimestamp())
                 statement.timestamp = timestamp;
-            batch.addAll(statement.getMutations(clientState, variables));
+
+            List<IMutation> lm = statement.getMutations(clientState, variables);
+            // Group mutation together, otherwise they won't get applied atomically
+            for (IMutation m : lm)
+            {
+                Pair<String, ByteBuffer> key = Pair.create(m.getTable(), m.key());
+                RowAndCounterMutation racm = mutations.get(key);
+                if (racm == null)
+                {
+                    racm = new RowAndCounterMutation();
+                    mutations.put(key, racm);
+                }
+
+                if (m instanceof CounterMutation)
+                {
+                    if (racm.cm == null)
+                        racm.cm = (CounterMutation)m;
+                    else
+                        racm.cm.addAll(m);
+                }
+                else
+                {
+                    assert m instanceof RowMutation;
+                    if (racm.rm == null)
+                        racm.rm = (RowMutation)m;
+                    else
+                        racm.rm.addAll(m);
+                }
+            }
         }
 
+        List<IMutation> batch = new LinkedList<IMutation>();
+        for (RowAndCounterMutation racm : mutations.values())
+        {
+            if (racm.rm != null)
+                batch.add(racm.rm);
+            if (racm.cm != null)
+                batch.add(racm.cm);
+        }
         return batch;
     }
 
     public String toString()
     {
         return String.format("BatchStatement(statements=%s, consistency=%s)", statements, cLevel);
+    }
+
+    private static class RowAndCounterMutation
+    {
+        public RowMutation rm;
+        public CounterMutation cm;
     }
 }
