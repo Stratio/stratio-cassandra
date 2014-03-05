@@ -2,15 +2,13 @@ package org.apache.cassandra.db.index.stratio;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.LinkedList;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.cql3.ColumnIdentifier;
+import org.apache.cassandra.db.Column;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.index.stratio.util.ByteBufferUtils;
-import org.apache.cassandra.db.marshal.AbstractType;
-import org.apache.cassandra.db.marshal.ColumnToCollectionType;
 import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -31,10 +29,10 @@ import org.apache.lucene.util.BytesRef;
 public class ClusteringKeyMapper {
 
 	/** The Lucene's field name. */
-	public static final String FIELD_NAME = "clustering_key";
+	public static final String FIELD_NAME = "_clustering_key";
 
-	private final CompositeType columnNameType;
 	private final CompositeType type;
+	private final int clusteringPosition;
 
 	/**
 	 * Builds a new {@code ClusteringKeyMapper} according to the specified column family meta data.
@@ -43,18 +41,8 @@ public class ClusteringKeyMapper {
 	 *            The column family meta data.
 	 */
 	public ClusteringKeyMapper(CFMetaData metadata) {
-		columnNameType = (CompositeType) metadata.comparator;
-		LinkedList<AbstractType<?>> keyComponents = new LinkedList<>(columnNameType.getComponents());
-		keyComponents.removeLast();
-		boolean hasCollections = false;
-		for (AbstractType<?> type : ByteBufferUtils.split(columnNameType)) {
-			if (type instanceof ColumnToCollectionType)
-				hasCollections = true;
-		}
-		if (hasCollections) {
-			keyComponents.removeLast();
-		}
-		type = CompositeType.getInstance(keyComponents);
+		type = (CompositeType) metadata.comparator;
+		clusteringPosition = metadata.getCfDef().columns.size();
 	}
 
 	/**
@@ -67,27 +55,33 @@ public class ClusteringKeyMapper {
 	}
 
 	public ByteBuffer start(ByteBuffer key) {
-		CompositeType.Builder builder = columnNameType.builder();
-		for (ByteBuffer b : ByteBufferUtils.split(key, type)) {
-			builder.add(b);
+		CompositeType.Builder builder = type.builder();
+		ByteBuffer[] components = ByteBufferUtils.split(key, type);
+		for (int i = 0; i < clusteringPosition; i++) {
+			ByteBuffer component = components[i];
+			builder.add(component);
 		}
 		ByteBuffer bb = builder.build();
 		return bb;
 	}
 
 	public ByteBuffer stop(ByteBuffer key) {
-		CompositeType.Builder builder = columnNameType.builder();
-		for (ByteBuffer b : ByteBufferUtils.split(key, type)) {
-			builder.add(b);
+		CompositeType.Builder builder = type.builder();
+		ByteBuffer[] components = ByteBufferUtils.split(key, type);
+		for (int i = 0; i < clusteringPosition; i++) {
+			ByteBuffer component = components[i];
+			builder.add(component);
 		}
 		ByteBuffer bb = builder.buildAsEndOfRange();
 		return bb;
 	}
 
 	public ByteBuffer columnName(ByteBuffer key, ColumnIdentifier name) {
-		CompositeType.Builder builder = columnNameType.builder();
-		for (ByteBuffer b : ByteBufferUtils.split(key, type)) {
-			builder.add(b);
+		CompositeType.Builder builder = type.builder();
+		ByteBuffer[] components = ByteBufferUtils.split(key, type);
+		for (int i = 0; i < clusteringPosition; i++) {
+			ByteBuffer component = components[i];
+			builder.add(component);
 		}
 		builder.add(name.key);
 		ByteBuffer bb = builder.build();
@@ -95,16 +89,9 @@ public class ClusteringKeyMapper {
 	}
 
 	public void field(Document document, ColumnFamily columnFamily) {
-		org.apache.cassandra.db.Column cell = columnFamily.iterator().next();
-		ByteBuffer originalValue = cell.name();
-		ByteBuffer[] originalValues = columnNameType.split(originalValue);
-		CompositeType.Builder builder = type.builder();
-		for (int i = 0; i < type.getComponents().size(); i++) {
-			ByteBuffer valueComponent = originalValues[i];
-			builder.add(valueComponent);
-		}
-		ByteBuffer key = builder.build();
-		Field field = new StringField(FIELD_NAME, ByteBufferUtils.toString(key), Store.YES);
+		Column column = columnFamily.iterator().next();
+		ByteBuffer name = column.name();
+		Field field = new StringField(FIELD_NAME, ByteBufferUtils.toString(name), Store.YES);
 		document.add(field);
 	}
 

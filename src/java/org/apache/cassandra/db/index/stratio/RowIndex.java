@@ -92,7 +92,8 @@ public class RowIndex extends PerRowSecondaryIndex {
 
 	@Override
 	public long getLiveSize() {
-		return rowService.getRAMSizeInBytes();
+		return 0;
+//		return rowService.getRAMSizeInBytes();
 	}
 
 	public ColumnFamilyStore getIndexCfs() {

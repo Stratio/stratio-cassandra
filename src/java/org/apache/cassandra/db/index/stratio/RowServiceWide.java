@@ -16,6 +16,7 @@ import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
@@ -38,6 +39,7 @@ public class RowServiceWide extends RowService {
 
 	/** The clustering key mapper to be used. */
 	private final ClusteringKeyMapper clusteringKeyMapper;
+	private final FullKeyMapper fullKeyMapper;
 
 	/**
 	 * Builds a new {@code WideRowMapper} for the specified column family store and index options.
@@ -81,16 +83,23 @@ public class RowServiceWide extends RowService {
 		      storedRows,
 		      FIELDS_TO_LOAD);
 		this.clusteringKeyMapper = new ClusteringKeyMapper(metadata);
+		this.fullKeyMapper = new FullKeyMapper(metadata);
 	}
 
 	@Override
-	public Document document(ByteBuffer partitionKey, ColumnFamily columnFamily) {
+	public Document document(DecoratedKey partitionKey, ByteBuffer clusteringKey) {
+
+		long timestamp = System.currentTimeMillis();
+		QueryFilter queryFilter = queryFilter(partitionKey, clusteringKey, timestamp);
+		ColumnFamily allColumns = baseCfs.getColumnFamily(queryFilter);
+
 		Document document = new Document();
 		partitionKeyMapper.document(document, partitionKey);
-		clusteringKeyMapper.field(document, columnFamily);
-		cellsMapper.fields(document, metadata, partitionKey, columnFamily);
+		clusteringKeyMapper.field(document, allColumns);
+		fullKeyMapper.field(document, partitionKey, allColumns);
+		cellsMapper.fields(document, metadata, partitionKey, allColumns);
 		if (storedRows) {
-			document.add(new Field(SERIALIZED_ROW_NAME, ColumnFamilySerializer.bytes(columnFamily), SERIALIZED_ROW_TYPE));
+			document.add(new Field(SERIALIZED_ROW_NAME, ColumnFamilySerializer.bytes(allColumns), SERIALIZED_ROW_TYPE));
 		}
 		return document;
 	}
@@ -111,8 +120,12 @@ public class RowServiceWide extends RowService {
 
 	@Override
 	protected QueryFilter queryFilter(Document document, long timestamp) {
-		DecoratedKey decoratedKey = partitionKeyMapper.decoratedKey(document);
+		DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
 		ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(document);
+		return queryFilter(partitionKey, clusteringKey, timestamp);
+	}
+
+	protected QueryFilter queryFilter(DecoratedKey partitionKey, ByteBuffer clusteringKey, long timestamp) {
 		ByteBuffer start = clusteringKeyMapper.start(clusteringKey);
 		ByteBuffer stop = clusteringKeyMapper.stop(clusteringKey);
 		SliceQueryFilter dataFilter = new SliceQueryFilter(start,
@@ -120,7 +133,7 @@ public class RowServiceWide extends RowService {
 		                                                   false,
 		                                                   Integer.MAX_VALUE,
 		                                                   baseCfs.metadata.clusteringKeyColumns().size());
-		return new QueryFilter(decoratedKey, baseCfs.name, dataFilter, timestamp);
+		return new QueryFilter(partitionKey, baseCfs.name, dataFilter, timestamp);
 	}
 
 	@Override
@@ -129,6 +142,11 @@ public class RowServiceWide extends RowService {
 		ByteBuffer columnName = clusteringKeyMapper.columnName(clusteringKey, indexedColumnName);
 		ByteBuffer columnValue = UTF8Type.instance.decompose(score.toString());
 		return new org.apache.cassandra.db.Column(columnName, columnValue);
+	}
+
+	@Override
+	protected Term term(DecoratedKey partitionKey, ByteBuffer clusteringKey) {
+		return fullKeyMapper.term(partitionKey, clusteringKey);
 	}
 
 }

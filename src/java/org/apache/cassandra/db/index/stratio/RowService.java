@@ -3,17 +3,21 @@ package org.apache.cassandra.db.index.stratio;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
+import org.apache.cassandra.cql3.CFDefinition;
 import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.db.Column;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.db.DeletionInfo;
+import org.apache.cassandra.db.RangeTombstone;
 import org.apache.cassandra.db.TreeMapBackedSortedColumns;
 import org.apache.cassandra.db.filter.ExtendedFilter;
 import org.apache.cassandra.db.filter.QueryFilter;
@@ -32,9 +36,11 @@ import org.apache.lucene.document.FieldType;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.ChainedFilter;
 import org.apache.lucene.search.Filter;
+import org.apache.lucene.search.FilteredQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.util.BytesRef;
+import org.apache.tools.ant.types.CommandlineJava.SysProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,6 +65,8 @@ public abstract class RowService {
 	protected final RowDirectory rowDirectory;
 	protected final ColumnIdentifier indexedColumnName;
 	protected final boolean storedRows;
+	protected final int clusteringPosition;
+	protected final CFDefinition cfDefinition;
 
 	protected final FilterCache filterCache;
 
@@ -117,6 +125,8 @@ public abstract class RowService {
 		this.fieldsToLoad = fieldsToLoad;
 		this.fieldsToLoad.add(SERIALIZED_ROW_NAME);
 		this.storedRows = storedRows;
+		this.cfDefinition = metadata.getCfDef();
+		this.clusteringPosition = cfDefinition.columns.size();
 
 		rowDirectory = new RowDirectory(directoryPath, cellsMapper.analyzer(), refreshSeconds, writeBufferSize);
 
@@ -135,44 +145,54 @@ public abstract class RowService {
 	 * @param partitionKey
 	 * @param columnFamily
 	 */
-	public final void index(ByteBuffer partitionKey, ColumnFamily columnFamily) {
-		
-//		System.out.println();
-//		System.out.println("INDEXING");
-//		for (Column column : columnFamily) {
-//			System.out.println("COLUMN " + ByteBufferUtil.bytesToHex(column.name()) + " " );
-//		}
-//		System.out.println("DELETION INFO " + columnFamily.deletionInfo());
-//		System.out.println();
-		
-		// Get all the columns corresponding to the indexed row
-		long timestamp = System.currentTimeMillis();
-		DecoratedKey decoratedKey = partitionKeyMapper.decoratedKey(partitionKey);
-		QueryFilter filter = QueryFilter.getIdentityFilter(decoratedKey, cfName, timestamp);
-		ColumnFamily allColumns = baseCfs.getColumnFamily(filter);
+	public final void index(ByteBuffer key, ColumnFamily columnFamily) {
 
-		List<Document> documents = new ArrayList<>();
-		ColumnFamily currentsColumns = null;
-		for (Column column : allColumns) {
-			ByteBuffer cellName = column.name();
-			ByteBuffer[] components = ByteBufferUtils.split(cellName, nameType);
-			ByteBuffer lastComponent = components[components.length - 1];
-			if (lastComponent.equals(ByteBufferUtil.EMPTY_BYTE_BUFFER)) { // Is clustering cell
-				if (currentsColumns != null) {
-					Document document = document(partitionKey, currentsColumns);
-					documents.add(document);
+		System.out.println();
+		System.out.println("INDEXING");
+		for (Column column : columnFamily) {
+			System.out.println("COLUMN " + ByteBufferUtil.bytesToHex(column.name())
+			                   + " - "
+			                   + ByteBufferUtil.bytesToHex(column.value()));
+		}
+		System.out.println("CLUSTERING POSITION " + clusteringPosition);
+		System.out.println("DELETION INFO " + columnFamily.deletionInfo());
+		System.out.println();
+
+		DeletionInfo deletionInfo = columnFamily.deletionInfo();
+
+		DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(key);
+		if (columnFamily.iterator().hasNext()) {
+			System.out.println("INSERTING ");
+			for (Column column : columnFamily) {
+				ByteBuffer name = column.name();
+				ByteBuffer[] components = ByteBufferUtils.split(name, nameType);
+				ByteBuffer lastComponent = components[clusteringPosition];
+				if (lastComponent.equals(ByteBufferUtil.EMPTY_BYTE_BUFFER)) { // Is clustering cell
+					Document document = document(partitionKey, name);
+					System.out.println(" -> INDEXED " + document);
+					Term term = term(partitionKey, name);
+					rowDirectory.updateDocument(term, document);
 				}
-				currentsColumns = allColumns.cloneMeShallow();
-				currentsColumns.addColumn(column);
 			}
-			currentsColumns.addColumn(column);
+		} else if (deletionInfo != null) {
+			System.out.println("DELETING WITH KEY ");
+			Iterator<RangeTombstone> deletionIterator = deletionInfo.rangeIterator();
+			if (!deletionIterator.hasNext()) {
+				Term term = partitionKeyMapper.term(partitionKey);
+				rowDirectory.deleteDocuments(term);
+			} else {
+				System.out.println("DELETING WITH RANGE "); // JUST FOR WIDE ROWS - SPECIALIZE !!!!
+				while (deletionIterator.hasNext()) {
+					RangeTombstone rangeTombstone = deletionIterator.next();
+					ByteBuffer min = rangeTombstone.min;
+					ByteBuffer max = rangeTombstone.max;
+					ColumnsFilter columnsFilter = new ColumnsFilter(min, max, nameType);
+					Query partitionKeyQuery = partitionKeyMapper.query(partitionKey);
+					Query query = new FilteredQuery(partitionKeyQuery, columnsFilter);
+					rowDirectory.deleteDocuments(query);
+				}
+			}
 		}
-		if (currentsColumns != null) {
-			Document document = document(partitionKey, currentsColumns);
-			documents.add(document);
-		}
-		Term term = partitionKeyMapper.term(partitionKey);
-		rowDirectory.updateDocuments(term, documents);
 	}
 
 	/**
@@ -182,7 +202,7 @@ public abstract class RowService {
 	 *            The partition key identifying the row to be deleted.
 	 */
 	public final void delete(DecoratedKey partitionKey) {
-		Term term = partitionKeyMapper.term(partitionKey.key);
+		Term term = partitionKeyMapper.term(partitionKey);
 		rowDirectory.deleteDocuments(term);
 	}
 
@@ -229,7 +249,7 @@ public abstract class RowService {
 	 * @return A {@link Document} representing the cell defined by the specified partition key and
 	 *         column family.
 	 */
-	protected abstract Document document(ByteBuffer key, ColumnFamily columnFamily);
+	protected abstract Document document(DecoratedKey key, ByteBuffer clusteringKey);
 
 	/**
 	 * Returns the Lucene's {@link Sort} to be used when querying.
@@ -284,6 +304,7 @@ public abstract class RowService {
 		long collectStart = System.currentTimeMillis();
 		List<org.apache.cassandra.db.Row> rows = new ArrayList<>(scoredDocuments.size());
 		for (ScoredDocument scoredDocument : scoredDocuments) {
+			// System.out.println("FOUND " + scoredDocument);
 
 			Document document = scoredDocument.getDocument();
 			Float score = scoredDocument.getScore();
@@ -336,5 +357,7 @@ public abstract class RowService {
 	private Filter filter(DataRange dataRange) {
 		return new ChainedFilter(filters(dataRange), ChainedFilter.AND);
 	}
+
+	protected abstract Term term(DecoratedKey partitionKey, ByteBuffer clusteringKey);
 
 }

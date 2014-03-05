@@ -14,6 +14,7 @@ import org.apache.cassandra.db.index.stratio.util.ColumnFamilySerializer;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.Sort;
 
@@ -76,12 +77,17 @@ public class RowServiceSimple extends RowService {
 	}
 
 	@Override
-	protected Document document(ByteBuffer key, ColumnFamily columnFamily) {
+	protected Document document(DecoratedKey partitionKey, ByteBuffer clusteringKey) {
+
+		long timestamp = System.currentTimeMillis();
+		QueryFilter queryFilter = QueryFilter.getIdentityFilter(partitionKey, cfName, timestamp);
+		ColumnFamily allColumns = baseCfs.getColumnFamily(queryFilter);
+
 		Document document = new Document();
-		partitionKeyMapper.document(document, key);
-		cellsMapper.fields(document, metadata, key, columnFamily);
+		partitionKeyMapper.document(document, partitionKey);
+		cellsMapper.fields(document, metadata, partitionKey, allColumns);
 		if (storedRows) {
-			document.add(new Field(SERIALIZED_ROW_NAME, ColumnFamilySerializer.bytes(columnFamily), SERIALIZED_ROW_TYPE));
+			document.add(new Field(SERIALIZED_ROW_NAME, ColumnFamilySerializer.bytes(allColumns), SERIALIZED_ROW_TYPE));
 		}
 		return document;
 	}
@@ -107,6 +113,11 @@ public class RowServiceSimple extends RowService {
 		ByteBuffer columnName = nameType.builder().add(indexedColumnName.key).build();
 		ByteBuffer columnValue = UTF8Type.instance.decompose(score.toString());
 		return new org.apache.cassandra.db.Column(columnName, columnValue);
+	}
+	
+	@Override
+	protected Term term(DecoratedKey partitionKey, ByteBuffer clusteringKey) {
+		return partitionKeyMapper.term(partitionKey);
 	}
 
 }

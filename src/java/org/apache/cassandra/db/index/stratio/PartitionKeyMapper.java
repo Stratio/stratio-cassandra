@@ -17,7 +17,9 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.FieldComparatorSource;
 import org.apache.lucene.search.Filter;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -29,7 +31,7 @@ import org.apache.lucene.util.BytesRef;
 public class PartitionKeyMapper {
 
 	/** The Lucene's field name. */
-	protected static final String FIELD_NAME = "partition_key";
+	protected static final String FIELD_NAME = "_partition_key";
 
 	/** The active active partition key. */
 	private final IPartitioner<?> partitioner;
@@ -58,8 +60,8 @@ public class PartitionKeyMapper {
 	 * @param partitionKey
 	 *            The raw partition key to be converted.
 	 */
-	public void document(Document document, ByteBuffer partitionKey) {
-		String serializedKey = ByteBufferUtils.toString(partitionKey);
+	public void document(Document document, DecoratedKey partitionKey) {
+		String serializedKey = ByteBufferUtils.toString(partitionKey.key);
 		Field field = new StringField(FIELD_NAME, serializedKey, Store.YES);
 		document.add(field);
 	}
@@ -71,9 +73,13 @@ public class PartitionKeyMapper {
 	 *            The raw partition key to be converted.
 	 * @return The specified raw partition key as a not indexed, stored Lucene's {@link Term}.
 	 */
-	public Term term(ByteBuffer partitionKey) {
-		String serializedKey = ByteBufferUtils.toString(partitionKey);
+	public Term term(DecoratedKey partitionKey) {
+		String serializedKey = ByteBufferUtils.toString(partitionKey.key);
 		return new Term(FIELD_NAME, serializedKey);
+	}
+	
+	public Query query(DecoratedKey partitionKey) {
+		return new TermQuery(term(partitionKey));
 	}
 
 	/**
@@ -87,6 +93,18 @@ public class PartitionKeyMapper {
 		String string = document.get(FIELD_NAME);
 		ByteBuffer partitionKey = ByteBufferUtils.fromString(string);
 		return decoratedKey(partitionKey);
+	}
+
+	/**
+	 * Returns the partition key contained in the specified Lucene's {@link Document}.
+	 * 
+	 * @param document
+	 *            the {@link Document} containing the partition key to be get.
+	 * @return The partition key contained in the specified Lucene's {@link Document}.
+	 */
+	public ByteBuffer partitionKey(Document document) {
+		String string = document.get(FIELD_NAME);
+		return ByteBufferUtils.fromString(string);
 	}
 
 	/**

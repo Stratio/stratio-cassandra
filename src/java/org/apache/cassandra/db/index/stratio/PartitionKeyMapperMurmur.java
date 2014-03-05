@@ -1,9 +1,7 @@
 package org.apache.cassandra.db.index.stratio;
 
-import java.nio.ByteBuffer;
-
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.DataRange;
+import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.RowPosition;
 import org.apache.cassandra.db.RowPosition.Kind;
 import org.apache.cassandra.dht.Murmur3Partitioner;
@@ -24,23 +22,14 @@ import org.apache.lucene.search.SortField;
  */
 public class PartitionKeyMapperMurmur extends PartitionKeyMapper {
 
-	public static final String TOKEN_NAME = "token";
-
-	private final Murmur3Partitioner partitioner;
-
-	/**
-	 * Returns a new {@code PartitionKeyMapperMurmur}.
-	 */
-	public PartitionKeyMapperMurmur() {
-		partitioner = (Murmur3Partitioner) DatabaseDescriptor.getPartitioner();
-	}
+	public static final String TOKEN_NAME = "_token";
 
 	@Override
-	public void document(Document document, ByteBuffer partitionKey) {
+	public void document(Document document, DecoratedKey partitionKey) {
 
 		super.document(document, partitionKey);
 
-		Long value = partitioner.getToken(partitionKey).token;
+		Long value = (Long) partitionKey.token.token;
 		Field tokenField = new LongField(TOKEN_NAME, value, Store.NO);
 		document.add(tokenField);
 	}

@@ -15,11 +15,13 @@ import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.Column;
 import org.apache.cassandra.db.ColumnFamily;
+import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.index.stratio.util.ByteBufferUtils;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CollectionType;
 import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.db.marshal.UTF8Type;
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
@@ -131,13 +133,13 @@ public class CellsMapper {
 	 *         key.
 	 */
 	@JsonIgnore
-	private Cells partitionKeyCells(CFMetaData metadata, ByteBuffer partitionKey) {
+	private Cells partitionKeyCells(CFMetaData metadata, DecoratedKey partitionKey) {
 		Cells cells = new Cells();
 		AbstractType<?> rawKeyType = metadata.getKeyValidator();
 		List<ColumnDefinition> columnDefinitions = metadata.partitionKeyColumns();
 		for (ColumnDefinition columnDefinition : columnDefinitions) {
 			String name = UTF8Type.instance.compose(columnDefinition.name);
-			ByteBuffer[] components = ByteBufferUtils.split(partitionKey, rawKeyType);
+			ByteBuffer[] components = ByteBufferUtils.split(partitionKey.key, rawKeyType);
 			int position = position(columnDefinition);
 			ByteBuffer value = components[position];
 			AbstractType<?> valueType = rawKeyType.getComponents().get(position);
@@ -192,8 +194,8 @@ public class CellsMapper {
 		Cells cells = new Cells();
 
 		// Get row's cells iterator skipping clustering column
-		Iterator<Column> cellIterator = cf.iterator();
-		cellIterator.next();
+		Iterator<Column> columnIterator = cf.iterator();
+		columnIterator.next();
 
 		// Stuff for grouping collection cells (sets, lists and maps)
 		String name = null;
@@ -202,15 +204,26 @@ public class CellsMapper {
 		Set<Object> set = new HashSet<>();
 		List<Object> list = new LinkedList<>();
 		Map<Object, Object> map = new HashMap<>();
+		
+		int clusteringPosition = metadata.getCfDef().columns.size();
+		CompositeType nameType = (CompositeType) metadata.comparator;
 
-		while (cellIterator.hasNext()) {
+		System.out.println("COLUMN NAME TYPE IS " + metadata.comparator);
+		while (columnIterator.hasNext()) {
 
-			Column column = cellIterator.next();
-			ByteBuffer cellName = column.name();
-			ByteBuffer value = column.value();
+			Column column = columnIterator.next();
+			ByteBuffer columnName = column.name();
+			ByteBuffer columnValue = column.value();
+			
+			ByteBuffer[] columnNameComponents = nameType.split(columnName);
+			ByteBuffer columnSimpleName = columnNameComponents[clusteringPosition];
 
-			ColumnDefinition columnDefinition = metadata.getColumnDefinitionFromColumnName(cellName);
-			CompositeType nameType = (CompositeType) metadata.comparator;
+			ColumnDefinition columnDefinition = metadata.getColumnDefinition(columnSimpleName);
+			System.out.println(" -> MAPPING REGULAR CELL " + ByteBufferUtil.bytesToHex(columnName)
+			                   + " - "
+			                   + ByteBufferUtil.bytesToHex(columnValue)
+			                   + " - "
+			                   + ByteBufferUtil.bytesToHex(columnSimpleName));
 			final AbstractType<?> valueType = columnDefinition.getValidator();
 			int position = position(columnDefinition);
 
@@ -257,7 +270,7 @@ public class CellsMapper {
 					}
 				}
 			} else {
-				cells.add(CellMapper.cell(name, value, valueType));
+				cells.add(CellMapper.cell(name, columnValue, valueType));
 			}
 		}
 
@@ -291,7 +304,7 @@ public class CellsMapper {
 	}
 
 	@JsonIgnore
-	public void fields(Document document, CFMetaData metadata, ByteBuffer partitionKey, ColumnFamily columnFamily) {
+	public void fields(Document document, CFMetaData metadata, DecoratedKey partitionKey, ColumnFamily columnFamily) {
 		Cells cells = new Cells();
 		cells.addAll(partitionKeyCells(metadata, partitionKey));
 		cells.addAll(clusteringKeyCells(metadata, columnFamily));
