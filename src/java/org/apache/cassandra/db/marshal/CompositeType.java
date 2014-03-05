@@ -237,199 +237,169 @@ public class CompositeType extends AbstractCompositeType
         for (ColumnSlice slice : filter.slices)
         {
             // This slices intersects if all component intersect. And we don't intersect
-            // only if no slice intersects
-            ByteBuffer[] start = split(filter.isReversed() ? slice.finish : slice.start);
-            ByteBuffer[] finish = split(filter.isReversed() ? slice.start : slice.finish);
-            for (int i = 0; i < minColumnNames.size(); i++)
-            {
-                AbstractType<?> t = types.get(i);
-                ByteBuffer s = i < start.length ? start[i] : ByteBufferUtil.EMPTY_BYTE_BUFFER;
-                ByteBuffer f = i < finish.length ? finish[i] : ByteBufferUtil.EMPTY_BYTE_BUFFER;
-                if (!t.intersects(minColumnNames.get(i), maxColumnNames.get(i), s, f))
-                    continue outer;
-            }
-            return true;
-        }
-        return false;
-    }
+			// only if no slice intersects
+			ByteBuffer[] start = split(filter.isReversed() ? slice.finish : slice.start);
+			ByteBuffer[] finish = split(filter.isReversed() ? slice.start : slice.finish);
+			for (int i = 0; i < minColumnNames.size(); i++) {
+				AbstractType<?> t = types.get(i);
+				ByteBuffer s = i < start.length ? start[i] : ByteBufferUtil.EMPTY_BYTE_BUFFER;
+				ByteBuffer f = i < finish.length ? finish[i] : ByteBufferUtil.EMPTY_BYTE_BUFFER;
+				if (!t.intersects(minColumnNames.get(i), maxColumnNames.get(i), s, f))
+					continue outer;
+			}
+			return true;
+		}
+		return false;
+	}
 
-    private static class StaticParsedComparator implements ParsedComparator
-    {
-        final AbstractType<?> type;
-        final String part;
+	private static class StaticParsedComparator implements ParsedComparator {
+		final AbstractType<?> type;
+		final String part;
 
-        StaticParsedComparator(AbstractType<?> type, String part)
-        {
-            this.type = type;
-            this.part = part;
-        }
+		StaticParsedComparator(AbstractType<?> type, String part) {
+			this.type = type;
+			this.part = part;
+		}
 
-        public AbstractType<?> getAbstractType()
-        {
-            return type;
-        }
+		public AbstractType<?> getAbstractType() {
+			return type;
+		}
 
-        public String getRemainingPart()
-        {
-            return part;
-        }
+		public String getRemainingPart() {
+			return part;
+		}
 
-        public int getComparatorSerializedSize()
-        {
-            return 0;
-        }
+		public int getComparatorSerializedSize() {
+			return 0;
+		}
 
-        public void serializeComparator(ByteBuffer bb) {}
-    }
+		public void serializeComparator(ByteBuffer bb) {
+		}
+	}
 
-    @Override
-    public String toString()
-    {
-        return getClass().getName() + TypeParser.stringifyTypeParameters(types);
-    }
+	@Override
+	public String toString() {
+		return getClass().getName() + TypeParser.stringifyTypeParameters(types);
+	}
 
-    public Builder builder()
-    {
-        return new Builder(this);
-    }
+	public Builder builder() {
+		return new Builder(this);
+	}
 
-    public static ByteBuffer build(ByteBuffer... buffers)
-    {
-        int totalLength = 0;
-        for (ByteBuffer bb : buffers)
-            totalLength += 2 + bb.remaining() + 1;
+	public static ByteBuffer build(ByteBuffer... buffers) {
+		int totalLength = 0;
+		for (ByteBuffer bb : buffers)
+			totalLength += 2 + bb.remaining() + 1;
 
-        ByteBuffer out = ByteBuffer.allocate(totalLength);
-        for (ByteBuffer bb : buffers)
-        {
-            putShortLength(out, bb.remaining());
-            out.put(bb.duplicate());
-            out.put((byte) 0);
-        }
-        out.flip();
-        return out;
-    }
+		ByteBuffer out = ByteBuffer.allocate(totalLength);
+		for (ByteBuffer bb : buffers) {
+			putShortLength(out, bb.remaining());
+			out.put(bb.duplicate());
+			out.put((byte) 0);
+		}
+		out.flip();
+		return out;
+	}
 
-    public static class Builder implements ColumnNameBuilder
-    {
-        private final CompositeType composite;
+	public static class Builder implements ColumnNameBuilder {
+		private final CompositeType composite;
 
-        private final List<ByteBuffer> components;
-        private final byte[] endOfComponents;
-        private int serializedSize;
+		private final List<ByteBuffer> components;
+		private final byte[] endOfComponents;
+		private int serializedSize;
 
-        public Builder(CompositeType composite)
-        {
-            this(composite, new ArrayList<ByteBuffer>(composite.types.size()), new byte[composite.types.size()]);
-        }
+		public Builder(CompositeType composite) {
+			this(composite, new ArrayList<ByteBuffer>(composite.types.size()), new byte[composite.types.size()]);
+		}
 
-        public Builder(CompositeType composite, List<ByteBuffer> components, byte[] endOfComponents)
-        {
-            assert endOfComponents.length == composite.types.size();
+		public Builder(CompositeType composite, List<ByteBuffer> components, byte[] endOfComponents) {
+			assert endOfComponents.length == composite.types.size();
 
-            this.composite = composite;
-            this.components = components;
-            this.endOfComponents = endOfComponents;
-        }
+			this.composite = composite;
+			this.components = components;
+			this.endOfComponents = endOfComponents;
+		}
 
-        private Builder(Builder b)
-        {
-            this(b.composite, new ArrayList<ByteBuffer>(b.components), Arrays.copyOf(b.endOfComponents, b.endOfComponents.length));
-            this.serializedSize = b.serializedSize;
-        }
+		private Builder(Builder b) {
+			this(b.composite, new ArrayList<ByteBuffer>(b.components), Arrays.copyOf(b.endOfComponents,
+			                                                                         b.endOfComponents.length));
+			this.serializedSize = b.serializedSize;
+		}
 
-        public Builder add(ByteBuffer buffer, Relation.Type op)
-        {
-            if (components.size() >= composite.types.size())
-                throw new IllegalStateException("Composite column is already fully constructed");
+		public Builder add(ByteBuffer buffer, Relation.Type op) {
+			if (components.size() >= composite.types.size())
+				throw new IllegalStateException("Composite column is already fully constructed");
 
-            int current = components.size();
-            components.add(buffer);
+			int current = components.size();
+			components.add(buffer);
 
-            /*
-             * Given the rules for eoc (end-of-component, see AbstractCompositeType.compare()),
-             * We can select:
-             *   - = 'a' by using <'a'><0>
-             *   - < 'a' by using <'a'><-1>
-             *   - <= 'a' by using <'a'><1>
-             *   - > 'a' by using <'a'><1>
-             *   - >= 'a' by using <'a'><0>
-             */
-            switch (op)
-            {
-                case LT:
-                    endOfComponents[current] = (byte) -1;
-                    break;
-                case GT:
-                case LTE:
-                    endOfComponents[current] = (byte) 1;
-                    break;
-                default:
-                    endOfComponents[current] = (byte) 0;
-                    break;
-            }
-            return this;
-        }
+			/*
+			 * Given the rules for eoc (end-of-component, see AbstractCompositeType.compare()), We
+			 * can select: - = 'a' by using <'a'><0> - < 'a' by using <'a'><-1> - <= 'a' by using
+			 * <'a'><1> - > 'a' by using <'a'><1> - >= 'a' by using <'a'><0>
+			 */
+			switch (op) {
+				case LT:
+					endOfComponents[current] = (byte) -1;
+					break;
+				case GT:
+				case LTE:
+					endOfComponents[current] = (byte) 1;
+					break;
+				default:
+					endOfComponents[current] = (byte) 0;
+					break;
+			}
+			return this;
+		}
 
-        public Builder add(ByteBuffer bb)
-        {
-            return add(bb, Relation.Type.EQ);
-        }
+		public Builder add(ByteBuffer bb) {
+			return add(bb, Relation.Type.EQ);
+		}
 
-        public int componentCount()
-        {
-            return components.size();
-        }
+		public int componentCount() {
+			return components.size();
+		}
 
-        public int remainingCount()
-        {
-            return composite.types.size() - components.size();
-        }
+		public int remainingCount() {
+			return composite.types.size() - components.size();
+		}
 
-        public ByteBuffer get(int i)
-        {
-            return components.get(i);
-        }
+		public ByteBuffer get(int i) {
+			return components.get(i);
+		}
 
-        public ByteBuffer build()
-        {
-            DataOutputBuffer out = new DataOutputBuffer(serializedSize);
-            for (int i = 0; i < components.size(); i++)
-            {
-                try
-                {
-                    ByteBufferUtil.writeWithShortLength(components.get(i), out);
-                }
-                catch (IOException e)
-                {
-                    throw new RuntimeException(e);
-                }
-                out.write(endOfComponents[i]);
-            }
-            return ByteBuffer.wrap(out.getData(), 0, out.getLength());
-        }
+		public ByteBuffer build() {
+			DataOutputBuffer out = new DataOutputBuffer(serializedSize);
+			for (int i = 0; i < components.size(); i++) {
+				try {
+					ByteBufferUtil.writeWithShortLength(components.get(i), out);
+				} catch (IOException e) {
+					throw new RuntimeException(e);
+				}
+				out.write(endOfComponents[i]);
+			}
+			return ByteBuffer.wrap(out.getData(), 0, out.getLength());
+		}
 
-        public ByteBuffer buildAsEndOfRange()
-        {
-            if (components.isEmpty())
-                return ByteBufferUtil.EMPTY_BYTE_BUFFER;
+		public ByteBuffer buildAsEndOfRange() {
+			if (components.isEmpty())
+				return ByteBufferUtil.EMPTY_BYTE_BUFFER;
 
-            ByteBuffer bb = build();
-            bb.put(bb.remaining() - 1, (byte)1);
-            return bb;
-        }
+			ByteBuffer bb = build();
+			bb.put(bb.remaining() - 1, (byte) 1);
+			return bb;
+		}
 
-        public Builder copy()
-        {
-            return new Builder(this);
-        }
+		public Builder copy() {
+			return new Builder(this);
+		}
 
-        public ByteBuffer getComponent(int i)
-        {
-            if (i >= components.size())
-                throw new IllegalArgumentException();
+		public ByteBuffer getComponent(int i) {
+			if (i >= components.size())
+				throw new IllegalArgumentException();
 
-            return components.get(i);
-        }
-    }
+			return components.get(i);
+		}
+	}
 }
