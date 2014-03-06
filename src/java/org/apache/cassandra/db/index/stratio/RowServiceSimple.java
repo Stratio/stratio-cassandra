@@ -85,6 +85,7 @@ public class RowServiceSimple extends RowService {
 
 		Document document = new Document();
 		partitionKeyMapper.addFields(document, partitionKey);
+		tokenMapper.addFields(document, partitionKey);
 		cellsMapper.addFields(document, metadata, partitionKey, allColumns);
 		if (storedRows) {
 			document.add(new Field(SERIALIZED_ROW_NAME, ColumnFamilySerializer.bytes(allColumns), SERIALIZED_ROW_TYPE));

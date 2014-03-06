@@ -37,6 +37,9 @@ public class TokenMapperGeneric extends TokenMapper {
 		factory = DatabaseDescriptor.getPartitioner().getTokenFactory();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	@SuppressWarnings("unchecked")
 	public void addFields(Document document, DecoratedKey partitionKey) {
