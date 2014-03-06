@@ -25,7 +25,7 @@ public class TokenMapperMurmur extends TokenMapper {
 	private static final String FIELD_NAME = "_token_murmur";
 
 	@Override
-	public void document(Document document, DecoratedKey partitionKey) {
+	public void addFields(Document document, DecoratedKey partitionKey) {
 		Long value = (Long) partitionKey.token.token;
 		Field tokenField = new LongField(FIELD_NAME, value, Store.NO);
 		document.add(tokenField);

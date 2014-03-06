@@ -125,8 +125,8 @@ public class TokenMapperGenericSorter extends FieldComparator<BytesRef> {
 	 */
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private int compare(BytesRef fieldValue1, BytesRef fieldValue2) {
-		Token t1 = tokenMapperGeneric.decoratedKey(fieldValue1).token;
-		Token t2 = tokenMapperGeneric.decoratedKey(fieldValue2).token;
+		Token t1 = tokenMapperGeneric.token(fieldValue1);
+		Token t2 = tokenMapperGeneric.token(fieldValue2);
 		return t1.compareTo(t2);
 	}
 }

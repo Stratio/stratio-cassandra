@@ -94,10 +94,11 @@ public class RowServiceWide extends RowService {
 		ColumnFamily allColumns = baseCfs.getColumnFamily(queryFilter);
 
 		Document document = new Document();
-		partitionKeyMapper.document(document, partitionKey);
-		clusteringKeyMapper.field(document, allColumns);
-		fullKeyMapper.field(document, partitionKey, allColumns);
-		cellsMapper.fields(document, metadata, partitionKey, allColumns);
+		partitionKeyMapper.addFields(document, partitionKey);
+		clusteringKeyMapper.addFields(document, allColumns);
+		tokenMapper.addFields(document, partitionKey);
+		fullKeyMapper.addFields(document, partitionKey, allColumns);
+		cellsMapper.addFields(document, metadata, partitionKey, allColumns);
 		if (storedRows) {
 			document.add(new Field(SERIALIZED_ROW_NAME, ColumnFamilySerializer.bytes(allColumns), SERIALIZED_ROW_TYPE));
 		}
@@ -106,16 +107,16 @@ public class RowServiceWide extends RowService {
 
 	@Override
 	public Sort sort() {
-		SortField[] partitionKeySort = partitionKeyMapper.sortFields();
+		SortField[] partitionKeySort = tokenMapper.sortFields();
 		SortField[] clusteringKeySort = clusteringKeyMapper.sortFields();
 		return new Sort(ArrayUtils.addAll(partitionKeySort, clusteringKeySort));
 	}
 
 	@Override
 	public Filter[] filters(DataRange dataRange) {
-		Filter[] partitionKeyFilters = partitionKeyMapper.filters(dataRange);
+		Filter[] tokenFilters = tokenMapper.filters(dataRange);
 		Filter[] clusteringKeyFilters = clusteringKeyMapper.filters(dataRange);
-		return ArrayUtils.addAll(partitionKeyFilters, clusteringKeyFilters);
+		return ArrayUtils.addAll(tokenFilters, clusteringKeyFilters);
 	}
 
 	@Override

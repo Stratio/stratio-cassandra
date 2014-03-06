@@ -40,7 +40,6 @@ import org.apache.lucene.search.FilteredQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.util.BytesRef;
-import org.apache.tools.ant.types.CommandlineJava.SysProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,7 +59,7 @@ public abstract class RowService {
 	protected final String cfName;
 	protected final CompositeType nameType;
 	protected final PartitionKeyMapper partitionKeyMapper;
-//	protected final TokenMapper tokenMapper;
+	protected final TokenMapper tokenMapper;
 	protected final CellsMapper cellsMapper;
 	protected final Set<String> fieldsToLoad;
 	protected final RowDirectory rowDirectory;
@@ -119,7 +118,8 @@ public abstract class RowService {
 		metadata = baseCfs.metadata;
 		cfName = metadata.cfName;
 		nameType = (CompositeType) metadata.comparator;
-		partitionKeyMapper = PartitionKeyMapper.build();
+		partitionKeyMapper = PartitionKeyMapper.instance();
+		tokenMapper = TokenMapper.instance();
 
 		this.cellsMapper = cellsMapper;
 		this.indexedColumnName = indexedColumnName;
