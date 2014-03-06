@@ -9,7 +9,6 @@ import java.util.Set;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.cql3.CFDefinition;
 import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.db.Column;
 import org.apache.cassandra.db.ColumnFamily;
@@ -54,23 +53,20 @@ public abstract class RowService {
 	protected static final Logger logger = LoggerFactory.getLogger(SecondaryIndex.class);
 
 	protected final ColumnFamilyStore baseCfs;
-
 	protected final CFMetaData metadata;
-	protected final String cfName;
 	protected final CompositeType nameType;
 	protected final PartitionKeyMapper partitionKeyMapper;
 	protected final TokenMapper tokenMapper;
 	protected final CellsMapper cellsMapper;
 	protected final Set<String> fieldsToLoad;
 	protected final RowDirectory rowDirectory;
-	protected final ColumnIdentifier indexedColumnName;
+	protected final ColumnIdentifier columnIdentifier;
 	protected final boolean storedRows;
 	protected final int clusteringPosition;
-	protected final CFDefinition cfDefinition;
 
 	protected final FilterCache filterCache;
 
-	public static final String SERIALIZED_ROW_NAME = "row";
+	public static final String SERIALIZED_ROW_NAME = "_row";
 	public static final FieldType SERIALIZED_ROW_TYPE = new FieldType();
 	static {
 		SERIALIZED_ROW_TYPE.setStored(true);
@@ -116,18 +112,16 @@ public abstract class RowService {
 		this.baseCfs = baseCfs;
 
 		metadata = baseCfs.metadata;
-		cfName = metadata.cfName;
 		nameType = (CompositeType) metadata.comparator;
 		partitionKeyMapper = PartitionKeyMapper.instance();
 		tokenMapper = TokenMapper.instance();
 
 		this.cellsMapper = cellsMapper;
-		this.indexedColumnName = indexedColumnName;
+		this.columnIdentifier = indexedColumnName;
 		this.fieldsToLoad = fieldsToLoad;
 		this.fieldsToLoad.add(SERIALIZED_ROW_NAME);
 		this.storedRows = storedRows;
-		this.cfDefinition = metadata.getCfDef();
-		this.clusteringPosition = cfDefinition.columns.size();
+		this.clusteringPosition = metadata.getCfDef().columns.size();
 
 		rowDirectory = new RowDirectory(directoryPath, cellsMapper.analyzer(), refreshSeconds, writeBufferSize);
 
@@ -143,46 +137,31 @@ public abstract class RowService {
 	 * key. Note that when using wide rows all the rows under the same partition key are indexed. It
 	 * will be improved in the future.
 	 * 
-	 * @param partitionKey
+	 * @param key
 	 * @param columnFamily
 	 */
 	public final void index(ByteBuffer key, ColumnFamily columnFamily) {
-
-		System.out.println();
-		System.out.println("INDEXING");
-		for (Column column : columnFamily) {
-			System.out.println("COLUMN " + ByteBufferUtil.bytesToHex(column.name())
-			                   + " - "
-			                   + ByteBufferUtil.bytesToHex(column.value()));
-		}
-		System.out.println("CLUSTERING POSITION " + clusteringPosition);
-		System.out.println("DELETION INFO " + columnFamily.deletionInfo());
-		System.out.println();
 
 		DeletionInfo deletionInfo = columnFamily.deletionInfo();
 
 		DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(key);
 		if (columnFamily.iterator().hasNext()) {
-			System.out.println("INSERTING ");
 			for (Column column : columnFamily) {
 				ByteBuffer name = column.name();
 				ByteBuffer[] components = ByteBufferUtils.split(name, nameType);
 				ByteBuffer lastComponent = components[clusteringPosition];
 				if (lastComponent.equals(ByteBufferUtil.EMPTY_BYTE_BUFFER)) { // Is clustering cell
 					Document document = document(partitionKey, name);
-					System.out.println(" -> INDEXED " + document);
 					Term term = term(partitionKey, name);
 					rowDirectory.updateDocument(term, document);
 				}
 			}
 		} else if (deletionInfo != null) {
-			System.out.println("DELETING WITH KEY ");
 			Iterator<RangeTombstone> deletionIterator = deletionInfo.rangeIterator();
-			if (!deletionIterator.hasNext()) {
+			if (!deletionIterator.hasNext()) { // Delete full storage row
 				Term term = partitionKeyMapper.term(partitionKey);
 				rowDirectory.deleteDocuments(term);
-			} else {
-				System.out.println("DELETING WITH RANGE "); // JUST FOR WIDE ROWS - SPECIALIZE !!!!
+			} else { // Just for delete ranges of wide rows
 				while (deletionIterator.hasNext()) {
 					RangeTombstone rangeTombstone = deletionIterator.next();
 					ByteBuffer min = rangeTombstone.min;
@@ -270,7 +249,7 @@ public abstract class RowService {
 
 	protected abstract QueryFilter queryFilter(Document document, long timestamp);
 
-	protected abstract org.apache.cassandra.db.Column scoreCell(Document document, Float score);
+	protected abstract org.apache.cassandra.db.Column scoreColumn(Document document, Float score);
 
 	/**
 	 * Returns the Cassandra rows satisfying {@code extendedFilter}. This rows are retrieved from
@@ -281,6 +260,7 @@ public abstract class RowService {
 	 * @return The Cassandra rows satisfying {@code extendedFilter}.
 	 */
 	public List<org.apache.cassandra.db.Row> search(ExtendedFilter extendedFilter) throws IOException {
+		long start = System.currentTimeMillis();
 
 		// Get filtering options
 		int columns = extendedFilter.maxColumns();
@@ -299,7 +279,7 @@ public abstract class RowService {
 		long searchStart = System.currentTimeMillis();
 		List<ScoredDocument> scoredDocuments = rowDirectory.search(query, filter, sort, columns, fieldsToLoad);
 		long searchFinish = System.currentTimeMillis();
-		System.out.println(" -> LUCENE SEARCH TIME " + (searchFinish - searchStart));
+		logger.info(" -> LUCENE SEARCH TIME " + (searchFinish - searchStart));
 
 		// Collect matching rows
 		long collectStart = System.currentTimeMillis();
@@ -325,7 +305,7 @@ public abstract class RowService {
 			}
 
 			// Create a new column family with the scoring cell and the stored ones
-			org.apache.cassandra.db.Column scoringCell = scoreCell(document, score);
+			org.apache.cassandra.db.Column scoringCell = scoreColumn(document, score);
 			ColumnFamily decoratedCf = TreeMapBackedSortedColumns.factory.create(baseCfs.metadata);
 			decoratedCf.addColumn(scoringCell);
 			decoratedCf.addAll(cf, HeapAllocator.instance);
@@ -335,7 +315,11 @@ public abstract class RowService {
 		}
 
 		long collectFinish = System.currentTimeMillis();
-		System.out.println(" -> ROW COLLECTION TIME " + (collectFinish - collectStart));
+		logger.info(" -> ROW COLLECTION TIME " + (collectFinish - collectStart));
+		
+		long finish = System.currentTimeMillis();
+		logger.info(" -> FULL SEARCH TIME " + (finish - start));
+		
 		return rows;
 	}
 

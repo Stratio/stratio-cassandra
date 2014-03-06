@@ -21,7 +21,6 @@ import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CollectionType;
 import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.db.marshal.UTF8Type;
-import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
@@ -193,7 +192,6 @@ public class CellsMapper {
 		int clusteringPosition = metadata.getCfDef().columns.size();
 		CompositeType nameType = (CompositeType) metadata.comparator;
 
-		System.out.println("COLUMN NAME TYPE IS " + metadata.comparator);
 		while (columnIterator.hasNext()) {
 
 			Column column = columnIterator.next();
@@ -204,11 +202,6 @@ public class CellsMapper {
 			ByteBuffer columnSimpleName = columnNameComponents[clusteringPosition];
 
 			ColumnDefinition columnDefinition = metadata.getColumnDefinition(columnSimpleName);
-			System.out.println(" -> MAPPING REGULAR CELL " + ByteBufferUtil.bytesToHex(columnName)
-			                   + " - "
-			                   + ByteBufferUtil.bytesToHex(columnValue)
-			                   + " - "
-			                   + ByteBufferUtil.bytesToHex(columnSimpleName));
 			final AbstractType<?> valueType = columnDefinition.getValidator();
 			int position = position(columnDefinition);
 

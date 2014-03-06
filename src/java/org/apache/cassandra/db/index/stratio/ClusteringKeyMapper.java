@@ -144,7 +144,7 @@ public class ClusteringKeyMapper {
 			@Override
 			public	FieldComparator<?>
 			        newComparator(String field, int hits, int sort, boolean reversed) throws IOException {
-				return new ClusteringKeyMapperComparator(ClusteringKeyMapper.this, hits, field);
+				return new ClusteringKeyMapperSorter(ClusteringKeyMapper.this, hits, field);
 			}
 		}) };
 	}

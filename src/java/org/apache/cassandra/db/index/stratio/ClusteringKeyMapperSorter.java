@@ -19,7 +19,7 @@ import org.apache.lucene.util.BytesRef;
  * @author adelapena
  * 
  */
-public class ClusteringKeyMapperComparator extends FieldComparator<BytesRef> {
+public class ClusteringKeyMapperSorter extends FieldComparator<BytesRef> {
 
 	private static final byte[] MISSING_BYTES = new byte[0];
 
@@ -34,7 +34,7 @@ public class ClusteringKeyMapperComparator extends FieldComparator<BytesRef> {
 	private final BytesRef tempBR = new BytesRef();
 
 	/**
-	 * Builds a new {@code ClusteringKeyComparator}.
+	 * Returns a new {@code ClusteringKeyComparator}.
 	 * 
 	 * @param clusteringKeyMapper
 	 *            The ClusteringKeyMapper to be used.
@@ -43,7 +43,7 @@ public class ClusteringKeyMapperComparator extends FieldComparator<BytesRef> {
 	 * @param field
 	 *            The field name.
 	 */
-	public ClusteringKeyMapperComparator(ClusteringKeyMapper clusteringKeyMapper, int numHits, String field) {
+	public ClusteringKeyMapperSorter(ClusteringKeyMapper clusteringKeyMapper, int numHits, String field) {
 		this.clusteringKeyMapper = clusteringKeyMapper;
 		values = new BytesRef[numHits];
 		this.field = field;

@@ -10,6 +10,13 @@ import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 
+/**
+ * 
+ * {@link FieldComparator} that compares token field sorting by its Cassandra's partitioner.
+ * 
+ * @author adelapena
+ * 
+ */
 public class TokenMapperGenericSorter extends FieldComparator<BytesRef> {
 
 	private static final byte[] MISSING_BYTES = new byte[0];
@@ -24,6 +31,16 @@ public class TokenMapperGenericSorter extends FieldComparator<BytesRef> {
 	private BytesRef bottom;
 	private final BytesRef tempBR = new BytesRef();
 
+	/**
+	 * Returns a new {@code TokenMapperGenericSorter}
+	 * 
+	 * @param tokenMapperGeneric
+	 *            The {@code TokenMapperGenericSorter} to be used.
+	 * @param numHits
+	 *            The number of hits.
+	 * @param field
+	 *            The field name.
+	 */
 	public TokenMapperGenericSorter(TokenMapperGeneric tokenMapperGeneric, int numHits, String field) {
 		this.tokenMapperGeneric = tokenMapperGeneric;
 		values = new BytesRef[numHits];

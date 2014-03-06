@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.apache.cassandra.cql3.ColumnIdentifier;
+import org.apache.cassandra.db.Column;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DataRange;
@@ -126,7 +127,7 @@ public class RowServiceWide extends RowService {
 		return queryFilter(partitionKey, clusteringKey, timestamp);
 	}
 
-	protected QueryFilter queryFilter(DecoratedKey partitionKey, ByteBuffer clusteringKey, long timestamp) {
+	private QueryFilter queryFilter(DecoratedKey partitionKey, ByteBuffer clusteringKey, long timestamp) {
 		ByteBuffer start = clusteringKeyMapper.start(clusteringKey);
 		ByteBuffer stop = clusteringKeyMapper.stop(clusteringKey);
 		SliceQueryFilter dataFilter = new SliceQueryFilter(start,
@@ -138,11 +139,11 @@ public class RowServiceWide extends RowService {
 	}
 
 	@Override
-	protected org.apache.cassandra.db.Column scoreCell(Document document, Float score) {
+	protected Column scoreColumn(Document document, Float score) {
 		ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(document);
-		ByteBuffer columnName = clusteringKeyMapper.columnName(clusteringKey, indexedColumnName);
-		ByteBuffer columnValue = UTF8Type.instance.decompose(score.toString());
-		return new org.apache.cassandra.db.Column(columnName, columnValue);
+		ByteBuffer name = clusteringKeyMapper.columnName(clusteringKey, columnIdentifier);
+		ByteBuffer value = UTF8Type.instance.decompose(score.toString());
+		return new Column(name, value);
 	}
 
 	@Override

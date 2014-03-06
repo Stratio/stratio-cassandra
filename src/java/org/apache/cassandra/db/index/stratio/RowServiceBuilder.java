@@ -19,7 +19,7 @@ public class RowServiceBuilder {
 	private static final String SCHEMA_OPTION = "schema";
 
 	private static final String REFRESH_SECONDS_OPTION = "refresh_seconds";
-	private static final Integer DEFAULT_REFESH_SECONDS = 1;
+	private static final Integer DEFAULT_REFESH_SECONDS = 60;
 
 	private static final String FILTER_CACHE_SIZE_OPTION = "filter_cache_size";
 	private static final Integer DEFAULT_FILTER_CACHE_SIZE = 0;
