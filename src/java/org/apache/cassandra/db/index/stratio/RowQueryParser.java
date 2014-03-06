@@ -1,7 +1,5 @@
 package org.apache.cassandra.db.index.stratio;
 
-import java.text.CharacterIterator;
-import java.text.StringCharacterIterator;
 import java.util.Map;
 
 import org.apache.lucene.analysis.Analyzer;
@@ -30,9 +28,7 @@ public class RowQueryParser extends QueryParser {
 
 	@Override
 	public	Query
-	        getRangeQuery(String field, String start, String end, boolean startInclusive, boolean endInclusive) throws ParseException {
-		String upper = unescape(start);
-		String lower = unescape(end);
+	        getRangeQuery(String field, String upper, String lower, boolean startInclusive, boolean endInclusive) throws ParseException {
 		CellMapper<?> columnMapper = mappers.get(field);
 		if (columnMapper != null) {
 			Query query = columnMapper.range(field, upper, lower, startInclusive, endInclusive);
@@ -40,13 +36,13 @@ public class RowQueryParser extends QueryParser {
 				return query;
 			}
 		}
-		return super.getRangeQuery(field, start, end, startInclusive, endInclusive);
+		return super.getRangeQuery(field, upper, lower, startInclusive, endInclusive);
 	}
 
 	@Override
 	protected Query newTermQuery(Term term) {
 		String name = term.field();
-		String value = unescape(term.text());
+		String value = term.text();
 		CellMapper<?> columnMapper = mappers.get(name);
 		if (columnMapper != null) {
 			Query query = columnMapper.match(name, value);
@@ -91,39 +87,6 @@ public class RowQueryParser extends QueryParser {
 	public Query createPhraseQuery(String field, String queryText, int phraseSlop) {
 		System.out.println(" -> CREATE PHRASE " + field + " " + queryText);
 		return super.createPhraseQuery(field, queryText, phraseSlop);
-	}
-
-	@Override
-	public Query parse(String query) throws ParseException {
-		System.out.println(" ===>>>> PARSING " + query);
-		String escapedQuery = escape(query);
-		return super.parse(escapedQuery);
-	}
-
-	public static String escape(String in) {
-		StringBuilder out = new StringBuilder();
-		final StringCharacterIterator iterator = new StringCharacterIterator(in);
-		char character = iterator.current();
-		while (character != CharacterIterator.DONE) {
-			if (character == '&') {
-				out.append("&escape");
-			} else if (character == '-') {
-				out.append("&minus");
-			} else {
-				out.append(character);
-			}
-			character = iterator.next();
-		}
-		return out.toString();
-	}
-
-	public static String unescape(String in) {
-		if (in == null)
-			return null;
-		String out = new String(in);
-		out = out.replaceAll("&escape", "&");
-		out = out.replaceAll("&minus", "-");
-		return out;
 	}
 
 }

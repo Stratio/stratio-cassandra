@@ -70,15 +70,6 @@ public class CellsMapper {
 	@JsonIgnore
 	private final QueryParser queryParser;
 
-	/** The Lucene fields to be loaded when reading. */
-	@JsonIgnore
-	public static Set<String> FIELDS_TO_LOAD;
-	static {
-		FIELDS_TO_LOAD = new HashSet<>();
-		FIELDS_TO_LOAD.add(PartitionKeyMapper.FIELD_NAME);
-		FIELDS_TO_LOAD.add(ClusteringKeyMapper.FIELD_NAME);
-	}
-
 	/**
 	 * Builds a new {@code ColumnsMapper} for the specified analyzer and cell mappers.
 	 * 
@@ -204,7 +195,7 @@ public class CellsMapper {
 		Set<Object> set = new HashSet<>();
 		List<Object> list = new LinkedList<>();
 		Map<Object, Object> map = new HashMap<>();
-		
+
 		int clusteringPosition = metadata.getCfDef().columns.size();
 		CompositeType nameType = (CompositeType) metadata.comparator;
 
@@ -214,7 +205,7 @@ public class CellsMapper {
 			Column column = columnIterator.next();
 			ByteBuffer columnName = column.name();
 			ByteBuffer columnValue = column.value();
-			
+
 			ByteBuffer[] columnNameComponents = nameType.split(columnName);
 			ByteBuffer columnSimpleName = columnNameComponents[clusteringPosition];
 

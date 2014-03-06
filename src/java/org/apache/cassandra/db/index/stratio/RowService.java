@@ -60,6 +60,7 @@ public abstract class RowService {
 	protected final String cfName;
 	protected final CompositeType nameType;
 	protected final PartitionKeyMapper partitionKeyMapper;
+//	protected final TokenMapper tokenMapper;
 	protected final CellsMapper cellsMapper;
 	protected final Set<String> fieldsToLoad;
 	protected final RowDirectory rowDirectory;
