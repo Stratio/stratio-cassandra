@@ -87,27 +87,15 @@ public class RowServiceBuilder {
 		directoryPathBuilder.append(indexName);
 		String directoryPath = directoryPathBuilder.toString();
 
-		if (baseCfs.metadata.clusteringKeyColumns().size() > 0) {
-			return new RowServiceWide(baseCfs,
-			                          indexName,
-			                          indexedColumnName,
-			                          cellsMapper,
-			                          refreshSeconds,
-			                          writeBufferSize,
-			                          directoryPath,
-			                          filterCacheSize,
-			                          storedRows);
-		} else {
-			return new RowServiceSimple(baseCfs,
-			                            indexName,
-			                            indexedColumnName,
-			                            cellsMapper,
-			                            refreshSeconds,
-			                            writeBufferSize,
-			                            directoryPath,
-			                            filterCacheSize,
-			                            storedRows);
-		}
+		return new RowService(baseCfs,
+		                      indexName,
+		                      indexedColumnName,
+		                      cellsMapper,
+		                      refreshSeconds,
+		                      writeBufferSize,
+		                      directoryPath,
+		                      filterCacheSize,
+		                      storedRows);
 	}
 
 }

@@ -316,20 +316,12 @@ public class RowDirectory {
 	 */
 	public static class ScoredDocument {
 
-		private final Document document;
-		private final Float score;
+		public final Document document;
+		public final Float score;
 
 		public ScoredDocument(Document document, Float score) {
 			this.document = document;
 			this.score = score;
-		}
-
-		public Document getDocument() {
-			return document;
-		}
-
-		public Float getScore() {
-			return score;
 		}
 
 		@Override

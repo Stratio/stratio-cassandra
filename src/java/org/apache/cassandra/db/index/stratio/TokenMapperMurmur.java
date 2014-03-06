@@ -32,7 +32,7 @@ public class TokenMapperMurmur extends TokenMapper {
 	}
 
 	@Override
-	public Filter[] filters(DataRange dataRange) {
+	public Filter filter(DataRange dataRange) {
 		RowPosition startPosition = dataRange.startKey();
 		RowPosition stopPosition = dataRange.stopKey();
 		Long start = (Long) startPosition.getToken().token;
@@ -45,8 +45,7 @@ public class TokenMapperMurmur extends TokenMapper {
 		}
 		boolean includeLower = startPosition.kind() == Kind.MIN_BOUND;
 		boolean includeUpper = stopPosition.kind() == Kind.MAX_BOUND;
-		Filter filter = NumericRangeFilter.newLongRange(FIELD_NAME, start, stop, includeLower, includeUpper);
-		return new Filter[] { filter };
+		return NumericRangeFilter.newLongRange(FIELD_NAME, start, stop, includeLower, includeUpper);
 	}
 
 	@Override

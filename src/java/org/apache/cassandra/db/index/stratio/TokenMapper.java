@@ -58,7 +58,7 @@ public abstract class TokenMapper {
 	 * @return A Lucene's {@link Filter} for filtering documents/rows according to the row token
 	 *         range specified in {@code dataRage}.
 	 */
-	public abstract Filter[] filters(DataRange dataRange);
+	public abstract Filter filter(DataRange dataRange);
 
 	/**
 	 * Returns a Lucene's {@link SortField} array for sorting documents/rows according to the

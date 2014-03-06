@@ -50,9 +50,8 @@ public class TokenMapperGeneric extends TokenMapper {
 	}
 
 	@Override
-	public Filter[] filters(DataRange dataRange) {
-		Filter filter = new TokenMapperGenericFilter(this, dataRange);
-		return new Filter[] { filter };
+	public Filter filter(DataRange dataRange) {
+		return new TokenMapperGenericFilter(this, dataRange);
 	}
 
 	@Override

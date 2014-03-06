@@ -40,9 +40,13 @@ public class ClusteringKeyMapper {
 	 * @param metadata
 	 *            The column family meta data.
 	 */
-	public ClusteringKeyMapper(CFMetaData metadata) {
+	private ClusteringKeyMapper(CFMetaData metadata) {
 		type = (CompositeType) metadata.comparator;
 		clusteringPosition = metadata.getCfDef().columns.size();
+	}
+
+	public static ClusteringKeyMapper instance(CFMetaData metadata) {
+		return metadata.clusteringKeyColumns().size() > 0 ? new ClusteringKeyMapper(metadata) : null;
 	}
 
 	/**
@@ -76,16 +80,16 @@ public class ClusteringKeyMapper {
 		return bb;
 	}
 
-	public ByteBuffer columnName(ByteBuffer key, ColumnIdentifier name) {
+	public ByteBuffer name(Document document, ColumnIdentifier columnIdentifier) {
+		ByteBuffer key = byteBuffer(document);
 		CompositeType.Builder builder = type.builder();
 		ByteBuffer[] components = ByteBufferUtils.split(key, type);
 		for (int i = 0; i < clusteringPosition; i++) {
 			ByteBuffer component = components[i];
 			builder.add(component);
 		}
-		builder.add(name.key);
-		ByteBuffer bb = builder.build();
-		return bb;
+		builder.add(columnIdentifier.key);
+		return builder.build();
 	}
 
 	public void addFields(Document document, ColumnFamily columnFamily) {
@@ -128,8 +132,8 @@ public class ClusteringKeyMapper {
 	 * @return A Lucene's {@link Filter} for filtering documents/rows according to the column name
 	 *         range specified in {@code dataRage}.
 	 */
-	public Filter[] filters(DataRange dataRange) {
-		return new Filter[] { new ClusteringKeyMapperFilter(this, dataRange) };
+	public Filter filter(DataRange dataRange) {
+		return new ClusteringKeyMapperFilter(this, dataRange);
 	}
 
 	/**
