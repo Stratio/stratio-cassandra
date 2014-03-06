@@ -147,7 +147,7 @@ public abstract class RowService {
 	 * @param columnFamily
 	 */
 	public final void index(ByteBuffer key, ColumnFamily columnFamily) {
-
+		/*
 		System.out.println();
 		System.out.println("INDEXING");
 		for (Column column : columnFamily) {
@@ -158,31 +158,31 @@ public abstract class RowService {
 		System.out.println("CLUSTERING POSITION " + clusteringPosition);
 		System.out.println("DELETION INFO " + columnFamily.deletionInfo());
 		System.out.println();
-
+		*/
 		DeletionInfo deletionInfo = columnFamily.deletionInfo();
 
 		DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(key);
 		if (columnFamily.iterator().hasNext()) {
-			System.out.println("INSERTING ");
+			//System.out.println("INSERTING ");
 			for (Column column : columnFamily) {
 				ByteBuffer name = column.name();
 				ByteBuffer[] components = ByteBufferUtils.split(name, nameType);
 				ByteBuffer lastComponent = components[clusteringPosition];
 				if (lastComponent.equals(ByteBufferUtil.EMPTY_BYTE_BUFFER)) { // Is clustering cell
 					Document document = document(partitionKey, name);
-					System.out.println(" -> INDEXED " + document);
+					//System.out.println(" -> INDEXED " + document);
 					Term term = term(partitionKey, name);
 					rowDirectory.updateDocument(term, document);
 				}
 			}
 		} else if (deletionInfo != null) {
-			System.out.println("DELETING WITH KEY ");
+			//System.out.println("DELETING WITH KEY ");
 			Iterator<RangeTombstone> deletionIterator = deletionInfo.rangeIterator();
 			if (!deletionIterator.hasNext()) {
 				Term term = partitionKeyMapper.term(partitionKey);
 				rowDirectory.deleteDocuments(term);
 			} else {
-				System.out.println("DELETING WITH RANGE "); // JUST FOR WIDE ROWS - SPECIALIZE !!!!
+				//System.out.println("DELETING WITH RANGE "); // JUST FOR WIDE ROWS - SPECIALIZE !!!!
 				while (deletionIterator.hasNext()) {
 					RangeTombstone rangeTombstone = deletionIterator.next();
 					ByteBuffer min = rangeTombstone.min;

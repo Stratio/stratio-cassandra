@@ -55,37 +55,37 @@ public class RowQueryParser extends QueryParser {
 
 	@Override
 	protected PhraseQuery newPhraseQuery() {
-		System.out.println(" -> NEW PHRASE ");
+		//System.out.println(" -> NEW PHRASE ");
 		return super.newPhraseQuery();
 	}
 
 	@Override
 	protected Query newRegexpQuery(Term regexp) {
-		System.out.println(" -> NEW REGEXP " + regexp);
+		//System.out.println(" -> NEW REGEXP " + regexp);
 		return super.newRegexpQuery(regexp);
 	}
 
 	@Override
 	protected Query newPrefixQuery(Term regexp) {
-		System.out.println(" -> NEW PREFIX " + regexp);
+		//System.out.println(" -> NEW PREFIX " + regexp);
 		return super.newPrefixQuery(regexp);
 	}
 
 	@Override
 	protected Query getPrefixQuery(String field, String termStr) throws ParseException {
-		System.out.println(" -> GET PREFIX " + field + " " + termStr);
+		//System.out.println(" -> GET PREFIX " + field + " " + termStr);
 		return super.getPrefixQuery(field, termStr);
 	}
 
 	@Override
 	protected Query getRegexpQuery(String field, String termStr) throws ParseException {
-		System.out.println(" -> GET REGEXP " + field + " " + termStr);
+		//System.out.println(" -> GET REGEXP " + field + " " + termStr);
 		return super.getRegexpQuery(field, termStr);
 	}
 
 	@Override
 	public Query createPhraseQuery(String field, String queryText, int phraseSlop) {
-		System.out.println(" -> CREATE PHRASE " + field + " " + queryText);
+		//System.out.println(" -> CREATE PHRASE " + field + " " + queryText);
 		return super.createPhraseQuery(field, queryText, phraseSlop);
 	}
 

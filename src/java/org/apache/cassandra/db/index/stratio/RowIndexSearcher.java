@@ -53,7 +53,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
 			long start = System.currentTimeMillis();
 			List<Row> rows = rowService.search(extendedFilter);
 			long finish = System.currentTimeMillis();
-			System.out.println(" -> FULL SEARCH TIME " + (finish - start));
+			//System.out.println(" -> FULL SEARCH TIME " + (finish - start));
 			return rows;
 		} catch (IOException e) {
 			logger.error("Error while searching ", e);

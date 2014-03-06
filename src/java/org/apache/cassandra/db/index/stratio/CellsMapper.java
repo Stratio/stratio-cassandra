@@ -199,7 +199,7 @@ public class CellsMapper {
 		int clusteringPosition = metadata.getCfDef().columns.size();
 		CompositeType nameType = (CompositeType) metadata.comparator;
 
-		System.out.println("COLUMN NAME TYPE IS " + metadata.comparator);
+		//System.out.println("COLUMN NAME TYPE IS " + metadata.comparator);
 		while (columnIterator.hasNext()) {
 
 			Column column = columnIterator.next();
@@ -210,11 +210,13 @@ public class CellsMapper {
 			ByteBuffer columnSimpleName = columnNameComponents[clusteringPosition];
 
 			ColumnDefinition columnDefinition = metadata.getColumnDefinition(columnSimpleName);
+			/*
 			System.out.println(" -> MAPPING REGULAR CELL " + ByteBufferUtil.bytesToHex(columnName)
 			                   + " - "
 			                   + ByteBufferUtil.bytesToHex(columnValue)
 			                   + " - "
 			                   + ByteBufferUtil.bytesToHex(columnSimpleName));
+			*/
 			final AbstractType<?> valueType = columnDefinition.getValidator();
 			int position = position(columnDefinition);
 
