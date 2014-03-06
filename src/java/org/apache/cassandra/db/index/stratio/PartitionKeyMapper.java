@@ -46,7 +46,7 @@ public class PartitionKeyMapper {
 	}
 
 	/**
-	 * Adds to the specified {@link Documents} the {@link Field}s associated to the specified raw
+	 * Adds to the specified {@link Document} the {@link Field}s associated to the specified raw
 	 * partition key.
 	 * 
 	 * @param document
