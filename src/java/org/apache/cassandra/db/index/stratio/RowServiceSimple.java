@@ -84,8 +84,8 @@ public class RowServiceSimple extends RowService {
 		ColumnFamily allColumns = baseCfs.getColumnFamily(queryFilter);
 
 		Document document = new Document();
-		partitionKeyMapper.document(document, partitionKey);
-		cellsMapper.fields(document, metadata, partitionKey, allColumns);
+		partitionKeyMapper.addFields(document, partitionKey);
+		cellsMapper.addFields(document, metadata, partitionKey, allColumns);
 		if (storedRows) {
 			document.add(new Field(SERIALIZED_ROW_NAME, ColumnFamilySerializer.bytes(allColumns), SERIALIZED_ROW_TYPE));
 		}
@@ -94,12 +94,12 @@ public class RowServiceSimple extends RowService {
 
 	@Override
 	public Sort sort() {
-		return new Sort(partitionKeyMapper.sortFields());
+		return new Sort(tokenMapper.sortFields());
 	}
 
 	@Override
 	public Filter[] filters(DataRange dataRange) {
-		return partitionKeyMapper.filters(dataRange);
+		return tokenMapper.filters(dataRange);
 	}
 
 	@Override
@@ -114,7 +114,7 @@ public class RowServiceSimple extends RowService {
 		ByteBuffer columnValue = UTF8Type.instance.decompose(score.toString());
 		return new org.apache.cassandra.db.Column(columnName, columnValue);
 	}
-	
+
 	@Override
 	protected Term term(DecoratedKey partitionKey, ByteBuffer clusteringKey) {
 		return partitionKeyMapper.term(partitionKey);

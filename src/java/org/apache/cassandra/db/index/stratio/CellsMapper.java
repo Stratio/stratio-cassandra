@@ -66,10 +66,6 @@ public class CellsMapper {
 	@JsonProperty("fields")
 	private Map<String, CellMapper<?>> cellMappers;
 
-	/** The query parser */
-	@JsonIgnore
-	private final QueryParser queryParser;
-
 	/**
 	 * Builds a new {@code ColumnsMapper} for the specified analyzer and cell mappers.
 	 * 
@@ -107,9 +103,7 @@ public class CellsMapper {
 		perFieldAnalyzer = new PerFieldAnalyzerWrapper(analyzer, analyzers);
 
 		// Setup query parser
-		queryParser = new RowQueryParser(Version.LUCENE_46, "lucene", perFieldAnalyzer, cellMappers);
-		queryParser.setAllowLeadingWildcard(true);
-		queryParser.setLowercaseExpandedTerms(false);
+
 	}
 
 	/**
@@ -295,7 +289,7 @@ public class CellsMapper {
 	}
 
 	@JsonIgnore
-	public void fields(Document document, CFMetaData metadata, DecoratedKey partitionKey, ColumnFamily columnFamily) {
+	public void addFields(Document document, CFMetaData metadata, DecoratedKey partitionKey, ColumnFamily columnFamily) {
 		Cells cells = new Cells();
 		cells.addAll(partitionKeyCells(metadata, partitionKey));
 		cells.addAll(clusteringKeyCells(metadata, columnFamily));
@@ -344,7 +338,9 @@ public class CellsMapper {
 	@JsonIgnore
 	public Query query(String querySentence) {
 		try {
-			// String escapedQuery
+			QueryParser queryParser = new RowQueryParser(Version.LUCENE_46, "lucene", perFieldAnalyzer, cellMappers);
+			queryParser.setAllowLeadingWildcard(true);
+			queryParser.setLowercaseExpandedTerms(false);
 			return queryParser.parse(querySentence);
 		} catch (ParseException e) {
 			throw new RuntimeException(e);

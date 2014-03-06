@@ -88,7 +88,7 @@ public class ClusteringKeyMapper {
 		return bb;
 	}
 
-	public void field(Document document, ColumnFamily columnFamily) {
+	public void addFields(Document document, ColumnFamily columnFamily) {
 		Column column = columnFamily.iterator().next();
 		ByteBuffer name = column.name();
 		Field field = new StringField(FIELD_NAME, ByteBufferUtils.toString(name), Store.YES);

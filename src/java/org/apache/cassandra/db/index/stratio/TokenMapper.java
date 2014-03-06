@@ -15,17 +15,17 @@ public abstract class TokenMapper {
 
 	public static TokenMapper instance() {
 		if (instance == null) {
-			IPartitioner<?> partitioner = DatabaseDescriptor.getPartitioner();
-			if (partitioner instanceof Murmur3Partitioner) {
-				instance = new TokenMapperMurmur();
-			} else {
+//			IPartitioner<?> partitioner = DatabaseDescriptor.getPartitioner();
+//			if (partitioner instanceof Murmur3Partitioner) {
+//				instance = new TokenMapperMurmur();
+//			} else {
 				instance = new TokenMapperGeneric();
-			}
+//			}
 		}
 		return instance;
 	}
 
-	public abstract void document(Document document, DecoratedKey partitionKey);
+	public abstract void addFields(Document document, DecoratedKey partitionKey);
 
 	public abstract Filter[] filters(DataRange dataRange);
 

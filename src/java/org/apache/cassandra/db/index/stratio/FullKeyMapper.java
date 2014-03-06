@@ -42,7 +42,7 @@ public class FullKeyMapper {
 		return type;
 	}
 
-	public void field(Document document, DecoratedKey partitionKey, ColumnFamily columnFamily) {
+	public void addFields(Document document, DecoratedKey partitionKey, ColumnFamily columnFamily) {
 		Column column = columnFamily.iterator().next();
 		ByteBuffer fullKey = type.builder().add(partitionKey.key).add(column.name()).build();
 		Field field = new StringField(FIELD_NAME, ByteBufferUtils.toString(fullKey), Store.NO);

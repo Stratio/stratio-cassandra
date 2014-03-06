@@ -3,9 +3,8 @@ package org.apache.cassandra.db.index.stratio;
 import java.io.IOException;
 
 import org.apache.cassandra.db.DataRange;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.RowPosition;
 import org.apache.cassandra.dht.AbstractBounds;
+import org.apache.cassandra.dht.Token;
 import org.apache.lucene.index.AtomicReader;
 import org.apache.lucene.index.AtomicReaderContext;
 import org.apache.lucene.index.DocsEnum;
@@ -28,7 +27,9 @@ import org.apache.lucene.util.OpenBitSet;
 public class TokenMapperGenericFilter extends Filter {
 
 	private final TokenMapperGeneric tokenMapperGeneric;
-	private final AbstractBounds<RowPosition> keyRange;
+
+	@SuppressWarnings("rawtypes")
+	private final AbstractBounds<Token> keyRange;
 
 	/**
 	 * Returns a new {@code PartitionKeyMapperFilter} for the specified data range using the
@@ -41,7 +42,7 @@ public class TokenMapperGenericFilter extends Filter {
 	 */
 	public TokenMapperGenericFilter(TokenMapperGeneric tokenMapperGeneric, DataRange dataRange) {
 		this.tokenMapperGeneric = tokenMapperGeneric;
-		this.keyRange = dataRange.keyRange();
+		this.keyRange = dataRange.keyRange().toTokenBounds();
 	}
 
 	@Override
@@ -52,7 +53,7 @@ public class TokenMapperGenericFilter extends Filter {
 
 		OpenBitSet bitSet = new OpenBitSet(atomicReader.maxDoc());
 
-		Terms terms = atomicReader.terms(PartitionKeyMapper.FIELD_NAME);
+		Terms terms = atomicReader.terms(TokenMapperGeneric.FIELD_NAME);
 		if (terms == null) {
 			return null;
 		}
@@ -62,8 +63,8 @@ public class TokenMapperGenericFilter extends Filter {
 		BytesRef bytesRef = termsEnum.next();
 		while (bytesRef != null) {
 			DocsEnum docsEnum = termsEnum.docs(liveDocs, null);
-			DecoratedKey decoratedKey = tokenMapperGeneric.decoratedKey(bytesRef);
-			if (keyRange.contains(decoratedKey)) {
+			Token<?> token = tokenMapperGeneric.token(bytesRef);
+			if (keyRange.contains(token)) {
 				Integer docID = docsEnum.nextDoc();
 				while (docID != DocIdSetIterator.NO_MORE_DOCS) {
 					bitSet.set(docID);
