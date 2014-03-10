@@ -97,7 +97,8 @@ public class CellMapperDate extends CellMapper<Long> {
 	@Override
     public String toString() {
 	    StringBuilder builder = new StringBuilder();
-	    builder.append("ColumnMapperDate [pattern=");
+		builder.append(getClass().getSimpleName());
+	    builder.append(" [pattern=");
 	    builder.append(pattern);
 	    builder.append("]");
 	    return builder.toString();

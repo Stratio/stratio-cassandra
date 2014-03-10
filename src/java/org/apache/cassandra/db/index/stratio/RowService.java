@@ -23,10 +23,10 @@ import org.apache.cassandra.db.TreeMapBackedSortedColumns;
 import org.apache.cassandra.db.filter.ExtendedFilter;
 import org.apache.cassandra.db.filter.QueryFilter;
 import org.apache.cassandra.db.filter.SliceQueryFilter;
-import org.apache.cassandra.db.index.SecondaryIndex;
 import org.apache.cassandra.db.index.stratio.RowDirectory.ScoredDocument;
 import org.apache.cassandra.db.index.stratio.util.ByteBufferUtils;
 import org.apache.cassandra.db.index.stratio.util.ColumnFamilySerializer;
+import org.apache.cassandra.db.index.stratio.util.Log;
 import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.thrift.IndexExpression;
@@ -44,8 +44,6 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.util.BytesRef;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Class for mapping rows between Cassandra and Lucene.
@@ -54,8 +52,6 @@ import org.slf4j.LoggerFactory;
  * 
  */
 public class RowService {
-
-	private static final Logger logger = LoggerFactory.getLogger(SecondaryIndex.class);
 
 	private final ColumnFamilyStore baseCfs;
 	private final CFMetaData metadata;
@@ -286,7 +282,7 @@ public class RowService {
 		// Search in Lucene's index
 		long searchStart = System.currentTimeMillis();
 		List<ScoredDocument> scoredDocuments = rowDirectory.search(query, filter, sort, columns, fieldsToLoad);
-		logger.info(" -> LUCENE SEARCH TIME " + (System.currentTimeMillis() - searchStart));
+		Log.debug(" -> LUCENE SEARCH TIME " + (System.currentTimeMillis() - searchStart));
 
 		// Collect matching rows
 		long collectStart = System.currentTimeMillis();
@@ -294,7 +290,7 @@ public class RowService {
 		for (ScoredDocument sc : scoredDocuments) {
 			rows.add(row(sc.document, sc.score));
 		}
-		logger.info(" -> ROW COLLECTION TIME " + (System.currentTimeMillis() - collectStart));
+		Log.debug(" -> ROW COLLECTION TIME " + (System.currentTimeMillis() - collectStart));
 
 		return rows;
 	}
@@ -369,11 +365,11 @@ public class RowService {
 		}
 		Filter filter = filterCache.get(dataRange);
 		if (filter == null) {
-			logger.info(" -> Cache fails " + dataRange.keyRange());
+			Log.debug(" -> Cache fails " + dataRange.keyRange());
 			filter = filter(dataRange);
 			filterCache.put(dataRange, filter);
 		} else {
-			logger.info(" -> Cache hits " + dataRange.keyRange());
+			Log.debug(" -> Cache hits " + dataRange.keyRange());
 		}
 		return filter;
 	}

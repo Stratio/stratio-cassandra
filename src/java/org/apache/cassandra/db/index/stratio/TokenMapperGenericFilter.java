@@ -44,6 +44,9 @@ public class TokenMapperGenericFilter extends Filter {
 		this.keyRange = dataRange.keyRange().toTokenBounds();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public DocIdSet getDocIdSet(AtomicReaderContext context, final Bits acceptDocs) throws IOException {
 

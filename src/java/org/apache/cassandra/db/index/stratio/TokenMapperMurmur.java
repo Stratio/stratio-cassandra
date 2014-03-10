@@ -31,6 +31,9 @@ public class TokenMapperMurmur extends TokenMapper {
 		document.add(tokenField);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public Filter filter(DataRange dataRange) {
 		RowPosition startPosition = dataRange.startKey();
@@ -48,6 +51,9 @@ public class TokenMapperMurmur extends TokenMapper {
 		return NumericRangeFilter.newLongRange(FIELD_NAME, start, stop, includeLower, includeUpper);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public SortField[] sortFields() {
 		return new SortField[] { new SortField(FIELD_NAME, SortField.Type.LONG) };

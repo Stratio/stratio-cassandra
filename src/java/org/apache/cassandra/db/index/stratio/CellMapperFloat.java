@@ -78,7 +78,8 @@ public class CellMapperFloat extends CellMapper<Float> {
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("ColumnMapperFloat []");
+		builder.append(getClass().getSimpleName());
+		builder.append(" []");
 		return builder.toString();
 	}
 

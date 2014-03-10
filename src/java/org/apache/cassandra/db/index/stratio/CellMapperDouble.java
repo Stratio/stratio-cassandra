@@ -78,7 +78,8 @@ public class CellMapperDouble extends CellMapper<Double> {
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("ColumnMapperDouble []");
+		builder.append(getClass().getSimpleName());
+		builder.append(" []");
 		return builder.toString();
 	}
 

@@ -63,7 +63,8 @@ public class CellMapperString extends CellMapper<String> {
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("ColumnMapperString []");
+		builder.append(getClass().getSimpleName());
+		builder.append(" []");
 		return builder.toString();
 	}
 

@@ -75,7 +75,8 @@ public class CellMapperBoolean extends CellMapper<String> {
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("ColumnMapperBoolean []");
+		builder.append(getClass().getSimpleName());
+		builder.append(" []");
 		return builder.toString();
 	}
 

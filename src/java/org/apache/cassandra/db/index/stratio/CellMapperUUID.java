@@ -29,22 +29,22 @@ public class CellMapperUUID extends CellMapper<String> {
 	}
 
 	@Override
-    public Field field(String name, Object value) {
+	public Field field(String name, Object value) {
 		String uuid = parseColumnValue(value);
 		return new StringField(name, uuid, STORE);
 	}
 
 	@Override
-    public Query range(String name, String start, String end, boolean startInclusive, boolean endInclusive) {
+	public Query range(String name, String start, String end, boolean startInclusive, boolean endInclusive) {
 		return TermRangeQuery.newStringRange(name,
 		                                     parseQueryValue(start),
 		                                     parseQueryValue(end),
 		                                     startInclusive,
 		                                     endInclusive);
 	}
-	
+
 	@Override
-    public Query match(String name, String value) {
+	public Query match(String name, String value) {
 		return new TermQuery(new Term(name, parseQueryValue(value)));
 	}
 
@@ -73,7 +73,8 @@ public class CellMapperUUID extends CellMapper<String> {
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("ColumnMapperUUID []");
+		builder.append(getClass().getSimpleName());
+		builder.append(" []");
 		return builder.toString();
 	}
 

@@ -29,10 +29,15 @@ import org.apache.lucene.util.BytesRef;
  */
 public class TokenMapperGeneric extends TokenMapper {
 
+	/** The Lucene's field name. */
 	public static final String FIELD_NAME = "_token_generic";
 
+	/** The partioner's token factory. */
 	private final TokenFactory<?> factory;
 
+	/**
+	 * Returns a new {@link TokenMapperGeneric}.
+	 */
 	public TokenMapperGeneric() {
 		factory = DatabaseDescriptor.getPartitioner().getTokenFactory();
 	}
@@ -49,11 +54,17 @@ public class TokenMapperGeneric extends TokenMapper {
 		document.add(field);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public Filter filter(DataRange dataRange) {
 		return new TokenMapperGenericFilter(this, dataRange);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public SortField[] sortFields() {
 		return new SortField[] { new SortField(FIELD_NAME, new FieldComparatorSource() {
@@ -65,7 +76,14 @@ public class TokenMapperGeneric extends TokenMapper {
 		}) };
 	}
 
-	public Token<?> token(BytesRef bytesRef) {
+	/**
+	 * Returns the Cassanda's {@link Token} represented by the specified Lucene's {@link BytesRef}.
+	 * 
+	 * @param bytesRef
+	 *            A Lucene's {@link BytesRef} representation of a Cassanda's {@link Token}.
+	 * @return the Cassanda's {@link Token} represented by the specified Lucene's {@link BytesRef}.
+	 */
+	Token<?> token(BytesRef bytesRef) {
 		String string = bytesRef.utf8ToString();
 		ByteBuffer bb = ByteBufferUtils.fromString(string);
 		return factory.fromByteArray(bb);

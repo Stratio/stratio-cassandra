@@ -35,7 +35,7 @@ public class ClusteringKeyMapper {
 	private final int clusteringPosition;
 
 	/**
-	 * Builds a new {@code ClusteringKeyMapper} according to the specified column family meta data.
+	 * Returns a new {@code ClusteringKeyMapper} according to the specified column family meta data.
 	 * 
 	 * @param metadata
 	 *            The column family meta data.
@@ -45,6 +45,13 @@ public class ClusteringKeyMapper {
 		clusteringPosition = metadata.getCfDef().columns.size();
 	}
 
+	/**
+	 * Returns a new {@code ClusteringKeyMapper} according to the specified column family meta data.
+	 * 
+	 * @param metadata
+	 *            The column family meta data.
+	 * @return A new {@code ClusteringKeyMapper} according to the specified column family meta data.
+	 */
 	public static ClusteringKeyMapper instance(CFMetaData metadata) {
 		return metadata.clusteringKeyColumns().size() > 0 ? new ClusteringKeyMapper(metadata) : null;
 	}

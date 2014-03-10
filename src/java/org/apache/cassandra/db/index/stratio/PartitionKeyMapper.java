@@ -33,13 +33,20 @@ public class PartitionKeyMapper {
 	private final CompositeType nameType;
 
 	/**
-	 * Builds a new {@code PartitionKeyMapper} according to the specified column family meta data.
+	 * Returns a new {@code PartitionKeyMapper} according to the specified column family meta data.
 	 */
 	private PartitionKeyMapper(CFMetaData metadata) {
 		partitioner = DatabaseDescriptor.getPartitioner();
 		nameType = (CompositeType) metadata.comparator;
 	}
 
+	/**
+	 * Returns a new {@code PartitionKeyMapper} according to the specified column family meta data.
+	 * 
+	 * @param metadata
+	 *            The meta data of the indexed column family.
+	 * @return a new {@code PartitionKeyMapper} according to the specified column family meta data.
+	 */
 	public static PartitionKeyMapper instance(CFMetaData metadata) {
 		return new PartitionKeyMapper(metadata);
 	}
@@ -49,6 +56,7 @@ public class PartitionKeyMapper {
 	 * partition key.
 	 * 
 	 * @param document
+	 *            The document in which the fields are going to be added.
 	 * @param partitionKey
 	 *            The raw partition key to be converted.
 	 */
@@ -59,17 +67,24 @@ public class PartitionKeyMapper {
 	}
 
 	/**
-	 * Returns the specified raw partition key as a not indexed, stored Lucene's {@link Term}.
+	 * Returns the specified raw partition key as a Lucene's {@link Term}.
 	 * 
 	 * @param partitionKey
 	 *            The raw partition key to be converted.
-	 * @return The specified raw partition key as a not indexed, stored Lucene's {@link Term}.
+	 * @return The specified raw partition key as a Lucene's {@link Term}.
 	 */
 	public Term term(DecoratedKey partitionKey) {
 		String serializedKey = ByteBufferUtils.toString(partitionKey.key);
 		return new Term(FIELD_NAME, serializedKey);
 	}
 
+	/**
+	 * Returns the specified raw partition key as a Lucene's {@link Query}.
+	 * 
+	 * @param partitionKey
+	 *            The raw partition key to be converted.
+	 * @return The specified raw partition key as a Lucene's {@link Query}.
+	 */
 	public Query query(DecoratedKey partitionKey) {
 		return new TermQuery(term(partitionKey));
 	}
@@ -98,6 +113,16 @@ public class PartitionKeyMapper {
 		return partitioner.decorateKey(partitionKey);
 	}
 
+	/**
+	 * Returns the column name defined by the specified document and the specified column logic
+	 * name.
+	 * 
+	 * @param document
+	 *            The Lucene's {@link Document} containing the partition key.
+	 * @param columnIdentifier
+	 *            The column logic name.
+	 * @return
+	 */
 	public ByteBuffer name(Document document, ColumnIdentifier columnIdentifier) {
 		return nameType.builder().add(columnIdentifier.key).build();
 	}

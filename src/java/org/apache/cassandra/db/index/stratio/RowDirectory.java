@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.cassandra.db.index.stratio.util.Log;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
@@ -24,8 +25,6 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Version;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Class wrapping a Lucene's directory and its readers , writers and searchers for NRT.
@@ -34,8 +33,6 @@ import org.slf4j.LoggerFactory;
  * 
  */
 public class RowDirectory {
-
-	protected static final Logger logger = LoggerFactory.getLogger(RowDirectory.class);
 
 	private File file;
 	private Directory directory;
@@ -90,7 +87,7 @@ public class RowDirectory {
 			// SortingMergePolicy smp = new SortingMergePolicy(config.getMergePolicy(), sorter);
 
 		} catch (IOException e) {
-			logger.error("Error initiating index", e);
+			Log.error(e, "Error initiating index");
 			throw new RuntimeException(e);
 		}
 	}
@@ -102,11 +99,11 @@ public class RowDirectory {
 	 *            the {@link Document} to be inserted.
 	 */
 	public void createDocument(Document document) {
-		logger.info("Inserting document " + document);
+		Log.info("Inserting document " + document);
 		try {
 			indexWriter.addDocument(document);
 		} catch (IOException e) {
-			logger.error("Error creating document", e);
+			Log.error(e, "Error creating document");
 			throw new RuntimeException(e);
 		}
 	}
@@ -122,7 +119,7 @@ public class RowDirectory {
 		try {
 			indexWriter.addDocuments(documents);
 		} catch (IOException e) {
-			logger.error("Error creating documents", e);
+			Log.error(e, "Error creating documents");
 			throw new RuntimeException(e);
 		}
 	}
@@ -142,7 +139,7 @@ public class RowDirectory {
 		try {
 			indexWriter.updateDocument(term, document);
 		} catch (IOException e) {
-			logger.error("Error updating document", e);
+			Log.error(e, "Error updating document");
 			throw new RuntimeException(e);
 		}
 	}
@@ -162,7 +159,7 @@ public class RowDirectory {
 		try {
 			indexWriter.updateDocuments(term, documents);
 		} catch (IOException e) {
-			logger.error("Error updating docuemnts", e);
+			Log.error(e, "Error updating docuemnts");
 			throw new RuntimeException(e);
 		}
 	}
@@ -174,11 +171,11 @@ public class RowDirectory {
 	 *            The {@link Term} to identify the documents to be deleted.
 	 */
 	public void deleteDocuments(Term term) {
-		logger.info(String.format("Deleting by term %s", term));
+		Log.info(String.format("Deleting by term %s", term));
 		try {
 			indexWriter.deleteDocuments(term);
 		} catch (IOException e) {
-			logger.error("Error deleting documents by term", e);
+			Log.error(e, "Error deleting documents by term");
 			throw new RuntimeException(e);
 		}
 	}
@@ -190,11 +187,11 @@ public class RowDirectory {
 	 *            The {@link Query} to identify the documents to be deleted.
 	 */
 	public void deleteDocuments(Query query) {
-		logger.info("Deleting by query " + query);
+		Log.info("Deleting by query " + query);
 		try {
 			indexWriter.deleteDocuments(query);
 		} catch (IOException e) {
-			logger.error("Error deleting docuemnts by query", e);
+			Log.error(e, "Error deleting docuemnts by query");
 			throw new RuntimeException(e);
 		}
 	}
@@ -203,11 +200,11 @@ public class RowDirectory {
 	 * Deletes all the {@link Document}s.
 	 */
 	public void deleteAll() {
-		logger.info("Deleting all");
+		Log.info("Deleting all");
 		try {
 			indexWriter.deleteAll();
 		} catch (IOException e) {
-			logger.error("Error deleting all", e);
+			Log.error(e, "Error deleting all");
 			throw new RuntimeException(e);
 		}
 	}
@@ -216,11 +213,11 @@ public class RowDirectory {
 	 * Commits the pending changes.
 	 */
 	public void commit() {
-		logger.info("Committing");
+		Log.info("Committing");
 		try {
 			indexWriter.commit();
 		} catch (IOException e) {
-			logger.error("Error committing", e);
+			Log.error(e, "Error committing");
 			throw new RuntimeException(e);
 		}
 	}
@@ -230,7 +227,7 @@ public class RowDirectory {
 	 * associated resources.
 	 */
 	public void close() throws IOException {
-		logger.info("Closing");
+		Log.info("Closing");
 		indexSearcherReopenThread.interrupt();
 		searcherManager.close();
 		indexWriter.close();
@@ -244,12 +241,12 @@ public class RowDirectory {
 	 * @return
 	 */
 	public void removeIndex() {
-		logger.info("Removing");
+		Log.info("Removing");
 		try {
 			close();
 			FileUtils.deleteRecursive(file);
 		} catch (IOException e) {
-			logger.error("Error removing", e);
+			Log.error(e, "Error removing");
 			throw new RuntimeException(e);
 		}
 	}
@@ -280,7 +277,7 @@ public class RowDirectory {
 	 * @return The found documents, sorted according to the supplied {@link Sort} instance.
 	 */
 	public List<ScoredDocument> search(Query query, Filter filter, Sort sort, int count, Set<String> fieldsToLoad) {
-		logger.debug(String.format("Searching %s %d %s", query, count, sort));
+		Log.debug("Searching %s %d %s", query, count, sort);
 		try {
 			IndexSearcher indexSearcher = searcherManager.acquire();
 			try {
@@ -296,7 +293,7 @@ public class RowDirectory {
 					Float score = scoreDoc.score;
 					ScoredDocument scoredDocument = new ScoredDocument(document, score);
 					scoredDocuments.add(scoredDocument);
-					logger.debug("Found " + scoredDocument);
+					Log.debug("Found %s", scoredDocument);
 				}
 
 				return scoredDocuments;
