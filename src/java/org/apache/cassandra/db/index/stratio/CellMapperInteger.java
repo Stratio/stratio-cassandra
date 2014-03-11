@@ -1,5 +1,7 @@
 package org.apache.cassandra.db.index.stratio;
 
+import org.apache.cassandra.db.index.stratio.query.MatchQuery;
+import org.apache.cassandra.db.index.stratio.query.RangeQuery;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntField;
@@ -40,17 +42,20 @@ public class CellMapperInteger extends CellMapper<Integer> {
 	}
 
 	@Override
-    public Query range(String name, String start, String end, boolean startInclusive, boolean endInclusive) {
-		return NumericRangeQuery.newIntRange(name,
-		                                     parseQueryValue(start),
-		                                     parseQueryValue(end),
-		                                     startInclusive,
-		                                     endInclusive);
+	public Query query(MatchQuery matchQuery) {
+		String name = matchQuery.getField();
+		Integer value = parseColumnValue(matchQuery.getValue());
+		return NumericRangeQuery.newIntRange(name, value, value, true, true);
 	}
-	
+
 	@Override
-    public Query match(String name, String value) {
-		return NumericRangeQuery.newIntRange(name, parseQueryValue(value), parseQueryValue(value), true, true);
+	public Query query(RangeQuery rangeQuery) {
+		String name = rangeQuery.getField();
+		Integer lowerValue = parseColumnValue(rangeQuery.getLowerValue());
+		Integer upperValue = parseColumnValue(rangeQuery.getUpperValue());
+		boolean includeLower = rangeQuery.getIncludeLower();
+		boolean includeUpper = rangeQuery.getIncludeUpper();
+		return NumericRangeQuery.newIntRange(name, lowerValue, upperValue, includeLower, includeUpper);
 	}
 
 	@Override

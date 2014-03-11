@@ -2,6 +2,8 @@ package org.apache.cassandra.db.index.stratio;
 
 import java.nio.ByteBuffer;
 
+import org.apache.cassandra.db.index.stratio.query.MatchQuery;
+import org.apache.cassandra.db.index.stratio.query.RangeQuery;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.core.KeywordAnalyzer;
@@ -33,19 +35,18 @@ public abstract class CellMapper<BASE> {
 
 	protected static final Store STORE = Store.NO;
 
-	
 	protected CellMapper() {
-		
+
 	}
-	
+
 	public static Cell build(String name, Object value) {
 		return new Cell(name, value);
 	}
-	
+
 	public static Cell cell(String name, ByteBuffer value, AbstractType<?> type) {
 		return new Cell(name, type.compose(value));
 	}
-	
+
 	public abstract Analyzer analyzer();
 
 	/**
@@ -59,9 +60,9 @@ public abstract class CellMapper<BASE> {
 	 */
 	public abstract Field field(String name, Object value);
 
-	public abstract Query range(String name, String start, String end, boolean startInclusive, boolean endInclusive);
+	public abstract Query query(MatchQuery matchQuery);
 
-	public abstract Query match(String name, String value);
+	public abstract Query query(RangeQuery rangeQuery);
 
 	protected abstract BASE parseColumnValue(Object o);
 

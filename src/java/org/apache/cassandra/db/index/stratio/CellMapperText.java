@@ -1,5 +1,7 @@
 package org.apache.cassandra.db.index.stratio;
 
+import org.apache.cassandra.db.index.stratio.query.MatchQuery;
+import org.apache.cassandra.db.index.stratio.query.RangeQuery;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Field;
@@ -47,23 +49,27 @@ public class CellMapperText extends CellMapper<String> {
 	}
 
 	@Override
-    public Field field(String name, Object value) {
+	public Field field(String name, Object value) {
 		String text = parseColumnValue(value);
 		return new TextField(name, text, STORE);
 	}
 
 	@Override
-    public Query range(String name, String start, String end, boolean startInclusive, boolean endInclusive) {
-		return TermRangeQuery.newStringRange(name,
-		                                     parseQueryValue(start),
-		                                     parseQueryValue(end),
-		                                     startInclusive,
-		                                     endInclusive);
+	public Query query(MatchQuery matchQuery) {
+		String name = matchQuery.getField();
+		String value = parseColumnValue(matchQuery.getValue());
+		Term term = new Term(name, value);
+		return new TermQuery(term);
 	}
-	
+
 	@Override
-    public Query match(String name, String value) {
-		return new TermQuery(new Term(name, parseQueryValue(value)));
+	public Query query(RangeQuery rangeQuery) {
+		String name = rangeQuery.getField();
+		String lowerValue = parseColumnValue(rangeQuery.getLowerValue());
+		String upperValue = parseColumnValue(rangeQuery.getUpperValue());
+		boolean includeLower = rangeQuery.getIncludeLower();
+		boolean includeUpper = rangeQuery.getIncludeUpper();
+		return TermRangeQuery.newStringRange(name, lowerValue, upperValue, includeLower, includeUpper);
 	}
 
 	@Override

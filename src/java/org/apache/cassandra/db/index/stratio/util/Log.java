@@ -2,7 +2,6 @@ package org.apache.cassandra.db.index.stratio.util;
 
 import java.nio.ByteBuffer;
 
-import org.apache.cassandra.utils.ByteBufferUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +46,7 @@ public class Log {
 		for (int i = 0; i < options.length; i++) {
 			Object option = options[i];
 			if (option instanceof ByteBuffer)
-				option = ByteBufferUtil.bytesToHex((ByteBuffer) option);
+				option = ByteBufferUtils.toHex((ByteBuffer) option);
 			result[i] = option;
 		}
 		return result;

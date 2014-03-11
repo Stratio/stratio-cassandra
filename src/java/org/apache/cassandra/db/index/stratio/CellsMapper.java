@@ -16,7 +16,13 @@ import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.Column;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.db.index.stratio.query.AbstractQuery;
+import org.apache.cassandra.db.index.stratio.query.BooleanQuery;
+import org.apache.cassandra.db.index.stratio.query.LuceneQuery;
+import org.apache.cassandra.db.index.stratio.query.MatchQuery;
+import org.apache.cassandra.db.index.stratio.query.RangeQuery;
 import org.apache.cassandra.db.index.stratio.util.ByteBufferUtils;
+import org.apache.cassandra.db.index.stratio.util.JsonSerializer;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CollectionType;
 import org.apache.cassandra.db.marshal.CompositeType;
@@ -28,14 +34,12 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
+import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.Version;
-import org.codehaus.jackson.JsonParser;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonIgnore;
 import org.codehaus.jackson.annotate.JsonProperty;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.SerializationConfig;
 
 /**
  * Class for several culumns mappings between Cassandra and Lucene.
@@ -329,15 +333,94 @@ public class CellsMapper {
 	 * @return The Lucene's {@link Query} parsed from the specified {@code String}.
 	 */
 	@JsonIgnore
-	public Query query(String querySentence) {
+	public Query query(String querySentence) throws IOException {
+		try {
+			AbstractQuery abstractQuery = AbstractQuery.fromJSON(querySentence);
+			return query(abstractQuery);
+		} catch (IOException e) {
+			try {
+				QueryParser queryParser = new RowQueryParser(Version.LUCENE_46, "lucene", perFieldAnalyzer, cellMappers);
+				queryParser.setAllowLeadingWildcard(true);
+				queryParser.setLowercaseExpandedTerms(false);
+				return queryParser.parse(querySentence);
+			} catch (ParseException pe) {
+				throw new MappingException(e);
+			}
+		}
+	}
+
+	public Query query(AbstractQuery abstractQuery) {
+		Class<?> clazz = abstractQuery.getClass();
+		if (clazz.equals(MatchQuery.class)) {
+			MatchQuery matchQuery = (MatchQuery) abstractQuery;
+			String field = matchQuery.getField();
+			CellMapper<?> mapper = cellMappers.get(field);
+			if (mapper == null) {
+				mapper = new CellMapperString(); // TODO: static default
+			}
+			return mapper.query(matchQuery);
+		} else if (clazz.equals(RangeQuery.class)) {
+			RangeQuery rangeQuery = (RangeQuery) abstractQuery;
+			String field = rangeQuery.getField();
+			CellMapper<?> mapper = cellMappers.get(field);
+			if (mapper == null) {
+				mapper = new CellMapperString(); // TODO: static default
+			}
+			return mapper.query(rangeQuery);
+		} else if (clazz.equals(BooleanQuery.class)) {
+			BooleanQuery booleanQuery = (BooleanQuery) abstractQuery;
+			return map(booleanQuery);
+		} else if (clazz.equals(LuceneQuery.class)) {
+			LuceneQuery luceneQuery = (LuceneQuery) abstractQuery;
+			return map(luceneQuery);
+		} else {
+			throw new MappingException();
+		}
+	}
+
+	/**
+	 * Maps the specified Stratio's {@link com.stratio.search.query.LuceneQuery} to the equivalent
+	 * Lucene's {@link org.apache.lucene.search.Query}.
+	 * 
+	 * @param luceneQuery
+	 *            the Stratio's {@link com.stratio.search.query.LuceneQuery} to be mapped.
+	 * @return the mapped Lucene's {@link org.apache.lucene.search.Query}.
+	 */
+	public Query map(LuceneQuery luceneQuery) {
+		String queryStr = luceneQuery.getQuery();
 		try {
 			QueryParser queryParser = new RowQueryParser(Version.LUCENE_46, "lucene", perFieldAnalyzer, cellMappers);
 			queryParser.setAllowLeadingWildcard(true);
 			queryParser.setLowercaseExpandedTerms(false);
-			return queryParser.parse(querySentence);
+			return queryParser.parse(queryStr);
 		} catch (ParseException e) {
-			throw new RuntimeException(e);
+			throw new MappingException(e);
 		}
+	}
+
+	/**
+	 * Maps the specified Stratio's {@link com.stratio.search.query.BooleanQuery} to the equivalent
+	 * Lucene's {@link org.apache.lucene.search.Query}.
+	 * 
+	 * @param booleanQuery
+	 *            the Stratio's {@link com.stratio.search.query.BooleanQuery} to be mapped.
+	 * @return the mapped Lucene's {@link org.apache.lucene.search.Query}.
+	 */
+	public Query map(BooleanQuery booleanQuery) {
+		org.apache.lucene.search.BooleanQuery luceneBooleanQuery = new org.apache.lucene.search.BooleanQuery();
+		for (AbstractQuery query : booleanQuery.getMust()) {
+			Query luceneQuery = query(query);
+			luceneBooleanQuery.add(luceneQuery, Occur.MUST);
+		}
+		for (AbstractQuery query : booleanQuery.getShould()) {
+			Query luceneQuery = query(query);
+			luceneBooleanQuery.add(luceneQuery, Occur.SHOULD);
+		}
+		for (AbstractQuery query : booleanQuery.getNot()) {
+			Query luceneQuery = query(query);
+			luceneBooleanQuery.add(luceneQuery, Occur.MUST_NOT);
+		}
+		return luceneBooleanQuery;
 	}
 
 	/**
@@ -351,10 +434,7 @@ public class CellsMapper {
 	@JsonIgnore
 	public static CellsMapper fromJson(String json) {
 		try {
-			ObjectMapper mapper = new ObjectMapper();
-			mapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
-			mapper.configure(SerializationConfig.Feature.AUTO_DETECT_IS_GETTERS, false);
-			return mapper.readValue(json, CellsMapper.class);
+			return JsonSerializer.fromString(json, CellsMapper.class);
 		} catch (IOException e) {
 			throw new MappingException(e, "Schema unparseable: %s", json);
 		}

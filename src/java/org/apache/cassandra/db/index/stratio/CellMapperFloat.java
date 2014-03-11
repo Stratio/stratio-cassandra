@@ -1,5 +1,7 @@
 package org.apache.cassandra.db.index.stratio;
 
+import org.apache.cassandra.db.index.stratio.query.MatchQuery;
+import org.apache.cassandra.db.index.stratio.query.RangeQuery;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FloatField;
@@ -32,7 +34,7 @@ public class CellMapperFloat extends CellMapper<Float> {
 	}
 
 	@Override
-    public Field field(String name, Object value) {
+	public Field field(String name, Object value) {
 		Float number = parseColumnValue(value);
 		Field field = new FloatField(name, number, STORE);
 		field.setBoost(boost);
@@ -40,17 +42,20 @@ public class CellMapperFloat extends CellMapper<Float> {
 	}
 
 	@Override
-    public Query range(String name, String start, String end, boolean startInclusive, boolean endInclusive) {
-		return NumericRangeQuery.newFloatRange(name,
-		                                       parseQueryValue(start),
-		                                       parseQueryValue(end),
-		                                       startInclusive,
-		                                       endInclusive);
+	public Query query(MatchQuery matchQuery) {
+		String name = matchQuery.getField();
+		Float value = parseColumnValue(matchQuery.getValue());
+		return NumericRangeQuery.newFloatRange(name, value, value, true, true);
 	}
-	
+
 	@Override
-    public Query match(String name, String value) {
-		return NumericRangeQuery.newFloatRange(name, parseQueryValue(value), parseQueryValue(value), true, true);
+	public Query query(RangeQuery rangeQuery) {
+		String name = rangeQuery.getField();
+		Float lowerValue = parseColumnValue(rangeQuery.getLowerValue());
+		Float upperValue = parseColumnValue(rangeQuery.getUpperValue());
+		boolean includeLower = rangeQuery.getIncludeLower();
+		boolean includeUpper = rangeQuery.getIncludeUpper();
+		return NumericRangeQuery.newFloatRange(name, lowerValue, upperValue, includeLower, includeUpper);
 	}
 
 	@Override

@@ -1,5 +1,7 @@
 package org.apache.cassandra.db.index.stratio;
 
+import org.apache.cassandra.db.index.stratio.query.MatchQuery;
+import org.apache.cassandra.db.index.stratio.query.RangeQuery;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.DoubleField;
 import org.apache.lucene.document.Field;
@@ -40,17 +42,20 @@ public class CellMapperDouble extends CellMapper<Double> {
 	}
 
 	@Override
-    public Query range(String name, String start, String end, boolean startInclusive, boolean endInclusive) {
-		return NumericRangeQuery.newDoubleRange(name,
-		                                        parseQueryValue(start),
-		                                        parseQueryValue(end),
-		                                        startInclusive,
-		                                        endInclusive);
+	public Query query(MatchQuery matchQuery) {
+		String name = matchQuery.getField();
+		Double value = parseColumnValue(matchQuery.getValue());
+		return NumericRangeQuery.newDoubleRange(name, value, value, true, true);
 	}
-	
+
 	@Override
-    public Query match(String name, String value) {
-		return NumericRangeQuery.newDoubleRange(name, parseQueryValue(value), parseQueryValue(value), true, true);
+	public Query query(RangeQuery rangeQuery) {
+		String name = rangeQuery.getField();
+		Double lowerValue = parseColumnValue(rangeQuery.getLowerValue());
+		Double upperValue = parseColumnValue(rangeQuery.getUpperValue());
+		boolean includeLower = rangeQuery.getIncludeLower();
+		boolean includeUpper = rangeQuery.getIncludeUpper();
+		return NumericRangeQuery.newDoubleRange(name, lowerValue, upperValue, includeLower, includeUpper);
 	}
 
 	@Override
