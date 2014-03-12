@@ -1,5 +1,6 @@
 package org.apache.cassandra.db.index.stratio;
 
+import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
 import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
 import org.apache.cassandra.db.index.stratio.query.RangeQuery;
@@ -37,7 +38,7 @@ public class CellMapperInteger extends CellMapper<Integer> {
 
 	@Override
 	public Field field(String name, Object value) {
-		Integer number = parseValue(value);
+		Integer number = value(value);
 		Field field = new IntField(name, number, STORE);
 		field.setBoost(boost);
 		return field;
@@ -46,7 +47,7 @@ public class CellMapperInteger extends CellMapper<Integer> {
 	@Override
 	public Query query(MatchQuery matchQuery) {
 		String name = matchQuery.getField();
-		Integer value = parseValue(matchQuery.getValue());
+		Integer value = value(matchQuery.getValue());
 		return NumericRangeQuery.newIntRange(name, value, value, true, true);
 	}
 
@@ -61,10 +62,15 @@ public class CellMapperInteger extends CellMapper<Integer> {
 	}
 
 	@Override
+	public Query query(FuzzyQuery fuzzyQuery) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
 	public Query query(RangeQuery rangeQuery) {
 		String name = rangeQuery.getField();
-		Integer lowerValue = parseValue(rangeQuery.getLowerValue());
-		Integer upperValue = parseValue(rangeQuery.getUpperValue());
+		Integer lowerValue = value(rangeQuery.getLowerValue());
+		Integer upperValue = value(rangeQuery.getUpperValue());
 		boolean includeLower = rangeQuery.getIncludeLower();
 		boolean includeUpper = rangeQuery.getIncludeUpper();
 		Query query = NumericRangeQuery.newIntRange(name, lowerValue, upperValue, includeLower, includeUpper);
@@ -73,7 +79,7 @@ public class CellMapperInteger extends CellMapper<Integer> {
 	}
 
 	@Override
-	protected Integer parseValue(Object value) {
+	protected Integer value(Object value) {
 		if (value == null) {
 			return null;
 		} else if (value instanceof Number) {
@@ -86,17 +92,17 @@ public class CellMapperInteger extends CellMapper<Integer> {
 	}
 
 	@Override
-	public Query parseRange(String name, String start, String end, boolean startInclusive, boolean endInclusive) {
+	public Query query(String name, String start, String end, boolean startInclusive, boolean endInclusive) {
 		return NumericRangeQuery.newIntRange(name,
-		                                     parseValue(start),
-		                                     parseValue(end),
+		                                     value(start),
+		                                     value(end),
 		                                     startInclusive,
 		                                     endInclusive);
 	}
 
 	@Override
-	public Query parseMatch(String name, String value) {
-		return NumericRangeQuery.newIntRange(name, parseValue(value), parseValue(value), true, true);
+	public Query query(String name, String value) {
+		return NumericRangeQuery.newIntRange(name, value(value), value(value), true, true);
 	}
 
 	@Override

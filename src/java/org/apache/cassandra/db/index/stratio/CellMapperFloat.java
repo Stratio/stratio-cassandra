@@ -1,5 +1,6 @@
 package org.apache.cassandra.db.index.stratio;
 
+import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
 import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
 import org.apache.cassandra.db.index.stratio.query.RangeQuery;
@@ -37,7 +38,7 @@ public class CellMapperFloat extends CellMapper<Float> {
 
 	@Override
 	public Field field(String name, Object value) {
-		Float number = parseValue(value);
+		Float number = value(value);
 		Field field = new FloatField(name, number, STORE);
 		field.setBoost(boost);
 		return field;
@@ -46,7 +47,7 @@ public class CellMapperFloat extends CellMapper<Float> {
 	@Override
 	public Query query(MatchQuery matchQuery) {
 		String name = matchQuery.getField();
-		Float value = parseValue(matchQuery.getValue());
+		Float value = value(matchQuery.getValue());
 		return NumericRangeQuery.newFloatRange(name, value, value, true, true);
 	}
 
@@ -61,10 +62,15 @@ public class CellMapperFloat extends CellMapper<Float> {
 	}
 
 	@Override
+	public Query query(FuzzyQuery fuzzyQuery) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
 	public Query query(RangeQuery rangeQuery) {
 		String name = rangeQuery.getField();
-		Float lowerValue = parseValue(rangeQuery.getLowerValue());
-		Float upperValue = parseValue(rangeQuery.getUpperValue());
+		Float lowerValue = value(rangeQuery.getLowerValue());
+		Float upperValue = value(rangeQuery.getUpperValue());
 		boolean includeLower = rangeQuery.getIncludeLower();
 		boolean includeUpper = rangeQuery.getIncludeUpper();
 		Query query = NumericRangeQuery.newFloatRange(name, lowerValue, upperValue, includeLower, includeUpper);
@@ -73,7 +79,7 @@ public class CellMapperFloat extends CellMapper<Float> {
 	}
 
 	@Override
-	protected Float parseValue(Object value) {
+	protected Float value(Object value) {
 		if (value == null) {
 			return null;
 		} else if (value instanceof Number) {
@@ -86,17 +92,17 @@ public class CellMapperFloat extends CellMapper<Float> {
 	}
 
 	@Override
-	public Query parseRange(String name, String start, String end, boolean startInclusive, boolean endInclusive) {
+	public Query query(String name, String start, String end, boolean startInclusive, boolean endInclusive) {
 		return NumericRangeQuery.newFloatRange(name,
-		                                       parseValue(start),
-		                                       parseValue(end),
+		                                       value(start),
+		                                       value(end),
 		                                       startInclusive,
 		                                       endInclusive);
 	}
 
 	@Override
-	public Query parseMatch(String name, String value) {
-		return NumericRangeQuery.newFloatRange(name, parseValue(value), parseValue(value), true, true);
+	public Query query(String name, String value) {
+		return NumericRangeQuery.newFloatRange(name, value(value), value(value), true, true);
 	}
 
 	@Override

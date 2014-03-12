@@ -277,6 +277,7 @@ public class RowService {
 		// Setup Lucene's query, filter and sort
 		Query query = cellsMapper.query(querySentence);
 		System.out.println("QUERYING " + query);
+		System.out.println("ANALYZER " + cellsMapper.analyzer());
 		Filter filter = cachedFilter(dataRange);
 		Sort sort = sort();
 

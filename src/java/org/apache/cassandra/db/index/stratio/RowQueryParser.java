@@ -31,7 +31,7 @@ public class RowQueryParser extends QueryParser {
 	        getRangeQuery(String field, String upper, String lower, boolean startInclusive, boolean endInclusive) throws ParseException {
 		CellMapper<?> columnMapper = mappers.get(field);
 		if (columnMapper != null) {
-			Query query = columnMapper.parseRange(field, upper, lower, startInclusive, endInclusive);
+			Query query = columnMapper.query(field, upper, lower, startInclusive, endInclusive);
 			if (query != null) {
 				return query;
 			}
@@ -45,7 +45,7 @@ public class RowQueryParser extends QueryParser {
 		String value = term.text();
 		CellMapper<?> columnMapper = mappers.get(name);
 		if (columnMapper != null) {
-			Query query = columnMapper.parseMatch(name, value);
+			Query query = columnMapper.query(name, value);
 			if (query != null) {
 				return query;
 			}

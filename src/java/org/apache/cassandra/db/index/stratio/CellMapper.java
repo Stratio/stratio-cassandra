@@ -2,6 +2,7 @@ package org.apache.cassandra.db.index.stratio;
 
 import java.nio.ByteBuffer;
 
+import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
 import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
 import org.apache.cassandra.db.index.stratio.query.RangeQuery;
@@ -52,7 +53,7 @@ public abstract class CellMapper<BASE> {
 	public abstract Analyzer analyzer();
 
 	/**
-	 * Returns the {@link org.apache.lucene.document.Field} resulting from the mapping of
+	 * Returns the Lucene's {@link org.apache.lucene.document.Field} resulting from the mapping of
 	 * {@code value}, using {@code name} as field's name.
 	 * 
 	 * @param name
@@ -62,18 +63,101 @@ public abstract class CellMapper<BASE> {
 	 */
 	public abstract Field field(String name, Object value);
 
+	/**
+	 * Returns the Lucene's {@link org.apache.lucene.search.Query} represented by the specified
+	 * {@link MatchQuery}.
+	 * 
+	 * @param matchQuery
+	 *            A match query.
+	 * @return The Lucene's {@link org.apache.lucene.search.Query} represented by the specified
+	 *         {@link MatchQuery}.
+	 */
 	public abstract Query query(MatchQuery matchQuery);
 
-	public abstract Query query(WildcardQuery matchQuery);
+	/**
+	 * Returns the Lucene's {@link org.apache.lucene.search.Query} represented by the specified
+	 * {@link WildcardQuery}.
+	 * 
+	 * @param wildcardQuery
+	 *            A wildcard query.
+	 * @return The Lucene's {@link org.apache.lucene.search.Query} represented by the specified
+	 *         {@link WildcardQuery}.
+	 */
+	public abstract Query query(WildcardQuery wildcardQuery);
 
+	/**
+	 * Returns the Lucene's {@link org.apache.lucene.search.Query} represented by the specified
+	 * {@link PhraseQuery}.
+	 * 
+	 * @param phraseQuery
+	 *            A phrase query.
+	 * @return The Lucene's {@link org.apache.lucene.search.Query} represented by the specified
+	 *         {@link PhraseQuery}.
+	 */
 	public abstract Query query(PhraseQuery phraseQuery);
 
+	/**
+	 * Returns the Lucene's {@link org.apache.lucene.search.Query} represented by the specified
+	 * {@link FuzzyQuery}.
+	 * 
+	 * @param fuzzyQuery
+	 *            A fuzzy query.
+	 * @return The Lucene's {@link org.apache.lucene.search.Query} represented by the specified
+	 *         {@link FuzzyQuery}.
+	 */
+	public abstract Query query(FuzzyQuery fuzzyQuery);
+
+	/**
+	 * Returns the Lucene's {@link org.apache.lucene.search.Query} represented by the specified
+	 * {@link RangeQuery}.
+	 * 
+	 * @param rangeQuery
+	 *            A range query.
+	 * @return The Lucene's {@link org.apache.lucene.search.Query} represented by the specified
+	 *         {@link RangeQuery}.
+	 */
 	public abstract Query query(RangeQuery rangeQuery);
 
-	public abstract Query
-	        parseRange(String name, String lower, String upper, boolean includeLower, boolean includeUpper);
+	/**
+	 * Returns the Lucene's range {@link org.apache.lucene.search.Query} resulting from the mapping
+	 * of the specified arguments.
+	 * 
+	 * @param name
+	 *            The name of the Lucene's field.
+	 * @param lower
+	 *            The lower accepted value.
+	 * @param upper
+	 *            The upper accepted value.
+	 * @param includeLower
+	 *            If the upper value is accepted.
+	 * @param includeUpper
+	 *            If the lower value is accepted.
+	 * @return The Lucene's range {@link org.apache.lucene.search.Query} resulting from the mapping
+	 *         of the specified arguments.
+	 */
+	public abstract Query query(String name, String lower, String upper, boolean includeLower, boolean includeUpper);
 
-	public abstract Query parseMatch(String name, String value);
+	/**
+	 * Returns the Lucene's match {@link org.apache.lucene.search.Query} resulting from the mapping
+	 * of the specified arguments.
+	 * 
+	 * @param name
+	 *            The name of the Lucene's field.
+	 * @param value
+	 *            The value.
+	 * @return The Lucene's match {@link org.apache.lucene.search.Query} resulting from the mapping
+	 *         of the specified arguments.
+	 */
+	public abstract Query query(String name, String value);
 
-	protected abstract BASE parseValue(Object value);
+	/**
+	 * Returns the cell value resulting from the mapping of the specified object.
+	 * 
+	 * @param value
+	 *            The object to be mapped.
+	 * @param value
+	 *            The value.
+	 * @return The cell value resulting from the mapping of the specified object.
+	 */
+	protected abstract BASE value(Object value);
 }

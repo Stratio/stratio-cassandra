@@ -1,5 +1,6 @@
 package org.apache.cassandra.db.index.stratio;
 
+import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
 import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
 import org.apache.cassandra.db.index.stratio.query.RangeQuery;
@@ -27,7 +28,7 @@ public class CellMapperString extends CellMapper<String> {
 
 	@Override
 	public Field field(String name, Object value) {
-		String string = parseValue(value);
+		String string = value(value);
 		return new StringField(name, string, STORE);
 	}
 
@@ -39,7 +40,7 @@ public class CellMapperString extends CellMapper<String> {
 	@Override
 	public Query query(MatchQuery matchQuery) {
 		String name = matchQuery.getField();
-		String value = parseValue(matchQuery.getValue());
+		String value = value(matchQuery.getValue());
 		Term term = new Term(name, value);
 		return new TermQuery(term);
 	}
@@ -47,7 +48,7 @@ public class CellMapperString extends CellMapper<String> {
 	@Override
 	public Query query(WildcardQuery wildcardQuery) {
 		String name = wildcardQuery.getField();
-		String value = parseValue(wildcardQuery.getValue());
+		String value = value(wildcardQuery.getValue());
 		Term term = new Term(name, value);
 		return new org.apache.lucene.search.WildcardQuery(term);
 	}
@@ -57,7 +58,7 @@ public class CellMapperString extends CellMapper<String> {
 		org.apache.lucene.search.PhraseQuery query = new org.apache.lucene.search.PhraseQuery();
 		String name = phraseQuery.getField();
 		for (Object o : phraseQuery.getValues()) {
-			String value = parseValue(o);
+			String value = value(o);
 			Term term = new Term(name, value);
 			query.add(term);
 		}
@@ -67,10 +68,22 @@ public class CellMapperString extends CellMapper<String> {
 	}
 
 	@Override
+	public Query query(FuzzyQuery fuzzyQuery) {
+		String name = fuzzyQuery.getField();
+		String value = value(fuzzyQuery.getValue());
+		Term term = new Term(name, value);
+		int maxEdits = fuzzyQuery.getMaxEdits();
+		int prefixLength = fuzzyQuery.getPrefixLength();
+		int maxExpansions = fuzzyQuery.getMaxExpansions();
+		boolean transpositions = fuzzyQuery.getTranspositions();
+		return new org.apache.lucene.search.FuzzyQuery(term, maxEdits, prefixLength, maxExpansions, transpositions);
+	}
+
+	@Override
 	public Query query(RangeQuery rangeQuery) {
 		String name = rangeQuery.getField();
-		String lowerValue = parseValue(rangeQuery.getLowerValue());
-		String upperValue = parseValue(rangeQuery.getUpperValue());
+		String lowerValue = value(rangeQuery.getLowerValue());
+		String upperValue = value(rangeQuery.getUpperValue());
 		boolean includeLower = rangeQuery.getIncludeLower();
 		boolean includeUpper = rangeQuery.getIncludeUpper();
 		Query query = TermRangeQuery.newStringRange(name, lowerValue, upperValue, includeLower, includeUpper);
@@ -79,7 +92,7 @@ public class CellMapperString extends CellMapper<String> {
 	}
 
 	@Override
-	protected String parseValue(Object value) {
+	protected String value(Object value) {
 		if (value == null) {
 			return null;
 		} else {
@@ -88,13 +101,13 @@ public class CellMapperString extends CellMapper<String> {
 	}
 
 	@Override
-    public Query parseRange(String name, String start, String end, boolean startInclusive, boolean endInclusive) {
-		return TermRangeQuery.newStringRange(name, parseValue(start), parseValue(end), startInclusive, endInclusive);
+    public Query query(String name, String start, String end, boolean startInclusive, boolean endInclusive) {
+		return TermRangeQuery.newStringRange(name, value(start), value(end), startInclusive, endInclusive);
 	}
 
 	@Override
-    public Query parseMatch(String name, String value) {
-		return new TermQuery(new Term(name, parseValue(value)));
+    public Query query(String name, String value) {
+		return new TermQuery(new Term(name, value(value)));
 	}
 
 	@Override

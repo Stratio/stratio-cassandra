@@ -27,6 +27,7 @@ import org.codehaus.jackson.annotate.JsonTypeInfo;
                @JsonSubTypes.Type(value = MatchQuery.class, name = "match"),
                @JsonSubTypes.Type(value = RangeQuery.class, name = "range"),
                @JsonSubTypes.Type(value = PhraseQuery.class, name = "phrase"),
+               @JsonSubTypes.Type(value = FuzzyQuery.class, name = "fuzzy"),
                @JsonSubTypes.Type(value = WildcardQuery.class, name = "wildcard"), })
 public class AbstractQuery {
 

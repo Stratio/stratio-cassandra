@@ -5,6 +5,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
 import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
 import org.apache.cassandra.db.index.stratio.query.RangeQuery;
@@ -53,13 +54,13 @@ public class CellMapperDate extends CellMapper<Long> {
 
 	@Override
 	public Field field(String name, Object value) {
-		return new LongField(name, parseValue(value), STORE);
+		return new LongField(name, value(value), STORE);
 	}
 
 	@Override
 	public Query query(MatchQuery matchQuery) {
 		String name = matchQuery.getField();
-		Long value = parseValue(matchQuery.getValue());
+		Long value = value(matchQuery.getValue());
 		return NumericRangeQuery.newLongRange(name, value, value, true, true);
 	}
 
@@ -74,10 +75,15 @@ public class CellMapperDate extends CellMapper<Long> {
 	}
 
 	@Override
+	public Query query(FuzzyQuery fuzzyQuery) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
 	public Query query(RangeQuery rangeQuery) {
 		String name = rangeQuery.getField();
-		Long lowerValue = parseValue(rangeQuery.getLowerValue());
-		Long upperValue = parseValue(rangeQuery.getUpperValue());
+		Long lowerValue = value(rangeQuery.getLowerValue());
+		Long upperValue = value(rangeQuery.getUpperValue());
 		boolean includeLower = rangeQuery.getIncludeLower();
 		boolean includeUpper = rangeQuery.getIncludeUpper();
 		Query query = NumericRangeQuery.newLongRange(name, lowerValue, upperValue, includeLower, includeUpper);
@@ -86,7 +92,7 @@ public class CellMapperDate extends CellMapper<Long> {
 	}
 
 	@Override
-	protected Long parseValue(Object value) {
+	protected Long value(Object value) {
 		if (value == null) {
 			return null;
 		} else if (value instanceof Date) {
@@ -105,17 +111,17 @@ public class CellMapperDate extends CellMapper<Long> {
 	}
 
 	@Override
-	public Query parseRange(String name, String start, String end, boolean startInclusive, boolean endInclusive) {
+	public Query query(String name, String start, String end, boolean startInclusive, boolean endInclusive) {
 		return NumericRangeQuery.newLongRange(name,
-		                                      parseValue(start),
-		                                      parseValue(end),
+		                                      value(start),
+		                                      value(end),
 		                                      startInclusive,
 		                                      endInclusive);
 	}
 
 	@Override
-	public Query parseMatch(String name, String value) {
-		return NumericRangeQuery.newLongRange(name, parseValue(value), parseValue(value), true, true);
+	public Query query(String name, String value) {
+		return NumericRangeQuery.newLongRange(name, value(value), value(value), true, true);
 	}
 
 	@Override

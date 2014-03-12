@@ -18,6 +18,7 @@ import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.index.stratio.query.AbstractQuery;
 import org.apache.cassandra.db.index.stratio.query.BooleanQuery;
+import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
 import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
 import org.apache.cassandra.db.index.stratio.query.RangeQuery;
@@ -339,8 +340,12 @@ public class CellsMapper {
 	public Query query(String querySentence) throws IOException {
 		try {
 			AbstractQuery abstractQuery = AbstractQuery.fromJSON(querySentence);
-			return query(abstractQuery);
-		} catch (IOException e) {
+			Query query = query(abstractQuery);
+			QueryParser queryParser = new QueryParser(Version.LUCENE_46, "lucene", perFieldAnalyzer);
+			queryParser.setAllowLeadingWildcard(true);
+			queryParser.setLowercaseExpandedTerms(false);
+			return queryParser.parse(query.toString());
+		} catch (ParseException | IOException e) {
 			try {
 				QueryParser queryParser = new RowQueryParser(Version.LUCENE_46, "lucene", perFieldAnalyzer, cellMappers);
 				queryParser.setAllowLeadingWildcard(true);
@@ -359,6 +364,8 @@ public class CellsMapper {
 			return query((WildcardQuery) abstractQuery);
 		} else if (abstractQuery instanceof PhraseQuery) {
 			return query((PhraseQuery) abstractQuery);
+		} else if (abstractQuery instanceof FuzzyQuery) {
+			return query((FuzzyQuery) abstractQuery);
 		} else if (abstractQuery instanceof RangeQuery) {
 			return query((RangeQuery) abstractQuery);
 		} else if (abstractQuery instanceof BooleanQuery) {
@@ -390,6 +397,12 @@ public class CellsMapper {
 	}
 
 	public Query query(PhraseQuery query) {
+		String field = query.getField();
+		CellMapper<?> mapper = getMapper(field);
+		return mapper.query(query);
+	}
+
+	public Query query(FuzzyQuery query) {
 		String field = query.getField();
 		CellMapper<?> mapper = getMapper(field);
 		return mapper.query(query);
