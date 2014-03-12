@@ -6,7 +6,9 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
+import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
 import org.apache.cassandra.db.index.stratio.query.RangeQuery;
+import org.apache.cassandra.db.index.stratio.query.WildcardQuery;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.LongField;
@@ -50,29 +52,41 @@ public class CellMapperDate extends CellMapper<Long> {
 	}
 
 	@Override
-    public Field field(String name, Object value) {
-		return new LongField(name, parseColumnValue(value), STORE);
+	public Field field(String name, Object value) {
+		return new LongField(name, parseValue(value), STORE);
 	}
 
 	@Override
 	public Query query(MatchQuery matchQuery) {
 		String name = matchQuery.getField();
-		Long value = parseColumnValue(matchQuery.getValue());
+		Long value = parseValue(matchQuery.getValue());
 		return NumericRangeQuery.newLongRange(name, value, value, true, true);
+	}
+
+	@Override
+	public Query query(WildcardQuery wildcardQuery) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public Query query(PhraseQuery phraseQuery) {
+		throw new UnsupportedOperationException();
 	}
 
 	@Override
 	public Query query(RangeQuery rangeQuery) {
 		String name = rangeQuery.getField();
-		Long lowerValue = parseColumnValue(rangeQuery.getLowerValue());
-		Long upperValue = parseColumnValue(rangeQuery.getUpperValue());
+		Long lowerValue = parseValue(rangeQuery.getLowerValue());
+		Long upperValue = parseValue(rangeQuery.getUpperValue());
 		boolean includeLower = rangeQuery.getIncludeLower();
 		boolean includeUpper = rangeQuery.getIncludeUpper();
-		return NumericRangeQuery.newLongRange(name, lowerValue, upperValue, includeLower, includeUpper);
+		Query query = NumericRangeQuery.newLongRange(name, lowerValue, upperValue, includeLower, includeUpper);
+		query.setBoost(rangeQuery.getBoost());
+		return query;
 	}
 
 	@Override
-	protected Long parseColumnValue(Object value) {
+	protected Long parseValue(Object value) {
 		if (value == null) {
 			return null;
 		} else if (value instanceof Date) {
@@ -80,33 +94,38 @@ public class CellMapperDate extends CellMapper<Long> {
 		} else if (value instanceof Number) {
 			return ((Number) value).longValue();
 		} else if (value instanceof String) {
-			return parseQueryValue((String) value);
+			try {
+				return concurrentDateFormat.get().parse(value.toString()).getTime();
+			} catch (ParseException e) {
+				throw new MappingException(e, "The string '%s' does not satisfy the pattern %s", value, pattern);
+			}
 		} else {
 			throw new MappingException("Value '%s' cannot be cast to Date", value);
 		}
 	}
 
 	@Override
-	protected Long parseQueryValue(String value) {
-		if (value == null) {
-			return null;
-		} else {
-			try {
-				return concurrentDateFormat.get().parse(value).getTime();
-			} catch (ParseException e) {
-				throw new MappingException(e, "The string '%s' does not satisfy the pattern %s", value, pattern);
-			}
-		}
+	public Query parseRange(String name, String start, String end, boolean startInclusive, boolean endInclusive) {
+		return NumericRangeQuery.newLongRange(name,
+		                                      parseValue(start),
+		                                      parseValue(end),
+		                                      startInclusive,
+		                                      endInclusive);
 	}
 
 	@Override
-    public String toString() {
-	    StringBuilder builder = new StringBuilder();
+	public Query parseMatch(String name, String value) {
+		return NumericRangeQuery.newLongRange(name, parseValue(value), parseValue(value), true, true);
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
 		builder.append(getClass().getSimpleName());
-	    builder.append(" [pattern=");
-	    builder.append(pattern);
-	    builder.append("]");
-	    return builder.toString();
-    }
+		builder.append(" [pattern=");
+		builder.append(pattern);
+		builder.append("]");
+		return builder.toString();
+	}
 
 }

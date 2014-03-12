@@ -3,7 +3,9 @@ package org.apache.cassandra.db.index.stratio;
 import java.nio.ByteBuffer;
 
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
+import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
 import org.apache.cassandra.db.index.stratio.query.RangeQuery;
+import org.apache.cassandra.db.index.stratio.query.WildcardQuery;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.core.KeywordAnalyzer;
@@ -62,10 +64,16 @@ public abstract class CellMapper<BASE> {
 
 	public abstract Query query(MatchQuery matchQuery);
 
+	public abstract Query query(WildcardQuery matchQuery);
+
+	public abstract Query query(PhraseQuery phraseQuery);
+
 	public abstract Query query(RangeQuery rangeQuery);
 
-	protected abstract BASE parseColumnValue(Object o);
+	public abstract Query
+	        parseRange(String name, String lower, String upper, boolean includeLower, boolean includeUpper);
 
-	protected abstract BASE parseQueryValue(String o);
+	public abstract Query parseMatch(String name, String value);
 
+	protected abstract BASE parseValue(Object value);
 }

@@ -8,8 +8,8 @@ import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeName;
 
 /**
- * A {@link AbstractQuery} that matches documents matching boolean combinations of other queries, e.g.
- * {@link MatchQuery}s, {@link RangeQuery}s or other {@link BooleanQuery}s.
+ * A {@link AbstractQuery} that matches documents matching boolean combinations of other queries,
+ * e.g. {@link MatchQuery}s, {@link RangeQuery}s or other {@link BooleanQuery}s.
  * 
  * @version 0.1
  * @author adelapena
@@ -29,6 +29,9 @@ public class BooleanQuery extends AbstractQuery {
 	/**
 	 * Returns a new {@link BooleanQuery} compound by the specified {@link AbstractQuery}s.
 	 * 
+	 * @param boost
+	 *            The boost for this query clause. Documents matching this clause will (in addition
+	 *            to the normal weightings) have their score multiplied by {@code boost}.
 	 * @param must
 	 *            the mandatory {@link AbstractQuery}s.
 	 * @param should
@@ -37,21 +40,14 @@ public class BooleanQuery extends AbstractQuery {
 	 *            the mandatory not {@link AbstractQuery}s.
 	 */
 	@JsonCreator
-	public BooleanQuery(@JsonProperty("must") List<AbstractQuery> must,
+	public BooleanQuery(@JsonProperty("boost") Float boost,
+	                    @JsonProperty("must") List<AbstractQuery> must,
 	                    @JsonProperty("should") List<AbstractQuery> should,
 	                    @JsonProperty("not") List<AbstractQuery> not) {
+		super(boost);
 		this.must = must == null ? new LinkedList<AbstractQuery>() : must;
 		this.should = should == null ? new LinkedList<AbstractQuery>() : should;
 		this.not = not == null ? new LinkedList<AbstractQuery>() : not;
-	}
-
-	/**
-	 * Returns a new {@link BooleanQuery} compound by an empty set of {@link AbstractQuery}s.
-	 */
-	public BooleanQuery() {
-		this.must = new LinkedList<AbstractQuery>();
-		this.should = new LinkedList<AbstractQuery>();
-		this.not = new LinkedList<AbstractQuery>();
 	}
 
 	/**

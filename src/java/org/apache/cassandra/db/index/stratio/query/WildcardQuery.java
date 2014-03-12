@@ -10,8 +10,8 @@ import org.codehaus.jackson.annotate.JsonTypeName;
  * @version 0.1
  * @author adelapena
  */
-@JsonTypeName("match")
-public class MatchQuery extends AbstractQuery {
+@JsonTypeName("wildcard")
+public class WildcardQuery extends AbstractQuery {
 
 	/** The field name */
 	@JsonProperty("field")
@@ -33,9 +33,9 @@ public class MatchQuery extends AbstractQuery {
 	 *            the field value.
 	 */
 	@JsonCreator
-	public MatchQuery(@JsonProperty("boost") Float boost,
-	                  @JsonProperty("field") String field,
-	                  @JsonProperty("value") Object value) {
+	public WildcardQuery(@JsonProperty("boost") Float boost,
+	                     @JsonProperty("field") String field,
+	                     @JsonProperty("value") Object value) {
 		super(boost);
 		this.field = field;
 		this.value = value;
@@ -62,7 +62,7 @@ public class MatchQuery extends AbstractQuery {
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("MatchQuery [boost=");
+		builder.append("WildcardQuery [boost=");
 		builder.append(boost);
 		builder.append(", field=");
 		builder.append(field);

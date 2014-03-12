@@ -18,9 +18,10 @@ import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.index.stratio.query.AbstractQuery;
 import org.apache.cassandra.db.index.stratio.query.BooleanQuery;
-import org.apache.cassandra.db.index.stratio.query.LuceneQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
+import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
 import org.apache.cassandra.db.index.stratio.query.RangeQuery;
+import org.apache.cassandra.db.index.stratio.query.WildcardQuery;
 import org.apache.cassandra.db.index.stratio.util.ByteBufferUtils;
 import org.apache.cassandra.db.index.stratio.util.JsonSerializer;
 import org.apache.cassandra.db.marshal.AbstractType;
@@ -48,6 +49,8 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * 
  */
 public class CellsMapper {
+
+	public static final CellMapperString DEFAULT_FIELD_MAPPER = new CellMapperString();
 
 	/** The default Lucene's analyzer to be used if no other specified. */
 	@JsonIgnore
@@ -350,64 +353,57 @@ public class CellsMapper {
 	}
 
 	public Query query(AbstractQuery abstractQuery) {
-		Class<?> clazz = abstractQuery.getClass();
-		if (clazz.equals(MatchQuery.class)) {
-			MatchQuery matchQuery = (MatchQuery) abstractQuery;
-			String field = matchQuery.getField();
-			CellMapper<?> mapper = cellMappers.get(field);
-			if (mapper == null) {
-				mapper = new CellMapperString(); // TODO: static default
-			}
-			return mapper.query(matchQuery);
-		} else if (clazz.equals(RangeQuery.class)) {
-			RangeQuery rangeQuery = (RangeQuery) abstractQuery;
-			String field = rangeQuery.getField();
-			CellMapper<?> mapper = cellMappers.get(field);
-			if (mapper == null) {
-				mapper = new CellMapperString(); // TODO: static default
-			}
-			return mapper.query(rangeQuery);
-		} else if (clazz.equals(BooleanQuery.class)) {
-			BooleanQuery booleanQuery = (BooleanQuery) abstractQuery;
-			return map(booleanQuery);
-		} else if (clazz.equals(LuceneQuery.class)) {
-			LuceneQuery luceneQuery = (LuceneQuery) abstractQuery;
-			return map(luceneQuery);
+		if (abstractQuery instanceof MatchQuery) {
+			return query((MatchQuery) abstractQuery);
+		} else if (abstractQuery instanceof WildcardQuery) {
+			return query((WildcardQuery) abstractQuery);
+		} else if (abstractQuery instanceof PhraseQuery) {
+			return query((PhraseQuery) abstractQuery);
+		} else if (abstractQuery instanceof RangeQuery) {
+			return query((RangeQuery) abstractQuery);
+		} else if (abstractQuery instanceof BooleanQuery) {
+			return query((BooleanQuery) abstractQuery);
 		} else {
 			throw new MappingException();
 		}
 	}
 
-	/**
-	 * Maps the specified Stratio's {@link com.stratio.search.query.LuceneQuery} to the equivalent
-	 * Lucene's {@link org.apache.lucene.search.Query}.
-	 * 
-	 * @param luceneQuery
-	 *            the Stratio's {@link com.stratio.search.query.LuceneQuery} to be mapped.
-	 * @return the mapped Lucene's {@link org.apache.lucene.search.Query}.
-	 */
-	public Query map(LuceneQuery luceneQuery) {
-		String queryStr = luceneQuery.getQuery();
-		try {
-			QueryParser queryParser = new RowQueryParser(Version.LUCENE_46, "lucene", perFieldAnalyzer, cellMappers);
-			queryParser.setAllowLeadingWildcard(true);
-			queryParser.setLowercaseExpandedTerms(false);
-			return queryParser.parse(queryStr);
-		} catch (ParseException e) {
-			throw new MappingException(e);
+	private CellMapper<?> getMapper(String field) {
+		CellMapper<?> mapper = cellMappers.get(field);
+		if (mapper == null) {
+			return DEFAULT_FIELD_MAPPER;
+		} else {
+			return mapper;
 		}
 	}
 
-	/**
-	 * Maps the specified Stratio's {@link com.stratio.search.query.BooleanQuery} to the equivalent
-	 * Lucene's {@link org.apache.lucene.search.Query}.
-	 * 
-	 * @param booleanQuery
-	 *            the Stratio's {@link com.stratio.search.query.BooleanQuery} to be mapped.
-	 * @return the mapped Lucene's {@link org.apache.lucene.search.Query}.
-	 */
-	public Query map(BooleanQuery booleanQuery) {
+	public Query query(WildcardQuery query) {
+		String field = query.getField();
+		CellMapper<?> mapper = getMapper(field);
+		return mapper.query(query);
+	}
+
+	public Query query(MatchQuery query) {
+		String field = query.getField();
+		CellMapper<?> mapper = getMapper(field);
+		return mapper.query(query);
+	}
+
+	public Query query(PhraseQuery query) {
+		String field = query.getField();
+		CellMapper<?> mapper = getMapper(field);
+		return mapper.query(query);
+	}
+
+	public Query query(RangeQuery query) {
+		String field = query.getField();
+		CellMapper<?> mapper = getMapper(field);
+		return mapper.query(query);
+	}
+
+	public Query query(BooleanQuery booleanQuery) {
 		org.apache.lucene.search.BooleanQuery luceneBooleanQuery = new org.apache.lucene.search.BooleanQuery();
+		luceneBooleanQuery.setBoost(booleanQuery.getBoost());
 		for (AbstractQuery query : booleanQuery.getMust()) {
 			Query luceneQuery = query(query);
 			luceneBooleanQuery.add(luceneQuery, Occur.MUST);

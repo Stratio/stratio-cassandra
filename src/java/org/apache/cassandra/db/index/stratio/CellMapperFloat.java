@@ -1,7 +1,9 @@
 package org.apache.cassandra.db.index.stratio;
 
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
+import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
 import org.apache.cassandra.db.index.stratio.query.RangeQuery;
+import org.apache.cassandra.db.index.stratio.query.WildcardQuery;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FloatField;
@@ -35,7 +37,7 @@ public class CellMapperFloat extends CellMapper<Float> {
 
 	@Override
 	public Field field(String name, Object value) {
-		Float number = parseColumnValue(value);
+		Float number = parseValue(value);
 		Field field = new FloatField(name, number, STORE);
 		field.setBoost(boost);
 		return field;
@@ -44,22 +46,34 @@ public class CellMapperFloat extends CellMapper<Float> {
 	@Override
 	public Query query(MatchQuery matchQuery) {
 		String name = matchQuery.getField();
-		Float value = parseColumnValue(matchQuery.getValue());
+		Float value = parseValue(matchQuery.getValue());
 		return NumericRangeQuery.newFloatRange(name, value, value, true, true);
+	}
+
+	@Override
+	public Query query(WildcardQuery wildcardQuery) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public Query query(PhraseQuery phraseQuery) {
+		throw new UnsupportedOperationException();
 	}
 
 	@Override
 	public Query query(RangeQuery rangeQuery) {
 		String name = rangeQuery.getField();
-		Float lowerValue = parseColumnValue(rangeQuery.getLowerValue());
-		Float upperValue = parseColumnValue(rangeQuery.getUpperValue());
+		Float lowerValue = parseValue(rangeQuery.getLowerValue());
+		Float upperValue = parseValue(rangeQuery.getUpperValue());
 		boolean includeLower = rangeQuery.getIncludeLower();
 		boolean includeUpper = rangeQuery.getIncludeUpper();
-		return NumericRangeQuery.newFloatRange(name, lowerValue, upperValue, includeLower, includeUpper);
+		Query query = NumericRangeQuery.newFloatRange(name, lowerValue, upperValue, includeLower, includeUpper);
+		query.setBoost(rangeQuery.getBoost());
+		return query;
 	}
 
 	@Override
-	protected Float parseColumnValue(Object value) {
+	protected Float parseValue(Object value) {
 		if (value == null) {
 			return null;
 		} else if (value instanceof Number) {
@@ -72,12 +86,17 @@ public class CellMapperFloat extends CellMapper<Float> {
 	}
 
 	@Override
-	protected Float parseQueryValue(String value) {
-		if (value == null) {
-			return null;
-		} else {
-			return Float.valueOf(value);
-		}
+	public Query parseRange(String name, String start, String end, boolean startInclusive, boolean endInclusive) {
+		return NumericRangeQuery.newFloatRange(name,
+		                                       parseValue(start),
+		                                       parseValue(end),
+		                                       startInclusive,
+		                                       endInclusive);
+	}
+
+	@Override
+	public Query parseMatch(String name, String value) {
+		return NumericRangeQuery.newFloatRange(name, parseValue(value), parseValue(value), true, true);
 	}
 
 	@Override

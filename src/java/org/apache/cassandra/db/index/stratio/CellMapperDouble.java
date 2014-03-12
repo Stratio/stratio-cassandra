@@ -1,7 +1,9 @@
 package org.apache.cassandra.db.index.stratio;
 
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
+import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
 import org.apache.cassandra.db.index.stratio.query.RangeQuery;
+import org.apache.cassandra.db.index.stratio.query.WildcardQuery;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.DoubleField;
 import org.apache.lucene.document.Field;
@@ -35,7 +37,7 @@ public class CellMapperDouble extends CellMapper<Double> {
 
 	@Override
     public Field field(String name, Object value) {
-		Double number = parseColumnValue(value);
+		Double number = parseValue(value);
 		Field field = new DoubleField(name, number, STORE);
 		field.setBoost(boost);
 		return field;
@@ -44,22 +46,34 @@ public class CellMapperDouble extends CellMapper<Double> {
 	@Override
 	public Query query(MatchQuery matchQuery) {
 		String name = matchQuery.getField();
-		Double value = parseColumnValue(matchQuery.getValue());
+		Double value = parseValue(matchQuery.getValue());
 		return NumericRangeQuery.newDoubleRange(name, value, value, true, true);
+	}
+
+	@Override
+	public Query query(WildcardQuery wildcardQuery) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public Query query(PhraseQuery phraseQuery) {
+		throw new UnsupportedOperationException();
 	}
 
 	@Override
 	public Query query(RangeQuery rangeQuery) {
 		String name = rangeQuery.getField();
-		Double lowerValue = parseColumnValue(rangeQuery.getLowerValue());
-		Double upperValue = parseColumnValue(rangeQuery.getUpperValue());
+		Double lowerValue = parseValue(rangeQuery.getLowerValue());
+		Double upperValue = parseValue(rangeQuery.getUpperValue());
 		boolean includeLower = rangeQuery.getIncludeLower();
 		boolean includeUpper = rangeQuery.getIncludeUpper();
-		return NumericRangeQuery.newDoubleRange(name, lowerValue, upperValue, includeLower, includeUpper);
+		Query query = NumericRangeQuery.newDoubleRange(name, lowerValue, upperValue, includeLower, includeUpper);
+		query.setBoost(rangeQuery.getBoost());
+		return query;
 	}
 
 	@Override
-	protected Double parseColumnValue(Object value) {
+	protected Double parseValue(Object value) {
 		if (value == null) {
 			return null;
 		} else if (value instanceof Number) {
@@ -70,14 +84,19 @@ public class CellMapperDouble extends CellMapper<Double> {
 			throw new MappingException("Value '%s' cannot be cast to Double", value);
 		}
 	}
+	
+	@Override
+    public Query parseRange(String name, String start, String end, boolean startInclusive, boolean endInclusive) {
+		return NumericRangeQuery.newDoubleRange(name,
+		                                        parseValue(start),
+		                                        parseValue(end),
+		                                        startInclusive,
+		                                        endInclusive);
+	}
 
 	@Override
-	protected Double parseQueryValue(String value) {
-		if (value == null) {
-			return null;
-		} else {
-			return Double.valueOf(value);
-		}
+    public Query parseMatch(String name, String value) {
+		return NumericRangeQuery.newDoubleRange(name, parseValue(value), parseValue(value), true, true);
 	}
 
 	@Override

@@ -1,7 +1,9 @@
 package org.apache.cassandra.db.index.stratio;
 
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
+import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
 import org.apache.cassandra.db.index.stratio.query.RangeQuery;
+import org.apache.cassandra.db.index.stratio.query.WildcardQuery;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Field;
@@ -50,30 +52,54 @@ public class CellMapperText extends CellMapper<String> {
 
 	@Override
 	public Field field(String name, Object value) {
-		String text = parseColumnValue(value);
+		String text = parseValue(value);
 		return new TextField(name, text, STORE);
 	}
 
 	@Override
 	public Query query(MatchQuery matchQuery) {
 		String name = matchQuery.getField();
-		String value = parseColumnValue(matchQuery.getValue());
+		String value = parseValue(matchQuery.getValue());
 		Term term = new Term(name, value);
 		return new TermQuery(term);
 	}
 
 	@Override
-	public Query query(RangeQuery rangeQuery) {
-		String name = rangeQuery.getField();
-		String lowerValue = parseColumnValue(rangeQuery.getLowerValue());
-		String upperValue = parseColumnValue(rangeQuery.getUpperValue());
-		boolean includeLower = rangeQuery.getIncludeLower();
-		boolean includeUpper = rangeQuery.getIncludeUpper();
-		return TermRangeQuery.newStringRange(name, lowerValue, upperValue, includeLower, includeUpper);
+	public Query query(WildcardQuery wildcardQuery) {
+		String name = wildcardQuery.getField();
+		String value = parseValue(wildcardQuery.getValue());
+		Term term = new Term(name, value);
+		return new org.apache.lucene.search.WildcardQuery(term);
 	}
 
 	@Override
-	protected String parseColumnValue(Object value) {
+	public Query query(PhraseQuery phraseQuery) {
+		org.apache.lucene.search.PhraseQuery query = new org.apache.lucene.search.PhraseQuery();
+		String name = phraseQuery.getField();
+		for (Object o : phraseQuery.getValues()) {
+			String value = parseValue(o);
+			Term term = new Term(name, value);
+			query.add(term);
+		}
+		query.setSlop(phraseQuery.getSlop());
+		query.setBoost(phraseQuery.getBoost());
+		return query;
+	}
+
+	@Override
+	public Query query(RangeQuery rangeQuery) {
+		String name = rangeQuery.getField();
+		String lowerValue = parseValue(rangeQuery.getLowerValue());
+		String upperValue = parseValue(rangeQuery.getUpperValue());
+		boolean includeLower = rangeQuery.getIncludeLower();
+		boolean includeUpper = rangeQuery.getIncludeUpper();
+		Query query = TermRangeQuery.newStringRange(name, lowerValue, upperValue, includeLower, includeUpper);
+		query.setBoost(rangeQuery.getBoost());
+		return query;
+	}
+
+	@Override
+	protected String parseValue(Object value) {
 		if (value == null) {
 			return null;
 		} else {
@@ -82,12 +108,17 @@ public class CellMapperText extends CellMapper<String> {
 	}
 
 	@Override
-	protected String parseQueryValue(String value) {
-		if (value == null) {
-			return null;
-		} else {
-			return value;
-		}
+	public Query parseRange(String name, String start, String end, boolean startInclusive, boolean endInclusive) {
+		return TermRangeQuery.newStringRange(name,
+		                                     parseValue(start),
+		                                     parseValue(end),
+		                                     startInclusive,
+		                                     endInclusive);
+	}
+
+	@Override
+	public Query parseMatch(String name, String value) {
+		return new TermQuery(new Term(name, parseValue(value)));
 	}
 
 	@Override

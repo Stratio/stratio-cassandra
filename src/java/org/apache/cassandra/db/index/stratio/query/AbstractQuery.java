@@ -3,6 +3,8 @@ package org.apache.cassandra.db.index.stratio.query;
 import java.io.IOException;
 
 import org.apache.cassandra.db.index.stratio.util.JsonSerializer;
+import org.codehaus.jackson.annotate.JsonCreator;
+import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonSubTypes;
 import org.codehaus.jackson.annotate.JsonTypeInfo;
 
@@ -22,10 +24,37 @@ import org.codehaus.jackson.annotate.JsonTypeInfo;
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 @JsonSubTypes({ @JsonSubTypes.Type(value = BooleanQuery.class, name = "boolean"),
-               @JsonSubTypes.Type(value = LuceneQuery.class, name = "lucene"),
                @JsonSubTypes.Type(value = MatchQuery.class, name = "match"),
-               @JsonSubTypes.Type(value = RangeQuery.class, name = "range"), })
+               @JsonSubTypes.Type(value = RangeQuery.class, name = "range"),
+               @JsonSubTypes.Type(value = PhraseQuery.class, name = "phrase"),
+               @JsonSubTypes.Type(value = WildcardQuery.class, name = "wildcard"), })
 public class AbstractQuery {
+
+	protected static final float DEFAULT_BOOST = 1.0f;
+
+	@JsonProperty("boost")
+	protected final float boost;
+
+	/**
+	 * 
+	 * @param boost
+	 *            The boost for this query clause. Documents matching this clause will (in addition
+	 *            to the normal weightings) have their score multiplied by {@code boost}.
+	 */
+	@JsonCreator
+	public AbstractQuery(@JsonProperty("boost") Float boost) {
+		this.boost = boost == null ? DEFAULT_BOOST : boost;
+	}
+
+	/**
+	 * Returns the boost for this clause. Documents matching this clause will (in addition to the
+	 * normal weightings) have their score multiplied by {@code boost}. The boost is 1.0 by default.
+	 * 
+	 * @return The boost for this clause.
+	 */
+	public float getBoost() {
+		return boost;
+	}
 
 	/**
 	 * Returns the JSON representation of this.

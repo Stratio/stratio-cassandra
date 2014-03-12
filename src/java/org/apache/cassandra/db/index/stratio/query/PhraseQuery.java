@@ -1,5 +1,7 @@
 package org.apache.cassandra.db.index.stratio.query;
 
+import java.util.List;
+
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeName;
@@ -11,15 +13,21 @@ import org.codehaus.jackson.annotate.JsonTypeName;
  * @author adelapena
  */
 @JsonTypeName("match")
-public class MatchQuery extends AbstractQuery {
+public class PhraseQuery extends AbstractQuery {
+
+	public static final int DEFAULT_SLOP = 0;
 
 	/** The field name */
 	@JsonProperty("field")
 	private final String field;
 
-	/** The field value */
-	@JsonProperty("value")
-	private final Object value;
+	/** The field values */
+	@JsonProperty("values")
+	private final List<Object> values;
+
+	/** The slop */
+	@JsonProperty("slop")
+	private final int slop;
 
 	/**
 	 * Constructor using the field name and the value to be matched.
@@ -29,16 +37,20 @@ public class MatchQuery extends AbstractQuery {
 	 *            to the normal weightings) have their score multiplied by {@code boost}.
 	 * @param field
 	 *            the field name.
-	 * @param value
-	 *            the field value.
+	 * @param values
+	 *            the field values.
+	 * @param slop
+	 *            the slop.
 	 */
 	@JsonCreator
-	public MatchQuery(@JsonProperty("boost") Float boost,
-	                  @JsonProperty("field") String field,
-	                  @JsonProperty("value") Object value) {
+	public PhraseQuery(@JsonProperty("boost") Float boost,
+	                   @JsonProperty("field") String field,
+	                   @JsonProperty("values") List<Object> values,
+	                   @JsonProperty("slop") Integer slop) {
 		super(boost);
 		this.field = field;
-		this.value = value;
+		this.values = values;
+		this.slop = slop == null ? DEFAULT_SLOP : slop;
 	}
 
 	/**
@@ -51,23 +63,34 @@ public class MatchQuery extends AbstractQuery {
 	}
 
 	/**
-	 * Returns the field value.
+	 * Returns the field values.
 	 * 
-	 * @return the field value.
+	 * @return the field values.
 	 */
-	public Object getValue() {
-		return value;
+	public List<Object> getValues() {
+		return values;
+	}
+
+	/**
+	 * Returns the slop.
+	 * 
+	 * @return the slop.
+	 */
+	public int getSlop() {
+		return slop;
 	}
 
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("MatchQuery [boost=");
+		builder.append("PhraseQuery [boost=");
 		builder.append(boost);
 		builder.append(", field=");
 		builder.append(field);
-		builder.append(", value=");
-		builder.append(value);
+		builder.append(", values=");
+		builder.append(values);
+		builder.append(", slop=");
+		builder.append(slop);
 		builder.append("]");
 		return builder.toString();
 	}

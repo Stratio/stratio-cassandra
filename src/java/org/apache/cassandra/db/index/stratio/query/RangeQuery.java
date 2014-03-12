@@ -41,6 +41,9 @@ public class RangeQuery extends AbstractQuery {
 	 * endpoints may not be exclusive (you can't select all but the first or last term without
 	 * explicitly specifying the term to exclude.)
 	 * 
+	 * @param boost
+	 *            The boost for this query clause. Documents matching this clause will (in addition
+	 *            to the normal weightings) have their score multiplied by {@code boost}.
 	 * @param field
 	 *            the field name.
 	 * @param lowerValue
@@ -53,12 +56,13 @@ public class RangeQuery extends AbstractQuery {
 	 *            if {@code true}, the {@code upperValue} is included in the range.
 	 */
 	@JsonCreator
-	public RangeQuery(@JsonProperty("field") String field,
+	public RangeQuery(@JsonProperty("boost") Float boost,
+	                  @JsonProperty("field") String field,
 	                  @JsonProperty("lower") Object lowerValue,
 	                  @JsonProperty("upper") Object upperValue,
 	                  @JsonProperty("include_lower") boolean includeLower,
 	                  @JsonProperty("include_upper") boolean includeUpper) {
-
+		super(boost);
 		this.field = field;
 		this.lowerValue = lowerValue;
 		this.upperValue = upperValue;
@@ -115,15 +119,12 @@ public class RangeQuery extends AbstractQuery {
 		return includeUpper;
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see java.lang.Object#toString()
-	 */
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("RangeQuery [field=");
+		builder.append("RangeQuery [boost=");
+		builder.append(boost);
+		builder.append(", field=");
 		builder.append(field);
 		builder.append(", lowerValue=");
 		builder.append(lowerValue);
