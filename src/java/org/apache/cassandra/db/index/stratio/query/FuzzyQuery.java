@@ -1,5 +1,6 @@
 package org.apache.cassandra.db.index.stratio.query;
 
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.util.automaton.LevenshteinAutomata;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
@@ -24,7 +25,7 @@ public class FuzzyQuery extends AbstractQuery {
 
 	/** The field value */
 	@JsonProperty("value")
-	private final Object value;
+	private Object value;
 
 	@JsonProperty("max_edits")
 	private final int maxEdits;
@@ -87,6 +88,11 @@ public class FuzzyQuery extends AbstractQuery {
 
 	public boolean getTranspositions() {
 		return transpositions;
+	}
+
+	@Override
+	public void analyze(Analyzer analyzer) {
+		this.value = analyze(field, value, analyzer);
 	}
 
 	@Override

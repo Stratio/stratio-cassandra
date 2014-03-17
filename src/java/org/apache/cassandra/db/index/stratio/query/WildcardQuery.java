@@ -1,5 +1,6 @@
 package org.apache.cassandra.db.index.stratio.query;
 
+import org.apache.lucene.analysis.Analyzer;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeName;
@@ -57,6 +58,10 @@ public class WildcardQuery extends AbstractQuery {
 	 */
 	public Object getValue() {
 		return value;
+	}
+
+	@Override
+	public void analyze(Analyzer analyzer) {
 	}
 
 	@Override

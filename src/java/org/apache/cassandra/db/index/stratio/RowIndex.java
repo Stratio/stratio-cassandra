@@ -61,7 +61,7 @@ public class RowIndex extends PerRowSecondaryIndex {
 		indexName = columnDefinition.getIndexName();
 
 		// Build row mapper
-		rowService = RowService.build(baseCfs, columnDefinition);
+		rowService = new RowService(baseCfs, columnDefinition);
 	}
 
 	/**

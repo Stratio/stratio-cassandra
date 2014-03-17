@@ -1,7 +1,9 @@
 package org.apache.cassandra.db.index.stratio.query;
 
+import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.lucene.analysis.Analyzer;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeName;
@@ -23,7 +25,7 @@ public class PhraseQuery extends AbstractQuery {
 
 	/** The field values */
 	@JsonProperty("values")
-	private final List<Object> values;
+	private List<Object> values;
 
 	/** The slop */
 	@JsonProperty("slop")
@@ -78,6 +80,16 @@ public class PhraseQuery extends AbstractQuery {
 	 */
 	public int getSlop() {
 		return slop;
+	}
+
+	@Override
+	public void analyze(Analyzer analyzer) {
+		List<Object> values = new ArrayList<>(this.values.size());
+		for (Object value : this.values) {
+			Object analyzedValue = analyze(field, value, analyzer);
+			values.add(analyzedValue);
+		}
+		this.values = values;
 	}
 
 	@Override

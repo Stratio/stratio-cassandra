@@ -1,5 +1,6 @@
 package org.apache.cassandra.db.index.stratio.query;
 
+import org.apache.lucene.analysis.Analyzer;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeName;
@@ -19,11 +20,11 @@ public class RangeQuery extends AbstractQuery {
 
 	/** The lower field value included in the range. */
 	@JsonProperty("lower")
-	private final Object lowerValue;
+	private Object lowerValue;
 
 	/** The upper field value included in the range. */
 	@JsonProperty("upper")
-	private final Object upperValue;
+	private Object upperValue;
 
 	/** If the lower value is included in the range. */
 	@JsonProperty("include_lower")
@@ -117,6 +118,12 @@ public class RangeQuery extends AbstractQuery {
 	 */
 	public boolean getIncludeUpper() {
 		return includeUpper;
+	}
+
+	@Override
+	public void analyze(Analyzer analyzer) {
+		this.lowerValue = analyze(field, lowerValue, analyzer);
+		this.upperValue = analyze(field, upperValue, analyzer);
 	}
 
 	@Override

@@ -3,6 +3,7 @@ package org.apache.cassandra.db.index.stratio;
 import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
 import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
+import org.apache.cassandra.db.index.stratio.query.PrefixQuery;
 import org.apache.cassandra.db.index.stratio.query.RangeQuery;
 import org.apache.cassandra.db.index.stratio.query.WildcardQuery;
 import org.apache.lucene.analysis.Analyzer;
@@ -45,10 +46,28 @@ public class CellMapperLong extends CellMapper<Long> {
 	}
 
 	@Override
+	protected Long value(Object value) {
+		if (value == null) {
+			return null;
+		} else if (value instanceof Number) {
+			return ((Number) value).longValue();
+		} else if (value instanceof String) {
+			return Long.valueOf(value.toString());
+		} else {
+			throw new MappingException("Value '%s' cannot be cast to Long", value);
+		}
+	}
+
+	@Override
 	public Query query(MatchQuery matchQuery) {
 		String name = matchQuery.getField();
 		Long value = value(matchQuery.getValue());
 		return NumericRangeQuery.newLongRange(name, value, value, true, true);
+	}
+
+	@Override
+	public Query query(PrefixQuery prefixQuery) {
+		throw new UnsupportedOperationException();
 	}
 
 	@Override
@@ -76,33 +95,6 @@ public class CellMapperLong extends CellMapper<Long> {
 		Query query = NumericRangeQuery.newLongRange(name, lowerValue, upperValue, includeLower, includeUpper);
 		query.setBoost(rangeQuery.getBoost());
 		return query;
-	}
-
-	@Override
-	protected Long value(Object value) {
-		if (value == null) {
-			return null;
-		} else if (value instanceof Number) {
-			return ((Number) value).longValue();
-		} else if (value instanceof String) {
-			return Long.valueOf(value.toString());
-		} else {
-			throw new MappingException("Value '%s' cannot be cast to Long", value);
-		}
-	}
-
-	@Override
-    public Query query(String name, String start, String end, boolean startInclusive, boolean endInclusive) {
-		return NumericRangeQuery.newLongRange(name,
-		                                      value(start),
-		                                      value(end),
-		                                      startInclusive,
-		                                      endInclusive);
-	}
-
-	@Override
-    public Query query(String name, String value) {
-		return NumericRangeQuery.newLongRange(name, value(value), value(value), true, true);
 	}
 
 	@Override

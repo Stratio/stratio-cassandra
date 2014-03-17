@@ -3,6 +3,7 @@ package org.apache.cassandra.db.index.stratio;
 import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
 import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
+import org.apache.cassandra.db.index.stratio.query.PrefixQuery;
 import org.apache.cassandra.db.index.stratio.query.RangeQuery;
 import org.apache.cassandra.db.index.stratio.query.WildcardQuery;
 import org.apache.lucene.analysis.Analyzer;
@@ -52,6 +53,11 @@ public class CellMapperInteger extends CellMapper<Integer> {
 	}
 
 	@Override
+	public Query query(PrefixQuery prefixQuery) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
 	public Query query(WildcardQuery wildcardQuery) {
 		throw new UnsupportedOperationException();
 	}
@@ -89,20 +95,6 @@ public class CellMapperInteger extends CellMapper<Integer> {
 		} else {
 			throw new MappingException("Value '%s' cannot be cast to Integer", value);
 		}
-	}
-
-	@Override
-	public Query query(String name, String start, String end, boolean startInclusive, boolean endInclusive) {
-		return NumericRangeQuery.newIntRange(name,
-		                                     value(start),
-		                                     value(end),
-		                                     startInclusive,
-		                                     endInclusive);
-	}
-
-	@Override
-	public Query query(String name, String value) {
-		return NumericRangeQuery.newIntRange(name, value(value), value(value), true, true);
 	}
 
 	@Override

@@ -1,14 +1,16 @@
 package org.apache.cassandra.db.index.stratio;
 
-import java.util.Map;
-
+import org.apache.cassandra.db.index.stratio.query.AbstractQuery;
+import org.apache.cassandra.db.index.stratio.query.MatchQuery;
+import org.apache.cassandra.db.index.stratio.query.PrefixQuery;
+import org.apache.cassandra.db.index.stratio.query.RangeQuery;
+import org.apache.cassandra.db.index.stratio.query.WildcardQuery;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.Version;
 
 /**
@@ -19,38 +21,27 @@ import org.apache.lucene.util.Version;
  */
 public class RowQueryParser extends QueryParser {
 
-	private final Map<String, CellMapper<?>> mappers;
+	private final CellsMapper mapper;
 
-	public RowQueryParser(Version matchVersion, String f, Analyzer a, Map<String, CellMapper<?>> fields) {
+	public RowQueryParser(Version matchVersion, String f, Analyzer a, CellsMapper mapper) {
 		super(matchVersion, f, a);
-		this.mappers = fields;
+		this.mapper = mapper;
 	}
-	
+
 	@Override
-	public	Query
-	        getRangeQuery(String field, String upper, String lower, boolean startInclusive, boolean endInclusive) throws ParseException {
-		CellMapper<?> columnMapper = mappers.get(field);
-		if (columnMapper != null) {
-			Query query = columnMapper.query(field, upper, lower, startInclusive, endInclusive);
-			if (query != null) {
-				return query;
-			}
-		}
-		return super.getRangeQuery(field, upper, lower, startInclusive, endInclusive);
+	public Query getRangeQuery(String field, String lower, String upper, boolean includeLower, boolean includeUpper) throws ParseException {
+		System.out.println(" -> NEW RANGE ");
+		RangeQuery query = new RangeQuery(AbstractQuery.DEFAULT_BOOST, field, lower, upper, includeLower, includeUpper);
+		return mapper.query(query);
 	}
 
 	@Override
 	protected Query newTermQuery(Term term) {
-		String name = term.field();
-		String value = term.text();
-		CellMapper<?> columnMapper = mappers.get(name);
-		if (columnMapper != null) {
-			Query query = columnMapper.query(name, value);
-			if (query != null) {
-				return query;
-			}
-		}
-		return new TermQuery(term);
+		System.out.println(" -> NEW TERM ");
+		String field = term.field();
+		String text = term.text();
+		MatchQuery query = new MatchQuery(AbstractQuery.DEFAULT_BOOST, field, text);
+		return mapper.query(query);
 	}
 
 	@Override
@@ -62,25 +53,19 @@ public class RowQueryParser extends QueryParser {
 	@Override
 	protected Query newRegexpQuery(Term regexp) {
 		System.out.println(" -> NEW REGEXP " + regexp);
-		return super.newRegexpQuery(regexp);
+		String field = regexp.field();
+		String text = regexp.text();
+		WildcardQuery query = new WildcardQuery(AbstractQuery.DEFAULT_BOOST, field, text);
+		return mapper.query(query);
 	}
 
 	@Override
 	protected Query newPrefixQuery(Term regexp) {
 		System.out.println(" -> NEW PREFIX " + regexp);
-		return super.newPrefixQuery(regexp);
-	}
-
-	@Override
-	protected Query getPrefixQuery(String field, String termStr) throws ParseException {
-		System.out.println(" -> GET PREFIX " + field + " " + termStr);
-		return super.getPrefixQuery(field, termStr);
-	}
-
-	@Override
-	protected Query getRegexpQuery(String field, String termStr) throws ParseException {
-		System.out.println(" -> GET REGEXP " + field + " " + termStr);
-		return super.getRegexpQuery(field, termStr);
+		String field = regexp.field();
+		String text = regexp.text();
+		PrefixQuery query = new PrefixQuery(AbstractQuery.DEFAULT_BOOST, field, text);
+		return mapper.query(query);
 	}
 
 	@Override

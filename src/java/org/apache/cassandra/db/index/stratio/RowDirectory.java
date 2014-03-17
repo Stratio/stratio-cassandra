@@ -24,6 +24,7 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.NRTCachingDirectory;
 import org.apache.lucene.util.Version;
 
 /**
@@ -48,27 +49,37 @@ public class RowDirectory {
 	 * @param path
 	 *            The analyzer to be used. The path of the directory in where the Lucene's files
 	 *            will be stored.
-	 * @param analyzer
 	 * @param refreshSeconds
 	 *            The index readers refresh time in seconds.
-	 * @param writeBufferSize
+	 * @param ramBufferMB
 	 *            The index writer buffer size in MB.
+	 * @param maxMergeMB
+	 *            NRTCachingDirectory max merge size in MB.
+	 * @param maxCachedMB
+	 *            NRTCachingDirectory max cached MB.
+	 * @param analyzer
 	 */
-	public RowDirectory(String path, Analyzer analyzer, Integer refreshSeconds, Integer writeBufferSize) {
+	public RowDirectory(String path,
+	                    Integer refreshSeconds,
+	                    Integer ramBufferMB,
+	                    Integer maxMergeMB,
+	                    Integer maxCachedMB,
+	                    Analyzer analyzer) {
 		try {
 
 			// Get directory file
 			file = new File(path);
 
 			// Open or create directory
-			directory = FSDirectory.open(file);
+			FSDirectory fsDirectory = FSDirectory.open(file);
+			directory = new NRTCachingDirectory(fsDirectory, maxMergeMB, maxCachedMB);
 
 			// Set analyzer
 			this.analyzer = analyzer;
 
 			// Setup index writer
 			IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_46, analyzer);
-			config.setRAMBufferSizeMB(writeBufferSize);
+			config.setRAMBufferSizeMB(ramBufferMB);
 			config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
 			config.setUseCompoundFile(false);
 			indexWriter = new IndexWriter(directory, config);
@@ -80,11 +91,7 @@ public class RowDirectory {
 			                                                                 searcherManager,
 			                                                                 refreshSeconds,
 			                                                                 refreshSeconds);
-			indexSearcherReopenThread.start(); // start the refresher thread
-
-			// DocComparator dc;
-			// Sorter sorter;
-			// SortingMergePolicy smp = new SortingMergePolicy(config.getMergePolicy(), sorter);
+			indexSearcherReopenThread.start(); // Start the refresher thread
 
 		} catch (IOException e) {
 			Log.error(e, "Error initiating index");
@@ -277,7 +284,10 @@ public class RowDirectory {
 	 * @return The found documents, sorted according to the supplied {@link Sort} instance.
 	 */
 	public List<ScoredDocument> search(Query query, Filter filter, Sort sort, int count, Set<String> fieldsToLoad) {
-		Log.debug("Searching %s %d %s", query, count, sort);
+		Log.debug("Searching with query %s ", query);
+		Log.debug("Searching with filter %s", filter);
+		Log.debug("Searching with count %d", count);
+		Log.debug("Searching with sort %s", sort);
 		try {
 			IndexSearcher indexSearcher = searcherManager.acquire();
 			try {

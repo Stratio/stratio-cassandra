@@ -3,6 +3,7 @@ package org.apache.cassandra.db.index.stratio.query;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.apache.lucene.analysis.Analyzer;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeName;
@@ -111,6 +112,10 @@ public class BooleanQuery extends AbstractQuery {
 	public BooleanQuery not(AbstractQuery abstractQuery) {
 		not.add(abstractQuery);
 		return this;
+	}
+
+	@Override
+	public void analyze(Analyzer analyzer) {
 	}
 
 	/*

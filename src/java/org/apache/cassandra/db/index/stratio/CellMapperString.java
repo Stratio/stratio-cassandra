@@ -3,6 +3,7 @@ package org.apache.cassandra.db.index.stratio;
 import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
 import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
+import org.apache.cassandra.db.index.stratio.query.PrefixQuery;
 import org.apache.cassandra.db.index.stratio.query.RangeQuery;
 import org.apache.cassandra.db.index.stratio.query.WildcardQuery;
 import org.apache.lucene.analysis.Analyzer;
@@ -38,11 +39,28 @@ public class CellMapperString extends CellMapper<String> {
 	}
 
 	@Override
+	protected String value(Object value) {
+		if (value == null) {
+			return null;
+		} else {
+			return value.toString();
+		}
+	}
+
+	@Override
 	public Query query(MatchQuery matchQuery) {
 		String name = matchQuery.getField();
 		String value = value(matchQuery.getValue());
 		Term term = new Term(name, value);
 		return new TermQuery(term);
+	}
+
+	@Override
+	public Query query(PrefixQuery prefixQuery) {
+		String name = prefixQuery.getField();
+		String value = value(prefixQuery.getValue());
+		Term term = new Term(name, value);
+		return new org.apache.lucene.search.PrefixQuery(term);
 	}
 
 	@Override
@@ -89,25 +107,6 @@ public class CellMapperString extends CellMapper<String> {
 		Query query = TermRangeQuery.newStringRange(name, lowerValue, upperValue, includeLower, includeUpper);
 		query.setBoost(rangeQuery.getBoost());
 		return query;
-	}
-
-	@Override
-	protected String value(Object value) {
-		if (value == null) {
-			return null;
-		} else {
-			return value.toString();
-		}
-	}
-
-	@Override
-    public Query query(String name, String start, String end, boolean startInclusive, boolean endInclusive) {
-		return TermRangeQuery.newStringRange(name, value(start), value(end), startInclusive, endInclusive);
-	}
-
-	@Override
-    public Query query(String name, String value) {
-		return new TermQuery(new Term(name, value(value)));
 	}
 
 	@Override

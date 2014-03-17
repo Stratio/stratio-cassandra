@@ -21,6 +21,7 @@ import org.apache.cassandra.db.index.stratio.query.BooleanQuery;
 import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
 import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
+import org.apache.cassandra.db.index.stratio.query.PrefixQuery;
 import org.apache.cassandra.db.index.stratio.query.RangeQuery;
 import org.apache.cassandra.db.index.stratio.query.WildcardQuery;
 import org.apache.cassandra.db.index.stratio.util.ByteBufferUtils;
@@ -51,19 +52,17 @@ import org.codehaus.jackson.annotate.JsonProperty;
  */
 public class CellsMapper {
 
-	public static final CellMapperString DEFAULT_FIELD_MAPPER = new CellMapperString();
-
 	/** The default Lucene's analyzer to be used if no other specified. */
 	@JsonIgnore
 	public static final Analyzer DEFAULT_ANALYZER = new StandardAnalyzer(Version.LUCENE_46);
 
 	/** The Lucene's {@link corg.apache.lucene.analysis.Analyzer} class name. */
 	@JsonProperty("default_analyzer")
-	private final String analyzerClassName;
+	private final String defaultAnalyzerClassName;
 
 	/** The Lucene's {@link corg.apache.lucene.analysis.Analyzer}. */
 	@JsonIgnore
-	private final Analyzer analyzer;
+	private final Analyzer defaultAnalyzer;
 
 	/** The per field Lucene's analyzer to be used. */
 	@JsonIgnore
@@ -90,11 +89,11 @@ public class CellsMapper {
 
 		// Setup analyzer
 		if (analyzerClassName == null) {
-			this.analyzer = DEFAULT_ANALYZER;
-			this.analyzerClassName = DEFAULT_ANALYZER.getClass().getName();
+			this.defaultAnalyzer = DEFAULT_ANALYZER;
+			this.defaultAnalyzerClassName = DEFAULT_ANALYZER.getClass().getName();
 		} else {
-			this.analyzer = AnalyzerFactory.getAnalyzer(analyzerClassName);
-			this.analyzerClassName = analyzerClassName;
+			this.defaultAnalyzer = AnalyzerFactory.getAnalyzer(analyzerClassName);
+			this.defaultAnalyzerClassName = analyzerClassName;
 		}
 
 		// Setup analyzer
@@ -107,10 +106,7 @@ public class CellsMapper {
 				analyzers.put(name, fieldAnalyzer);
 			}
 		}
-		perFieldAnalyzer = new PerFieldAnalyzerWrapper(analyzer, analyzers);
-
-		// Setup query parser
-
+		perFieldAnalyzer = new PerFieldAnalyzerWrapper(defaultAnalyzer, analyzers);
 	}
 
 	/**
@@ -329,6 +325,15 @@ public class CellsMapper {
 		}
 	}
 
+	private CellMapper<?> getMapper(String field) {
+		CellMapper<?> mapper = cellMappers.get(field);
+		if (mapper == null) {
+			return new CellMapperText(defaultAnalyzerClassName);
+		} else {
+			return mapper;
+		}
+	}
+
 	/**
 	 * Returns the Lucene's {@link Query} parsed from the specified {@code String}.
 	 * 
@@ -337,29 +342,24 @@ public class CellsMapper {
 	 * @return The Lucene's {@link Query} parsed from the specified {@code String}.
 	 */
 	@JsonIgnore
-	public Query query(String querySentence) throws IOException {
+	public Query query(String querySentence) throws IOException, ParseException {
 		try {
 			AbstractQuery abstractQuery = AbstractQuery.fromJSON(querySentence);
-			Query query = query(abstractQuery);
-			QueryParser queryParser = new QueryParser(Version.LUCENE_46, "lucene", perFieldAnalyzer);
+			abstractQuery.analyze(perFieldAnalyzer);
+			return query(abstractQuery);
+		} catch (IOException e) {
+			QueryParser queryParser = new RowQueryParser(Version.LUCENE_46, "lucene", perFieldAnalyzer, this);
 			queryParser.setAllowLeadingWildcard(true);
 			queryParser.setLowercaseExpandedTerms(false);
-			return queryParser.parse(query.toString());
-		} catch (ParseException | IOException e) {
-			try {
-				QueryParser queryParser = new RowQueryParser(Version.LUCENE_46, "lucene", perFieldAnalyzer, cellMappers);
-				queryParser.setAllowLeadingWildcard(true);
-				queryParser.setLowercaseExpandedTerms(false);
-				return queryParser.parse(querySentence);
-			} catch (ParseException pe) {
-				throw new MappingException(e);
-			}
+			return queryParser.parse(querySentence);
 		}
 	}
 
 	public Query query(AbstractQuery abstractQuery) {
 		if (abstractQuery instanceof MatchQuery) {
 			return query((MatchQuery) abstractQuery);
+		} else if (abstractQuery instanceof PrefixQuery) {
+			return query((PrefixQuery) abstractQuery);
 		} else if (abstractQuery instanceof WildcardQuery) {
 			return query((WildcardQuery) abstractQuery);
 		} else if (abstractQuery instanceof PhraseQuery) {
@@ -375,15 +375,6 @@ public class CellsMapper {
 		}
 	}
 
-	private CellMapper<?> getMapper(String field) {
-		CellMapper<?> mapper = cellMappers.get(field);
-		if (mapper == null) {
-			return DEFAULT_FIELD_MAPPER;
-		} else {
-			return mapper;
-		}
-	}
-
 	public Query query(WildcardQuery query) {
 		String field = query.getField();
 		CellMapper<?> mapper = getMapper(field);
@@ -391,6 +382,12 @@ public class CellsMapper {
 	}
 
 	public Query query(MatchQuery query) {
+		String field = query.getField();
+		CellMapper<?> mapper = getMapper(field);
+		return mapper.query(query);
+	}
+
+	public Query query(PrefixQuery query) {
 		String field = query.getField();
 		CellMapper<?> mapper = getMapper(field);
 		return mapper.query(query);
@@ -453,7 +450,7 @@ public class CellsMapper {
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
 		builder.append("Schema [defaultAnalyzer=");
-		builder.append(analyzer);
+		builder.append(defaultAnalyzer);
 		builder.append(", perFieldAnalyzer=");
 		builder.append(perFieldAnalyzer);
 		builder.append(", cellMappers=");

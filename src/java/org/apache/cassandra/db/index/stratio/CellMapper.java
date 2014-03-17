@@ -5,6 +5,7 @@ import java.nio.ByteBuffer;
 import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
 import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
+import org.apache.cassandra.db.index.stratio.query.PrefixQuery;
 import org.apache.cassandra.db.index.stratio.query.RangeQuery;
 import org.apache.cassandra.db.index.stratio.query.WildcardQuery;
 import org.apache.cassandra.db.marshal.AbstractType;
@@ -60,6 +61,8 @@ public abstract class CellMapper<BASE> {
 	 *            The name of the Lucene's field.
 	 * @param value
 	 *            The value of the Lucene's field.
+	 * @return The Lucene's {@link org.apache.lucene.document.Field} resulting from the mapping of
+	 *         {@code value}, using {@code name} as field's name.
 	 */
 	public abstract Field field(String name, Object value);
 
@@ -73,6 +76,17 @@ public abstract class CellMapper<BASE> {
 	 *         {@link MatchQuery}.
 	 */
 	public abstract Query query(MatchQuery matchQuery);
+
+	/**
+	 * Returns the Lucene's {@link org.apache.lucene.search.Query} represented by the specified
+	 * {@link PrefixQuery}.
+	 * 
+	 * @param matchQuery
+	 *            A match query.
+	 * @return The Lucene's {@link org.apache.lucene.search.Query} represented by the specified
+	 *         {@link PrefixQuery}.
+	 */
+	public abstract Query query(PrefixQuery prefixQuery);
 
 	/**
 	 * Returns the Lucene's {@link org.apache.lucene.search.Query} represented by the specified
@@ -119,44 +133,10 @@ public abstract class CellMapper<BASE> {
 	public abstract Query query(RangeQuery rangeQuery);
 
 	/**
-	 * Returns the Lucene's range {@link org.apache.lucene.search.Query} resulting from the mapping
-	 * of the specified arguments.
-	 * 
-	 * @param name
-	 *            The name of the Lucene's field.
-	 * @param lower
-	 *            The lower accepted value.
-	 * @param upper
-	 *            The upper accepted value.
-	 * @param includeLower
-	 *            If the upper value is accepted.
-	 * @param includeUpper
-	 *            If the lower value is accepted.
-	 * @return The Lucene's range {@link org.apache.lucene.search.Query} resulting from the mapping
-	 *         of the specified arguments.
-	 */
-	public abstract Query query(String name, String lower, String upper, boolean includeLower, boolean includeUpper);
-
-	/**
-	 * Returns the Lucene's match {@link org.apache.lucene.search.Query} resulting from the mapping
-	 * of the specified arguments.
-	 * 
-	 * @param name
-	 *            The name of the Lucene's field.
-	 * @param value
-	 *            The value.
-	 * @return The Lucene's match {@link org.apache.lucene.search.Query} resulting from the mapping
-	 *         of the specified arguments.
-	 */
-	public abstract Query query(String name, String value);
-
-	/**
 	 * Returns the cell value resulting from the mapping of the specified object.
 	 * 
 	 * @param value
 	 *            The object to be mapped.
-	 * @param value
-	 *            The value.
 	 * @return The cell value resulting from the mapping of the specified object.
 	 */
 	protected abstract BASE value(Object value);

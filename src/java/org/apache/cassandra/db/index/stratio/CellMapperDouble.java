@@ -3,6 +3,7 @@ package org.apache.cassandra.db.index.stratio;
 import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
 import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
+import org.apache.cassandra.db.index.stratio.query.PrefixQuery;
 import org.apache.cassandra.db.index.stratio.query.RangeQuery;
 import org.apache.cassandra.db.index.stratio.query.WildcardQuery;
 import org.apache.lucene.analysis.Analyzer;
@@ -37,7 +38,7 @@ public class CellMapperDouble extends CellMapper<Double> {
 	}
 
 	@Override
-    public Field field(String name, Object value) {
+	public Field field(String name, Object value) {
 		Double number = value(value);
 		Field field = new DoubleField(name, number, STORE);
 		field.setBoost(boost);
@@ -45,10 +46,28 @@ public class CellMapperDouble extends CellMapper<Double> {
 	}
 
 	@Override
+	protected Double value(Object value) {
+		if (value == null) {
+			return null;
+		} else if (value instanceof Number) {
+			return ((Number) value).doubleValue();
+		} else if (value instanceof String) {
+			return Double.valueOf(value.toString());
+		} else {
+			throw new MappingException("Value '%s' cannot be cast to Double", value);
+		}
+	}
+
+	@Override
 	public Query query(MatchQuery matchQuery) {
 		String name = matchQuery.getField();
 		Double value = value(matchQuery.getValue());
 		return NumericRangeQuery.newDoubleRange(name, value, value, true, true);
+	}
+
+	@Override
+	public Query query(PrefixQuery prefixQuery) {
+		throw new UnsupportedOperationException();
 	}
 
 	@Override
@@ -76,33 +95,6 @@ public class CellMapperDouble extends CellMapper<Double> {
 		Query query = NumericRangeQuery.newDoubleRange(name, lowerValue, upperValue, includeLower, includeUpper);
 		query.setBoost(rangeQuery.getBoost());
 		return query;
-	}
-
-	@Override
-	protected Double value(Object value) {
-		if (value == null) {
-			return null;
-		} else if (value instanceof Number) {
-			return ((Number) value).doubleValue();
-		} else if (value instanceof String) {
-			return Double.valueOf(value.toString());
-		} else {
-			throw new MappingException("Value '%s' cannot be cast to Double", value);
-		}
-	}
-	
-	@Override
-    public Query query(String name, String start, String end, boolean startInclusive, boolean endInclusive) {
-		return NumericRangeQuery.newDoubleRange(name,
-		                                        value(start),
-		                                        value(end),
-		                                        startInclusive,
-		                                        endInclusive);
-	}
-
-	@Override
-    public Query query(String name, String value) {
-		return NumericRangeQuery.newDoubleRange(name, value(value), value(value), true, true);
 	}
 
 	@Override
