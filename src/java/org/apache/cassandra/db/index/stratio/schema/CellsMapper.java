@@ -1,4 +1,4 @@
-package org.apache.cassandra.db.index.stratio;
+package org.apache.cassandra.db.index.stratio.schema;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -16,6 +16,9 @@ import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.Column;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.db.index.stratio.AnalyzerFactory;
+import org.apache.cassandra.db.index.stratio.MappingException;
+import org.apache.cassandra.db.index.stratio.RowQueryParser;
 import org.apache.cassandra.db.index.stratio.query.AbstractQuery;
 import org.apache.cassandra.db.index.stratio.query.BooleanQuery;
 import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
@@ -325,7 +328,7 @@ public class CellsMapper {
 		}
 	}
 
-	private CellMapper<?> getMapper(String field) {
+	public CellMapper<?> getMapper(String field) {
 		CellMapper<?> mapper = cellMappers.get(field);
 		if (mapper == null) {
 			return new CellMapperText(defaultAnalyzerClassName);

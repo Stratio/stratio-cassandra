@@ -1,4 +1,4 @@
-package org.apache.cassandra.db.index.stratio;
+package org.apache.cassandra.db.index.stratio.schema;
 
 import java.util.Collection;
 import java.util.Iterator;

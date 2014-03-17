@@ -1,5 +1,6 @@
-package org.apache.cassandra.db.index.stratio;
+package org.apache.cassandra.db.index.stratio.schema;
 
+import org.apache.cassandra.db.index.stratio.MappingException;
 import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
 import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
@@ -46,7 +47,7 @@ public class CellMapperDouble extends CellMapper<Double> {
 	}
 
 	@Override
-	protected Double value(Object value) {
+	public Double value(Object value) {
 		if (value == null) {
 			return null;
 		} else if (value instanceof Number) {
@@ -59,34 +60,36 @@ public class CellMapperDouble extends CellMapper<Double> {
 	}
 
 	@Override
-	public Query query(MatchQuery matchQuery) {
+	protected Query query(MatchQuery matchQuery) {
 		String name = matchQuery.getField();
 		Double value = value(matchQuery.getValue());
-		return NumericRangeQuery.newDoubleRange(name, value, value, true, true);
+		Query query = NumericRangeQuery.newDoubleRange(name, value, value, true, true);
+		query.setBoost(matchQuery.getBoost());
+		return query;
 	}
 
 	@Override
-	public Query query(PrefixQuery prefixQuery) {
-		throw new UnsupportedOperationException();
+	protected Query query(PrefixQuery prefixQuery) {
+		throw new MappingException();
 	}
 
 	@Override
-	public Query query(WildcardQuery wildcardQuery) {
-		throw new UnsupportedOperationException();
+	protected Query query(WildcardQuery wildcardQuery) {
+		throw new MappingException();
 	}
 
 	@Override
-	public Query query(PhraseQuery phraseQuery) {
-		throw new UnsupportedOperationException();
+	protected Query query(PhraseQuery phraseQuery) {
+		throw new MappingException();
 	}
 
 	@Override
-	public Query query(FuzzyQuery fuzzyQuery) {
-		throw new UnsupportedOperationException();
+	protected Query query(FuzzyQuery fuzzyQuery) {
+		throw new MappingException();
 	}
 
 	@Override
-	public Query query(RangeQuery rangeQuery) {
+	protected Query query(RangeQuery rangeQuery) {
 		String name = rangeQuery.getField();
 		Double lowerValue = value(rangeQuery.getLowerValue());
 		Double upperValue = value(rangeQuery.getUpperValue());

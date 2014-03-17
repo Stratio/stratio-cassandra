@@ -1,5 +1,6 @@
-package org.apache.cassandra.db.index.stratio;
+package org.apache.cassandra.db.index.stratio.schema;
 
+import org.apache.cassandra.db.index.stratio.MappingException;
 import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
 import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
@@ -41,7 +42,7 @@ public class CellMapperBoolean extends CellMapper<String> {
 	}
 
 	@Override
-	protected String value(Object value) {
+	public String value(Object value) {
 		if (value == null) {
 			return null;
 		} else if (value instanceof Boolean) {
@@ -58,7 +59,7 @@ public class CellMapperBoolean extends CellMapper<String> {
 	}
 
 	@Override
-	public Query query(MatchQuery matchQuery) {
+	protected Query query(MatchQuery matchQuery) {
 		String name = matchQuery.getField();
 		String value = value(matchQuery.getValue());
 		Term term = new Term(name, value);
@@ -66,7 +67,7 @@ public class CellMapperBoolean extends CellMapper<String> {
 	}
 
 	@Override
-	public Query query(PrefixQuery prefixQuery) {
+	protected Query query(PrefixQuery prefixQuery) {
 		String name = prefixQuery.getField();
 		String value = value(prefixQuery.getValue());
 		Term term = new Term(name, value);
@@ -74,7 +75,7 @@ public class CellMapperBoolean extends CellMapper<String> {
 	}
 
 	@Override
-	public Query query(WildcardQuery wildcardQuery) {
+	protected Query query(WildcardQuery wildcardQuery) {
 		String name = wildcardQuery.getField();
 		String value = value(wildcardQuery.getValue());
 		Term term = new Term(name, value);
@@ -82,17 +83,17 @@ public class CellMapperBoolean extends CellMapper<String> {
 	}
 
 	@Override
-	public Query query(PhraseQuery phraseQuery) {
+	protected Query query(PhraseQuery phraseQuery) {
 		throw new UnsupportedOperationException();
 	}
 
 	@Override
-	public Query query(FuzzyQuery fuzzyQuery) {
+	protected Query query(FuzzyQuery fuzzyQuery) {
 		throw new UnsupportedOperationException();
 	}
 
 	@Override
-	public Query query(RangeQuery rangeQuery) {
+	protected Query query(RangeQuery rangeQuery) {
 		String name = rangeQuery.getField();
 		String lowerValue = value(rangeQuery.getLowerValue());
 		String upperValue = value(rangeQuery.getUpperValue());

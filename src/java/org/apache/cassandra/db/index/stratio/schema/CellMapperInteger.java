@@ -1,5 +1,6 @@
-package org.apache.cassandra.db.index.stratio;
+package org.apache.cassandra.db.index.stratio.schema;
 
+import org.apache.cassandra.db.index.stratio.MappingException;
 import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
 import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
@@ -46,34 +47,36 @@ public class CellMapperInteger extends CellMapper<Integer> {
 	}
 
 	@Override
-	public Query query(MatchQuery matchQuery) {
+	protected Query query(MatchQuery matchQuery) {
 		String name = matchQuery.getField();
 		Integer value = value(matchQuery.getValue());
-		return NumericRangeQuery.newIntRange(name, value, value, true, true);
+		Query query = NumericRangeQuery.newIntRange(name, value, value, true, true);
+		query.setBoost(matchQuery.getBoost());
+		return query;
 	}
 
 	@Override
-	public Query query(PrefixQuery prefixQuery) {
-		throw new UnsupportedOperationException();
+	protected Query query(PrefixQuery prefixQuery) {
+		throw new MappingException();
 	}
 
 	@Override
-	public Query query(WildcardQuery wildcardQuery) {
-		throw new UnsupportedOperationException();
+	protected Query query(WildcardQuery wildcardQuery) {
+		throw new MappingException();
 	}
 
 	@Override
-	public Query query(PhraseQuery phraseQuery) {
-		throw new UnsupportedOperationException();
+	protected Query query(PhraseQuery phraseQuery) {
+		throw new MappingException();
 	}
 
 	@Override
-	public Query query(FuzzyQuery fuzzyQuery) {
-		throw new UnsupportedOperationException();
+	protected Query query(FuzzyQuery fuzzyQuery) {
+		throw new MappingException();
 	}
 
 	@Override
-	public Query query(RangeQuery rangeQuery) {
+	protected Query query(RangeQuery rangeQuery) {
 		String name = rangeQuery.getField();
 		Integer lowerValue = value(rangeQuery.getLowerValue());
 		Integer upperValue = value(rangeQuery.getUpperValue());
@@ -85,13 +88,13 @@ public class CellMapperInteger extends CellMapper<Integer> {
 	}
 
 	@Override
-	protected Integer value(Object value) {
+	public Integer value(Object value) {
 		if (value == null) {
 			return null;
 		} else if (value instanceof Number) {
 			return ((Number) value).intValue();
 		} else if (value instanceof String) {
-			return Integer.valueOf(value.toString());
+			return Double.valueOf(value.toString()).intValue();
 		} else {
 			throw new MappingException("Value '%s' cannot be cast to Integer", value);
 		}

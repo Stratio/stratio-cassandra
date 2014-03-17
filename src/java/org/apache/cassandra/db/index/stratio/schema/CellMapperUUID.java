@@ -1,5 +1,8 @@
-package org.apache.cassandra.db.index.stratio;
+package org.apache.cassandra.db.index.stratio.schema;
 
+import java.util.UUID;
+
+import org.apache.cassandra.db.index.stratio.MappingException;
 import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
 import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
@@ -16,21 +19,15 @@ import org.apache.lucene.search.TermRangeQuery;
 import org.codehaus.jackson.annotate.JsonCreator;
 
 /**
- * A {@link CellMapper} to map a string, not tokenized field.
+ * A {@link CellMapper} to map a UUID field.
  * 
  * @author adelapena
  */
-public class CellMapperString extends CellMapper<String> {
+public class CellMapperUUID extends CellMapper<String> {
 
 	@JsonCreator
-	public CellMapperString() {
+	public CellMapperUUID() {
 		super();
-	}
-
-	@Override
-	public Field field(String name, Object value) {
-		String string = value(value);
-		return new StringField(name, string, STORE);
 	}
 
 	@Override
@@ -39,40 +36,56 @@ public class CellMapperString extends CellMapper<String> {
 	}
 
 	@Override
-	protected String value(Object value) {
+	public Field field(String name, Object value) {
+		String uuid = value(value);
+		return new StringField(name, uuid, STORE);
+	}
+
+	@Override
+	public String value(Object value) {
 		if (value == null) {
 			return null;
-		} else {
+		} else if (value instanceof UUID) {
 			return value.toString();
+		} else if (value instanceof String) {
+			return UUID.fromString((String) value).toString();
+		} else {
+			throw new MappingException("Value '%s' cannot be cast to UUID", value);
 		}
 	}
 
 	@Override
-	public Query query(MatchQuery matchQuery) {
+	protected Query query(MatchQuery matchQuery) {
 		String name = matchQuery.getField();
 		String value = value(matchQuery.getValue());
 		Term term = new Term(name, value);
-		return new TermQuery(term);
+		Query query = new TermQuery(term);
+		query.setBoost(matchQuery.getBoost());
+		return query;
 	}
 
 	@Override
-	public Query query(PrefixQuery prefixQuery) {
+	protected Query query(PrefixQuery prefixQuery) {
 		String name = prefixQuery.getField();
 		String value = value(prefixQuery.getValue());
 		Term term = new Term(name, value);
-		return new org.apache.lucene.search.PrefixQuery(term);
+		Query query = new org.apache.lucene.search.PrefixQuery(term);
+		query.setBoost(prefixQuery.getBoost());
+		return query;
 	}
 
 	@Override
-	public Query query(WildcardQuery wildcardQuery) {
+	protected Query query(WildcardQuery wildcardQuery) {
 		String name = wildcardQuery.getField();
 		String value = value(wildcardQuery.getValue());
 		Term term = new Term(name, value);
-		return new org.apache.lucene.search.WildcardQuery(term);
+		Query query = new org.apache.lucene.search.WildcardQuery(term);
+		query.setBoost(wildcardQuery.getBoost());
+		return query;
 	}
 
 	@Override
-	public Query query(PhraseQuery phraseQuery) {
+	protected Query query(PhraseQuery phraseQuery) {
 		org.apache.lucene.search.PhraseQuery query = new org.apache.lucene.search.PhraseQuery();
 		String name = phraseQuery.getField();
 		for (Object o : phraseQuery.getValues()) {
@@ -86,7 +99,7 @@ public class CellMapperString extends CellMapper<String> {
 	}
 
 	@Override
-	public Query query(FuzzyQuery fuzzyQuery) {
+	protected Query query(FuzzyQuery fuzzyQuery) {
 		String name = fuzzyQuery.getField();
 		String value = value(fuzzyQuery.getValue());
 		Term term = new Term(name, value);
@@ -94,11 +107,17 @@ public class CellMapperString extends CellMapper<String> {
 		int prefixLength = fuzzyQuery.getPrefixLength();
 		int maxExpansions = fuzzyQuery.getMaxExpansions();
 		boolean transpositions = fuzzyQuery.getTranspositions();
-		return new org.apache.lucene.search.FuzzyQuery(term, maxEdits, prefixLength, maxExpansions, transpositions);
+		Query query = new org.apache.lucene.search.FuzzyQuery(term,
+		                                                      maxEdits,
+		                                                      prefixLength,
+		                                                      maxExpansions,
+		                                                      transpositions);
+		query.setBoost(fuzzyQuery.getBoost());
+		return query;
 	}
 
 	@Override
-	public Query query(RangeQuery rangeQuery) {
+	protected Query query(RangeQuery rangeQuery) {
 		String name = rangeQuery.getField();
 		String lowerValue = value(rangeQuery.getLowerValue());
 		String upperValue = value(rangeQuery.getUpperValue());

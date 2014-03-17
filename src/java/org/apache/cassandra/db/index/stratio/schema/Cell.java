@@ -1,4 +1,4 @@
-package org.apache.cassandra.db.index.stratio;
+package org.apache.cassandra.db.index.stratio.schema;
 
 /**
  * A cell of a CQL3 logic {@link Cell}, which in most cases is different from a storage engine

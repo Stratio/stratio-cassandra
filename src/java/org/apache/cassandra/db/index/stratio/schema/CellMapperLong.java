@@ -1,5 +1,6 @@
-package org.apache.cassandra.db.index.stratio;
+package org.apache.cassandra.db.index.stratio.schema;
 
+import org.apache.cassandra.db.index.stratio.MappingException;
 import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
 import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
@@ -8,18 +9,18 @@ import org.apache.cassandra.db.index.stratio.query.RangeQuery;
 import org.apache.cassandra.db.index.stratio.query.WildcardQuery;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.FloatField;
+import org.apache.lucene.document.LongField;
 import org.apache.lucene.search.NumericRangeQuery;
 import org.apache.lucene.search.Query;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
 /**
- * A {@link CellMapper} to map a float field.
+ * A {@link CellMapper} to map a long field.
  * 
  * @author adelapena
  */
-public class CellMapperFloat extends CellMapper<Float> {
+public class CellMapperLong extends CellMapper<Long> {
 
 	private Float DEFAULT_BOOST = 1.0f;
 
@@ -27,7 +28,7 @@ public class CellMapperFloat extends CellMapper<Float> {
 	private final Float boost;
 
 	@JsonCreator
-	public CellMapperFloat(@JsonProperty("boost") Float boost) {
+	public CellMapperLong(@JsonProperty("boost") Float boost) {
 		super();
 		this.boost = boost == null ? DEFAULT_BOOST : boost;
 	}
@@ -39,60 +40,62 @@ public class CellMapperFloat extends CellMapper<Float> {
 
 	@Override
 	public Field field(String name, Object value) {
-		Float number = value(value);
-		Field field = new FloatField(name, number, STORE);
+		Long number = value(value);
+		Field field = new LongField(name, number, STORE);
 		field.setBoost(boost);
 		return field;
 	}
 
 	@Override
-	protected Float value(Object value) {
+	public Long value(Object value) {
 		if (value == null) {
 			return null;
 		} else if (value instanceof Number) {
-			return ((Number) value).floatValue();
+			return ((Number) value).longValue();
 		} else if (value instanceof String) {
-			return Float.valueOf(value.toString());
+			return Double.valueOf(value.toString()).longValue();
 		} else {
-			throw new MappingException("Value '%s' cannot be cast to Float", value);
+			throw new MappingException("Value '%s' cannot be cast to Long", value);
 		}
 	}
 
 	@Override
-	public Query query(MatchQuery matchQuery) {
+	protected Query query(MatchQuery matchQuery) {
 		String name = matchQuery.getField();
-		Float value = value(matchQuery.getValue());
-		return NumericRangeQuery.newFloatRange(name, value, value, true, true);
+		Long value = value(matchQuery.getValue());
+		Query query = NumericRangeQuery.newLongRange(name, value, value, true, true);
+		query.setBoost(matchQuery.getBoost());
+		return query;
 	}
 
 	@Override
-	public Query query(PrefixQuery prefixQuery) {
-		throw new UnsupportedOperationException();
+	protected Query query(PrefixQuery prefixQuery) {
+		throw new MappingException();
 	}
 
 	@Override
-	public Query query(WildcardQuery wildcardQuery) {
-		throw new UnsupportedOperationException();
+	protected Query query(WildcardQuery wildcardQuery) {
+		throw new MappingException();
 	}
 
 	@Override
-	public Query query(PhraseQuery phraseQuery) {
-		throw new UnsupportedOperationException();
+	protected Query query(PhraseQuery phraseQuery) {
+		throw new MappingException();
 	}
 
 	@Override
-	public Query query(FuzzyQuery fuzzyQuery) {
-		throw new UnsupportedOperationException();
+	protected Query query(FuzzyQuery fuzzyQuery) {
+		throw new MappingException();
 	}
 
 	@Override
-	public Query query(RangeQuery rangeQuery) {
+	protected Query query(RangeQuery rangeQuery) {
 		String name = rangeQuery.getField();
-		Float lowerValue = value(rangeQuery.getLowerValue());
-		Float upperValue = value(rangeQuery.getUpperValue());
+		Long lowerValue = value(rangeQuery.getLowerValue());
+		Long upperValue = value(rangeQuery.getUpperValue());
 		boolean includeLower = rangeQuery.getIncludeLower();
 		boolean includeUpper = rangeQuery.getIncludeUpper();
-		Query query = NumericRangeQuery.newFloatRange(name, lowerValue, upperValue, includeLower, includeUpper);
+		Query query = NumericRangeQuery.newLongRange(name, lowerValue, upperValue, includeLower, includeUpper);
 		query.setBoost(rangeQuery.getBoost());
 		return query;
 	}

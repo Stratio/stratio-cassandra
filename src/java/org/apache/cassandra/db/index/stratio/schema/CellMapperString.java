@@ -1,4 +1,4 @@
-package org.apache.cassandra.db.index.stratio;
+package org.apache.cassandra.db.index.stratio.schema;
 
 import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
@@ -7,59 +7,39 @@ import org.apache.cassandra.db.index.stratio.query.PrefixQuery;
 import org.apache.cassandra.db.index.stratio.query.RangeQuery;
 import org.apache.cassandra.db.index.stratio.query.WildcardQuery;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.TextField;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermRangeQuery;
-import org.apache.lucene.util.Version;
 import org.codehaus.jackson.annotate.JsonCreator;
-import org.codehaus.jackson.annotate.JsonIgnore;
-import org.codehaus.jackson.annotate.JsonProperty;
 
 /**
- * A {@link CellMapper} to map a string, tokenized field.
+ * A {@link CellMapper} to map a string, not tokenized field.
  * 
  * @author adelapena
  */
-public class CellMapperText extends CellMapper<String> {
-
-	public static final Analyzer DEFAULT_ANALYZER = new StandardAnalyzer(Version.LUCENE_46);
-
-	/** The Lucene's {@link corg.apache.lucene.analysis.Analyzer} class name. */
-	@JsonProperty("analyzer")
-	private final String analyzerClassName;
-
-	/** The Lucene's {@link corg.apache.lucene.analysis.Analyzer}. */
-	@JsonIgnore
-	private final Analyzer analyzer;
+public class CellMapperString extends CellMapper<String> {
 
 	@JsonCreator
-	public CellMapperText(@JsonProperty("analyzer") String analyzerClassName) {
-		if (analyzerClassName == null) {
-			this.analyzer = DEFAULT_ANALYZER;
-			this.analyzerClassName = DEFAULT_ANALYZER.getClass().getName();
-		} else {
-			this.analyzer = AnalyzerFactory.getAnalyzer(analyzerClassName);
-			this.analyzerClassName = analyzerClassName;
-		}
-	}
-
-	@Override
-	public Analyzer analyzer() {
-		return analyzer;
+	public CellMapperString() {
+		super();
 	}
 
 	@Override
 	public Field field(String name, Object value) {
-		String text = value(value);
-		return new TextField(name, text, STORE);
+		String string = value(value);
+		return new StringField(name, string, STORE);
 	}
 
 	@Override
-	protected String value(Object value) {
+	public Analyzer analyzer() {
+		return EMPTY_ANALYZER;
+	}
+
+	@Override
+	public String value(Object value) {
 		if (value == null) {
 			return null;
 		} else {
@@ -68,40 +48,43 @@ public class CellMapperText extends CellMapper<String> {
 	}
 
 	@Override
-	public Query query(MatchQuery matchQuery) {
+	protected Query query(MatchQuery matchQuery) {
 		String name = matchQuery.getField();
 		String value = value(matchQuery.getValue());
 		Term term = new Term(name, value);
-		return new TermQuery(term);
+		Query query = new TermQuery(term);
+		query.setBoost(matchQuery.getBoost());
+		return query;
 	}
 
 	@Override
-	public Query query(PrefixQuery prefixQuery) {
+	protected Query query(PrefixQuery prefixQuery) {
 		String name = prefixQuery.getField();
 		String value = value(prefixQuery.getValue());
 		Term term = new Term(name, value);
-		return new org.apache.lucene.search.PrefixQuery(term);
+		org.apache.lucene.search.PrefixQuery query = new org.apache.lucene.search.PrefixQuery(term);
+		query.setBoost(prefixQuery.getBoost());
+		return query;
 	}
 
 	@Override
-	public Query query(WildcardQuery wildcardQuery) {
+	protected Query query(WildcardQuery wildcardQuery) {
 		String name = wildcardQuery.getField();
 		String value = value(wildcardQuery.getValue());
 		Term term = new Term(name, value);
-		return new org.apache.lucene.search.WildcardQuery(term);
+		org.apache.lucene.search.WildcardQuery query = new org.apache.lucene.search.WildcardQuery(term);
+		query.setBoost(wildcardQuery.getBoost());
+		return query;
 	}
 
 	@Override
-	public Query query(PhraseQuery phraseQuery) {
+	protected Query query(PhraseQuery phraseQuery) {
 		org.apache.lucene.search.PhraseQuery query = new org.apache.lucene.search.PhraseQuery();
 		String name = phraseQuery.getField();
-		int position = 0;
-		for (Object value : phraseQuery.getValues()) {
-			if (value != null) {
-				Term term = new Term(name, value(value));
-				query.add(term, position);
-			}
-			position++;
+		for (Object o : phraseQuery.getValues()) {
+			String value = value(o);
+			Term term = new Term(name, value);
+			query.add(term);
 		}
 		query.setSlop(phraseQuery.getSlop());
 		query.setBoost(phraseQuery.getBoost());
@@ -109,7 +92,7 @@ public class CellMapperText extends CellMapper<String> {
 	}
 
 	@Override
-	public Query query(FuzzyQuery fuzzyQuery) {
+	protected Query query(FuzzyQuery fuzzyQuery) {
 		String name = fuzzyQuery.getField();
 		String value = value(fuzzyQuery.getValue());
 		Term term = new Term(name, value);
@@ -117,11 +100,17 @@ public class CellMapperText extends CellMapper<String> {
 		int prefixLength = fuzzyQuery.getPrefixLength();
 		int maxExpansions = fuzzyQuery.getMaxExpansions();
 		boolean transpositions = fuzzyQuery.getTranspositions();
-		return new org.apache.lucene.search.FuzzyQuery(term, maxEdits, prefixLength, maxExpansions, transpositions);
+		Query query = new org.apache.lucene.search.FuzzyQuery(term,
+		                                                      maxEdits,
+		                                                      prefixLength,
+		                                                      maxExpansions,
+		                                                      transpositions);
+		query.setBoost(fuzzyQuery.getBoost());
+		return query;
 	}
 
 	@Override
-	public Query query(RangeQuery rangeQuery) {
+	protected Query query(RangeQuery rangeQuery) {
 		String name = rangeQuery.getField();
 		String lowerValue = value(rangeQuery.getLowerValue());
 		String upperValue = value(rangeQuery.getUpperValue());
@@ -136,9 +125,7 @@ public class CellMapperText extends CellMapper<String> {
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
 		builder.append(getClass().getSimpleName());
-		builder.append(" [analyzer=");
-		builder.append(analyzer);
-		builder.append("]");
+		builder.append(" []");
 		return builder.toString();
 	}
 

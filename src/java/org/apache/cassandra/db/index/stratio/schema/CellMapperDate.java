@@ -1,5 +1,11 @@
-package org.apache.cassandra.db.index.stratio;
+package org.apache.cassandra.db.index.stratio.schema;
 
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+import org.apache.cassandra.db.index.stratio.MappingException;
 import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
 import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
@@ -12,24 +18,35 @@ import org.apache.lucene.document.LongField;
 import org.apache.lucene.search.NumericRangeQuery;
 import org.apache.lucene.search.Query;
 import org.codehaus.jackson.annotate.JsonCreator;
+import org.codehaus.jackson.annotate.JsonIgnore;
 import org.codehaus.jackson.annotate.JsonProperty;
 
 /**
- * A {@link CellMapper} to map a long field.
+ * A {@link CellMapper} to map a date field.
  * 
  * @author adelapena
  */
-public class CellMapperLong extends CellMapper<Long> {
+public class CellMapperDate extends CellMapper<Long> {
 
-	private Float DEFAULT_BOOST = 1.0f;
+	public static final String DEFAULT_PATTERN = "yyyy/MM/dd HH:mm:ss||yyyy/MM/dd";
 
-	@JsonProperty("boost")
-	private final Float boost;
+	/** The date and time pattern. */
+	@JsonProperty("pattern")
+	private final String pattern;
+
+	/** The thread safe date format */
+	@JsonIgnore
+	private final ThreadLocal<DateFormat> concurrentDateFormat;
 
 	@JsonCreator
-	public CellMapperLong(@JsonProperty("boost") Float boost) {
-		super();
-		this.boost = boost == null ? DEFAULT_BOOST : boost;
+	public CellMapperDate(@JsonProperty("pattern") String pattern) {
+		this.pattern = pattern == null ? DEFAULT_PATTERN : pattern;
+		concurrentDateFormat = new ThreadLocal<DateFormat>() {
+			@Override
+			protected DateFormat initialValue() {
+				return new SimpleDateFormat(CellMapperDate.this.pattern);
+			}
+		};
 	}
 
 	@Override
@@ -39,54 +56,59 @@ public class CellMapperLong extends CellMapper<Long> {
 
 	@Override
 	public Field field(String name, Object value) {
-		Long number = value(value);
-		Field field = new LongField(name, number, STORE);
-		field.setBoost(boost);
-		return field;
+		return new LongField(name, value(value), STORE);
 	}
 
 	@Override
-	protected Long value(Object value) {
+	public Long value(Object value) {
 		if (value == null) {
 			return null;
+		} else if (value instanceof Date) {
+			return ((Date) value).getTime();
 		} else if (value instanceof Number) {
 			return ((Number) value).longValue();
 		} else if (value instanceof String) {
-			return Long.valueOf(value.toString());
+			try {
+				return concurrentDateFormat.get().parse(value.toString()).getTime();
+			} catch (ParseException e) {
+				throw new MappingException(e, "The string '%s' does not satisfy the pattern %s", value, pattern);
+			}
 		} else {
-			throw new MappingException("Value '%s' cannot be cast to Long", value);
+			throw new MappingException("Value '%s' cannot be cast to Date", value);
 		}
 	}
 
 	@Override
-	public Query query(MatchQuery matchQuery) {
+	protected Query query(MatchQuery matchQuery) {
 		String name = matchQuery.getField();
 		Long value = value(matchQuery.getValue());
-		return NumericRangeQuery.newLongRange(name, value, value, true, true);
+		Query query = NumericRangeQuery.newLongRange(name, value, value, true, true);
+		query.setBoost(matchQuery.getBoost());
+		return query;
 	}
 
 	@Override
-	public Query query(PrefixQuery prefixQuery) {
+	protected Query query(PrefixQuery prefixQuery) {
 		throw new UnsupportedOperationException();
 	}
 
 	@Override
-	public Query query(WildcardQuery wildcardQuery) {
+	protected Query query(WildcardQuery wildcardQuery) {
 		throw new UnsupportedOperationException();
 	}
 
 	@Override
-	public Query query(PhraseQuery phraseQuery) {
+	protected Query query(PhraseQuery phraseQuery) {
 		throw new UnsupportedOperationException();
 	}
 
 	@Override
-	public Query query(FuzzyQuery fuzzyQuery) {
+	protected Query query(FuzzyQuery fuzzyQuery) {
 		throw new UnsupportedOperationException();
 	}
 
 	@Override
-	public Query query(RangeQuery rangeQuery) {
+	protected Query query(RangeQuery rangeQuery) {
 		String name = rangeQuery.getField();
 		Long lowerValue = value(rangeQuery.getLowerValue());
 		Long upperValue = value(rangeQuery.getUpperValue());
@@ -101,7 +123,9 @@ public class CellMapperLong extends CellMapper<Long> {
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
 		builder.append(getClass().getSimpleName());
-		builder.append(" []");
+		builder.append(" [pattern=");
+		builder.append(pattern);
+		builder.append("]");
 		return builder.toString();
 	}
 

@@ -1,7 +1,10 @@
-package org.apache.cassandra.db.index.stratio;
+package org.apache.cassandra.db.index.stratio.schema;
 
 import java.nio.ByteBuffer;
 
+import org.apache.cassandra.db.index.stratio.MappingException;
+import org.apache.cassandra.db.index.stratio.query.AbstractQuery;
+import org.apache.cassandra.db.index.stratio.query.BooleanQuery;
 import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
 import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
@@ -66,6 +69,29 @@ public abstract class CellMapper<BASE> {
 	 */
 	public abstract Field field(String name, Object value);
 
+	public Query query(AbstractQuery abstractQuery) {
+		Query query = null;
+		if (abstractQuery instanceof MatchQuery) {
+			query = query((MatchQuery) abstractQuery);
+		} else if (abstractQuery instanceof PrefixQuery) {
+			query = query((PrefixQuery) abstractQuery);
+		} else if (abstractQuery instanceof WildcardQuery) {
+			query = query((WildcardQuery) abstractQuery);
+		} else if (abstractQuery instanceof PhraseQuery) {
+			query = query((PhraseQuery) abstractQuery);
+		} else if (abstractQuery instanceof FuzzyQuery) {
+			query = query((FuzzyQuery) abstractQuery);
+		} else if (abstractQuery instanceof RangeQuery) {
+			query = query((RangeQuery) abstractQuery);
+		} else if (abstractQuery instanceof BooleanQuery) {
+			query = query((BooleanQuery) abstractQuery);
+		} else {
+			throw new MappingException();
+		}
+		query.setBoost(abstractQuery.getBoost());
+		return query;
+	}
+
 	/**
 	 * Returns the Lucene's {@link org.apache.lucene.search.Query} represented by the specified
 	 * {@link MatchQuery}.
@@ -75,7 +101,7 @@ public abstract class CellMapper<BASE> {
 	 * @return The Lucene's {@link org.apache.lucene.search.Query} represented by the specified
 	 *         {@link MatchQuery}.
 	 */
-	public abstract Query query(MatchQuery matchQuery);
+	protected abstract Query query(MatchQuery matchQuery);
 
 	/**
 	 * Returns the Lucene's {@link org.apache.lucene.search.Query} represented by the specified
@@ -86,7 +112,7 @@ public abstract class CellMapper<BASE> {
 	 * @return The Lucene's {@link org.apache.lucene.search.Query} represented by the specified
 	 *         {@link PrefixQuery}.
 	 */
-	public abstract Query query(PrefixQuery prefixQuery);
+	protected abstract Query query(PrefixQuery prefixQuery);
 
 	/**
 	 * Returns the Lucene's {@link org.apache.lucene.search.Query} represented by the specified
@@ -97,7 +123,7 @@ public abstract class CellMapper<BASE> {
 	 * @return The Lucene's {@link org.apache.lucene.search.Query} represented by the specified
 	 *         {@link WildcardQuery}.
 	 */
-	public abstract Query query(WildcardQuery wildcardQuery);
+	protected abstract Query query(WildcardQuery wildcardQuery);
 
 	/**
 	 * Returns the Lucene's {@link org.apache.lucene.search.Query} represented by the specified
@@ -108,7 +134,7 @@ public abstract class CellMapper<BASE> {
 	 * @return The Lucene's {@link org.apache.lucene.search.Query} represented by the specified
 	 *         {@link PhraseQuery}.
 	 */
-	public abstract Query query(PhraseQuery phraseQuery);
+	protected abstract Query query(PhraseQuery phraseQuery);
 
 	/**
 	 * Returns the Lucene's {@link org.apache.lucene.search.Query} represented by the specified
@@ -119,7 +145,7 @@ public abstract class CellMapper<BASE> {
 	 * @return The Lucene's {@link org.apache.lucene.search.Query} represented by the specified
 	 *         {@link FuzzyQuery}.
 	 */
-	public abstract Query query(FuzzyQuery fuzzyQuery);
+	protected abstract Query query(FuzzyQuery fuzzyQuery);
 
 	/**
 	 * Returns the Lucene's {@link org.apache.lucene.search.Query} represented by the specified
@@ -130,7 +156,7 @@ public abstract class CellMapper<BASE> {
 	 * @return The Lucene's {@link org.apache.lucene.search.Query} represented by the specified
 	 *         {@link RangeQuery}.
 	 */
-	public abstract Query query(RangeQuery rangeQuery);
+	protected abstract Query query(RangeQuery rangeQuery);
 
 	/**
 	 * Returns the cell value resulting from the mapping of the specified object.
@@ -139,5 +165,5 @@ public abstract class CellMapper<BASE> {
 	 *            The object to be mapped.
 	 * @return The cell value resulting from the mapping of the specified object.
 	 */
-	protected abstract BASE value(Object value);
+	public abstract BASE value(Object value);
 }

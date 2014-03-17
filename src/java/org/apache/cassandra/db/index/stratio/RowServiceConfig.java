@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
 
 /**
  * Class for building {@link RowService} instances.
