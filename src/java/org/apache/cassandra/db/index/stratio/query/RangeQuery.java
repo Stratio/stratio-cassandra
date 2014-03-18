@@ -20,11 +20,11 @@ public class RangeQuery extends AbstractQuery {
 
 	/** The lower field value included in the range. */
 	@JsonProperty("lower")
-	private Object lowerValue;
+	private Object lower;
 
 	/** The upper field value included in the range. */
 	@JsonProperty("upper")
-	private Object upperValue;
+	private Object upper;
 
 	/** If the lower value is included in the range. */
 	@JsonProperty("include_lower")
@@ -65,8 +65,8 @@ public class RangeQuery extends AbstractQuery {
 	                  @JsonProperty("include_upper") boolean includeUpper) {
 		super(boost);
 		this.field = field;
-		this.lowerValue = lowerValue;
-		this.upperValue = upperValue;
+		this.lower = lowerValue;
+		this.upper = upperValue;
 		this.includeLower = includeLower;
 		this.includeUpper = includeUpper;
 	}
@@ -86,7 +86,7 @@ public class RangeQuery extends AbstractQuery {
 	 * @return the field value at the lower end of the range.
 	 */
 	public Object getLowerValue() {
-		return lowerValue;
+		return lower;
 	}
 
 	/**
@@ -95,7 +95,7 @@ public class RangeQuery extends AbstractQuery {
 	 * @return the field value at the upper end of the range.
 	 */
 	public Object getUpperValue() {
-		return upperValue;
+		return upper;
 	}
 
 	/**
@@ -122,8 +122,8 @@ public class RangeQuery extends AbstractQuery {
 
 	@Override
 	public void analyze(Analyzer analyzer) {
-		this.lowerValue = analyze(field, lowerValue, analyzer);
-		this.upperValue = analyze(field, upperValue, analyzer);
+		this.lower = analyze(field, lower, analyzer);
+		this.upper = analyze(field, upper, analyzer);
 	}
 
 	@Override
@@ -134,9 +134,9 @@ public class RangeQuery extends AbstractQuery {
 		builder.append(", field=");
 		builder.append(field);
 		builder.append(", lowerValue=");
-		builder.append(lowerValue);
+		builder.append(lower);
 		builder.append(", upperValue=");
-		builder.append(upperValue);
+		builder.append(upper);
 		builder.append(", includeLower=");
 		builder.append(includeLower);
 		builder.append(", includeUpper=");

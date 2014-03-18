@@ -1,6 +1,5 @@
 package org.apache.cassandra.db.index.stratio.schema;
 
-import org.apache.cassandra.db.index.stratio.MappingException;
 import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
 import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
@@ -39,15 +38,7 @@ public class CellMapperLong extends CellMapper<Long> {
 	}
 
 	@Override
-	public Field field(String name, Object value) {
-		Long number = value(value);
-		Field field = new LongField(name, number, STORE);
-		field.setBoost(boost);
-		return field;
-	}
-
-	@Override
-	public Long value(Object value) {
+	public Long indexValue(Object value) {
 		if (value == null) {
 			return null;
 		} else if (value instanceof Number) {
@@ -55,49 +46,62 @@ public class CellMapperLong extends CellMapper<Long> {
 		} else if (value instanceof String) {
 			return Double.valueOf(value.toString()).longValue();
 		} else {
-			throw new MappingException("Value '%s' cannot be cast to Long", value);
+			throw new IllegalArgumentException(String.format("Value '%s' cannot be cast to Long", value));
 		}
 	}
 
 	@Override
+	public Long queryValue(Object value) {
+		return indexValue(value);
+	}
+
+	@Override
+	public Field field(String name, Object value) {
+		Long number = indexValue(value);
+		Field field = new LongField(name, number, STORE);
+		field.setBoost(boost);
+		return field;
+	}
+	
+	@Override
 	protected Query query(MatchQuery matchQuery) {
 		String name = matchQuery.getField();
-		Long value = value(matchQuery.getValue());
+		Long value = queryValue(matchQuery.getValue());
 		Query query = NumericRangeQuery.newLongRange(name, value, value, true, true);
 		query.setBoost(matchQuery.getBoost());
 		return query;
 	}
 
 	@Override
-	protected Query query(PrefixQuery prefixQuery) {
-		throw new MappingException();
-	}
-
-	@Override
-	protected Query query(WildcardQuery wildcardQuery) {
-		throw new MappingException();
-	}
-
-	@Override
-	protected Query query(PhraseQuery phraseQuery) {
-		throw new MappingException();
-	}
-
-	@Override
-	protected Query query(FuzzyQuery fuzzyQuery) {
-		throw new MappingException();
-	}
-
-	@Override
 	protected Query query(RangeQuery rangeQuery) {
 		String name = rangeQuery.getField();
-		Long lowerValue = value(rangeQuery.getLowerValue());
-		Long upperValue = value(rangeQuery.getUpperValue());
+		Long lowerValue = queryValue(rangeQuery.getLowerValue());
+		Long upperValue = queryValue(rangeQuery.getUpperValue());
 		boolean includeLower = rangeQuery.getIncludeLower();
 		boolean includeUpper = rangeQuery.getIncludeUpper();
 		Query query = NumericRangeQuery.newLongRange(name, lowerValue, upperValue, includeLower, includeUpper);
 		query.setBoost(rangeQuery.getBoost());
 		return query;
+	}
+
+	@Override
+	protected Query query(PrefixQuery prefixQuery) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	protected Query query(WildcardQuery wildcardQuery) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	protected Query query(PhraseQuery phraseQuery) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	protected Query query(FuzzyQuery fuzzyQuery) {
+		throw new UnsupportedOperationException();
 	}
 
 	@Override

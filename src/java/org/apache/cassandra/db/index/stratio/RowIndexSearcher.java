@@ -1,6 +1,5 @@
 package org.apache.cassandra.db.index.stratio;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Set;
@@ -12,7 +11,6 @@ import org.apache.cassandra.db.index.SecondaryIndexManager;
 import org.apache.cassandra.db.index.SecondaryIndexSearcher;
 import org.apache.cassandra.thrift.IndexExpression;
 import org.apache.cassandra.thrift.IndexOperator;
-import org.apache.lucene.queryparser.classic.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +50,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
 		logger.info("Searching " + extendedFilter);
 		try {
 			return rowService.search(extendedFilter);
-		} catch (IOException | ParseException | RuntimeException e) {
+		} catch (Exception e) {
 			logger.error("Error while searching ", e);
 			return null; // Force upper component NPE to allow fail by RPC timeout
 		}

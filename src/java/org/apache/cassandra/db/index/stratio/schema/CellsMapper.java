@@ -17,7 +17,6 @@ import org.apache.cassandra.db.Column;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.index.stratio.AnalyzerFactory;
-import org.apache.cassandra.db.index.stratio.MappingException;
 import org.apache.cassandra.db.index.stratio.RowQueryParser;
 import org.apache.cassandra.db.index.stratio.query.AbstractQuery;
 import org.apache.cassandra.db.index.stratio.query.BooleanQuery;
@@ -374,7 +373,7 @@ public class CellsMapper {
 		} else if (abstractQuery instanceof BooleanQuery) {
 			return query((BooleanQuery) abstractQuery);
 		} else {
-			throw new MappingException();
+			throw new UnsupportedOperationException();
 		}
 	}
 
@@ -445,7 +444,7 @@ public class CellsMapper {
 		try {
 			return JsonSerializer.fromString(json, CellsMapper.class);
 		} catch (IOException e) {
-			throw new MappingException(e, "Schema unparseable: %s", json);
+			throw new IllegalArgumentException("Schema unparseable: " + json, e);
 		}
 	}
 

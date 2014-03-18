@@ -2,6 +2,7 @@ package org.apache.cassandra.db.index.stratio.schema;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,134 +20,144 @@ import org.apache.lucene.search.TermRangeQuery;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class CellMapperStringTest {
+public class CellMapperBooleanTest {
 
 	@Test()
 	public void testValueNull() {
-		CellMapperString mapper = new CellMapperString();
+		CellMapperBoolean mapper = new CellMapperBoolean();
 		String parsed = mapper.indexValue(null);
 		Assert.assertNull(parsed);
 	}
 
 	@Test
+	public void testValueBooleanTrue() {
+		CellMapperBoolean mapper = new CellMapperBoolean();
+		String parsed = mapper.indexValue(true);
+		Assert.assertEquals("true", parsed);
+	}
+
+	@Test
+	public void testValueBooleanFalse() {
+		CellMapperBoolean mapper = new CellMapperBoolean();
+		String parsed = mapper.indexValue(false);
+		Assert.assertEquals("false", parsed);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testValueDate() {
+		CellMapperBoolean mapper = new CellMapperBoolean();
+		mapper.indexValue(new Date());
+	}
+
+	@Test(expected = IllegalArgumentException.class)
 	public void testValueInteger() {
-		CellMapperString mapper = new CellMapperString();
-		String parsed = mapper.indexValue(3);
-		Assert.assertEquals("3", parsed);
+		CellMapperBoolean mapper = new CellMapperBoolean();
+		mapper.indexValue(3);
 	}
 
-	@Test
+	@Test(expected = IllegalArgumentException.class)
 	public void testValueLong() {
-		CellMapperString mapper = new CellMapperString();
-		String parsed = mapper.indexValue(3l);
-		Assert.assertEquals("3", parsed);
+		CellMapperBoolean mapper = new CellMapperBoolean();
+		mapper.indexValue(3l);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testValueFloat() {
+		CellMapperBoolean mapper = new CellMapperBoolean();
+		mapper.indexValue(3.6f);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testValueDouble() {
+		CellMapperBoolean mapper = new CellMapperBoolean();
+		mapper.indexValue(3.5d);
 	}
 
 	@Test
-	public void testValueFloatWithoutDecimal() {
-		CellMapperString mapper = new CellMapperString();
-		String parsed = mapper.indexValue(3f);
-		Assert.assertEquals("3.0", parsed);
+	public void testValueStringTrueLowercase() {
+		CellMapperBoolean mapper = new CellMapperBoolean();
+		String parsed = mapper.indexValue("true");
+		Assert.assertEquals("true", parsed);
 	}
 
 	@Test
-	public void testValueFloatWithDecimalFloor() {
-		CellMapperString mapper = new CellMapperString();
-		String parsed = mapper.indexValue(3.5f);
-		Assert.assertEquals("3.5", parsed);
-
+	public void testValueStringTrueUppercase() {
+		CellMapperBoolean mapper = new CellMapperBoolean();
+		String parsed = mapper.indexValue("TRUE");
+		Assert.assertEquals("true", parsed);
 	}
 
 	@Test
-	public void testValueFloatWithDecimalCeil() {
-		CellMapperString mapper = new CellMapperString();
-		String parsed = mapper.indexValue(3.6f);
-		Assert.assertEquals("3.6", parsed);
+	public void testValueStringTrueMixedcase() {
+		CellMapperBoolean mapper = new CellMapperBoolean();
+		String parsed = mapper.indexValue("TrUe");
+		Assert.assertEquals("true", parsed);
 	}
 
 	@Test
-	public void testValueDoubleWithoutDecimal() {
-		CellMapperString mapper = new CellMapperString();
-		String parsed = mapper.indexValue(3d);
-		Assert.assertEquals("3.0", parsed);
+	public void testValueStringFalseLowercase() {
+		CellMapperBoolean mapper = new CellMapperBoolean();
+		String parsed = mapper.indexValue("false");
+		Assert.assertEquals("false", parsed);
 	}
 
 	@Test
-	public void testValueDoubleWithDecimalFloor() {
-		CellMapperString mapper = new CellMapperString();
-		String parsed = mapper.indexValue(3.5d);
-		Assert.assertEquals("3.5", parsed);
-
+	public void testValueStringFalseUppercase() {
+		CellMapperBoolean mapper = new CellMapperBoolean();
+		String parsed = mapper.indexValue("FALSE");
+		Assert.assertEquals("false", parsed);
 	}
 
 	@Test
-	public void testValueDoubleWithDecimalCeil() {
-		CellMapperString mapper = new CellMapperString();
-		String parsed = mapper.indexValue(3.6d);
-		Assert.assertEquals("3.6", parsed);
-
+	public void testValueStringFalseMixedcase() {
+		CellMapperBoolean mapper = new CellMapperBoolean();
+		String parsed = mapper.indexValue("fALsE");
+		Assert.assertEquals("false", parsed);
 	}
 
-	@Test
-	public void testValueStringWithoutDecimal() {
-		CellMapperString mapper = new CellMapperString();
-		String parsed = mapper.indexValue("3");
-		Assert.assertEquals("3", parsed);
+	@Test(expected = IllegalArgumentException.class)
+	public void testValueStringInvalid() {
+		CellMapperBoolean mapper = new CellMapperBoolean();
+		mapper.indexValue("hello");
 	}
 
-	@Test
-	public void testValueStringWithDecimalFloor() {
-		CellMapperString mapper = new CellMapperString();
-		String parsed = mapper.indexValue("3.2");
-		Assert.assertEquals("3.2", parsed);
-	}
-
-	@Test
-	public void testValueStringWithDecimalCeil() {
-		CellMapperString mapper = new CellMapperString();
-		String parsed = mapper.indexValue("3.6");
-		Assert.assertEquals("3.6", parsed);
-
-	}
-
-	@Test
+	@Test(expected = IllegalArgumentException.class)
 	public void testValueUUID() {
-		CellMapperString mapper = new CellMapperString();
-		String parsed = mapper.indexValue(UUID.fromString("550e8400-e29b-41d4-a716-446655440000"));
-		Assert.assertEquals("550e8400-e29b-41d4-a716-446655440000", parsed);
+		CellMapperBoolean mapper = new CellMapperBoolean();
+		mapper.indexValue(UUID.fromString("550e8400-e29b-41d4-a716-446655440000"));
 	}
 
 	@Test
 	public void testField() {
-		CellMapperString mapper = new CellMapperString();
-		Field field = mapper.field("name", "hello");
+		CellMapperBoolean mapper = new CellMapperBoolean();
+		Field field = mapper.field("name", "true");
 		Assert.assertNotNull(field);
-		Assert.assertEquals("hello", field.stringValue());
+		Assert.assertEquals("true", field.stringValue());
 		Assert.assertEquals("name", field.name());
-		Assert.assertEquals(false, field.fieldType().stored());
+		Assert.assertFalse(field.fieldType().stored());
 	}
 
 	@Test
 	public void testMatchQuery() {
-		CellMapperString mapper = new CellMapperString();
-		MatchQuery matchQuery = new MatchQuery(0.5f, "name", "hola");
+		CellMapperBoolean mapper = new CellMapperBoolean();
+		MatchQuery matchQuery = new MatchQuery(0.5f, "name", false);
 		Query query = mapper.query(matchQuery);
 		Assert.assertNotNull(query);
 		Assert.assertEquals(TermQuery.class, query.getClass());
-		Assert.assertEquals("hola", ((TermQuery) query).getTerm().bytes().utf8ToString());
+		Assert.assertEquals("false", ((TermQuery) query).getTerm().bytes().utf8ToString());
 		Assert.assertEquals(0.5f, query.getBoost(), 0);
 	}
 
 	@Test
 	public void testRangeQueryClose() {
-		CellMapperString mapper = new CellMapperString();
-		RangeQuery rangeQuery = new RangeQuery(0.5f, "name", "a", "b", true, false);
+		CellMapperBoolean mapper = new CellMapperBoolean();
+		RangeQuery rangeQuery = new RangeQuery(0.5f, "name", true, false, true, false);
 		Query query = mapper.query(rangeQuery);
 		Assert.assertNotNull(query);
 		Assert.assertEquals(TermRangeQuery.class, query.getClass());
 		TermRangeQuery termRangeQuery = (TermRangeQuery) query;
-		Assert.assertEquals("a", termRangeQuery.getLowerTerm().utf8ToString());
-		Assert.assertEquals("b", termRangeQuery.getUpperTerm().utf8ToString());
+		Assert.assertEquals("true", termRangeQuery.getLowerTerm().utf8ToString());
+		Assert.assertEquals("false", termRangeQuery.getUpperTerm().utf8ToString());
 		Assert.assertEquals(true, termRangeQuery.includesLower());
 		Assert.assertEquals(false, termRangeQuery.includesUpper());
 		Assert.assertEquals(0.5f, query.getBoost(), 0);
@@ -154,13 +165,13 @@ public class CellMapperStringTest {
 
 	@Test
 	public void testRangeQueryOpen() {
-		CellMapperString mapper = new CellMapperString();
-		RangeQuery rangeQuery = new RangeQuery(0.5f, "name", "a", null, true, false);
+		CellMapperBoolean mapper = new CellMapperBoolean();
+		RangeQuery rangeQuery = new RangeQuery(0.5f, "name", "true", null, true, false);
 		Query query = mapper.query(rangeQuery);
 		Assert.assertNotNull(query);
 		Assert.assertEquals(TermRangeQuery.class, query.getClass());
 		TermRangeQuery termRangeQuery = (TermRangeQuery) query;
-		Assert.assertEquals("a", termRangeQuery.getLowerTerm().utf8ToString());
+		Assert.assertEquals("true", termRangeQuery.getLowerTerm().utf8ToString());
 		Assert.assertNull(termRangeQuery.getUpperTerm());
 		Assert.assertEquals(true, termRangeQuery.includesLower());
 		Assert.assertEquals(false, termRangeQuery.includesUpper());
@@ -169,76 +180,72 @@ public class CellMapperStringTest {
 
 	@Test
 	public void testPrefixQuery() {
-		CellMapperString mapper = new CellMapperString();
-		PrefixQuery prefixQuery = new PrefixQuery(0.5f, "name", "hell");
+		CellMapperBoolean mapper = new CellMapperBoolean();
+		PrefixQuery prefixQuery = new PrefixQuery(0.5f, "name", "tr");
 		Query query = mapper.query(prefixQuery);
 		Assert.assertNotNull(query);
 		Assert.assertEquals(org.apache.lucene.search.PrefixQuery.class, query.getClass());
 		org.apache.lucene.search.PrefixQuery luceneQuery = (org.apache.lucene.search.PrefixQuery) query;
 		Assert.assertEquals("name", luceneQuery.getField());
-		Assert.assertEquals("hell", luceneQuery.getPrefix().text());
+		Assert.assertEquals("tr", luceneQuery.getPrefix().text());
 		Assert.assertEquals(0.5f, query.getBoost(), 0);
 	}
 
 	@Test
 	public void testWildcardQuery() {
-		CellMapperString mapper = new CellMapperString();
-		WildcardQuery prefixQuery = new WildcardQuery(0.5f, "name", "hell*");
+		CellMapperBoolean mapper = new CellMapperBoolean();
+		WildcardQuery prefixQuery = new WildcardQuery(0.5f, "name", "tr*");
 		Query query = mapper.query(prefixQuery);
 		Assert.assertNotNull(query);
 		Assert.assertEquals(org.apache.lucene.search.WildcardQuery.class, query.getClass());
 		org.apache.lucene.search.WildcardQuery luceneQuery = (org.apache.lucene.search.WildcardQuery) query;
 		Assert.assertEquals("name", luceneQuery.getField());
-		Assert.assertEquals("hell*", luceneQuery.getTerm().text());
+		Assert.assertEquals("tr*", luceneQuery.getTerm().text());
 		Assert.assertEquals(0.5f, query.getBoost(), 0);
 	}
 
 	@Test
 	public void testFuzzyQuery() {
-		CellMapperString mapper = new CellMapperString();
-		FuzzyQuery prefixQuery = new FuzzyQuery(0.5f, "name", "hell", 1, 2, 49, true);
+		CellMapperBoolean mapper = new CellMapperBoolean();
+		FuzzyQuery prefixQuery = new FuzzyQuery(0.5f, "name", "tr", 1, 2, 49, true);
 		Query query = mapper.query(prefixQuery);
 		Assert.assertNotNull(query);
 		Assert.assertEquals(org.apache.lucene.search.FuzzyQuery.class, query.getClass());
 		org.apache.lucene.search.FuzzyQuery luceneQuery = (org.apache.lucene.search.FuzzyQuery) query;
 		Assert.assertEquals("name", luceneQuery.getField());
-		Assert.assertEquals("hell", luceneQuery.getTerm().text());
+		Assert.assertEquals("tr", luceneQuery.getTerm().text());
 		Assert.assertEquals(1, luceneQuery.getMaxEdits());
 		Assert.assertEquals(2, luceneQuery.getPrefixLength());
 		Assert.assertEquals(0.5f, query.getBoost(), 0);
 
 	}
 
-	@Test
+	@Test(expected = UnsupportedOperationException.class)
 	public void testPhraseQuery() {
 
 		List<Object> values = new ArrayList<>();
-		values.add("aa");
-		values.add("ab");
+		values.add("false");
+		values.add(true);
 
-		CellMapperString mapper = new CellMapperString();
+		CellMapperBoolean mapper = new CellMapperBoolean();
 		PhraseQuery phraseQuery = new PhraseQuery(0.5f, "name", values, 2);
-		Query query = mapper.query(phraseQuery);
-		Assert.assertNotNull(query);
-		Assert.assertEquals(org.apache.lucene.search.PhraseQuery.class, query.getClass());
-		org.apache.lucene.search.PhraseQuery luceneQuery = (org.apache.lucene.search.PhraseQuery) query;
-		Assert.assertEquals(values.size(), luceneQuery.getTerms().length);
+		mapper.query(phraseQuery);
 	}
 
 	@Test
 	public void testExtractAnalyzers() {
-		CellMapperString mapper = new CellMapperString();
+		CellMapperBoolean mapper = new CellMapperBoolean();
 		Analyzer analyzer = mapper.analyzer();
 		Assert.assertEquals(CellMapper.EMPTY_ANALYZER, analyzer);
 	}
 
 	@Test
 	public void testParseJSON() throws IOException {
-		String json = "{fields:{age:{type:\"string\"}}}";
+		String json = "{fields:{age:{type:\"boolean\"}}}";
 		CellsMapper cellsMapper = CellsMapper.fromJson(json);
 		CellMapper<?> cellMapper = cellsMapper.getMapper("age");
 		Assert.assertNotNull(cellMapper);
-		Assert.assertEquals(CellMapperString.class, cellMapper.getClass());
+		Assert.assertEquals(CellMapperBoolean.class, cellMapper.getClass());
 	}
 
 	@Test

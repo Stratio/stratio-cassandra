@@ -19,39 +19,53 @@ import org.apache.lucene.search.TermRangeQuery;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class CellMapperStringTest {
+public class CellMapperTextTest {
+
+	@Test()
+	public void testAnalyzerNull() {
+		CellMapperText mapper = new CellMapperText(null);
+		String parsed = mapper.indexValue(null);
+		Assert.assertNull(parsed);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testAnalyzerInvalid() {
+		CellMapperText mapper = new CellMapperText("hello");
+		String parsed = mapper.indexValue(null);
+		Assert.assertNull(parsed);
+	}
 
 	@Test()
 	public void testValueNull() {
-		CellMapperString mapper = new CellMapperString();
+		CellMapperText mapper = new CellMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
 		String parsed = mapper.indexValue(null);
 		Assert.assertNull(parsed);
 	}
 
 	@Test
 	public void testValueInteger() {
-		CellMapperString mapper = new CellMapperString();
+		CellMapperText mapper = new CellMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
 		String parsed = mapper.indexValue(3);
 		Assert.assertEquals("3", parsed);
 	}
 
 	@Test
 	public void testValueLong() {
-		CellMapperString mapper = new CellMapperString();
+		CellMapperText mapper = new CellMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
 		String parsed = mapper.indexValue(3l);
 		Assert.assertEquals("3", parsed);
 	}
 
 	@Test
 	public void testValueFloatWithoutDecimal() {
-		CellMapperString mapper = new CellMapperString();
+		CellMapperText mapper = new CellMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
 		String parsed = mapper.indexValue(3f);
 		Assert.assertEquals("3.0", parsed);
 	}
 
 	@Test
 	public void testValueFloatWithDecimalFloor() {
-		CellMapperString mapper = new CellMapperString();
+		CellMapperText mapper = new CellMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
 		String parsed = mapper.indexValue(3.5f);
 		Assert.assertEquals("3.5", parsed);
 
@@ -59,21 +73,21 @@ public class CellMapperStringTest {
 
 	@Test
 	public void testValueFloatWithDecimalCeil() {
-		CellMapperString mapper = new CellMapperString();
+		CellMapperText mapper = new CellMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
 		String parsed = mapper.indexValue(3.6f);
 		Assert.assertEquals("3.6", parsed);
 	}
 
 	@Test
 	public void testValueDoubleWithoutDecimal() {
-		CellMapperString mapper = new CellMapperString();
+		CellMapperText mapper = new CellMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
 		String parsed = mapper.indexValue(3d);
 		Assert.assertEquals("3.0", parsed);
 	}
 
 	@Test
 	public void testValueDoubleWithDecimalFloor() {
-		CellMapperString mapper = new CellMapperString();
+		CellMapperText mapper = new CellMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
 		String parsed = mapper.indexValue(3.5d);
 		Assert.assertEquals("3.5", parsed);
 
@@ -81,7 +95,7 @@ public class CellMapperStringTest {
 
 	@Test
 	public void testValueDoubleWithDecimalCeil() {
-		CellMapperString mapper = new CellMapperString();
+		CellMapperText mapper = new CellMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
 		String parsed = mapper.indexValue(3.6d);
 		Assert.assertEquals("3.6", parsed);
 
@@ -89,21 +103,21 @@ public class CellMapperStringTest {
 
 	@Test
 	public void testValueStringWithoutDecimal() {
-		CellMapperString mapper = new CellMapperString();
+		CellMapperText mapper = new CellMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
 		String parsed = mapper.indexValue("3");
 		Assert.assertEquals("3", parsed);
 	}
 
 	@Test
 	public void testValueStringWithDecimalFloor() {
-		CellMapperString mapper = new CellMapperString();
+		CellMapperText mapper = new CellMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
 		String parsed = mapper.indexValue("3.2");
 		Assert.assertEquals("3.2", parsed);
 	}
 
 	@Test
 	public void testValueStringWithDecimalCeil() {
-		CellMapperString mapper = new CellMapperString();
+		CellMapperText mapper = new CellMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
 		String parsed = mapper.indexValue("3.6");
 		Assert.assertEquals("3.6", parsed);
 
@@ -111,14 +125,14 @@ public class CellMapperStringTest {
 
 	@Test
 	public void testValueUUID() {
-		CellMapperString mapper = new CellMapperString();
+		CellMapperText mapper = new CellMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
 		String parsed = mapper.indexValue(UUID.fromString("550e8400-e29b-41d4-a716-446655440000"));
 		Assert.assertEquals("550e8400-e29b-41d4-a716-446655440000", parsed);
 	}
 
 	@Test
 	public void testField() {
-		CellMapperString mapper = new CellMapperString();
+		CellMapperText mapper = new CellMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
 		Field field = mapper.field("name", "hello");
 		Assert.assertNotNull(field);
 		Assert.assertEquals("hello", field.stringValue());
@@ -128,7 +142,7 @@ public class CellMapperStringTest {
 
 	@Test
 	public void testMatchQuery() {
-		CellMapperString mapper = new CellMapperString();
+		CellMapperText mapper = new CellMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
 		MatchQuery matchQuery = new MatchQuery(0.5f, "name", "hola");
 		Query query = mapper.query(matchQuery);
 		Assert.assertNotNull(query);
@@ -139,7 +153,7 @@ public class CellMapperStringTest {
 
 	@Test
 	public void testRangeQueryClose() {
-		CellMapperString mapper = new CellMapperString();
+		CellMapperText mapper = new CellMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
 		RangeQuery rangeQuery = new RangeQuery(0.5f, "name", "a", "b", true, false);
 		Query query = mapper.query(rangeQuery);
 		Assert.assertNotNull(query);
@@ -154,7 +168,7 @@ public class CellMapperStringTest {
 
 	@Test
 	public void testRangeQueryOpen() {
-		CellMapperString mapper = new CellMapperString();
+		CellMapperText mapper = new CellMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
 		RangeQuery rangeQuery = new RangeQuery(0.5f, "name", "a", null, true, false);
 		Query query = mapper.query(rangeQuery);
 		Assert.assertNotNull(query);
@@ -169,7 +183,7 @@ public class CellMapperStringTest {
 
 	@Test
 	public void testPrefixQuery() {
-		CellMapperString mapper = new CellMapperString();
+		CellMapperText mapper = new CellMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
 		PrefixQuery prefixQuery = new PrefixQuery(0.5f, "name", "hell");
 		Query query = mapper.query(prefixQuery);
 		Assert.assertNotNull(query);
@@ -182,7 +196,7 @@ public class CellMapperStringTest {
 
 	@Test
 	public void testWildcardQuery() {
-		CellMapperString mapper = new CellMapperString();
+		CellMapperText mapper = new CellMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
 		WildcardQuery prefixQuery = new WildcardQuery(0.5f, "name", "hell*");
 		Query query = mapper.query(prefixQuery);
 		Assert.assertNotNull(query);
@@ -195,7 +209,7 @@ public class CellMapperStringTest {
 
 	@Test
 	public void testFuzzyQuery() {
-		CellMapperString mapper = new CellMapperString();
+		CellMapperText mapper = new CellMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
 		FuzzyQuery prefixQuery = new FuzzyQuery(0.5f, "name", "hell", 1, 2, 49, true);
 		Query query = mapper.query(prefixQuery);
 		Assert.assertNotNull(query);
@@ -216,7 +230,7 @@ public class CellMapperStringTest {
 		values.add("aa");
 		values.add("ab");
 
-		CellMapperString mapper = new CellMapperString();
+		CellMapperText mapper = new CellMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
 		PhraseQuery phraseQuery = new PhraseQuery(0.5f, "name", values, 2);
 		Query query = mapper.query(phraseQuery);
 		Assert.assertNotNull(query);
@@ -227,18 +241,27 @@ public class CellMapperStringTest {
 
 	@Test
 	public void testExtractAnalyzers() {
-		CellMapperString mapper = new CellMapperString();
+		CellMapperText mapper = new CellMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
 		Analyzer analyzer = mapper.analyzer();
-		Assert.assertEquals(CellMapper.EMPTY_ANALYZER, analyzer);
+		Assert.assertEquals(org.apache.lucene.analysis.en.EnglishAnalyzer.class, analyzer.getClass());
 	}
 
 	@Test
-	public void testParseJSON() throws IOException {
-		String json = "{fields:{age:{type:\"string\"}}}";
+	public void testParseJSONWithAnayzer() throws IOException {
+		String json = "{fields:{age:{type:\"text\", analyzer:\"org.apache.lucene.analysis.en.EnglishAnalyzer\"}}}";
 		CellsMapper cellsMapper = CellsMapper.fromJson(json);
 		CellMapper<?> cellMapper = cellsMapper.getMapper("age");
 		Assert.assertNotNull(cellMapper);
-		Assert.assertEquals(CellMapperString.class, cellMapper.getClass());
+		Assert.assertEquals(CellMapperText.class, cellMapper.getClass());
+	}
+
+	@Test
+	public void testParseJSONWithoutAnalyzer() throws IOException {
+		String json = "{fields:{age:{type:\"text\"}}}";
+		CellsMapper cellsMapper = CellsMapper.fromJson(json);
+		CellMapper<?> cellMapper = cellsMapper.getMapper("age");
+		Assert.assertNotNull(cellMapper);
+		Assert.assertEquals(CellMapperText.class, cellMapper.getClass());
 	}
 
 	@Test

@@ -39,7 +39,7 @@ public final class AnalyzerFactory {
 			analyzers.put(analyzerClassName, analyzer);
 			return analyzer;
 		} catch (Exception e) {
-			throw new MappingException(e, "Analyzer not found: '%s'", analyzerClassName);
+			throw new IllegalArgumentException("Analyzer not found: " + analyzerClassName, e);
 		}
 	}
 

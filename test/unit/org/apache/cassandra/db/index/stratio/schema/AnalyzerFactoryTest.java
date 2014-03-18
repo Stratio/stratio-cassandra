@@ -3,7 +3,6 @@ package org.apache.cassandra.db.index.stratio.schema;
 import junit.framework.Assert;
 
 import org.apache.cassandra.db.index.stratio.AnalyzerFactory;
-import org.apache.cassandra.db.index.stratio.MappingException;
 import org.apache.lucene.analysis.Analyzer;
 import org.junit.Test;
 
@@ -16,21 +15,21 @@ public class AnalyzerFactoryTest {
 		Assert.assertEquals(analyzer.getClass().getName(), analyzerClassName);
 	}
 
-	@Test(expected = MappingException.class)
+	@Test(expected = IllegalArgumentException.class)
 	public void testGetAnalyzerInvalidInexistent() {
 		String analyzerClassName = "org.apache.lucene.analysis.es.LepeAnalyzer";
 		Analyzer analyzer = AnalyzerFactory.getAnalyzer(analyzerClassName);
 		Assert.assertEquals(analyzer.getClass().getSimpleName(), analyzerClassName);
 	}
 
-	@Test(expected = MappingException.class)
+	@Test(expected = IllegalArgumentException.class)
 	public void testGetAnalyzerInvalidNull() {
 		String analyzerClassName = null;
 		Analyzer analyzer = AnalyzerFactory.getAnalyzer(analyzerClassName);
 		Assert.assertEquals(analyzer.getClass().getSimpleName(), analyzerClassName);
 	}
 
-	@Test(expected = MappingException.class)
+	@Test(expected = IllegalArgumentException.class)
 	public void testGetAnalyzerInvalidEmpty() {
 		String analyzerClassName = "";
 		Analyzer analyzer = AnalyzerFactory.getAnalyzer(analyzerClassName);

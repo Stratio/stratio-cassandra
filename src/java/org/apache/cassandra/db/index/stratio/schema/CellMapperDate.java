@@ -5,7 +5,6 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import org.apache.cassandra.db.index.stratio.MappingException;
 import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
 import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
@@ -55,12 +54,7 @@ public class CellMapperDate extends CellMapper<Long> {
 	}
 
 	@Override
-	public Field field(String name, Object value) {
-		return new LongField(name, value(value), STORE);
-	}
-
-	@Override
-	public Long value(Object value) {
+	public Long indexValue(Object value) {
 		if (value == null) {
 			return null;
 		} else if (value instanceof Date) {
@@ -71,19 +65,41 @@ public class CellMapperDate extends CellMapper<Long> {
 			try {
 				return concurrentDateFormat.get().parse(value.toString()).getTime();
 			} catch (ParseException e) {
-				throw new MappingException(e, "The string '%s' does not satisfy the pattern %s", value, pattern);
+				throw new IllegalArgumentException(e);
 			}
 		} else {
-			throw new MappingException("Value '%s' cannot be cast to Date", value);
+			throw new IllegalArgumentException();
 		}
+	}
+
+	@Override
+	public Long queryValue(Object value) {
+		return indexValue(value);
+	}
+
+	@Override
+	public Field field(String name, Object value) {
+		return new LongField(name, indexValue(value), STORE);
 	}
 
 	@Override
 	protected Query query(MatchQuery matchQuery) {
 		String name = matchQuery.getField();
-		Long value = value(matchQuery.getValue());
+		Long value = queryValue(matchQuery.getValue());
 		Query query = NumericRangeQuery.newLongRange(name, value, value, true, true);
 		query.setBoost(matchQuery.getBoost());
+		return query;
+	}
+
+	@Override
+	protected Query query(RangeQuery rangeQuery) {
+		String name = rangeQuery.getField();
+		Long lowerValue = queryValue(rangeQuery.getLowerValue());
+		Long upperValue = queryValue(rangeQuery.getUpperValue());
+		boolean includeLower = rangeQuery.getIncludeLower();
+		boolean includeUpper = rangeQuery.getIncludeUpper();
+		Query query = NumericRangeQuery.newLongRange(name, lowerValue, upperValue, includeLower, includeUpper);
+		query.setBoost(rangeQuery.getBoost());
 		return query;
 	}
 
@@ -105,18 +121,6 @@ public class CellMapperDate extends CellMapper<Long> {
 	@Override
 	protected Query query(FuzzyQuery fuzzyQuery) {
 		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	protected Query query(RangeQuery rangeQuery) {
-		String name = rangeQuery.getField();
-		Long lowerValue = value(rangeQuery.getLowerValue());
-		Long upperValue = value(rangeQuery.getUpperValue());
-		boolean includeLower = rangeQuery.getIncludeLower();
-		boolean includeUpper = rangeQuery.getIncludeUpper();
-		Query query = NumericRangeQuery.newLongRange(name, lowerValue, upperValue, includeLower, includeUpper);
-		query.setBoost(rangeQuery.getBoost());
-		return query;
 	}
 
 	@Override

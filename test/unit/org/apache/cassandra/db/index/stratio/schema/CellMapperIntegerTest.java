@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.cassandra.db.index.stratio.MappingException;
 import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
 import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
@@ -23,35 +22,35 @@ public class CellMapperIntegerTest {
 	@Test()
 	public void testValueNull() {
 		CellMapperInteger mapper = new CellMapperInteger(1f);
-		Integer parsed = mapper.value(null);
+		Integer parsed = mapper.indexValue(null);
 		Assert.assertNull(parsed);
 	}
 
 	@Test
 	public void testValueInteger() {
 		CellMapperInteger mapper = new CellMapperInteger(1f);
-		Integer parsed = mapper.value(3);
+		Integer parsed = mapper.indexValue(3);
 		Assert.assertEquals(Integer.valueOf(3), parsed);
 	}
 
 	@Test
 	public void testValueLong() {
 		CellMapperInteger mapper = new CellMapperInteger(1f);
-		Integer parsed = mapper.value(3l);
+		Integer parsed = mapper.indexValue(3l);
 		Assert.assertEquals(Integer.valueOf(3), parsed);
 	}
 
 	@Test
 	public void testValueFloatWithoutDecimal() {
 		CellMapperInteger mapper = new CellMapperInteger(1f);
-		Integer parsed = mapper.value(3f);
+		Integer parsed = mapper.indexValue(3f);
 		Assert.assertEquals(Integer.valueOf(3), parsed);
 	}
 
 	@Test
 	public void testValueFloatWithDecimalFloor() {
 		CellMapperInteger mapper = new CellMapperInteger(1f);
-		Integer parsed = mapper.value(3.5f);
+		Integer parsed = mapper.indexValue(3.5f);
 		Assert.assertEquals(Integer.valueOf(3), parsed);
 
 	}
@@ -59,7 +58,7 @@ public class CellMapperIntegerTest {
 	@Test
 	public void testValueFloatWithDecimalCeil() {
 		CellMapperInteger mapper = new CellMapperInteger(1f);
-		Integer parsed = mapper.value(3.6f);
+		Integer parsed = mapper.indexValue(3.6f);
 		Assert.assertEquals(Integer.valueOf(3), parsed);
 
 	}
@@ -67,14 +66,14 @@ public class CellMapperIntegerTest {
 	@Test
 	public void testValueDoubleWithoutDecimal() {
 		CellMapperInteger mapper = new CellMapperInteger(1f);
-		Integer parsed = mapper.value(3d);
+		Integer parsed = mapper.indexValue(3d);
 		Assert.assertEquals(Integer.valueOf(3), parsed);
 	}
 
 	@Test
 	public void testValueDoubleWithDecimalFloor() {
 		CellMapperInteger mapper = new CellMapperInteger(1f);
-		Integer parsed = mapper.value(3.5d);
+		Integer parsed = mapper.indexValue(3.5d);
 		Assert.assertEquals(Integer.valueOf(3), parsed);
 
 	}
@@ -82,7 +81,7 @@ public class CellMapperIntegerTest {
 	@Test
 	public void testValueDoubleWithDecimalCeil() {
 		CellMapperInteger mapper = new CellMapperInteger(1f);
-		Integer parsed = mapper.value(3.6d);
+		Integer parsed = mapper.indexValue(3.6d);
 		Assert.assertEquals(Integer.valueOf(3), parsed);
 
 	}
@@ -90,14 +89,14 @@ public class CellMapperIntegerTest {
 	@Test
 	public void testValueStringWithoutDecimal() {
 		CellMapperInteger mapper = new CellMapperInteger(1f);
-		Integer parsed = mapper.value("3");
+		Integer parsed = mapper.indexValue("3");
 		Assert.assertEquals(Integer.valueOf(3), parsed);
 	}
 
 	@Test
 	public void testValueStringWithDecimalFloor() {
 		CellMapperInteger mapper = new CellMapperInteger(1f);
-		Integer parsed = mapper.value("3.2");
+		Integer parsed = mapper.indexValue("3.2");
 		Assert.assertEquals(Integer.valueOf(3), parsed);
 
 	}
@@ -105,7 +104,7 @@ public class CellMapperIntegerTest {
 	@Test
 	public void testValueStringWithDecimalCeil() {
 		CellMapperInteger mapper = new CellMapperInteger(1f);
-		Integer parsed = mapper.value("3.2");
+		Integer parsed = mapper.indexValue("3.2");
 		Assert.assertEquals(Integer.valueOf(3), parsed);
 
 	}
@@ -160,28 +159,28 @@ public class CellMapperIntegerTest {
 		Assert.assertEquals(0.5f, query.getBoost(), 0);
 	}
 
-	@Test(expected = MappingException.class)
+	@Test(expected = UnsupportedOperationException.class)
 	public void testPrefixQuery() {
 		CellMapperInteger mapper = new CellMapperInteger(1f);
 		PrefixQuery prefixQuery = new PrefixQuery(1f, "name", 3);
 		mapper.query(prefixQuery);
 	}
 
-	@Test(expected = MappingException.class)
+	@Test(expected = UnsupportedOperationException.class)
 	public void testWildcardQuery() {
 		CellMapperInteger mapper = new CellMapperInteger(1f);
 		WildcardQuery prefixQuery = new WildcardQuery(1f, "name", 3);
 		mapper.query(prefixQuery);
 	}
 
-	@Test(expected = MappingException.class)
+	@Test(expected = UnsupportedOperationException.class)
 	public void testFuzzyQuery() {
 		CellMapperInteger mapper = new CellMapperInteger(1f);
 		FuzzyQuery prefixQuery = new FuzzyQuery(1f, "name", 3, 2, 0, 50, true);
 		mapper.query(prefixQuery);
 	}
 
-	@Test(expected = MappingException.class)
+	@Test(expected = UnsupportedOperationException.class)
 	public void testPhraseQuery() {
 		CellMapperInteger mapper = new CellMapperInteger(1f);
 		List<Object> values = new ArrayList<>();
@@ -215,7 +214,7 @@ public class CellMapperIntegerTest {
 		Assert.assertEquals(CellMapperText.class, cellMapper.getClass());
 	}
 
-	@Test(expected = MappingException.class)
+	@Test(expected = IllegalArgumentException.class)
 	public void testParseJSONInvalid() throws IOException {
 		String json = "{fields:{age:{}}";
 		CellsMapper.fromJson(json);

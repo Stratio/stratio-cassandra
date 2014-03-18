@@ -28,18 +28,12 @@ public class CellMapperString extends CellMapper<String> {
 	}
 
 	@Override
-	public Field field(String name, Object value) {
-		String string = value(value);
-		return new StringField(name, string, STORE);
-	}
-
-	@Override
 	public Analyzer analyzer() {
 		return EMPTY_ANALYZER;
 	}
 
 	@Override
-	public String value(Object value) {
+	public String indexValue(Object value) {
 		if (value == null) {
 			return null;
 		} else {
@@ -48,9 +42,20 @@ public class CellMapperString extends CellMapper<String> {
 	}
 
 	@Override
+	public String queryValue(Object value) {
+		return indexValue(value);
+	}
+
+	@Override
+	public Field field(String name, Object value) {
+		String string = indexValue(value);
+		return new StringField(name, string, STORE);
+	}
+	
+	@Override
 	protected Query query(MatchQuery matchQuery) {
 		String name = matchQuery.getField();
-		String value = value(matchQuery.getValue());
+		String value = queryValue(matchQuery.getValue());
 		Term term = new Term(name, value);
 		Query query = new TermQuery(term);
 		query.setBoost(matchQuery.getBoost());
@@ -58,9 +63,21 @@ public class CellMapperString extends CellMapper<String> {
 	}
 
 	@Override
+	protected Query query(RangeQuery rangeQuery) {
+		String name = rangeQuery.getField();
+		String lowerValue = queryValue(rangeQuery.getLowerValue());
+		String upperValue = queryValue(rangeQuery.getUpperValue());
+		boolean includeLower = rangeQuery.getIncludeLower();
+		boolean includeUpper = rangeQuery.getIncludeUpper();
+		Query query = TermRangeQuery.newStringRange(name, lowerValue, upperValue, includeLower, includeUpper);
+		query.setBoost(rangeQuery.getBoost());
+		return query;
+	}
+
+	@Override
 	protected Query query(PrefixQuery prefixQuery) {
 		String name = prefixQuery.getField();
-		String value = value(prefixQuery.getValue());
+		String value = queryValue(prefixQuery.getValue());
 		Term term = new Term(name, value);
 		org.apache.lucene.search.PrefixQuery query = new org.apache.lucene.search.PrefixQuery(term);
 		query.setBoost(prefixQuery.getBoost());
@@ -70,7 +87,7 @@ public class CellMapperString extends CellMapper<String> {
 	@Override
 	protected Query query(WildcardQuery wildcardQuery) {
 		String name = wildcardQuery.getField();
-		String value = value(wildcardQuery.getValue());
+		String value = queryValue(wildcardQuery.getValue());
 		Term term = new Term(name, value);
 		org.apache.lucene.search.WildcardQuery query = new org.apache.lucene.search.WildcardQuery(term);
 		query.setBoost(wildcardQuery.getBoost());
@@ -82,7 +99,7 @@ public class CellMapperString extends CellMapper<String> {
 		org.apache.lucene.search.PhraseQuery query = new org.apache.lucene.search.PhraseQuery();
 		String name = phraseQuery.getField();
 		for (Object o : phraseQuery.getValues()) {
-			String value = value(o);
+			String value = queryValue(o);
 			Term term = new Term(name, value);
 			query.add(term);
 		}
@@ -94,7 +111,7 @@ public class CellMapperString extends CellMapper<String> {
 	@Override
 	protected Query query(FuzzyQuery fuzzyQuery) {
 		String name = fuzzyQuery.getField();
-		String value = value(fuzzyQuery.getValue());
+		String value = queryValue(fuzzyQuery.getValue());
 		Term term = new Term(name, value);
 		int maxEdits = fuzzyQuery.getMaxEdits();
 		int prefixLength = fuzzyQuery.getPrefixLength();
@@ -106,18 +123,6 @@ public class CellMapperString extends CellMapper<String> {
 		                                                      maxExpansions,
 		                                                      transpositions);
 		query.setBoost(fuzzyQuery.getBoost());
-		return query;
-	}
-
-	@Override
-	protected Query query(RangeQuery rangeQuery) {
-		String name = rangeQuery.getField();
-		String lowerValue = value(rangeQuery.getLowerValue());
-		String upperValue = value(rangeQuery.getUpperValue());
-		boolean includeLower = rangeQuery.getIncludeLower();
-		boolean includeUpper = rangeQuery.getIncludeUpper();
-		Query query = TermRangeQuery.newStringRange(name, lowerValue, upperValue, includeLower, includeUpper);
-		query.setBoost(rangeQuery.getBoost());
 		return query;
 	}
 

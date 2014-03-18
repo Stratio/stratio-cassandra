@@ -1,6 +1,5 @@
 package org.apache.cassandra.db.index.stratio.schema;
 
-import org.apache.cassandra.db.index.stratio.MappingException;
 import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
 import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
@@ -39,15 +38,7 @@ public class CellMapperFloat extends CellMapper<Float> {
 	}
 
 	@Override
-	public Field field(String name, Object value) {
-		Float number = value(value);
-		Field field = new FloatField(name, number, STORE);
-		field.setBoost(boost);
-		return field;
-	}
-
-	@Override
-	public Float value(Object value) {
+	public Float indexValue(Object value) {
 		if (value == null) {
 			return null;
 		} else if (value instanceof Number) {
@@ -55,49 +46,62 @@ public class CellMapperFloat extends CellMapper<Float> {
 		} else if (value instanceof String) {
 			return Double.valueOf(value.toString()).floatValue();
 		} else {
-			throw new MappingException("Value '%s' cannot be cast to Float", value);
+			throw new IllegalArgumentException(String.format("Value '%s' cannot be cast to Float", value));
 		}
+	}
+
+	@Override
+	public Float queryValue(Object value) {
+		return indexValue(value);
+	}
+
+	@Override
+	public Field field(String name, Object value) {
+		Float number = indexValue(value);
+		Field field = new FloatField(name, number, STORE);
+		field.setBoost(boost);
+		return field;
 	}
 
 	@Override
 	protected Query query(MatchQuery matchQuery) {
 		String name = matchQuery.getField();
-		Float value = value(matchQuery.getValue());
+		Float value = queryValue(matchQuery.getValue());
 		Query query = NumericRangeQuery.newFloatRange(name, value, value, true, true);
 		query.setBoost(matchQuery.getBoost());
 		return query;
 	}
 
 	@Override
-	protected Query query(PrefixQuery prefixQuery) {
-		throw new MappingException();
-	}
-
-	@Override
-	protected Query query(WildcardQuery wildcardQuery) {
-		throw new MappingException();
-	}
-
-	@Override
-	protected Query query(PhraseQuery phraseQuery) {
-		throw new MappingException();
-	}
-
-	@Override
-	protected Query query(FuzzyQuery fuzzyQuery) {
-		throw new MappingException();
-	}
-
-	@Override
 	protected Query query(RangeQuery rangeQuery) {
 		String name = rangeQuery.getField();
-		Float lowerValue = value(rangeQuery.getLowerValue());
-		Float upperValue = value(rangeQuery.getUpperValue());
+		Float lowerValue = queryValue(rangeQuery.getLowerValue());
+		Float upperValue = queryValue(rangeQuery.getUpperValue());
 		boolean includeLower = rangeQuery.getIncludeLower();
 		boolean includeUpper = rangeQuery.getIncludeUpper();
 		Query query = NumericRangeQuery.newFloatRange(name, lowerValue, upperValue, includeLower, includeUpper);
 		query.setBoost(rangeQuery.getBoost());
 		return query;
+	}
+
+	@Override
+	protected Query query(PrefixQuery prefixQuery) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	protected Query query(WildcardQuery wildcardQuery) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	protected Query query(PhraseQuery phraseQuery) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	protected Query query(FuzzyQuery fuzzyQuery) {
+		throw new UnsupportedOperationException();
 	}
 
 	@Override

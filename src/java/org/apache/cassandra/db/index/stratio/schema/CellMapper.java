@@ -2,7 +2,6 @@ package org.apache.cassandra.db.index.stratio.schema;
 
 import java.nio.ByteBuffer;
 
-import org.apache.cassandra.db.index.stratio.MappingException;
 import org.apache.cassandra.db.index.stratio.query.AbstractQuery;
 import org.apache.cassandra.db.index.stratio.query.BooleanQuery;
 import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
@@ -69,27 +68,33 @@ public abstract class CellMapper<BASE> {
 	 */
 	public abstract Field field(String name, Object value);
 
+	/**
+	 * Returns the Lucene's {@link org.apache.lucene.search.Query} represented by the specified
+	 * {@link AbstractQuery}.
+	 * 
+	 * @param abstractQuery
+	 *            An abstract query.
+	 * @return The Lucene's {@link org.apache.lucene.search.Query} represented by the specified
+	 *         {@link AbstractQuery}.
+	 */
 	public Query query(AbstractQuery abstractQuery) {
-		Query query = null;
 		if (abstractQuery instanceof MatchQuery) {
-			query = query((MatchQuery) abstractQuery);
+			return query((MatchQuery) abstractQuery);
 		} else if (abstractQuery instanceof PrefixQuery) {
-			query = query((PrefixQuery) abstractQuery);
+			return query((PrefixQuery) abstractQuery);
 		} else if (abstractQuery instanceof WildcardQuery) {
-			query = query((WildcardQuery) abstractQuery);
+			return query((WildcardQuery) abstractQuery);
 		} else if (abstractQuery instanceof PhraseQuery) {
-			query = query((PhraseQuery) abstractQuery);
+			return query((PhraseQuery) abstractQuery);
 		} else if (abstractQuery instanceof FuzzyQuery) {
-			query = query((FuzzyQuery) abstractQuery);
+			return query((FuzzyQuery) abstractQuery);
 		} else if (abstractQuery instanceof RangeQuery) {
-			query = query((RangeQuery) abstractQuery);
+			return query((RangeQuery) abstractQuery);
 		} else if (abstractQuery instanceof BooleanQuery) {
-			query = query((BooleanQuery) abstractQuery);
+			return query((BooleanQuery) abstractQuery);
 		} else {
-			throw new MappingException();
+			throw new UnsupportedOperationException();
 		}
-		query.setBoost(abstractQuery.getBoost());
-		return query;
 	}
 
 	/**
@@ -165,5 +170,7 @@ public abstract class CellMapper<BASE> {
 	 *            The object to be mapped.
 	 * @return The cell value resulting from the mapping of the specified object.
 	 */
-	public abstract BASE value(Object value);
+	public abstract BASE indexValue(Object value);
+
+	public abstract BASE queryValue(Object value);
 }

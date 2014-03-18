@@ -1,6 +1,5 @@
 package org.apache.cassandra.db.index.stratio.schema;
 
-import org.apache.cassandra.db.index.stratio.MappingException;
 import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
 import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
@@ -39,8 +38,26 @@ public class CellMapperInteger extends CellMapper<Integer> {
 	}
 
 	@Override
+	public Integer indexValue(Object value) {
+		if (value == null) {
+			return null;
+		} else if (value instanceof Number) {
+			return ((Number) value).intValue();
+		} else if (value instanceof String) {
+			return Double.valueOf(value.toString()).intValue();
+		} else {
+			throw new IllegalArgumentException(String.format("Value '%s' cannot be cast to Integer", value));
+		}
+	}
+
+	@Override
+	public Integer queryValue(Object value) {
+		return indexValue(value);
+	}
+
+	@Override
 	public Field field(String name, Object value) {
-		Integer number = value(value);
+		Integer number = indexValue(value);
 		Field field = new IntField(name, number, STORE);
 		field.setBoost(boost);
 		return field;
@@ -49,37 +66,17 @@ public class CellMapperInteger extends CellMapper<Integer> {
 	@Override
 	protected Query query(MatchQuery matchQuery) {
 		String name = matchQuery.getField();
-		Integer value = value(matchQuery.getValue());
+		Integer value = queryValue(matchQuery.getValue());
 		Query query = NumericRangeQuery.newIntRange(name, value, value, true, true);
 		query.setBoost(matchQuery.getBoost());
 		return query;
 	}
 
 	@Override
-	protected Query query(PrefixQuery prefixQuery) {
-		throw new MappingException();
-	}
-
-	@Override
-	protected Query query(WildcardQuery wildcardQuery) {
-		throw new MappingException();
-	}
-
-	@Override
-	protected Query query(PhraseQuery phraseQuery) {
-		throw new MappingException();
-	}
-
-	@Override
-	protected Query query(FuzzyQuery fuzzyQuery) {
-		throw new MappingException();
-	}
-
-	@Override
 	protected Query query(RangeQuery rangeQuery) {
 		String name = rangeQuery.getField();
-		Integer lowerValue = value(rangeQuery.getLowerValue());
-		Integer upperValue = value(rangeQuery.getUpperValue());
+		Integer lowerValue = queryValue(rangeQuery.getLowerValue());
+		Integer upperValue = queryValue(rangeQuery.getUpperValue());
 		boolean includeLower = rangeQuery.getIncludeLower();
 		boolean includeUpper = rangeQuery.getIncludeUpper();
 		Query query = NumericRangeQuery.newIntRange(name, lowerValue, upperValue, includeLower, includeUpper);
@@ -88,16 +85,23 @@ public class CellMapperInteger extends CellMapper<Integer> {
 	}
 
 	@Override
-	public Integer value(Object value) {
-		if (value == null) {
-			return null;
-		} else if (value instanceof Number) {
-			return ((Number) value).intValue();
-		} else if (value instanceof String) {
-			return Double.valueOf(value.toString()).intValue();
-		} else {
-			throw new MappingException("Value '%s' cannot be cast to Integer", value);
-		}
+	protected Query query(PrefixQuery prefixQuery) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	protected Query query(WildcardQuery wildcardQuery) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	protected Query query(PhraseQuery phraseQuery) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	protected Query query(FuzzyQuery fuzzyQuery) {
+		throw new UnsupportedOperationException();
 	}
 
 	@Override
