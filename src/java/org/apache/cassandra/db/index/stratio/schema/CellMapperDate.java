@@ -27,7 +27,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  */
 public class CellMapperDate extends CellMapper<Long> {
 
-	public static final String DEFAULT_PATTERN = "yyyy/MM/dd HH:mm:ss||yyyy/MM/dd";
+	public static final String DEFAULT_PATTERN = "yyyy/MM/dd HH:mm:ss.SSS";
 
 	/** The date and time pattern. */
 	@JsonProperty("pattern")
