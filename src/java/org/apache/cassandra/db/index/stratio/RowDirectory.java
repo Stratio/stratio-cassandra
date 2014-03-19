@@ -303,7 +303,7 @@ public class RowDirectory {
 					Float score = scoreDoc.score;
 					ScoredDocument scoredDocument = new ScoredDocument(document, score);
 					scoredDocuments.add(scoredDocument);
-					Log.debug("Found %s", scoredDocument);
+					//Log.debug("Found %s", scoredDocument);
 				}
 
 				return scoredDocuments;
