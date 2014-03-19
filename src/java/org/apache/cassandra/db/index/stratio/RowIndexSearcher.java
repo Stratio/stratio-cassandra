@@ -1,6 +1,5 @@
 package org.apache.cassandra.db.index.stratio;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Set;
@@ -50,35 +49,24 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
 	public List<Row> search(ExtendedFilter extendedFilter) {
 		logger.info("Searching " + extendedFilter);
 		try {
-			long start = System.currentTimeMillis();
-			List<Row> rows = rowService.search(extendedFilter);
-			long finish = System.currentTimeMillis();
-			//System.out.println(" -> FULL SEARCH TIME " + (finish - start));
-			return rows;
-		} catch (IOException e) {
+			return rowService.search(extendedFilter);
+		} catch (Exception e) {
 			logger.error("Error while searching ", e);
-			throw new RuntimeException(e);
+			return null; // Force upper component NPE to allow fail by RPC timeout
 		}
 	}
 
 	@Override
 	public boolean isIndexing(List<IndexExpression> clause) {
-		logger.info("isIndexing(" + clause + ")");
-		return highestSelectivityPredicate(clause) != null;
-	}
-
-	@Override
-	protected IndexExpression highestSelectivityPredicate(List<IndexExpression> clause) {
-		logger.info("highestSelectivityPredicate(" + clause + ")");
 		for (IndexExpression expression : clause) {
 			SecondaryIndex index = indexManager.getIndexForColumn(expression.column_name);
 			if (index != null && expression.op.equals(IndexOperator.EQ) && index == currentIndex) {
-				return expression;
+				return true;
 			} else {
 				continue;
 			}
 		}
-		return null;
+		return false;
 	}
 
 }

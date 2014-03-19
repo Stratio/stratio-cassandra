@@ -9,6 +9,7 @@ import org.apache.cassandra.db.marshal.AbstractCompositeType.CompositeComponent;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.Hex;
 
 /**
  * Utility class with some {@link java.nio.ByteBuffer}/
@@ -193,6 +194,14 @@ public class ByteBufferUtils {
 	 */
 	public static ByteBuffer fromString(String string) {
 		return Base256Serializer.byteBuffer(string);
+	}
+
+	public static String toHex(ByteBuffer byteBuffer) {
+		return ByteBufferUtil.bytesToHex(byteBuffer);
+	}
+
+	public static String toHex(byte[] bytes) {
+		return Hex.bytesToHex(bytes);
 	}
 
 }

@@ -18,8 +18,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.OpenBitSet;
 
 /**
- * {@link Filter} that filters documents which partition key field satisfies a certain
- * {@link DataRange}.
+ * {@link Filter} that filters documents which token field satisfies a certain {@link DataRange}.
  * 
  * @author adelapena
  * 
@@ -32,11 +31,11 @@ public class TokenMapperGenericFilter extends Filter {
 	private final AbstractBounds<Token> keyRange;
 
 	/**
-	 * Returns a new {@code PartitionKeyMapperFilter} for the specified data range using the
-	 * specified partition key mapper.
+	 * Returns a new {@code TokenMapperGeneric} for the specified data range using the specified
+	 * token mapper.
 	 * 
-	 * @param partitionKeyMapper
-	 *            The partition key mapper.
+	 * @param tokenMapperGeneric
+	 *            The used token mapper.
 	 * @param dataRange
 	 *            The partition data range to be filtered.
 	 */
@@ -45,6 +44,9 @@ public class TokenMapperGenericFilter extends Filter {
 		this.keyRange = dataRange.keyRange().toTokenBounds();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public DocIdSet getDocIdSet(AtomicReaderContext context, final Bits acceptDocs) throws IOException {
 

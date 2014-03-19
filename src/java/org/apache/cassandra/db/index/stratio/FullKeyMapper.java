@@ -24,10 +24,14 @@ public class FullKeyMapper {
 	public AbstractType<?> clusteringKeyType;
 	public CompositeType type;
 
-	public FullKeyMapper(CFMetaData metadata) {
+	private FullKeyMapper(CFMetaData metadata) {
 		this.partitionKeyType = metadata.getKeyValidator();
 		this.clusteringKeyType = metadata.comparator;
 		type = CompositeType.getInstance(partitionKeyType, clusteringKeyType);
+	}
+
+	public static FullKeyMapper instance(CFMetaData metadata) {
+		return metadata.clusteringKeyColumns().size() > 0 ? new FullKeyMapper(metadata) : null;
 	}
 
 	public AbstractType<?> getPartitionKeyType() {
