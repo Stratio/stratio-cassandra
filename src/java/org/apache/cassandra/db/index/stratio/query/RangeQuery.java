@@ -1,6 +1,9 @@
 package org.apache.cassandra.db.index.stratio.query;
 
+import org.apache.cassandra.db.index.stratio.schema.CellMapper;
+import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.search.Query;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeName;
@@ -124,6 +127,12 @@ public class RangeQuery extends AbstractQuery {
 	public void analyze(Analyzer analyzer) {
 		this.lower = analyze(field, lower, analyzer);
 		this.upper = analyze(field, upper, analyzer);
+	}
+
+	@Override
+	public Query toLucene(CellsMapper cellsMapper) {
+		CellMapper<?> cellMapper = cellsMapper.getMapper(field);
+		return cellMapper.query(this);
 	}
 
 	@Override

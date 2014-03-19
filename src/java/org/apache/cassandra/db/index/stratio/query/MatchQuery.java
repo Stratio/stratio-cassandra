@@ -1,6 +1,9 @@
 package org.apache.cassandra.db.index.stratio.query;
 
+import org.apache.cassandra.db.index.stratio.schema.CellMapper;
+import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.search.Query;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeName;
@@ -63,6 +66,12 @@ public class MatchQuery extends AbstractQuery {
 	@Override
 	public void analyze(Analyzer analyzer) {
 		this.value = analyze(field, value, analyzer);
+	}
+
+	@Override
+	public Query toLucene(CellsMapper cellsMapper) {
+		CellMapper<?> cellMapper = cellsMapper.getMapper(field);
+		return cellMapper.query(this);
 	}
 
 	@Override

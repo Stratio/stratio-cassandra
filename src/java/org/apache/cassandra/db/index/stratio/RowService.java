@@ -124,7 +124,9 @@ public class RowService {
 	 * will be improved in the future.
 	 * 
 	 * @param key
+	 *            The partition key.
 	 * @param columnFamily
+	 *            The column family containing the clustering keys.
 	 */
 	public final void index(ByteBuffer key, ColumnFamily columnFamily) {
 
@@ -242,15 +244,13 @@ public class RowService {
 
 		// Setup Lucene's query, filter and sort
 		Query query = cellsMapper.query(querySentence);
-		System.out.println("QUERYING " + query);
-		System.out.println("ANALYZER " + cellsMapper.analyzer());
 		Filter filter = cachedFilter(dataRange);
 		Sort sort = sort();
 
 		// Search in Lucene's index
 		long searchStart = System.currentTimeMillis();
 		List<ScoredDocument> scoredDocuments = rowDirectory.search(query, filter, sort, columns, fieldsToLoad);
-		Log.debug(" -> LUCENE SEARCH TIME " + (System.currentTimeMillis() - searchStart));
+		Log.debug("Lucene search time " + (System.currentTimeMillis() - searchStart));
 
 		// Collect matching rows
 		long collectStart = System.currentTimeMillis();
@@ -258,12 +258,22 @@ public class RowService {
 		for (ScoredDocument sc : scoredDocuments) {
 			rows.add(row(sc.document, sc.score));
 		}
-		Log.debug(" -> ROW COLLECTION TIME " + (System.currentTimeMillis() - collectStart));
+		Log.debug("Cassandra collection time " + (System.currentTimeMillis() - collectStart));
 
 		return rows;
 	}
 
-	public Row row(Document document, Float score) throws IOException {
+	/**
+	 * Returns the Cassandra's {@link Row} identified by the specified Lucene's {@link Document}.
+	 * The specified search score is added as a column to the row.
+	 * 
+	 * @param document
+	 *            The Lucene's {@link Document} identifying the {@link Row} to be returned.
+	 * @param score
+	 *            The search score.
+	 * @return The Cassandra's {@link Row} identified by the specified Lucene's {@link Document}.
+	 */
+	private Row row(Document document, Float score) {
 
 		// Get the decorated partition key
 		DecoratedKey decoratedKey = partitionKeyMapper.decoratedKey(document);
@@ -320,6 +330,14 @@ public class RowService {
 		}
 	}
 
+	/**
+	 * Returns a Lucene's {@link Filter} representing the specified Cassandra's {@link DataRange}
+	 * using caching.
+	 * 
+	 * @param dataRange
+	 *            The Cassandra's {@link DataRange} to be mapped.
+	 * @return A Lucene's {@link Filter} representing the specified Cassandra's {@link DataRange}.
+	 */
 	private Filter cachedFilter(DataRange dataRange) {
 		if (filterCache == null) {
 			return filter(dataRange);
@@ -335,6 +353,15 @@ public class RowService {
 		return filter;
 	}
 
+	/**
+	 * Returns a Lucene's {@link Term} to be used as the unique identifier of a row.
+	 * 
+	 * @param partitionKey
+	 *            The row's partition key.
+	 * @param clusteringKey
+	 *            The row's clustering key.
+	 * @return A Lucene's {@link Term} to be used as the unique identifier of a row.
+	 */
 	private Term term(DecoratedKey partitionKey, ByteBuffer clusteringKey) {
 		if (isWide) {
 			return fullKeyMapper.term(partitionKey, clusteringKey);

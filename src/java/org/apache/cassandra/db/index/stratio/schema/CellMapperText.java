@@ -1,6 +1,7 @@
 package org.apache.cassandra.db.index.stratio.schema;
 
 import org.apache.cassandra.db.index.stratio.AnalyzerFactory;
+import org.apache.cassandra.db.index.stratio.query.AbstractQuery;
 import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
 import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
@@ -8,14 +9,12 @@ import org.apache.cassandra.db.index.stratio.query.PrefixQuery;
 import org.apache.cassandra.db.index.stratio.query.RangeQuery;
 import org.apache.cassandra.db.index.stratio.query.WildcardQuery;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermRangeQuery;
-import org.apache.lucene.util.Version;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonIgnore;
 import org.codehaus.jackson.annotate.JsonProperty;
@@ -27,24 +26,22 @@ import org.codehaus.jackson.annotate.JsonProperty;
  */
 public class CellMapperText extends CellMapper<String> {
 
-	public static final Analyzer DEFAULT_ANALYZER = new StandardAnalyzer(Version.LUCENE_46);
-
 	/** The Lucene's {@link corg.apache.lucene.analysis.Analyzer} class name. */
 	@JsonProperty("analyzer")
-	private final String analyzerClassName;
+	private String analyzerClassName;
 
 	/** The Lucene's {@link corg.apache.lucene.analysis.Analyzer}. */
 	@JsonIgnore
-	private final Analyzer analyzer;
+	private Analyzer analyzer;
 
 	@JsonCreator
 	public CellMapperText(@JsonProperty("analyzer") String analyzerClassName) {
-		if (analyzerClassName == null) {
-			this.analyzer = DEFAULT_ANALYZER;
-			this.analyzerClassName = DEFAULT_ANALYZER.getClass().getName();
-		} else {
+		if (analyzerClassName != null) {
 			this.analyzer = AnalyzerFactory.getAnalyzer(analyzerClassName);
 			this.analyzerClassName = analyzerClassName;
+		} else {
+			this.analyzer = null;
+			this.analyzerClassName = null;
 		}
 	}
 
@@ -72,9 +69,28 @@ public class CellMapperText extends CellMapper<String> {
 		String text = indexValue(value);
 		return new TextField(name, text, STORE);
 	}
-	
+
 	@Override
-	protected Query query(MatchQuery matchQuery) {
+	public Query query(AbstractQuery query) {
+		if (query instanceof MatchQuery) {
+			return query((MatchQuery) query);
+		} else if (query instanceof PrefixQuery) {
+			return query((PrefixQuery) query);
+		} else if (query instanceof WildcardQuery) {
+			return query((WildcardQuery) query);
+		} else if (query instanceof PhraseQuery) {
+			return query((PhraseQuery) query);
+		} else if (query instanceof FuzzyQuery) {
+			return query((FuzzyQuery) query);
+		} else if (query instanceof RangeQuery) {
+			return query((RangeQuery) query);
+		} else {
+			String message = String.format("Unsupported query %s for mapper %s", query, this);
+			throw new UnsupportedOperationException(message);
+		}
+	}
+
+	private Query query(MatchQuery matchQuery) {
 		String name = matchQuery.getField();
 		String value = queryValue(matchQuery.getValue());
 		Term term = new Term(name, value);
@@ -83,8 +99,7 @@ public class CellMapperText extends CellMapper<String> {
 		return query;
 	}
 
-	@Override
-	protected Query query(RangeQuery rangeQuery) {
+	private Query query(RangeQuery rangeQuery) {
 		String name = rangeQuery.getField();
 		String lowerValue = queryValue(rangeQuery.getLowerValue());
 		String upperValue = queryValue(rangeQuery.getUpperValue());
@@ -95,8 +110,7 @@ public class CellMapperText extends CellMapper<String> {
 		return query;
 	}
 
-	@Override
-	protected Query query(PrefixQuery prefixQuery) {
+	private Query query(PrefixQuery prefixQuery) {
 		String name = prefixQuery.getField();
 		String value = queryValue(prefixQuery.getValue());
 		Term term = new Term(name, value);
@@ -105,8 +119,7 @@ public class CellMapperText extends CellMapper<String> {
 		return query;
 	}
 
-	@Override
-	protected Query query(WildcardQuery wildcardQuery) {
+	private Query query(WildcardQuery wildcardQuery) {
 		String name = wildcardQuery.getField();
 		String value = queryValue(wildcardQuery.getValue());
 		Term term = new Term(name, value);
@@ -115,8 +128,7 @@ public class CellMapperText extends CellMapper<String> {
 		return query;
 	}
 
-	@Override
-	protected Query query(PhraseQuery phraseQuery) {
+	private Query query(PhraseQuery phraseQuery) {
 		org.apache.lucene.search.PhraseQuery query = new org.apache.lucene.search.PhraseQuery();
 		String name = phraseQuery.getField();
 		int position = 0;
@@ -132,8 +144,7 @@ public class CellMapperText extends CellMapper<String> {
 		return query;
 	}
 
-	@Override
-	protected Query query(FuzzyQuery fuzzyQuery) {
+	private Query query(FuzzyQuery fuzzyQuery) {
 		String name = fuzzyQuery.getField();
 		String value = queryValue(fuzzyQuery.getValue());
 		Term term = new Term(name, value);

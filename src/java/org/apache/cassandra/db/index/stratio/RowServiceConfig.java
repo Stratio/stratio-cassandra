@@ -94,6 +94,10 @@ public class RowServiceConfig {
 		path = directoryPathBuilder.toString();
 	}
 
+	public static void validate(ColumnDefinition columnDefinition) {
+		new RowServiceConfig(columnDefinition);
+	}
+
 	public CellsMapper getCellsMapper() {
 		return cellsMapper;
 	}

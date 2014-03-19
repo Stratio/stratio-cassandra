@@ -2,6 +2,7 @@ package org.apache.cassandra.db.index.stratio.schema;
 
 import java.util.UUID;
 
+import org.apache.cassandra.db.index.stratio.query.AbstractQuery;
 import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
 import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
@@ -63,7 +64,26 @@ public class CellMapperUUID extends CellMapper<String> {
 	}
 
 	@Override
-	protected Query query(MatchQuery matchQuery) {
+	public Query query(AbstractQuery query) {
+		if (query instanceof MatchQuery) {
+			return query((MatchQuery) query);
+		} else if (query instanceof PrefixQuery) {
+			return query((PrefixQuery) query);
+		} else if (query instanceof WildcardQuery) {
+			return query((WildcardQuery) query);
+		} else if (query instanceof PhraseQuery) {
+			return query((PhraseQuery) query);
+		} else if (query instanceof FuzzyQuery) {
+			return query((FuzzyQuery) query);
+		} else if (query instanceof RangeQuery) {
+			return query((RangeQuery) query);
+		} else {
+			String message = String.format("Unsupported query %s for mapper %s", query, this);
+			throw new UnsupportedOperationException(message);
+		}
+	}
+
+	private Query query(MatchQuery matchQuery) {
 		String name = matchQuery.getField();
 		String value = queryValue(matchQuery.getValue());
 		Term term = new Term(name, value);
@@ -72,8 +92,7 @@ public class CellMapperUUID extends CellMapper<String> {
 		return query;
 	}
 
-	@Override
-	protected Query query(RangeQuery rangeQuery) {
+	private Query query(RangeQuery rangeQuery) {
 		String name = rangeQuery.getField();
 		String lowerValue = queryValue(rangeQuery.getLowerValue());
 		String upperValue = queryValue(rangeQuery.getUpperValue());
@@ -84,8 +103,7 @@ public class CellMapperUUID extends CellMapper<String> {
 		return query;
 	}
 
-	@Override
-	protected Query query(PrefixQuery prefixQuery) {
+	private Query query(PrefixQuery prefixQuery) {
 		String name = prefixQuery.getField();
 		String value = queryValue(prefixQuery.getValue());
 		Term term = new Term(name, value);
@@ -94,8 +112,7 @@ public class CellMapperUUID extends CellMapper<String> {
 		return query;
 	}
 
-	@Override
-	protected Query query(WildcardQuery wildcardQuery) {
+	private Query query(WildcardQuery wildcardQuery) {
 		String name = wildcardQuery.getField();
 		String value = queryValue(wildcardQuery.getValue());
 		Term term = new Term(name, value);
@@ -104,8 +121,7 @@ public class CellMapperUUID extends CellMapper<String> {
 		return query;
 	}
 
-	@Override
-	protected Query query(PhraseQuery phraseQuery) {
+	private Query query(PhraseQuery phraseQuery) {
 		org.apache.lucene.search.PhraseQuery query = new org.apache.lucene.search.PhraseQuery();
 		String name = phraseQuery.getField();
 		for (Object o : phraseQuery.getValues()) {
@@ -118,8 +134,7 @@ public class CellMapperUUID extends CellMapper<String> {
 		return query;
 	}
 
-	@Override
-	protected Query query(FuzzyQuery fuzzyQuery) {
+	private Query query(FuzzyQuery fuzzyQuery) {
 		String name = fuzzyQuery.getField();
 		String value = queryValue(fuzzyQuery.getValue());
 		Term term = new Term(name, value);

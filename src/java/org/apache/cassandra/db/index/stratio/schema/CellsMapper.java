@@ -19,13 +19,6 @@ import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.index.stratio.AnalyzerFactory;
 import org.apache.cassandra.db.index.stratio.RowQueryParser;
 import org.apache.cassandra.db.index.stratio.query.AbstractQuery;
-import org.apache.cassandra.db.index.stratio.query.BooleanQuery;
-import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
-import org.apache.cassandra.db.index.stratio.query.MatchQuery;
-import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
-import org.apache.cassandra.db.index.stratio.query.PrefixQuery;
-import org.apache.cassandra.db.index.stratio.query.RangeQuery;
-import org.apache.cassandra.db.index.stratio.query.WildcardQuery;
 import org.apache.cassandra.db.index.stratio.util.ByteBufferUtils;
 import org.apache.cassandra.db.index.stratio.util.JsonSerializer;
 import org.apache.cassandra.db.marshal.AbstractType;
@@ -39,7 +32,6 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
-import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.Version;
 import org.codehaus.jackson.annotate.JsonCreator;
@@ -348,87 +340,13 @@ public class CellsMapper {
 		try {
 			AbstractQuery abstractQuery = AbstractQuery.fromJSON(querySentence);
 			abstractQuery.analyze(perFieldAnalyzer);
-			return query(abstractQuery);
+			return abstractQuery.toLucene(this);
 		} catch (IOException e) {
-			QueryParser queryParser = new RowQueryParser(Version.LUCENE_46, "lucene", perFieldAnalyzer, this);
+			QueryParser queryParser = new RowQueryParser(Version.LUCENE_46, "lucene", this);
 			queryParser.setAllowLeadingWildcard(true);
 			queryParser.setLowercaseExpandedTerms(false);
 			return queryParser.parse(querySentence);
 		}
-	}
-
-	public Query query(AbstractQuery abstractQuery) {
-		if (abstractQuery instanceof MatchQuery) {
-			return query((MatchQuery) abstractQuery);
-		} else if (abstractQuery instanceof PrefixQuery) {
-			return query((PrefixQuery) abstractQuery);
-		} else if (abstractQuery instanceof WildcardQuery) {
-			return query((WildcardQuery) abstractQuery);
-		} else if (abstractQuery instanceof PhraseQuery) {
-			return query((PhraseQuery) abstractQuery);
-		} else if (abstractQuery instanceof FuzzyQuery) {
-			return query((FuzzyQuery) abstractQuery);
-		} else if (abstractQuery instanceof RangeQuery) {
-			return query((RangeQuery) abstractQuery);
-		} else if (abstractQuery instanceof BooleanQuery) {
-			return query((BooleanQuery) abstractQuery);
-		} else {
-			throw new UnsupportedOperationException();
-		}
-	}
-
-	public Query query(WildcardQuery query) {
-		String field = query.getField();
-		CellMapper<?> mapper = getMapper(field);
-		return mapper.query(query);
-	}
-
-	public Query query(MatchQuery query) {
-		String field = query.getField();
-		CellMapper<?> mapper = getMapper(field);
-		return mapper.query(query);
-	}
-
-	public Query query(PrefixQuery query) {
-		String field = query.getField();
-		CellMapper<?> mapper = getMapper(field);
-		return mapper.query(query);
-	}
-
-	public Query query(PhraseQuery query) {
-		String field = query.getField();
-		CellMapper<?> mapper = getMapper(field);
-		return mapper.query(query);
-	}
-
-	public Query query(FuzzyQuery query) {
-		String field = query.getField();
-		CellMapper<?> mapper = getMapper(field);
-		return mapper.query(query);
-	}
-
-	public Query query(RangeQuery query) {
-		String field = query.getField();
-		CellMapper<?> mapper = getMapper(field);
-		return mapper.query(query);
-	}
-
-	public Query query(BooleanQuery booleanQuery) {
-		org.apache.lucene.search.BooleanQuery luceneBooleanQuery = new org.apache.lucene.search.BooleanQuery();
-		luceneBooleanQuery.setBoost(booleanQuery.getBoost());
-		for (AbstractQuery query : booleanQuery.getMust()) {
-			Query luceneQuery = query(query);
-			luceneBooleanQuery.add(luceneQuery, Occur.MUST);
-		}
-		for (AbstractQuery query : booleanQuery.getShould()) {
-			Query luceneQuery = query(query);
-			luceneBooleanQuery.add(luceneQuery, Occur.SHOULD);
-		}
-		for (AbstractQuery query : booleanQuery.getNot()) {
-			Query luceneQuery = query(query);
-			luceneBooleanQuery.add(luceneQuery, Occur.MUST_NOT);
-		}
-		return luceneBooleanQuery;
 	}
 
 	/**

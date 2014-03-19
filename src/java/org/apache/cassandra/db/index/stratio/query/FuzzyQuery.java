@@ -1,6 +1,9 @@
 package org.apache.cassandra.db.index.stratio.query;
 
+import org.apache.cassandra.db.index.stratio.schema.CellMapper;
+import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.util.automaton.LevenshteinAutomata;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
@@ -74,6 +77,17 @@ public class FuzzyQuery extends AbstractQuery {
 		return value;
 	}
 
+	/**
+	 * Returns the analyzed field value.
+	 * 
+	 * @param analyzer
+	 *            The Lucene's analyzer to be used.
+	 * @return the analyzed field value.
+	 */
+	public Object getValue(Analyzer analyzer) {
+		return analyze(field, value, analyzer);
+	}
+
 	public int getMaxEdits() {
 		return maxEdits;
 	}
@@ -93,6 +107,12 @@ public class FuzzyQuery extends AbstractQuery {
 	@Override
 	public void analyze(Analyzer analyzer) {
 		this.value = analyze(field, value, analyzer);
+	}
+
+	@Override
+	public Query toLucene(CellsMapper cellsMapper) {
+		CellMapper<?> cellMapper = cellsMapper.getMapper(field);
+		return cellMapper.query(this);
 	}
 
 	@Override

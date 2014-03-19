@@ -5,12 +5,9 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
+import org.apache.cassandra.db.index.stratio.query.AbstractQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
-import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
-import org.apache.cassandra.db.index.stratio.query.PrefixQuery;
 import org.apache.cassandra.db.index.stratio.query.RangeQuery;
-import org.apache.cassandra.db.index.stratio.query.WildcardQuery;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.LongField;
@@ -83,7 +80,18 @@ public class CellMapperDate extends CellMapper<Long> {
 	}
 
 	@Override
-	protected Query query(MatchQuery matchQuery) {
+	public Query query(AbstractQuery query) {
+		if (query instanceof MatchQuery) {
+			return query((MatchQuery) query);
+		} else if (query instanceof RangeQuery) {
+			return query((RangeQuery) query);
+		} else {
+			String message = String.format("Unsupported query %s for mapper %s", query, this);
+			throw new UnsupportedOperationException(message);
+		}
+	}
+
+	private Query query(MatchQuery matchQuery) {
 		String name = matchQuery.getField();
 		Long value = queryValue(matchQuery.getValue());
 		Query query = NumericRangeQuery.newLongRange(name, value, value, true, true);
@@ -91,8 +99,7 @@ public class CellMapperDate extends CellMapper<Long> {
 		return query;
 	}
 
-	@Override
-	protected Query query(RangeQuery rangeQuery) {
+	private Query query(RangeQuery rangeQuery) {
 		String name = rangeQuery.getField();
 		Long lowerValue = queryValue(rangeQuery.getLowerValue());
 		Long upperValue = queryValue(rangeQuery.getUpperValue());
@@ -101,26 +108,6 @@ public class CellMapperDate extends CellMapper<Long> {
 		Query query = NumericRangeQuery.newLongRange(name, lowerValue, upperValue, includeLower, includeUpper);
 		query.setBoost(rangeQuery.getBoost());
 		return query;
-	}
-
-	@Override
-	protected Query query(PrefixQuery prefixQuery) {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	protected Query query(WildcardQuery wildcardQuery) {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	protected Query query(PhraseQuery phraseQuery) {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	protected Query query(FuzzyQuery fuzzyQuery) {
-		throw new UnsupportedOperationException();
 	}
 
 	@Override

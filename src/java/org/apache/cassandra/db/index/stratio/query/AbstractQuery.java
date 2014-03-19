@@ -2,10 +2,12 @@ package org.apache.cassandra.db.index.stratio.query;
 
 import java.io.IOException;
 
+import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
 import org.apache.cassandra.db.index.stratio.util.JsonSerializer;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.codehaus.jackson.annotate.JsonCreator;
@@ -16,12 +18,15 @@ import org.codehaus.jackson.annotate.JsonTypeInfo;
 /**
  * The abstract base class for queries.
  * 
- * Instantiable subclasses are:
+ * Known subclasses are:
  * <ul>
- * <li> {@link MatchQuery}
- * <li> {@link RangeQuery}
  * <li> {@link BooleanQuery}
- * <li> {@link LuceneQuery}
+ * <li> {@link FuzzyQuery}
+ * <li> {@link MatchQuery}
+ * <li> {@link PhraseQuery}
+ * <li> {@link PrefixQuery}
+ * <li> {@link RangeQuery}
+ * <li> {@link WildcardQuery}
  * </ul>
  * 
  * @version 0.1
@@ -32,6 +37,7 @@ import org.codehaus.jackson.annotate.JsonTypeInfo;
                @JsonSubTypes.Type(value = MatchQuery.class, name = "match"),
                @JsonSubTypes.Type(value = RangeQuery.class, name = "range"),
                @JsonSubTypes.Type(value = PhraseQuery.class, name = "phrase"),
+               @JsonSubTypes.Type(value = PrefixQuery.class, name = "prefix"),
                @JsonSubTypes.Type(value = FuzzyQuery.class, name = "fuzzy"),
                @JsonSubTypes.Type(value = WildcardQuery.class, name = "wildcard"), })
 public abstract class AbstractQuery {
@@ -93,6 +99,21 @@ public abstract class AbstractQuery {
 		return JsonSerializer.fromString(json, AbstractQuery.class);
 	}
 
+	/**
+	 * Returns the Lucene's {@link Query} representation of this query.
+	 * 
+	 * @param cellsMapper
+	 *            The {@link CellsMapper} to be used.
+	 * @return The Lucene's {@link Query} representation of this query.
+	 */
+	public abstract Query toLucene(CellsMapper cellsMapper);
+
+	/**
+	 * Applies the specified {@link Analyzer} to the required arguments.
+	 * 
+	 * @param analyzer
+	 *            An {@link Analyzer}.
+	 */
 	public abstract void analyze(Analyzer analyzer);
 
 	protected Object analyze(String field, Object value, Analyzer analyzer) {

@@ -3,7 +3,10 @@ package org.apache.cassandra.db.index.stratio.query;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.cassandra.db.index.stratio.schema.CellMapper;
+import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.search.Query;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeName;
@@ -90,6 +93,12 @@ public class PhraseQuery extends AbstractQuery {
 			values.add(analyzedValue);
 		}
 		this.values = values;
+	}
+
+	@Override
+	public Query toLucene(CellsMapper cellsMapper) {
+		CellMapper<?> cellMapper = cellsMapper.getMapper(field);
+		return cellMapper.query(this);
 	}
 
 	@Override

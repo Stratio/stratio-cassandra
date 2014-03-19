@@ -32,6 +32,7 @@ public class RowIndex extends PerRowSecondaryIndex {
 	protected String ksName;
 	protected String cfName;
 	protected String indexName;
+	protected String indexFullName;
 
 	private RowService rowService;
 
@@ -40,7 +41,7 @@ public class RowIndex extends PerRowSecondaryIndex {
 
 	@Override
 	public void init() {
-		Log.debug("Initializing index");
+		Log.info("Initializing index %s.%s.%s", ksName, cfName, indexName);
 		lock.readLock().lock();
 		try {
 			setup();
@@ -50,7 +51,6 @@ public class RowIndex extends PerRowSecondaryIndex {
 	}
 
 	private void setup() {
-		Log.debug("Setup row mapper");
 
 		// Load column family info
 		secondaryIndexManager = baseCfs.indexManager;
@@ -59,6 +59,7 @@ public class RowIndex extends PerRowSecondaryIndex {
 		ksName = metadata.ksName;
 		cfName = metadata.cfName;
 		indexName = columnDefinition.getIndexName();
+		indexFullName = String.format("%s.%s.%s", ksName, cfName, indexName);
 
 		// Build row mapper
 		rowService = new RowService(baseCfs, columnDefinition);
@@ -67,17 +68,19 @@ public class RowIndex extends PerRowSecondaryIndex {
 	/**
 	 * Index the given row.
 	 * 
-	 * @param partitionKey
+	 * @param key
 	 *            The partition key.
 	 * @param columnFamily
 	 *            The column family data to be indexed
 	 */
 	@Override
-	public void index(ByteBuffer partitionKey, ColumnFamily columnFamily) {
-		Log.debug("Indexing %s", partitionKey);
+	public void index(ByteBuffer key, ColumnFamily columnFamily) {
+		Log.debug("Indexing row %s in index %s", key, indexFullName);
 		lock.readLock().lock();
 		try {
-			rowService.index(partitionKey, columnFamily);
+			rowService.index(key, columnFamily);
+		} catch (Exception e) { // Ignore errors
+			Log.error(e, "Ignoring error while indexing row %s", key);
 		} finally {
 			lock.readLock().unlock();
 		}
@@ -86,14 +89,14 @@ public class RowIndex extends PerRowSecondaryIndex {
 	/**
 	 * cleans up deleted columns from cassandra cleanup compaction
 	 * 
-	 * @param partitionKey
+	 * @param key
 	 */
 	@Override
-	public void delete(DecoratedKey partitionKey) {
-		Log.debug("Deleting %s", partitionKey);
+	public void delete(DecoratedKey key) {
+		Log.debug("Removing row %s from index %s", key, indexFullName);
 		lock.writeLock().lock();
 		try {
-			rowService.delete(partitionKey);
+			rowService.delete(key);
 			rowService = null;
 		} finally {
 			lock.writeLock().unlock();
@@ -107,6 +110,15 @@ public class RowIndex extends PerRowSecondaryIndex {
 
 	@Override
 	public void validateOptions() throws ConfigurationException {
+		try {
+			ColumnDefinition columnDefinition = columnDefs.iterator().next();
+			RowServiceConfig.validate(columnDefinition);
+			Log.debug("Index options are valid");
+		} catch (Exception e) {
+			String message = "Error while validating index options";
+			Log.error(e, message);
+			throw new ConfigurationException(message, e);
+		}
 	}
 
 	@Override
@@ -126,7 +138,7 @@ public class RowIndex extends PerRowSecondaryIndex {
 
 	@Override
 	public void removeIndex(ByteBuffer columnName) {
-		Log.info("Removing %s", columnName);
+		Log.info("Removing index %s", indexFullName);
 		lock.writeLock().lock();
 		try {
 			rowService.delete();
@@ -138,20 +150,20 @@ public class RowIndex extends PerRowSecondaryIndex {
 
 	@Override
 	public void invalidate() {
-		Log.info("Invalidating");
+		Log.info("Invalidating index %s", indexFullName);
 		rowService.delete();
 		rowService = null;
 	}
 
 	@Override
 	public void truncateBlocking(long truncatedAt) {
-		Log.info("Truncating");
+		Log.info("Truncating index %s", indexFullName);
 		rowService.truncate();
 	}
 
 	@Override
 	public void reload() {
-		Log.info("Reloading");
+		Log.info("Reloading index %s", indexFullName);
 		lock.writeLock().lock();
 		try {
 			if (rowService == null) {
@@ -164,7 +176,7 @@ public class RowIndex extends PerRowSecondaryIndex {
 
 	@Override
 	public void forceBlockingFlush() {
-		Log.info("Flushing");
+		Log.info("Flushing index %s", indexFullName);
 		lock.writeLock().lock();
 		try {
 			rowService.commit();
@@ -175,7 +187,7 @@ public class RowIndex extends PerRowSecondaryIndex {
 
 	@Override
 	protected SecondaryIndexSearcher createSecondaryIndexSearcher(Set<ByteBuffer> columns) {
-		Log.info("Creating searcher");
+		Log.debug("Searching index %s", indexFullName);
 		return new RowIndexSearcher(secondaryIndexManager, this, columns, rowService);
 	}
 
