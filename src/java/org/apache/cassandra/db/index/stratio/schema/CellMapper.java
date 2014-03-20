@@ -28,7 +28,8 @@ import org.codehaus.jackson.annotate.JsonTypeInfo;
                @JsonSubTypes.Type(value = CellMapperString.class, name = "string"),
                @JsonSubTypes.Type(value = CellMapperText.class, name = "text"),
                @JsonSubTypes.Type(value = CellMapperUUID.class, name = "uuid"),
-               @JsonSubTypes.Type(value = CellMapperVarint.class, name = "varint"), })
+               @JsonSubTypes.Type(value = CellMapperBigDecimal.class, name = "bigdec"),
+               @JsonSubTypes.Type(value = CellMapperBigInteger.class, name = "bigint"), })
 public abstract class CellMapper<BASE> {
 
 	protected static final Analyzer EMPTY_ANALYZER = new KeywordAnalyzer();

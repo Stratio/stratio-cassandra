@@ -1,14 +1,11 @@
 package org.apache.cassandra.db.index.stratio.schema;
 
-import java.math.BigInteger;
+import java.math.BigDecimal;
 
 import org.apache.cassandra.db.index.stratio.query.AbstractQuery;
-import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
 import org.apache.cassandra.db.index.stratio.query.MatchQuery;
-import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
-import org.apache.cassandra.db.index.stratio.query.PrefixQuery;
 import org.apache.cassandra.db.index.stratio.query.RangeQuery;
-import org.apache.cassandra.db.index.stratio.query.WildcardQuery;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
@@ -24,15 +21,26 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * 
  * @author adelapena
  */
-public class CellMapperVarint extends CellMapper<String> {
+public class CellMapperBigDecimal extends CellMapper<String> {
 
-	@JsonProperty("digits")
-	private final int digits;
+	@JsonProperty("left_padding")
+	private final int leftPadding;
+
+	@JsonProperty("right_padding")
+	private final int rightPadding;
 
 	@JsonCreator
-	public CellMapperVarint(@JsonProperty("digits") int digits) {
+	public CellMapperBigDecimal(@JsonProperty("left_padding") Integer leftPadding,
+	                            @JsonProperty("right_padding") Integer rightPadding) {
 		super();
-		this.digits = digits;
+
+		assert leftPadding != null : "Left padding required";
+		assert rightPadding != null : "Right padding required";
+		assert leftPadding > 0 : "Left padding must be positive";
+		assert rightPadding > 0 : "Right padding must be positive";
+
+		this.leftPadding = leftPadding;
+		this.rightPadding = rightPadding;
 	}
 
 	@Override
@@ -45,9 +53,23 @@ public class CellMapperVarint extends CellMapper<String> {
 		if (value == null) {
 			return null;
 		} else {
-			BigInteger bi = new BigInteger(value.toString());
-			String format = String.format("%%0%dd", digits);
-			String result = String.format(format, bi);
+			BigDecimal bi = new BigDecimal(value.toString());
+			String[] bis = bi.toPlainString().split("\\.");
+			String left = bis[0];
+			String right = bis[1];
+
+			left = left.replaceFirst("-", "");
+
+			assert left.length() <= leftPadding;
+			assert right.length() <= rightPadding;
+
+			left = StringUtils.leftPad(left, rightPadding, '0');
+			right = StringUtils.rightPad(right, rightPadding, '0');
+
+			char prefix = bi.compareTo(BigDecimal.ZERO) > 0 ? 'p' : 'N';
+			String result = prefix + left + "." + right;
+
+			System.out.println("RESULT -> " + result);
 			return result;
 		}
 	}
@@ -85,6 +107,7 @@ public class CellMapperVarint extends CellMapper<String> {
 	}
 
 	private Query query(RangeQuery rangeQuery) {
+		System.out.println("QUERYING " + rangeQuery);
 		String name = rangeQuery.getField();
 		String lowerValue = queryValue(rangeQuery.getLowerValue());
 		String upperValue = queryValue(rangeQuery.getUpperValue());
