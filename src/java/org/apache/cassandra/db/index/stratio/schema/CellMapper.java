@@ -27,7 +27,8 @@ import org.codehaus.jackson.annotate.JsonTypeInfo;
                @JsonSubTypes.Type(value = CellMapperLong.class, name = "long"),
                @JsonSubTypes.Type(value = CellMapperString.class, name = "string"),
                @JsonSubTypes.Type(value = CellMapperText.class, name = "text"),
-               @JsonSubTypes.Type(value = CellMapperUUID.class, name = "uuid"), })
+               @JsonSubTypes.Type(value = CellMapperUUID.class, name = "uuid"),
+               @JsonSubTypes.Type(value = CellMapperVarint.class, name = "varint"), })
 public abstract class CellMapper<BASE> {
 
 	protected static final Analyzer EMPTY_ANALYZER = new KeywordAnalyzer();
