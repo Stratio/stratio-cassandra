@@ -122,7 +122,7 @@ public class CellMapperFloatTest {
 	public void testMatchQuery() {
 		CellMapperFloat mapper = new CellMapperFloat(1f);
 		MatchQuery matchQuery = new MatchQuery(0.5f, "name", 3l);
-		Query query = mapper.query(matchQuery);
+		Query query = mapper.toLucene(matchQuery);
 		Assert.assertNotNull(query);
 		Assert.assertEquals(NumericRangeQuery.class, query.getClass());
 		Assert.assertEquals(0.5f, query.getBoost(), 0);
@@ -132,7 +132,7 @@ public class CellMapperFloatTest {
 	public void testRangeQueryClose() {
 		CellMapperFloat mapper = new CellMapperFloat(1f);
 		RangeQuery rangeQuery = new RangeQuery(0.5f, "name", 2L, 3f, true, false);
-		Query query = mapper.query(rangeQuery);
+		Query query = mapper.toLucene(rangeQuery);
 		Assert.assertNotNull(query);
 		Assert.assertEquals(NumericRangeQuery.class, query.getClass());
 		NumericRangeQuery<?> numericQuery = (NumericRangeQuery<?>) query;
@@ -147,7 +147,7 @@ public class CellMapperFloatTest {
 	public void testRangeQueryOpen() {
 		CellMapperFloat mapper = new CellMapperFloat(1f);
 		RangeQuery rangeQuery = new RangeQuery(0.5f, "name", 2, null, true, false);
-		Query query = mapper.query(rangeQuery);
+		Query query = mapper.toLucene(rangeQuery);
 		Assert.assertNotNull(query);
 		Assert.assertEquals(NumericRangeQuery.class, query.getClass());
 		NumericRangeQuery<?> numericQuery = (NumericRangeQuery<?>) query;
@@ -162,21 +162,21 @@ public class CellMapperFloatTest {
 	public void testPrefixQuery() {
 		CellMapperFloat mapper = new CellMapperFloat(1f);
 		PrefixQuery prefixQuery = new PrefixQuery(1f, "name", 3);
-		mapper.query(prefixQuery);
+		mapper.toLucene(prefixQuery);
 	}
 
 	@Test(expected = UnsupportedOperationException.class)
 	public void testWildcardQuery() {
 		CellMapperFloat mapper = new CellMapperFloat(1f);
 		WildcardQuery prefixQuery = new WildcardQuery(1f, "name", 3);
-		mapper.query(prefixQuery);
+		mapper.toLucene(prefixQuery);
 	}
 
 	@Test(expected = UnsupportedOperationException.class)
 	public void testFuzzyQuery() {
 		CellMapperFloat mapper = new CellMapperFloat(1f);
 		FuzzyQuery prefixQuery = new FuzzyQuery(1f, "name", 3, 2, 0, 50, true);
-		mapper.query(prefixQuery);
+		mapper.toLucene(prefixQuery);
 	}
 
 	@Test(expected = UnsupportedOperationException.class)
@@ -185,7 +185,7 @@ public class CellMapperFloatTest {
 		List<Object> values = new ArrayList<>();
 		values.add(3);
 		PhraseQuery prefixQuery = new PhraseQuery(1f, "name", values, 2);
-		mapper.query(prefixQuery);
+		mapper.toLucene(prefixQuery);
 	}
 
 	@Test

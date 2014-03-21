@@ -70,7 +70,7 @@ public class PrefixQuery extends AbstractQuery {
 	@Override
 	public Query toLucene(CellsMapper cellsMapper) {
 		CellMapper<?> cellMapper = cellsMapper.getMapper(field);
-		return cellMapper.query(this);
+		return cellMapper.toLucene(this);
 	}
 
 	@Override

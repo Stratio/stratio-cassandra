@@ -72,7 +72,7 @@ public abstract class CellMapper<BASE> {
 	 * @return The Lucene's {@link org.apache.lucene.search.Query} represented by the specified
 	 *         {@link AbstractQuery}.
 	 */
-	public abstract Query query(AbstractQuery query);
+	public abstract Query toLucene(AbstractQuery query);
 
 	/**
 	 * Returns the cell value resulting from the mapping of the specified object.

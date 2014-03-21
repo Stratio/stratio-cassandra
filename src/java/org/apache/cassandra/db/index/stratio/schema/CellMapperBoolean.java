@@ -70,7 +70,7 @@ public class CellMapperBoolean extends CellMapper<String> {
 	}
 
 	@Override
-	public Query query(AbstractQuery query) {
+	public Query toLucene(AbstractQuery query) {
 		if (query instanceof MatchQuery) {
 			return query((MatchQuery) query);
 		} else if (query instanceof PrefixQuery) {
@@ -82,7 +82,7 @@ public class CellMapperBoolean extends CellMapper<String> {
 		} else if (query instanceof RangeQuery) {
 			return query((RangeQuery) query);
 		} else if (query instanceof BooleanQuery) {
-			return query((BooleanQuery) query);
+			return toLucene((BooleanQuery) query);
 		} else {
 			String message = String.format("Unsupported query %s for mapper %s", query, this);
 			throw new UnsupportedOperationException(message);

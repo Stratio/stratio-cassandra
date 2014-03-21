@@ -71,7 +71,7 @@ public class CellMapperText extends CellMapper<String> {
 	}
 
 	@Override
-	public Query query(AbstractQuery query) {
+	public Query toLucene(AbstractQuery query) {
 		if (query instanceof MatchQuery) {
 			return query((MatchQuery) query);
 		} else if (query instanceof PrefixQuery) {

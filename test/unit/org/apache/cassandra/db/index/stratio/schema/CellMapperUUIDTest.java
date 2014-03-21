@@ -92,7 +92,7 @@ public class CellMapperUUIDTest {
 		CellMapperUUID mapper = new CellMapperUUID();
 		UUID uuid = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
 		MatchQuery matchQuery = new MatchQuery(0.5f, "name", uuid);
-		Query query = mapper.query(matchQuery);
+		Query query = mapper.toLucene(matchQuery);
 		Assert.assertNotNull(query);
 		Assert.assertEquals(TermQuery.class, query.getClass());
 		Assert.assertEquals(uuid.toString(), ((TermQuery) query).getTerm().bytes().utf8ToString());
@@ -108,7 +108,7 @@ public class CellMapperUUIDTest {
 		                                       UUID.fromString("5007c0f0-ae7c-11e3-a5e2-0800200c9a66"),
 		                                       true,
 		                                       false);
-		Query query = mapper.query(rangeQuery);
+		Query query = mapper.toLucene(rangeQuery);
 		Assert.assertNotNull(query);
 		Assert.assertEquals(TermRangeQuery.class, query.getClass());
 		TermRangeQuery termRangeQuery = (TermRangeQuery) query;
@@ -123,7 +123,7 @@ public class CellMapperUUIDTest {
 	public void testRangeQueryOpen() {
 		CellMapperUUID mapper = new CellMapperUUID();
 		RangeQuery rangeQuery = new RangeQuery(0.5f, "name", null, "46ab3550-ae7c-11e3-a5e2-0800200c9a66", true, false);
-		Query query = mapper.query(rangeQuery);
+		Query query = mapper.toLucene(rangeQuery);
 		Assert.assertNotNull(query);
 		Assert.assertEquals(TermRangeQuery.class, query.getClass());
 		TermRangeQuery termRangeQuery = (TermRangeQuery) query;
@@ -138,7 +138,7 @@ public class CellMapperUUIDTest {
 	public void testPrefixQuery() {
 		CellMapperUUID mapper = new CellMapperUUID();
 		PrefixQuery prefixQuery = new PrefixQuery(0.5f, "name", "46ab");
-		Query query = mapper.query(prefixQuery);
+		Query query = mapper.toLucene(prefixQuery);
 		Assert.assertNotNull(query);
 		Assert.assertEquals(org.apache.lucene.search.PrefixQuery.class, query.getClass());
 		org.apache.lucene.search.PrefixQuery luceneQuery = (org.apache.lucene.search.PrefixQuery) query;
@@ -151,7 +151,7 @@ public class CellMapperUUIDTest {
 	public void testWildcardQuery() {
 		CellMapperUUID mapper = new CellMapperUUID();
 		WildcardQuery prefixQuery = new WildcardQuery(0.5f, "name", "46ab*");
-		Query query = mapper.query(prefixQuery);
+		Query query = mapper.toLucene(prefixQuery);
 		Assert.assertNotNull(query);
 		Assert.assertEquals(org.apache.lucene.search.WildcardQuery.class, query.getClass());
 		org.apache.lucene.search.WildcardQuery luceneQuery = (org.apache.lucene.search.WildcardQuery) query;
@@ -164,7 +164,7 @@ public class CellMapperUUIDTest {
 	public void testFuzzyQuery() {
 		CellMapperUUID mapper = new CellMapperUUID();
 		FuzzyQuery prefixQuery = new FuzzyQuery(0.5f, "name", "46ab3550-ae7c-11e3-a5e2-0800200c9a6", 1, 2, 49, true);
-		Query query = mapper.query(prefixQuery);
+		Query query = mapper.toLucene(prefixQuery);
 		Assert.assertNotNull(query);
 		Assert.assertEquals(org.apache.lucene.search.FuzzyQuery.class, query.getClass());
 		org.apache.lucene.search.FuzzyQuery luceneQuery = (org.apache.lucene.search.FuzzyQuery) query;
@@ -185,7 +185,7 @@ public class CellMapperUUIDTest {
 
 		CellMapperUUID mapper = new CellMapperUUID();
 		PhraseQuery phraseQuery = new PhraseQuery(0.5f, "name", values, 2);
-		Query query = mapper.query(phraseQuery);
+		Query query = mapper.toLucene(phraseQuery);
 		Assert.assertNotNull(query);
 		Assert.assertEquals(org.apache.lucene.search.PhraseQuery.class, query.getClass());
 		org.apache.lucene.search.PhraseQuery luceneQuery = (org.apache.lucene.search.PhraseQuery) query;

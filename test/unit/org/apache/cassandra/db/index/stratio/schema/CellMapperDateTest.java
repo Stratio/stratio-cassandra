@@ -134,7 +134,7 @@ public class CellMapperDateTest {
 		List<Object> values = new ArrayList<>();
 		values.add(3);
 		PhraseQuery prefixQuery = new PhraseQuery(1f, "name", values, 2);
-		mapper.query(prefixQuery);
+		mapper.toLucene(prefixQuery);
 	}
 
 	@Test

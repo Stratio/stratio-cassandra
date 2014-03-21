@@ -77,27 +77,28 @@ public abstract class AbstractQuery {
 		return JsonSerializer.toString(this);
 	}
 
-	/**
-	 * Returns the {@link AbstractQuery} represented by the specified JSON.
-	 * 
-	 * @param json
-	 *            the JSON to be parsed.
-	 * @return the {@link AbstractQuery} represented by the specified JSON.
-	 */
-	public static <T extends AbstractQuery> T fromJSON(String json, Class<T> clazz) throws IOException {
-		return JsonSerializer.fromString(json, clazz);
-	}
-
-	/**
-	 * Returns the {@link AbstractQuery} represented by the specified JSON.
-	 * 
-	 * @param json
-	 *            the JSON to be parsed.
-	 * @return the {@link AbstractQuery} represented by the specified JSON.
-	 */
-	public static AbstractQuery fromJSON(String json) throws IOException {
-		return JsonSerializer.fromString(json, AbstractQuery.class);
-	}
+	// /**
+	// * Returns the {@link AbstractQuery} represented by the specified JSON.
+	// *
+	// * @param json
+	// * the JSON to be parsed.
+	// * @return the {@link AbstractQuery} represented by the specified JSON.
+	// */
+	// public static <T extends AbstractQuery> T fromJSON(String json, Class<T> clazz) throws
+	// IOException {
+	// return JsonSerializer.fromString(json, clazz);
+	// }
+	//
+	// /**
+	// * Returns the {@link AbstractQuery} represented by the specified JSON.
+	// *
+	// * @param json
+	// * the JSON to be parsed.
+	// * @return the {@link AbstractQuery} represented by the specified JSON.
+	// */
+	// public static AbstractQuery fromJSON(String json) throws IOException {
+	// return JsonSerializer.fromString(json, AbstractQuery.class);
+	// }
 
 	/**
 	 * Returns the Lucene's {@link Query} representation of this query.

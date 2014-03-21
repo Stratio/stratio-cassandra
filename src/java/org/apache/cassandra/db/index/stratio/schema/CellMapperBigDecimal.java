@@ -86,7 +86,7 @@ public class CellMapperBigDecimal extends CellMapper<String> {
 	}
 
 	@Override
-	public Query query(AbstractQuery query) {
+	public Query toLucene(AbstractQuery query) {
 		if (query instanceof MatchQuery) {
 			return query((MatchQuery) query);
 		} else if (query instanceof RangeQuery) {
@@ -107,7 +107,6 @@ public class CellMapperBigDecimal extends CellMapper<String> {
 	}
 
 	private Query query(RangeQuery rangeQuery) {
-		System.out.println("QUERYING " + rangeQuery);
 		String name = rangeQuery.getField();
 		String lowerValue = queryValue(rangeQuery.getLowerValue());
 		String upperValue = queryValue(rangeQuery.getUpperValue());

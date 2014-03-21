@@ -18,7 +18,7 @@ import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.index.stratio.AnalyzerFactory;
 import org.apache.cassandra.db.index.stratio.RowQueryParser;
-import org.apache.cassandra.db.index.stratio.query.AbstractQuery;
+import org.apache.cassandra.db.index.stratio.query.Search;
 import org.apache.cassandra.db.index.stratio.util.ByteBufferUtils;
 import org.apache.cassandra.db.index.stratio.util.JsonSerializer;
 import org.apache.cassandra.db.marshal.AbstractType;
@@ -338,9 +338,9 @@ public class CellsMapper {
 	@JsonIgnore
 	public Query query(String querySentence) throws IOException, ParseException {
 		try {
-			AbstractQuery abstractQuery = AbstractQuery.fromJSON(querySentence);
-			abstractQuery.analyze(perFieldAnalyzer);
-			return abstractQuery.toLucene(this);
+			Search search = Search.fromJSON(querySentence);
+			search.analyze(perFieldAnalyzer);
+			return search.toLucene(this);
 		} catch (IOException e) {
 			QueryParser queryParser = new RowQueryParser(Version.LUCENE_46, "lucene", this);
 			queryParser.setAllowLeadingWildcard(true);

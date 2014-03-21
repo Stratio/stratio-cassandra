@@ -61,7 +61,7 @@ public class CellMapperLong extends CellMapper<Long> {
 	}
 	
 	@Override
-	public Query query(AbstractQuery query) {
+	public Query toLucene(AbstractQuery query) {
 		if (query instanceof MatchQuery) {
 			return query((MatchQuery) query);
 		} else if (query instanceof RangeQuery) {

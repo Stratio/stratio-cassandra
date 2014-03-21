@@ -51,7 +51,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
 		try {
 			return rowService.search(extendedFilter);
 		} catch (Exception e) {
-			logger.error("Error while searching ", e);
+			logger.error("Error while searching: '%s'", e.getMessage(), e);
 			return null; // Force upper component NPE to allow fail by RPC timeout
 		}
 	}

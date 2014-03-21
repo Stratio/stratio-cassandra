@@ -123,7 +123,7 @@ public class CellMapperIntegerTest {
 	public void testMatchQuery() {
 		CellMapperInteger mapper = new CellMapperInteger(1f);
 		MatchQuery matchQuery = new MatchQuery(0.5f, "name", 3);
-		Query query = mapper.query(matchQuery);
+		Query query = mapper.toLucene(matchQuery);
 		Assert.assertNotNull(query);
 		Assert.assertEquals(NumericRangeQuery.class, query.getClass());
 		Assert.assertEquals(0.5f, query.getBoost(), 0);
@@ -133,7 +133,7 @@ public class CellMapperIntegerTest {
 	public void testRangeQueryClose() {
 		CellMapperInteger mapper = new CellMapperInteger(1f);
 		RangeQuery rangeQuery = new RangeQuery(0.5f, "name", 2, 3, true, false);
-		Query query = mapper.query(rangeQuery);
+		Query query = mapper.toLucene(rangeQuery);
 		Assert.assertNotNull(query);
 		Assert.assertEquals(NumericRangeQuery.class, query.getClass());
 		NumericRangeQuery<?> numericQuery = (NumericRangeQuery<?>) query;
@@ -148,7 +148,7 @@ public class CellMapperIntegerTest {
 	public void testRangeQueryOpen() {
 		CellMapperInteger mapper = new CellMapperInteger(1f);
 		RangeQuery rangeQuery = new RangeQuery(0.5f, "name", 2, null, true, false);
-		Query query = mapper.query(rangeQuery);
+		Query query = mapper.toLucene(rangeQuery);
 		Assert.assertNotNull(query);
 		Assert.assertEquals(NumericRangeQuery.class, query.getClass());
 		NumericRangeQuery<?> numericQuery = (NumericRangeQuery<?>) query;
@@ -163,21 +163,21 @@ public class CellMapperIntegerTest {
 	public void testPrefixQuery() {
 		CellMapperInteger mapper = new CellMapperInteger(1f);
 		PrefixQuery prefixQuery = new PrefixQuery(1f, "name", 3);
-		mapper.query(prefixQuery);
+		mapper.toLucene(prefixQuery);
 	}
 
 	@Test(expected = UnsupportedOperationException.class)
 	public void testWildcardQuery() {
 		CellMapperInteger mapper = new CellMapperInteger(1f);
 		WildcardQuery prefixQuery = new WildcardQuery(1f, "name", 3);
-		mapper.query(prefixQuery);
+		mapper.toLucene(prefixQuery);
 	}
 
 	@Test(expected = UnsupportedOperationException.class)
 	public void testFuzzyQuery() {
 		CellMapperInteger mapper = new CellMapperInteger(1f);
 		FuzzyQuery prefixQuery = new FuzzyQuery(1f, "name", 3, 2, 0, 50, true);
-		mapper.query(prefixQuery);
+		mapper.toLucene(prefixQuery);
 	}
 
 	@Test(expected = UnsupportedOperationException.class)
@@ -186,7 +186,7 @@ public class CellMapperIntegerTest {
 		List<Object> values = new ArrayList<>();
 		values.add(3);
 		PhraseQuery prefixQuery = new PhraseQuery(1f, "name", values, 2);
-		mapper.query(prefixQuery);
+		mapper.toLucene(prefixQuery);
 	}
 
 	@Test

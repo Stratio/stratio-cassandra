@@ -130,7 +130,7 @@ public class CellMapperStringTest {
 	public void testMatchQuery() {
 		CellMapperString mapper = new CellMapperString();
 		MatchQuery matchQuery = new MatchQuery(0.5f, "name", "hola");
-		Query query = mapper.query(matchQuery);
+		Query query = mapper.toLucene(matchQuery);
 		Assert.assertNotNull(query);
 		Assert.assertEquals(TermQuery.class, query.getClass());
 		Assert.assertEquals("hola", ((TermQuery) query).getTerm().bytes().utf8ToString());
@@ -141,7 +141,7 @@ public class CellMapperStringTest {
 	public void testRangeQueryClose() {
 		CellMapperString mapper = new CellMapperString();
 		RangeQuery rangeQuery = new RangeQuery(0.5f, "name", "a", "b", true, false);
-		Query query = mapper.query(rangeQuery);
+		Query query = mapper.toLucene(rangeQuery);
 		Assert.assertNotNull(query);
 		Assert.assertEquals(TermRangeQuery.class, query.getClass());
 		TermRangeQuery termRangeQuery = (TermRangeQuery) query;
@@ -156,7 +156,7 @@ public class CellMapperStringTest {
 	public void testRangeQueryOpen() {
 		CellMapperString mapper = new CellMapperString();
 		RangeQuery rangeQuery = new RangeQuery(0.5f, "name", "a", null, true, false);
-		Query query = mapper.query(rangeQuery);
+		Query query = mapper.toLucene(rangeQuery);
 		Assert.assertNotNull(query);
 		Assert.assertEquals(TermRangeQuery.class, query.getClass());
 		TermRangeQuery termRangeQuery = (TermRangeQuery) query;
@@ -171,7 +171,7 @@ public class CellMapperStringTest {
 	public void testPrefixQuery() {
 		CellMapperString mapper = new CellMapperString();
 		PrefixQuery prefixQuery = new PrefixQuery(0.5f, "name", "hell");
-		Query query = mapper.query(prefixQuery);
+		Query query = mapper.toLucene(prefixQuery);
 		Assert.assertNotNull(query);
 		Assert.assertEquals(org.apache.lucene.search.PrefixQuery.class, query.getClass());
 		org.apache.lucene.search.PrefixQuery luceneQuery = (org.apache.lucene.search.PrefixQuery) query;
@@ -184,7 +184,7 @@ public class CellMapperStringTest {
 	public void testWildcardQuery() {
 		CellMapperString mapper = new CellMapperString();
 		WildcardQuery prefixQuery = new WildcardQuery(0.5f, "name", "hell*");
-		Query query = mapper.query(prefixQuery);
+		Query query = mapper.toLucene(prefixQuery);
 		Assert.assertNotNull(query);
 		Assert.assertEquals(org.apache.lucene.search.WildcardQuery.class, query.getClass());
 		org.apache.lucene.search.WildcardQuery luceneQuery = (org.apache.lucene.search.WildcardQuery) query;
@@ -197,7 +197,7 @@ public class CellMapperStringTest {
 	public void testFuzzyQuery() {
 		CellMapperString mapper = new CellMapperString();
 		FuzzyQuery prefixQuery = new FuzzyQuery(0.5f, "name", "hell", 1, 2, 49, true);
-		Query query = mapper.query(prefixQuery);
+		Query query = mapper.toLucene(prefixQuery);
 		Assert.assertNotNull(query);
 		Assert.assertEquals(org.apache.lucene.search.FuzzyQuery.class, query.getClass());
 		org.apache.lucene.search.FuzzyQuery luceneQuery = (org.apache.lucene.search.FuzzyQuery) query;
@@ -218,7 +218,7 @@ public class CellMapperStringTest {
 
 		CellMapperString mapper = new CellMapperString();
 		PhraseQuery phraseQuery = new PhraseQuery(0.5f, "name", values, 2);
-		Query query = mapper.query(phraseQuery);
+		Query query = mapper.toLucene(phraseQuery);
 		Assert.assertNotNull(query);
 		Assert.assertEquals(org.apache.lucene.search.PhraseQuery.class, query.getClass());
 		org.apache.lucene.search.PhraseQuery luceneQuery = (org.apache.lucene.search.PhraseQuery) query;
