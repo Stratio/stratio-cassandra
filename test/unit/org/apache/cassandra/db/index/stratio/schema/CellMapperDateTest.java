@@ -1,11 +1,8 @@
 package org.apache.cassandra.db.index.stratio.schema;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 
-import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.junit.Assert;
@@ -126,15 +123,6 @@ public class CellMapperDateTest {
 		Assert.assertEquals(Long.valueOf(1395183600000L), field.numericValue());
 		Assert.assertEquals("name", field.name());
 		Assert.assertEquals(false, field.fieldType().stored());
-	}
-
-	@Test(expected = UnsupportedOperationException.class)
-	public void testPhraseQuery() {
-		CellMapperDate mapper = new CellMapperDate(PATTERN);
-		List<Object> values = new ArrayList<>();
-		values.add(3);
-		PhraseQuery prefixQuery = new PhraseQuery(1f, "name", values, 2);
-		mapper.toLucene(prefixQuery);
 	}
 
 	@Test

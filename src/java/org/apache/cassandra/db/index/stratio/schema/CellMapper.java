@@ -2,13 +2,11 @@ package org.apache.cassandra.db.index.stratio.schema;
 
 import java.nio.ByteBuffer;
 
-import org.apache.cassandra.db.index.stratio.query.AbstractQuery;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.core.KeywordAnalyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
-import org.apache.lucene.search.Query;
 import org.codehaus.jackson.annotate.JsonSubTypes;
 import org.codehaus.jackson.annotate.JsonTypeInfo;
 
@@ -64,15 +62,11 @@ public abstract class CellMapper<BASE> {
 	public abstract Field field(String name, Object value);
 
 	/**
-	 * Returns the Lucene's {@link org.apache.lucene.search.Query} represented by the specified
-	 * {@link AbstractQuery}.
+	 * Returns the Lucene's type for this mapper.
 	 * 
-	 * @param query
-	 *            An abstract query.
-	 * @return The Lucene's {@link org.apache.lucene.search.Query} represented by the specified
-	 *         {@link AbstractQuery}.
+	 * @return The Lucene's type for this mapper.
 	 */
-	public abstract Query toLucene(AbstractQuery query);
+	public abstract Class<BASE> getBaseClass();
 
 	/**
 	 * Returns the cell value resulting from the mapping of the specified object.

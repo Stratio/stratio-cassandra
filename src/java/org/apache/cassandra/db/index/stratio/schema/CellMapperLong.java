@@ -1,13 +1,8 @@
 package org.apache.cassandra.db.index.stratio.schema;
 
-import org.apache.cassandra.db.index.stratio.query.AbstractQuery;
-import org.apache.cassandra.db.index.stratio.query.MatchQuery;
-import org.apache.cassandra.db.index.stratio.query.RangeQuery;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.LongField;
-import org.apache.lucene.search.NumericRangeQuery;
-import org.apache.lucene.search.Query;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
@@ -59,36 +54,10 @@ public class CellMapperLong extends CellMapper<Long> {
 		field.setBoost(boost);
 		return field;
 	}
-	
-	@Override
-	public Query toLucene(AbstractQuery query) {
-		if (query instanceof MatchQuery) {
-			return query((MatchQuery) query);
-		} else if (query instanceof RangeQuery) {
-			return query((RangeQuery) query);
-		} else {
-			String message = String.format("Unsupported query %s for mapper %s", query, this);
-			throw new UnsupportedOperationException(message);
-		}
-	}
-	
-	private Query query(MatchQuery matchQuery) {
-		String name = matchQuery.getField();
-		Long value = queryValue(matchQuery.getValue());
-		Query query = NumericRangeQuery.newLongRange(name, value, value, true, true);
-		query.setBoost(matchQuery.getBoost());
-		return query;
-	}
 
-	private Query query(RangeQuery rangeQuery) {
-		String name = rangeQuery.getField();
-		Long lowerValue = queryValue(rangeQuery.getLowerValue());
-		Long upperValue = queryValue(rangeQuery.getUpperValue());
-		boolean includeLower = rangeQuery.getIncludeLower();
-		boolean includeUpper = rangeQuery.getIncludeUpper();
-		Query query = NumericRangeQuery.newLongRange(name, lowerValue, upperValue, includeLower, includeUpper);
-		query.setBoost(rangeQuery.getBoost());
-		return query;
+	@Override
+	public Class<Long> getBaseClass() {
+		return Long.class;
 	}
 
 	@Override

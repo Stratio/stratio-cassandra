@@ -3,19 +3,21 @@ package org.apache.cassandra.db.index.stratio.query;
 import org.apache.cassandra.db.index.stratio.schema.CellMapper;
 import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Query;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeName;
 
 /**
- * A {@link AbstractQuery} implementation that matches documents containing a value for a field.
+ * A {@link Condition} implementation that matches documents containing terms with a specified
+ * prefix.
  * 
  * @version 0.1
  * @author adelapena
  */
-@JsonTypeName("wildcard")
-public class WildcardQuery extends AbstractQuery {
+@JsonTypeName("prefix")
+public class PrefixCondition extends Condition {
 
 	/** The field name */
 	@JsonProperty("field")
@@ -23,24 +25,28 @@ public class WildcardQuery extends AbstractQuery {
 
 	/** The field value */
 	@JsonProperty("value")
-	private final Object value;
+	private Object value;
 
 	/**
 	 * Constructor using the field name and the value to be matched.
 	 * 
 	 * @param boost
 	 *            The boost for this query clause. Documents matching this clause will (in addition
-	 *            to the normal weightings) have their score multiplied by {@code boost}.
+	 *            to the normal weightings) have their score multiplied by {@code boost}. If
+	 *            {@code null}, then {@link DEFAULT_BOOST} is used as default.
 	 * @param field
 	 *            the field name.
 	 * @param value
 	 *            the field value.
 	 */
 	@JsonCreator
-	public WildcardQuery(@JsonProperty("boost") Float boost,
-	                     @JsonProperty("field") String field,
-	                     @JsonProperty("value") Object value) {
+	public PrefixCondition(@JsonProperty("boost") Float boost,
+	                   @JsonProperty("field") String field,
+	                   @JsonProperty("value") Object value) {
 		super(boost);
+
+		assert field != null : "Field name required";
+
 		this.field = field;
 		this.value = value;
 	}
@@ -63,20 +69,40 @@ public class WildcardQuery extends AbstractQuery {
 		return value;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void analyze(Analyzer analyzer) {
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
-	public Query toLucene(CellsMapper cellsMapper) {
+	public Query query(CellsMapper cellsMapper) {
 		CellMapper<?> cellMapper = cellsMapper.getMapper(field);
-		return cellMapper.toLucene(this);
+		Class<?> clazz = cellMapper.getBaseClass();
+		Query query;
+		if (clazz == String.class) {
+			String value = (String) cellMapper.queryValue(this.value);
+			Term term = new Term(field, value);
+			query = new org.apache.lucene.search.PrefixQuery(term);
+		} else {
+			String message = String.format("Unsupported query %s for mapper %s", this, cellMapper);
+			throw new UnsupportedOperationException(message);
+		}
+		query.setBoost(boost);
+		return query;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("WildcardQuery [boost=");
+		builder.append("PrefixQuery [boost=");
 		builder.append(boost);
 		builder.append(", field=");
 		builder.append(field);

@@ -340,7 +340,7 @@ public class CellsMapper {
 		try {
 			Search search = Search.fromJSON(querySentence);
 			search.analyze(perFieldAnalyzer);
-			return search.toLucene(this);
+			return search.query(this);
 		} catch (IOException e) {
 			QueryParser queryParser = new RowQueryParser(Version.LUCENE_46, "lucene", this);
 			queryParser.setAllowLeadingWildcard(true);

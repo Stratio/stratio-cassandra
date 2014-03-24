@@ -3,6 +3,8 @@ package org.apache.cassandra.db.index.stratio.query;
 import org.apache.cassandra.db.index.stratio.schema.CellMapper;
 import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.automaton.LevenshteinAutomata;
 import org.codehaus.jackson.annotate.JsonCreator;
@@ -10,12 +12,15 @@ import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeName;
 
 /**
+ * A {@link Condition} that implements the fuzzy search query. The similarity measurement is
+ * based on the Damerau-Levenshtein (optimal string alignment) algorithm, though you can explicitly
+ * choose classic Levenshtein by passing {@code false} to the {@code transpositions} parameter.
  * 
  * @author adelapena
  * 
  */
 @JsonTypeName("fuzzy")
-public class FuzzyQuery extends AbstractQuery {
+public class FuzzyCondition extends Condition {
 
 	public final static int DEFAULT_MAX_EDITS = LevenshteinAutomata.MAXIMUM_SUPPORTED_DISTANCE;
 	public final static int DEFAULT_PREFIX_LENGTH = 0;
@@ -42,8 +47,31 @@ public class FuzzyQuery extends AbstractQuery {
 	@JsonProperty("transpositions")
 	private final boolean transpositions;
 
+	/**
+	 * Returns a new {@link FuzzyCondition}.
+	 * 
+	 * @param boost
+	 *            The boost for this query clause. Documents matching this clause will (in addition
+	 *            to the normal weightings) have their score multiplied by {@code boost}. If
+	 *            {@code null}, then {@link DEFAULT_BOOST} is used as default.
+	 * @param field
+	 *            The field name.
+	 * @param value
+	 *            The field fuzzy value.
+	 * @param maxEdits
+	 *            Must be >= 0 and <= {@link LevenshteinAutomata#MAXIMUM_SUPPORTED_DISTANCE}.
+	 * @param prefixLength
+	 *            Length of common (non-fuzzy) prefix
+	 * @param maxExpansions
+	 *            The maximum number of terms to match. If this number is greater than
+	 *            {@link BooleanQuery#getMaxClauseCount} when the query is rewritten, then the
+	 *            maxClauseCount will be used instead.
+	 * @param transpositions
+	 *            True if transpositions should be treated as a primitive edit operation. If this is
+	 *            false, comparisons will implement the classic Levenshtein algorithm.
+	 */
 	@JsonCreator
-	public FuzzyQuery(@JsonProperty("boost") Float boost,
+	public FuzzyCondition(@JsonProperty("boost") Float boost,
 	                  @JsonProperty("field") String field,
 	                  @JsonProperty("value") Object value,
 	                  @JsonProperty("max_edits") Integer maxEdits,
@@ -51,6 +79,9 @@ public class FuzzyQuery extends AbstractQuery {
 	                  @JsonProperty("max_expansions") Integer maxExpansions,
 	                  @JsonProperty("transpositions") Boolean transpositions) {
 		super(boost);
+
+		assert field != null : "Field name required";
+
 		this.field = field;
 		this.value = value;
 		this.maxEdits = maxEdits == null ? DEFAULT_MAX_EDITS : maxEdits;
@@ -88,33 +119,76 @@ public class FuzzyQuery extends AbstractQuery {
 		return analyze(field, value, analyzer);
 	}
 
+	/**
+	 * Returns the Damerau-Levenshtein max distance.
+	 * 
+	 * @return The Damerau-Levenshtein max distance.
+	 */
 	public int getMaxEdits() {
 		return maxEdits;
 	}
 
+	/**
+	 * Returns the length of common (non-fuzzy) prefix.
+	 * 
+	 * @return The length of common (non-fuzzy) prefix.
+	 */
 	public int getPrefixLength() {
 		return prefixLength;
 	}
 
+	/**
+	 * Returns the maximum number of terms to match.
+	 * 
+	 * @return The maximum number of terms to match.
+	 */
 	public int getMaxExpansions() {
 		return maxExpansions;
 	}
 
+	/**
+	 * Returns if transpositions should be treated as a primitive edit operation.
+	 * 
+	 * @return If transpositions should be treated as a primitive edit operation.
+	 */
 	public boolean getTranspositions() {
 		return transpositions;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void analyze(Analyzer analyzer) {
 		this.value = analyze(field, value, analyzer);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
-	public Query toLucene(CellsMapper cellsMapper) {
+	public Query query(CellsMapper cellsMapper) {
 		CellMapper<?> cellMapper = cellsMapper.getMapper(field);
-		return cellMapper.toLucene(this);
+		Class<?> clazz = cellMapper.getBaseClass();
+		if (clazz == String.class) {
+			String value = (String) cellMapper.queryValue(this.value);
+			Term term = new Term(field, value);
+			Query query = new org.apache.lucene.search.FuzzyQuery(term,
+			                                                      maxEdits,
+			                                                      prefixLength,
+			                                                      maxExpansions,
+			                                                      transpositions);
+			query.setBoost(boost);
+			return query;
+		} else {
+			String message = String.format("Unsupported query %s for mapper %s", this, cellMapper);
+			throw new UnsupportedOperationException(message);
+		}
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();

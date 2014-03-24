@@ -1,10 +1,10 @@
 package org.apache.cassandra.db.index.stratio;
 
-import org.apache.cassandra.db.index.stratio.query.AbstractQuery;
-import org.apache.cassandra.db.index.stratio.query.MatchQuery;
-import org.apache.cassandra.db.index.stratio.query.PrefixQuery;
-import org.apache.cassandra.db.index.stratio.query.RangeQuery;
-import org.apache.cassandra.db.index.stratio.query.WildcardQuery;
+import org.apache.cassandra.db.index.stratio.query.Condition;
+import org.apache.cassandra.db.index.stratio.query.MatchCondition;
+import org.apache.cassandra.db.index.stratio.query.PrefixCondition;
+import org.apache.cassandra.db.index.stratio.query.RangeCondition;
+import org.apache.cassandra.db.index.stratio.query.WildcardCondition;
 import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.ParseException;
@@ -30,16 +30,16 @@ public class RowQueryParser extends QueryParser {
 
 	@Override
 	public Query getRangeQuery(String field, String lower, String upper, boolean includeLower, boolean includeUpper) throws ParseException {
-		RangeQuery query = new RangeQuery(AbstractQuery.DEFAULT_BOOST, field, lower, upper, includeLower, includeUpper);
-		return query.toLucene(mapper);
+		RangeCondition query = new RangeCondition(Condition.DEFAULT_BOOST, field, lower, upper, includeLower, includeUpper);
+		return query.query(mapper);
 	}
 
 	@Override
 	protected Query newTermQuery(Term term) {
 		String field = term.field();
 		String text = term.text();
-		MatchQuery query = new MatchQuery(AbstractQuery.DEFAULT_BOOST, field, text);
-		return query.toLucene(mapper);
+		MatchCondition query = new MatchCondition(Condition.DEFAULT_BOOST, field, text);
+		return query.query(mapper);
 	}
 
 	@Override
@@ -51,16 +51,16 @@ public class RowQueryParser extends QueryParser {
 	protected Query newRegexpQuery(Term regexp) {
 		String field = regexp.field();
 		String text = regexp.text();
-		WildcardQuery query = new WildcardQuery(AbstractQuery.DEFAULT_BOOST, field, text);
-		return query.toLucene(mapper);
+		WildcardCondition query = new WildcardCondition(Condition.DEFAULT_BOOST, field, text);
+		return query.query(mapper);
 	}
 
 	@Override
 	protected Query newPrefixQuery(Term regexp) {
 		String field = regexp.field();
 		String text = regexp.text();
-		PrefixQuery query = new PrefixQuery(AbstractQuery.DEFAULT_BOOST, field, text);
-		return query.toLucene(mapper);
+		PrefixCondition query = new PrefixCondition(Condition.DEFAULT_BOOST, field, text);
+		return query.query(mapper);
 	}
 
 }

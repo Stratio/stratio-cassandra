@@ -3,19 +3,21 @@ package org.apache.cassandra.db.index.stratio.query;
 import org.apache.cassandra.db.index.stratio.schema.CellMapper;
 import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.search.NumericRangeQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermRangeQuery;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeName;
 
 /**
- * A {@link AbstractQuery} implementation that matches a field within an range of values.
+ * A {@link Condition} implementation that matches a field within an range of values.
  * 
  * @version 0.1
  * @author adelapena
  */
 @JsonTypeName("range")
-public class RangeQuery extends AbstractQuery {
+public class RangeCondition extends Condition {
 
 	/** The field name. */
 	@JsonProperty("field")
@@ -47,7 +49,8 @@ public class RangeQuery extends AbstractQuery {
 	 * 
 	 * @param boost
 	 *            The boost for this query clause. Documents matching this clause will (in addition
-	 *            to the normal weightings) have their score multiplied by {@code boost}.
+	 *            to the normal weightings) have their score multiplied by {@code boost}. If
+	 *            {@code null}, then {@link DEFAULT_BOOST} is used as default.
 	 * @param field
 	 *            the field name.
 	 * @param lowerValue
@@ -60,13 +63,16 @@ public class RangeQuery extends AbstractQuery {
 	 *            if {@code true}, the {@code upperValue} is included in the range.
 	 */
 	@JsonCreator
-	public RangeQuery(@JsonProperty("boost") Float boost,
+	public RangeCondition(@JsonProperty("boost") Float boost,
 	                  @JsonProperty("field") String field,
 	                  @JsonProperty("lower") Object lowerValue,
 	                  @JsonProperty("upper") Object upperValue,
 	                  @JsonProperty("include_lower") boolean includeLower,
 	                  @JsonProperty("include_upper") boolean includeUpper) {
 		super(boost);
+
+		assert field != null : "Field name required";
+
 		this.field = field;
 		this.lower = lowerValue;
 		this.upper = upperValue;
@@ -123,18 +129,54 @@ public class RangeQuery extends AbstractQuery {
 		return includeUpper;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void analyze(Analyzer analyzer) {
 		this.lower = analyze(field, lower, analyzer);
 		this.upper = analyze(field, upper, analyzer);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
-	public Query toLucene(CellsMapper cellsMapper) {
+	public Query query(CellsMapper cellsMapper) {
 		CellMapper<?> cellMapper = cellsMapper.getMapper(field);
-		return cellMapper.toLucene(this);
+		Class<?> clazz = cellMapper.getBaseClass();
+		Query query;
+		if (clazz == String.class) {
+			String lower = (String) cellMapper.queryValue(this.lower);
+			String upper = (String) cellMapper.queryValue(this.upper);
+			query = TermRangeQuery.newStringRange(field, lower, upper, includeLower, includeUpper);
+		} else if (clazz == Integer.class) {
+			Integer lower = (Integer) cellMapper.queryValue(this.lower);
+			Integer upper = (Integer) cellMapper.queryValue(this.upper);
+			query = NumericRangeQuery.newIntRange(field, lower, upper, includeLower, includeUpper);
+		} else if (clazz == Long.class) {
+			Long lower = (Long) cellMapper.queryValue(this.lower);
+			Long upper = (Long) cellMapper.queryValue(this.upper);
+			query = NumericRangeQuery.newLongRange(field, lower, upper, includeLower, includeUpper);
+		} else if (clazz == Float.class) {
+			Float lower = (Float) cellMapper.queryValue(this.lower);
+			Float upper = (Float) cellMapper.queryValue(this.upper);
+			query = NumericRangeQuery.newFloatRange(field, lower, upper, includeLower, includeUpper);
+		} else if (clazz == Double.class) {
+			Double lower = (Double) cellMapper.queryValue(this.lower);
+			Double upper = (Double) cellMapper.queryValue(this.upper);
+			query = NumericRangeQuery.newDoubleRange(field, lower, upper, includeLower, includeUpper);
+		} else {
+			String message = String.format("Unsupported query %s for mapper %s", this, cellMapper);
+			throw new UnsupportedOperationException(message);
+		}
+		query.setBoost(boost);
+		return query;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();

@@ -6,19 +6,21 @@ import java.util.List;
 import org.apache.cassandra.db.index.stratio.schema.CellMapper;
 import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Query;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeName;
 
 /**
- * A {@link AbstractQuery} implementation that matches documents containing a value for a field.
+ * A {@link Condition} implementation that matches documents containing a particular sequence of
+ * terms.
  * 
  * @version 0.1
  * @author adelapena
  */
 @JsonTypeName("match")
-public class PhraseQuery extends AbstractQuery {
+public class PhraseCondition extends Condition {
 
 	public static final int DEFAULT_SLOP = 0;
 
@@ -39,20 +41,24 @@ public class PhraseQuery extends AbstractQuery {
 	 * 
 	 * @param boost
 	 *            The boost for this query clause. Documents matching this clause will (in addition
-	 *            to the normal weightings) have their score multiplied by {@code boost}.
+	 *            to the normal weightings) have their score multiplied by {@code boost}. If
+	 *            {@code null}, then {@link DEFAULT_BOOST} is used as default.
 	 * @param field
-	 *            the field name.
+	 *            The field name.
 	 * @param values
-	 *            the field values.
+	 *            The field values.
 	 * @param slop
-	 *            the slop.
+	 *            The slop.
 	 */
 	@JsonCreator
-	public PhraseQuery(@JsonProperty("boost") Float boost,
+	public PhraseCondition(@JsonProperty("boost") Float boost,
 	                   @JsonProperty("field") String field,
 	                   @JsonProperty("values") List<Object> values,
 	                   @JsonProperty("slop") Integer slop) {
 		super(boost);
+
+		assert field != null : "Field name required";
+
 		this.field = field;
 		this.values = values;
 		this.slop = slop == null ? DEFAULT_SLOP : slop;
@@ -85,6 +91,9 @@ public class PhraseQuery extends AbstractQuery {
 		return slop;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void analyze(Analyzer analyzer) {
 		List<Object> values = new ArrayList<>(this.values.size());
@@ -95,12 +104,32 @@ public class PhraseQuery extends AbstractQuery {
 		this.values = values;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
-	public Query toLucene(CellsMapper cellsMapper) {
+	public Query query(CellsMapper cellsMapper) {
 		CellMapper<?> cellMapper = cellsMapper.getMapper(field);
-		return cellMapper.toLucene(this);
+		Class<?> clazz = cellMapper.getBaseClass();
+		if (clazz == String.class) {
+			org.apache.lucene.search.PhraseQuery query = new org.apache.lucene.search.PhraseQuery();
+			query.setSlop(slop);
+			query.setBoost(boost);
+			for (Object o : values) {
+				String value = (String) cellMapper.queryValue(o);
+				Term term = new Term(field, value);
+				query.add(term);
+			}
+			return query;
+		} else {
+			String message = String.format("Unsupported query %s for mapper %s", this, cellMapper);
+			throw new UnsupportedOperationException(message);
+		}
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();

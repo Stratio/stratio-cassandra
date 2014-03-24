@@ -3,11 +3,12 @@ package org.apache.cassandra.db.index.stratio.query;
 import java.io.IOException;
 
 import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
-import org.apache.cassandra.db.index.stratio.util.JsonSerializer;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
+import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryWrapperFilter;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.codehaus.jackson.annotate.JsonCreator;
@@ -20,27 +21,27 @@ import org.codehaus.jackson.annotate.JsonTypeInfo;
  * 
  * Known subclasses are:
  * <ul>
- * <li> {@link BooleanQuery}
- * <li> {@link FuzzyQuery}
- * <li> {@link MatchQuery}
- * <li> {@link PhraseQuery}
- * <li> {@link PrefixQuery}
- * <li> {@link RangeQuery}
- * <li> {@link WildcardQuery}
+ * <li> {@link BooleanCondition}
+ * <li> {@link FuzzyCondition}
+ * <li> {@link MatchCondition}
+ * <li> {@link PhraseCondition}
+ * <li> {@link PrefixQueryTest}
+ * <li> {@link RangeCondition}
+ * <li> {@link WildcardCondition}
  * </ul>
  * 
  * @version 0.1
  * @author adelapena
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
-@JsonSubTypes({ @JsonSubTypes.Type(value = BooleanQuery.class, name = "boolean"),
-               @JsonSubTypes.Type(value = MatchQuery.class, name = "match"),
-               @JsonSubTypes.Type(value = RangeQuery.class, name = "range"),
-               @JsonSubTypes.Type(value = PhraseQuery.class, name = "phrase"),
-               @JsonSubTypes.Type(value = PrefixQuery.class, name = "prefix"),
-               @JsonSubTypes.Type(value = FuzzyQuery.class, name = "fuzzy"),
-               @JsonSubTypes.Type(value = WildcardQuery.class, name = "wildcard"), })
-public abstract class AbstractQuery {
+@JsonSubTypes({ @JsonSubTypes.Type(value = BooleanCondition.class, name = "boolean"),
+               @JsonSubTypes.Type(value = MatchCondition.class, name = "match"),
+               @JsonSubTypes.Type(value = RangeCondition.class, name = "range"),
+               @JsonSubTypes.Type(value = PhraseCondition.class, name = "phrase"),
+               @JsonSubTypes.Type(value = PrefixQueryTest.class, name = "prefix"),
+               @JsonSubTypes.Type(value = FuzzyCondition.class, name = "fuzzy"),
+               @JsonSubTypes.Type(value = WildcardCondition.class, name = "wildcard"), })
+public abstract class Condition {
 
 	public static final float DEFAULT_BOOST = 1.0f;
 
@@ -54,7 +55,7 @@ public abstract class AbstractQuery {
 	 *            to the normal weightings) have their score multiplied by {@code boost}.
 	 */
 	@JsonCreator
-	public AbstractQuery(@JsonProperty("boost") Float boost) {
+	public Condition(@JsonProperty("boost") Float boost) {
 		this.boost = boost == null ? DEFAULT_BOOST : boost;
 	}
 
@@ -69,45 +70,24 @@ public abstract class AbstractQuery {
 	}
 
 	/**
-	 * Returns the JSON representation of this.
-	 * 
-	 * @return the JSON representation of this.
-	 */
-	public String toJSON() throws IOException {
-		return JsonSerializer.toString(this);
-	}
-
-	// /**
-	// * Returns the {@link AbstractQuery} represented by the specified JSON.
-	// *
-	// * @param json
-	// * the JSON to be parsed.
-	// * @return the {@link AbstractQuery} represented by the specified JSON.
-	// */
-	// public static <T extends AbstractQuery> T fromJSON(String json, Class<T> clazz) throws
-	// IOException {
-	// return JsonSerializer.fromString(json, clazz);
-	// }
-	//
-	// /**
-	// * Returns the {@link AbstractQuery} represented by the specified JSON.
-	// *
-	// * @param json
-	// * the JSON to be parsed.
-	// * @return the {@link AbstractQuery} represented by the specified JSON.
-	// */
-	// public static AbstractQuery fromJSON(String json) throws IOException {
-	// return JsonSerializer.fromString(json, AbstractQuery.class);
-	// }
-
-	/**
-	 * Returns the Lucene's {@link Query} representation of this query.
+	 * Returns the Lucene's {@link Query} representation of this condition.
 	 * 
 	 * @param cellsMapper
 	 *            The {@link CellsMapper} to be used.
-	 * @return The Lucene's {@link Query} representation of this query.
+	 * @return The Lucene's {@link Query} representation of this condition.
 	 */
-	public abstract Query toLucene(CellsMapper cellsMapper);
+	public abstract Query query(CellsMapper cellsMapper);
+
+	/**
+	 * Returns the Lucene's {@link Filter} representation of this condition.
+	 * 
+	 * @param cellsMapper
+	 *            The {@link CellsMapper} to be used.
+	 * @return The Lucene's {@link Filter} representation of this condition.
+	 */
+	public Filter filter(CellsMapper cellsMapper) {
+		return new QueryWrapperFilter(query(cellsMapper));
+	}
 
 	/**
 	 * Applies the specified {@link Analyzer} to the required arguments.

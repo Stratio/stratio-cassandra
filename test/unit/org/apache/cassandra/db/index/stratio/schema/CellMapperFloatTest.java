@@ -1,19 +1,9 @@
 package org.apache.cassandra.db.index.stratio.schema;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
-import org.apache.cassandra.db.index.stratio.query.FuzzyQuery;
-import org.apache.cassandra.db.index.stratio.query.MatchQuery;
-import org.apache.cassandra.db.index.stratio.query.PhraseQuery;
-import org.apache.cassandra.db.index.stratio.query.PrefixQuery;
-import org.apache.cassandra.db.index.stratio.query.RangeQuery;
-import org.apache.cassandra.db.index.stratio.query.WildcardQuery;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.search.NumericRangeQuery;
-import org.apache.lucene.search.Query;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -116,76 +106,6 @@ public class CellMapperFloatTest {
 		Assert.assertEquals(Float.valueOf(3.2f), field.numericValue());
 		Assert.assertEquals("name", field.name());
 		Assert.assertEquals(false, field.fieldType().stored());
-	}
-
-	@Test
-	public void testMatchQuery() {
-		CellMapperFloat mapper = new CellMapperFloat(1f);
-		MatchQuery matchQuery = new MatchQuery(0.5f, "name", 3l);
-		Query query = mapper.toLucene(matchQuery);
-		Assert.assertNotNull(query);
-		Assert.assertEquals(NumericRangeQuery.class, query.getClass());
-		Assert.assertEquals(0.5f, query.getBoost(), 0);
-	}
-
-	@Test
-	public void testRangeQueryClose() {
-		CellMapperFloat mapper = new CellMapperFloat(1f);
-		RangeQuery rangeQuery = new RangeQuery(0.5f, "name", 2L, 3f, true, false);
-		Query query = mapper.toLucene(rangeQuery);
-		Assert.assertNotNull(query);
-		Assert.assertEquals(NumericRangeQuery.class, query.getClass());
-		NumericRangeQuery<?> numericQuery = (NumericRangeQuery<?>) query;
-		Assert.assertEquals(Float.valueOf(2), (Float) numericQuery.getMin());
-		Assert.assertEquals(Float.valueOf(3), (Float) numericQuery.getMax());
-		Assert.assertEquals(true, numericQuery.includesMin());
-		Assert.assertEquals(false, numericQuery.includesMax());
-		Assert.assertEquals(0.5f, query.getBoost(), 0);
-	}
-
-	@Test
-	public void testRangeQueryOpen() {
-		CellMapperFloat mapper = new CellMapperFloat(1f);
-		RangeQuery rangeQuery = new RangeQuery(0.5f, "name", 2, null, true, false);
-		Query query = mapper.toLucene(rangeQuery);
-		Assert.assertNotNull(query);
-		Assert.assertEquals(NumericRangeQuery.class, query.getClass());
-		NumericRangeQuery<?> numericQuery = (NumericRangeQuery<?>) query;
-		Assert.assertEquals(Float.valueOf(2), (Float) numericQuery.getMin());
-		Assert.assertNull(numericQuery.getMax());
-		Assert.assertEquals(true, numericQuery.includesMin());
-		Assert.assertEquals(false, numericQuery.includesMax());
-		Assert.assertEquals(0.5f, query.getBoost(), 0);
-	}
-
-	@Test(expected = UnsupportedOperationException.class)
-	public void testPrefixQuery() {
-		CellMapperFloat mapper = new CellMapperFloat(1f);
-		PrefixQuery prefixQuery = new PrefixQuery(1f, "name", 3);
-		mapper.toLucene(prefixQuery);
-	}
-
-	@Test(expected = UnsupportedOperationException.class)
-	public void testWildcardQuery() {
-		CellMapperFloat mapper = new CellMapperFloat(1f);
-		WildcardQuery prefixQuery = new WildcardQuery(1f, "name", 3);
-		mapper.toLucene(prefixQuery);
-	}
-
-	@Test(expected = UnsupportedOperationException.class)
-	public void testFuzzyQuery() {
-		CellMapperFloat mapper = new CellMapperFloat(1f);
-		FuzzyQuery prefixQuery = new FuzzyQuery(1f, "name", 3, 2, 0, 50, true);
-		mapper.toLucene(prefixQuery);
-	}
-
-	@Test(expected = UnsupportedOperationException.class)
-	public void testPhraseQuery() {
-		CellMapperFloat mapper = new CellMapperFloat(1f);
-		List<Object> values = new ArrayList<>();
-		values.add(3);
-		PhraseQuery prefixQuery = new PhraseQuery(1f, "name", values, 2);
-		mapper.toLucene(prefixQuery);
 	}
 
 	@Test
