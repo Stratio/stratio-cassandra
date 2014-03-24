@@ -19,7 +19,7 @@ public class CellMapperBigInteger extends CellMapper<String> {
 	@JsonProperty("padding")
 	private final int padding;
 
-	private final BigInteger minValue;
+	private final BigInteger complement;
 
 	@JsonCreator
 	public CellMapperBigInteger(@JsonProperty("padding") Integer padding) {
@@ -29,9 +29,7 @@ public class CellMapperBigInteger extends CellMapper<String> {
 		assert padding > 0 : "Padding must be positive";
 
 		this.padding = padding + 1;
-		minValue = BigInteger.valueOf(10).pow(padding);
-		System.out.println(" PADDING " + this.padding);
-		System.out.println(" COMPLEMENT " + this.minValue);
+		complement = BigInteger.valueOf(10).pow(padding);
 	}
 
 	@Override
@@ -45,12 +43,8 @@ public class CellMapperBigInteger extends CellMapper<String> {
 			return null;
 		} else {
 			BigInteger bi = new BigInteger(value.toString());
-			bi = bi.add(minValue);
-			String result = bi.toString();
-			result = StringUtils.leftPad(result, padding, '0');
-			System.out.println("COMPLEMENT -> " + this.minValue);
-			System.out.println("RESULT     -> " + result);
-			return result;
+			bi = bi.add(complement);
+			return StringUtils.leftPad(bi.toString(), padding, '0');
 		}
 	}
 
