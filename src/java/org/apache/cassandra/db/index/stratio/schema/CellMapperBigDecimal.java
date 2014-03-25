@@ -16,24 +16,43 @@ import org.codehaus.jackson.annotate.JsonProperty;
  */
 public class CellMapperBigDecimal extends CellMapper<String> {
 
-	@JsonProperty("left_padding")
-	private final int leftPadding;
+	public static final int DEFAULT_INTEGER_DIGITS = 32;
+	public static final int DEFAULT_DECIMAL_DIGITS = 32;
 
-	@JsonProperty("right_padding")
-	private final int rightPadding;
+	private final int integerDigits;
+	private final int decimalDigits;
+
+	private final BigDecimal complement;
 
 	@JsonCreator
-	public CellMapperBigDecimal(@JsonProperty("left_padding") Integer leftPadding,
-	                            @JsonProperty("right_padding") Integer rightPadding) {
+	public CellMapperBigDecimal(@JsonProperty("integer_digits") Integer integerDigits,
+	                            @JsonProperty("decimal_digits") Integer decimalDigits) {
 		super();
 
-		assert leftPadding != null : "Left padding required";
-		assert rightPadding != null : "Right padding required";
-		assert leftPadding > 0 : "Left padding must be positive";
-		assert rightPadding > 0 : "Right padding must be positive";
+		// Setup integer part mapping
+		if (integerDigits != null && integerDigits <= 0) {
+			throw new IllegalArgumentException("Positive integer part digits required");
+		}
+		this.integerDigits = integerDigits == null ? DEFAULT_INTEGER_DIGITS : integerDigits;
 
-		this.leftPadding = leftPadding;
-		this.rightPadding = rightPadding;
+		// Setup decimal part mapping
+		if (decimalDigits != null && decimalDigits <= 0) {
+			throw new IllegalArgumentException("Positive decimal part digits required");
+		}
+		this.decimalDigits = decimalDigits == null ? DEFAULT_DECIMAL_DIGITS : decimalDigits;
+
+		int totalDigits = this.integerDigits + this.decimalDigits;
+		BigDecimal divisor = BigDecimal.valueOf(10).pow(this.decimalDigits);
+		BigDecimal dividend = BigDecimal.valueOf(10).pow(totalDigits).subtract(BigDecimal.valueOf(1));
+		complement = dividend.divide(divisor);
+	}
+
+	public int getIntegerDigits() {
+		return integerDigits;
+	}
+
+	public int getDecimalDigits() {
+		return decimalDigits;
 	}
 
 	@Override
@@ -45,26 +64,29 @@ public class CellMapperBigDecimal extends CellMapper<String> {
 	public String indexValue(Object value) {
 		if (value == null) {
 			return null;
-		} else {
-			BigDecimal bi = new BigDecimal(value.toString());
-			String[] bis = bi.toPlainString().split("\\.");
-			String left = bis[0];
-			String right = bis[1];
-
-			left = left.replaceFirst("-", "");
-
-			assert left.length() <= leftPadding;
-			assert right.length() <= rightPadding;
-
-			left = StringUtils.leftPad(left, rightPadding, '0');
-			right = StringUtils.rightPad(right, rightPadding, '0');
-
-			char prefix = bi.compareTo(BigDecimal.ZERO) > 0 ? 'p' : 'N';
-			String result = prefix + left + "." + right;
-
-//			System.out.println("RESULT -> " + result);
-			return result;
 		}
+
+		// Split integer and decimal part
+		BigDecimal bi = new BigDecimal(value.toString());
+		bi = bi.stripTrailingZeros();
+		String[] parts = bi.toPlainString().split("\\.");
+		String integerPart = parts[0];
+		String decimalPart = parts.length == 1 ? "0" : parts[1];
+
+		if (integerPart.replaceFirst("-", "").length() > integerDigits) {
+			throw new IllegalArgumentException("Too much digits in integer part");
+		}
+		if (decimalPart.length() > decimalDigits) {
+			throw new IllegalArgumentException("Too much digits in decimal part");
+		}
+
+		BigDecimal complemented = bi.add(complement);
+		String bds[] = complemented.toString().split("\\.");
+		integerPart = bds[0];
+		decimalPart = bds.length == 2 ? bds[1] : "0";
+		integerPart = StringUtils.leftPad(integerPart, integerDigits + 1, '0');
+
+		return integerPart + "." + decimalPart;
 	}
 
 	@Override

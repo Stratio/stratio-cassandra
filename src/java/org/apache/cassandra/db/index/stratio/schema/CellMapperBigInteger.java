@@ -16,20 +16,24 @@ import org.codehaus.jackson.annotate.JsonProperty;
  */
 public class CellMapperBigInteger extends CellMapper<String> {
 
-	@JsonProperty("padding")
-	private final int padding;
+	public static final int DEFAULT_DIGITS = 32;
 
+	private final int digits;
 	private final BigInteger complement;
+	private final int hexDigits;
 
 	@JsonCreator
-	public CellMapperBigInteger(@JsonProperty("padding") Integer padding) {
+	public CellMapperBigInteger(@JsonProperty("digits") Integer digits) {
 		super();
 
-		assert padding != null : "Padding required";
-		assert padding > 0 : "Padding must be positive";
+		if (digits != null && digits <= 0) {
+			throw new IllegalArgumentException("Positive digits required");
+		}
 
-		this.padding = padding + 1;
-		complement = BigInteger.valueOf(10).pow(padding);
+		this.digits = digits == null ? DEFAULT_DIGITS : digits;
+		complement = BigInteger.valueOf(10).pow(this.digits).subtract(BigInteger.valueOf(1));
+		BigInteger maxValue = complement.multiply(BigInteger.valueOf(2));
+		hexDigits = encode(maxValue).length();
 	}
 
 	@Override
@@ -43,9 +47,23 @@ public class CellMapperBigInteger extends CellMapper<String> {
 			return null;
 		} else {
 			BigInteger bi = new BigInteger(value.toString());
+
+			if (bi.abs().toString().length() > digits) {
+				throw new IllegalArgumentException("Value has more than " + digits + " digits");
+			}
+
 			bi = bi.add(complement);
-			return StringUtils.leftPad(bi.toString(), padding, '0');
+			String bis = encode(bi);
+			return StringUtils.leftPad(bis, hexDigits + 1, '0');
 		}
+	}
+
+	private static String encode(BigInteger bi) {
+		return bi.toString(Character.MAX_RADIX);
+	}
+
+	public int getDigits() {
+		return digits;
 	}
 
 	@Override
