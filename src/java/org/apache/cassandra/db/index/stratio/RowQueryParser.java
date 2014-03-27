@@ -4,6 +4,7 @@ import org.apache.cassandra.db.index.stratio.query.Condition;
 import org.apache.cassandra.db.index.stratio.query.MatchCondition;
 import org.apache.cassandra.db.index.stratio.query.PrefixCondition;
 import org.apache.cassandra.db.index.stratio.query.RangeCondition;
+import org.apache.cassandra.db.index.stratio.query.RegexpCondition;
 import org.apache.cassandra.db.index.stratio.query.WildcardCondition;
 import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
 import org.apache.lucene.index.Term;
@@ -31,11 +32,11 @@ public class RowQueryParser extends QueryParser {
 	@Override
 	public Query getRangeQuery(String field, String lower, String upper, boolean includeLower, boolean includeUpper) throws ParseException {
 		RangeCondition condition = new RangeCondition(Condition.DEFAULT_BOOST,
-		                                          field,
-		                                          lower,
-		                                          upper,
-		                                          includeLower,
-		                                          includeUpper);
+		                                              field,
+		                                              lower,
+		                                              upper,
+		                                              includeLower,
+		                                              includeUpper);
 		return condition.query(mapper);
 	}
 
@@ -56,7 +57,7 @@ public class RowQueryParser extends QueryParser {
 	protected Query newRegexpQuery(Term regexp) {
 		String field = regexp.field();
 		String text = regexp.text();
-		WildcardCondition condition = new WildcardCondition(Condition.DEFAULT_BOOST, field, text);
+		RegexpCondition condition = new RegexpCondition(Condition.DEFAULT_BOOST, field, text);
 		return condition.query(mapper);
 	}
 

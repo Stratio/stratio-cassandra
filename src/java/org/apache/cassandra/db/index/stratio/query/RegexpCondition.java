@@ -5,7 +5,7 @@ import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.WildcardQuery;
+import org.apache.lucene.search.RegexpQuery;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeName;
@@ -23,7 +23,7 @@ import org.codehaus.jackson.annotate.JsonTypeName;
  * @author adelapena
  */
 @JsonTypeName("wildcard")
-public class WildcardCondition extends Condition {
+public class RegexpCondition extends Condition {
 
 	/** The field name */
 	@JsonProperty("field")
@@ -46,7 +46,7 @@ public class WildcardCondition extends Condition {
 	 *            the field value.
 	 */
 	@JsonCreator
-	public WildcardCondition(@JsonProperty("boost") Float boost,
+	public RegexpCondition(@JsonProperty("boost") Float boost,
 	                         @JsonProperty("field") String field,
 	                         @JsonProperty("value") Object value) {
 		super(boost);
@@ -93,7 +93,7 @@ public class WildcardCondition extends Condition {
 		if (clazz == String.class) {
 			String value = (String) cellMapper.queryValue(this.value);
 			Term term = new Term(field, value);
-			query = new WildcardQuery(term);
+			query = new RegexpQuery(term);
 		} else {
 			String message = String.format("Unsupported query %s for mapper %s", this, cellMapper);
 			throw new UnsupportedOperationException(message);
