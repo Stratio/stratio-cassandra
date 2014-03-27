@@ -78,8 +78,12 @@ public class CellsMapper {
 	public CellsMapper(@JsonProperty("default_analyzer") String analyzerClassName,
 	                   @JsonProperty("fields") Map<String, CellMapper<?>> cellMappers) {
 
-		// Copy fields
-		this.cellMappers = cellMappers;
+		// Copy lower cased mappers
+		this.cellMappers = new HashMap<String, CellMapper<?>>();
+		for (Entry<String, CellMapper<?>> entry : cellMappers.entrySet()) {
+			this.cellMappers.put(entry.getKey().toLowerCase(), entry.getValue());
+		}
+		System.out.println("SCHEMA IS " + this.cellMappers);
 
 		// Setup analyzer
 		if (analyzerClassName == null) {
@@ -92,7 +96,7 @@ public class CellsMapper {
 
 		// Setup analyzer
 		Map<String, Analyzer> analyzers = new HashMap<>();
-		for (Entry<String, CellMapper<?>> entry : cellMappers.entrySet()) {
+		for (Entry<String, CellMapper<?>> entry : this.cellMappers.entrySet()) {
 			String name = entry.getKey();
 			CellMapper<?> mapper = entry.getValue();
 			Analyzer fieldAnalyzer = mapper.analyzer();
@@ -100,6 +104,7 @@ public class CellsMapper {
 				analyzers.put(name, fieldAnalyzer);
 			}
 		}
+
 		perFieldAnalyzer = new PerFieldAnalyzerWrapper(defaultAnalyzer, analyzers);
 	}
 
@@ -320,11 +325,11 @@ public class CellsMapper {
 	}
 
 	public CellMapper<?> getMapper(String field) {
-		CellMapper<?> mapper = cellMappers.get(field);
-		if (mapper == null) {
-			return new CellMapperText(defaultAnalyzerClassName);
+		CellMapper<?> cellMapper = cellMappers.get(field.toLowerCase());
+		if (cellMapper == null) {
+			throw new IllegalArgumentException("Not found mapper for field " + field);
 		} else {
-			return mapper;
+			return cellMapper;
 		}
 	}
 
@@ -336,16 +341,16 @@ public class CellsMapper {
 	 * @return The Lucene's {@link Query} parsed from the specified {@code String}.
 	 */
 	@JsonIgnore
-	public Query query(String querySentence) throws IOException, ParseException {
+	public Query query(String query) throws IOException, ParseException {
 		try {
-			Search search = Search.fromJSON(querySentence);
+			Search search = Search.fromJSON(query);
 			search.analyze(perFieldAnalyzer);
 			return search.query(this);
 		} catch (IOException e) {
 			QueryParser queryParser = new RowQueryParser(Version.LUCENE_46, "lucene", this);
 			queryParser.setAllowLeadingWildcard(true);
 			queryParser.setLowercaseExpandedTerms(false);
-			return queryParser.parse(querySentence);
+			return queryParser.parse(query);
 		}
 	}
 

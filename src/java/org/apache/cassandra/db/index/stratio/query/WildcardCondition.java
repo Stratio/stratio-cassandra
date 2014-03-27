@@ -46,13 +46,13 @@ public class WildcardCondition extends Condition {
 	 */
 	@JsonCreator
 	public WildcardCondition(@JsonProperty("boost") Float boost,
-	                     @JsonProperty("field") String field,
-	                     @JsonProperty("value") Object value) {
+	                         @JsonProperty("field") String field,
+	                         @JsonProperty("value") Object value) {
 		super(boost);
 
 		assert field != null : "Field name required";
 
-		this.field = field;
+		this.field = field.toLowerCase();
 		this.value = value;
 	}
 

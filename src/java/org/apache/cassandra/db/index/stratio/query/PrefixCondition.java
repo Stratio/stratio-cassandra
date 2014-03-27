@@ -47,7 +47,7 @@ public class PrefixCondition extends Condition {
 
 		assert field != null : "Field name required";
 
-		this.field = field;
+		this.field = field.toLowerCase();
 		this.value = value;
 	}
 

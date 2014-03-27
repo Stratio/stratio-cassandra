@@ -59,7 +59,7 @@ public class PhraseCondition extends Condition {
 
 		assert field != null : "Field name required";
 
-		this.field = field;
+		this.field = field.toLowerCase();
 		this.values = values;
 		this.slop = slop == null ? DEFAULT_SLOP : slop;
 	}

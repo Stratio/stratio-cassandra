@@ -13,6 +13,7 @@ public class JsonSerializer {
 	static {
 		// jsonMapper.configure(JsonGenerator.Feature.QUOTE_FIELD_NAMES, false);
 		jsonMapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
+		// jsonMapper.setPropertyNamingStrategy(new LowerCaseWithUnderscoresStrategy());
 		// jsonMapper.configure(SerializationConfig.Feature.INDENT_OUTPUT, true);
 		jsonMapper.configure(SerializationConfig.Feature.AUTO_DETECT_IS_GETTERS, false);
 		// jsonMapper.configure(SerializationConfig.Feature.WRITE_DATES_AS_TIMESTAMPS, true);

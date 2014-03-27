@@ -82,7 +82,7 @@ public class FuzzyCondition extends Condition {
 
 		assert field != null : "Field name required";
 
-		this.field = field;
+		this.field = field.toLowerCase();
 		this.value = value;
 		this.maxEdits = maxEdits == null ? DEFAULT_MAX_EDITS : maxEdits;
 		this.prefixLength = prefixLength == null ? DEFAULT_PREFIX_LENGTH : prefixLength;

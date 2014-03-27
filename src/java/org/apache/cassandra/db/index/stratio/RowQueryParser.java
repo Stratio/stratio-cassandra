@@ -30,16 +30,21 @@ public class RowQueryParser extends QueryParser {
 
 	@Override
 	public Query getRangeQuery(String field, String lower, String upper, boolean includeLower, boolean includeUpper) throws ParseException {
-		RangeCondition query = new RangeCondition(Condition.DEFAULT_BOOST, field, lower, upper, includeLower, includeUpper);
-		return query.query(mapper);
+		RangeCondition condition = new RangeCondition(Condition.DEFAULT_BOOST,
+		                                          field,
+		                                          lower,
+		                                          upper,
+		                                          includeLower,
+		                                          includeUpper);
+		return condition.query(mapper);
 	}
 
 	@Override
 	protected Query newTermQuery(Term term) {
 		String field = term.field();
 		String text = term.text();
-		MatchCondition query = new MatchCondition(Condition.DEFAULT_BOOST, field, text);
-		return query.query(mapper);
+		MatchCondition condition = new MatchCondition(Condition.DEFAULT_BOOST, field, text);
+		return condition.query(mapper);
 	}
 
 	@Override
@@ -51,8 +56,8 @@ public class RowQueryParser extends QueryParser {
 	protected Query newRegexpQuery(Term regexp) {
 		String field = regexp.field();
 		String text = regexp.text();
-		WildcardCondition query = new WildcardCondition(Condition.DEFAULT_BOOST, field, text);
-		return query.query(mapper);
+		WildcardCondition condition = new WildcardCondition(Condition.DEFAULT_BOOST, field, text);
+		return condition.query(mapper);
 	}
 
 	@Override
@@ -61,6 +66,14 @@ public class RowQueryParser extends QueryParser {
 		String text = regexp.text();
 		PrefixCondition query = new PrefixCondition(Condition.DEFAULT_BOOST, field, text);
 		return query.query(mapper);
+	}
+
+	@Override
+	protected Query newWildcardQuery(Term t) {
+		String field = t.field();
+		String text = t.text();
+		WildcardCondition condition = new WildcardCondition(Condition.DEFAULT_BOOST, field, text);
+		return condition.query(mapper);
 	}
 
 }

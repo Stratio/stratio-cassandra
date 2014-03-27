@@ -106,7 +106,7 @@ public class RowDirectory {
 	 *            the {@link Document} to be inserted.
 	 */
 	public void createDocument(Document document) {
-		Log.info("Inserting document " + document);
+		Log.debug("Inserting document %s", document);
 		try {
 			indexWriter.addDocument(document);
 		} catch (IOException e) {
@@ -122,7 +122,7 @@ public class RowDirectory {
 	 *            the {@link Document} to be inserted.
 	 */
 	public void createDocuments(Iterable<Document> documents) {
-		// logger.info("Inserting document " + documents);
+		Log.debug("Inserting documents %s", documents);
 		try {
 			indexWriter.addDocuments(documents);
 		} catch (IOException e) {
@@ -142,7 +142,7 @@ public class RowDirectory {
 	 *            The {@link Document} to be added.
 	 */
 	public void updateDocument(Term term, Document document) {
-		// logger.info(String.format("Updating document %s with term %s", document, term));
+		Log.debug("Updating document %s with term %s", document, term);
 		try {
 			indexWriter.updateDocument(term, document);
 		} catch (IOException e) {
@@ -162,11 +162,11 @@ public class RowDirectory {
 	 *            The {@link Document}s to be added.
 	 */
 	public void updateDocuments(Term term, Iterable<Document> documents) {
-		// logger.info(String.format("Updating documents %s with term %s", documents, term));
+		Log.debug("Updating documents %s with term %s", documents, term);
 		try {
 			indexWriter.updateDocuments(term, documents);
 		} catch (IOException e) {
-			Log.error(e, "Error updating docuemnts");
+			Log.error(e, "Error updating documents");
 			throw new RuntimeException(e);
 		}
 	}
@@ -178,7 +178,7 @@ public class RowDirectory {
 	 *            The {@link Term} to identify the documents to be deleted.
 	 */
 	public void deleteDocuments(Term term) {
-		Log.info(String.format("Deleting by term %s", term));
+		Log.debug(String.format("Deleting by term %s", term));
 		try {
 			indexWriter.deleteDocuments(term);
 		} catch (IOException e) {
@@ -194,7 +194,7 @@ public class RowDirectory {
 	 *            The {@link Query} to identify the documents to be deleted.
 	 */
 	public void deleteDocuments(Query query) {
-		Log.info("Deleting by query " + query);
+		Log.debug("Deleting by query %s", query);
 		try {
 			indexWriter.deleteDocuments(query);
 		} catch (IOException e) {
@@ -303,7 +303,7 @@ public class RowDirectory {
 					Float score = scoreDoc.score;
 					ScoredDocument scoredDocument = new ScoredDocument(document, score);
 					scoredDocuments.add(scoredDocument);
-					//Log.debug("Found %s", scoredDocument);
+					// Log.debug("Found %s", scoredDocument);
 				}
 
 				return scoredDocuments;
