@@ -38,7 +38,7 @@ import org.codehaus.jackson.annotate.JsonTypeInfo;
                @JsonSubTypes.Type(value = MatchCondition.class, name = "match"),
                @JsonSubTypes.Type(value = RangeCondition.class, name = "range"),
                @JsonSubTypes.Type(value = PhraseCondition.class, name = "phrase"),
-               @JsonSubTypes.Type(value = PrefixQueryTest.class, name = "prefix"),
+               @JsonSubTypes.Type(value = PrefixCondition.class, name = "prefix"),
                @JsonSubTypes.Type(value = FuzzyCondition.class, name = "fuzzy"),
                @JsonSubTypes.Type(value = WildcardCondition.class, name = "wildcard"), })
 public abstract class Condition {
