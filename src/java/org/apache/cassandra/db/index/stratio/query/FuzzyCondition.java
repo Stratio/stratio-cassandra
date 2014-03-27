@@ -169,7 +169,7 @@ public class FuzzyCondition extends Condition {
 	@Override
 	public Query query(CellsMapper cellsMapper) {
 		CellMapper<?> cellMapper = cellsMapper.getMapper(field);
-		Class<?> clazz = cellMapper.getBaseClass();
+		Class<?> clazz = cellMapper.baseClass();
 		if (clazz == String.class) {
 			String value = (String) cellMapper.queryValue(this.value);
 			Term term = new Term(field, value);

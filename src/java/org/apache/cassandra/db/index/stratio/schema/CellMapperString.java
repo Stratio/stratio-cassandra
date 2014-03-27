@@ -43,7 +43,7 @@ public class CellMapperString extends CellMapper<String> {
 	}
 
 	@Override
-	public Class<String> getBaseClass() {
+	public Class<String> baseClass() {
 		return String.class;
 	}
 

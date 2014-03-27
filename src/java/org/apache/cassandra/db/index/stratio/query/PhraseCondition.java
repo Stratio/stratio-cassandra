@@ -110,7 +110,7 @@ public class PhraseCondition extends Condition {
 	@Override
 	public Query query(CellsMapper cellsMapper) {
 		CellMapper<?> cellMapper = cellsMapper.getMapper(field);
-		Class<?> clazz = cellMapper.getBaseClass();
+		Class<?> clazz = cellMapper.baseClass();
 		if (clazz == String.class) {
 			org.apache.lucene.search.PhraseQuery query = new org.apache.lucene.search.PhraseQuery();
 			query.setSlop(slop);

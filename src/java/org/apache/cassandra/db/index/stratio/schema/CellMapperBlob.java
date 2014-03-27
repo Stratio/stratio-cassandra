@@ -1,21 +1,23 @@
 package org.apache.cassandra.db.index.stratio.schema;
 
-import java.util.UUID;
+import java.nio.ByteBuffer;
 
+import org.apache.cassandra.db.index.stratio.util.ByteBufferUtils;
+import org.apache.cassandra.utils.Hex;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
 import org.codehaus.jackson.annotate.JsonCreator;
 
 /**
- * A {@link CellMapper} to map a UUID field.
+ * A {@link CellMapper} to map a string, not tokenized field.
  * 
  * @author adelapena
  */
-public class CellMapperUUID extends CellMapper<String> {
+public class CellMapperBlob extends CellMapper<String> {
 
 	@JsonCreator
-	public CellMapperUUID() {
+	public CellMapperBlob() {
 		super();
 	}
 
@@ -28,12 +30,18 @@ public class CellMapperUUID extends CellMapper<String> {
 	public String indexValue(Object value) {
 		if (value == null) {
 			return null;
-		} else if (value instanceof UUID) {
-			return value.toString();
+		} else if (value instanceof ByteBuffer) {
+			ByteBuffer bb = (ByteBuffer) value;
+			return ByteBufferUtils.toHex(bb);
+		} else if (value instanceof byte[]) {
+			byte[] bytes = (byte[]) value;
+			return ByteBufferUtils.toHex(bytes);
 		} else if (value instanceof String) {
-			return UUID.fromString((String) value).toString();
+			String string = (String) value;
+			byte[] bytes = Hex.hexToBytes(string);
+			return Hex.bytesToHex(bytes);
 		} else {
-			throw new IllegalArgumentException();
+			throw new IllegalArgumentException(String.format("Value '%s' cannot be cast to byte array", value));
 		}
 	}
 
@@ -48,8 +56,8 @@ public class CellMapperUUID extends CellMapper<String> {
 
 	@Override
 	public Field field(String name, Object value) {
-		String uuid = indexValue(value);
-		return new StringField(name, uuid, STORE);
+		String string = indexValue(value);
+		return new StringField(name, string, STORE);
 	}
 
 	@Override

@@ -17,10 +17,12 @@ import org.codehaus.jackson.annotate.JsonTypeInfo;
  * 
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
-@JsonSubTypes({ @JsonSubTypes.Type(value = CellMapperBoolean.class, name = "boolean"),
+@JsonSubTypes({ @JsonSubTypes.Type(value = CellMapperBlob.class, name = "bytes"),
+               @JsonSubTypes.Type(value = CellMapperBoolean.class, name = "boolean"),
                @JsonSubTypes.Type(value = CellMapperDate.class, name = "date"),
                @JsonSubTypes.Type(value = CellMapperDouble.class, name = "double"),
                @JsonSubTypes.Type(value = CellMapperFloat.class, name = "float"),
+               @JsonSubTypes.Type(value = CellMapperInetAddress.class, name = "inet"),
                @JsonSubTypes.Type(value = CellMapperInteger.class, name = "integer"),
                @JsonSubTypes.Type(value = CellMapperLong.class, name = "long"),
                @JsonSubTypes.Type(value = CellMapperString.class, name = "string"),
@@ -66,7 +68,7 @@ public abstract class CellMapper<BASE> {
 	 * 
 	 * @return The Lucene's type for this mapper.
 	 */
-	public abstract Class<BASE> getBaseClass();
+	public abstract Class<BASE> baseClass();
 
 	/**
 	 * Returns the cell value resulting from the mapping of the specified object.

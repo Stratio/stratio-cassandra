@@ -56,7 +56,7 @@ public class CellMapperFloat extends CellMapper<Float> {
 	}
 
 	@Override
-	public Class<Float> getBaseClass() {
+	public Class<Float> baseClass() {
 		return Float.class;
 	}
 

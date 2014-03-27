@@ -56,7 +56,7 @@ public class CellMapperInteger extends CellMapper<Integer> {
 	}
 
 	@Override
-	public Class<Integer> getBaseClass() {
+	public Class<Integer> baseClass() {
 		return Integer.class;
 	}
 

@@ -75,7 +75,7 @@ public class CellMapperDate extends CellMapper<Long> {
 	}
 
 	@Override
-	public Class<Long> getBaseClass() {
+	public Class<Long> baseClass() {
 		return Long.class;
 	}
 

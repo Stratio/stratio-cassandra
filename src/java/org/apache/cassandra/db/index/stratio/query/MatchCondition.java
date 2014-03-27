@@ -84,7 +84,7 @@ public class MatchCondition extends Condition {
 	@Override
 	public Query query(CellsMapper cellsMapper) {
 		CellMapper<?> cellMapper = cellsMapper.getMapper(field);
-		Class<?> clazz = cellMapper.getBaseClass();
+		Class<?> clazz = cellMapper.baseClass();
 		Query query;
 		if (clazz == String.class) {
 			String value = (String) cellMapper.queryValue(this.value);

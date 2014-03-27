@@ -56,7 +56,7 @@ public class CellMapperDouble extends CellMapper<Double> {
 	}
 
 	@Override
-	public Class<Double> getBaseClass() {
+	public Class<Double> baseClass() {
 		return Double.class;
 	}
 
