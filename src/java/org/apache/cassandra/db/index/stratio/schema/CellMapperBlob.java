@@ -3,6 +3,10 @@ package org.apache.cassandra.db.index.stratio.schema;
 import java.nio.ByteBuffer;
 
 import org.apache.cassandra.db.index.stratio.util.ByteBufferUtils;
+import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.marshal.AsciiType;
+import org.apache.cassandra.db.marshal.BytesType;
+import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.utils.Hex;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
@@ -18,7 +22,7 @@ public class CellMapperBlob extends CellMapper<String> {
 
 	@JsonCreator
 	public CellMapperBlob() {
-		super();
+		super(new AbstractType<?>[] { AsciiType.instance, UTF8Type.instance, BytesType.instance });
 	}
 
 	@Override
@@ -50,7 +54,7 @@ public class CellMapperBlob extends CellMapper<String> {
 		if (value == null) {
 			return null;
 		} else {
-			return value.toString();
+			return value.toString().toLowerCase();
 		}
 	}
 

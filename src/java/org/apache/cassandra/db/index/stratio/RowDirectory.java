@@ -283,17 +283,41 @@ public class RowDirectory {
 	 *            The name of the fields to be loaded.
 	 * @return The found documents, sorted according to the supplied {@link Sort} instance.
 	 */
-	public List<ScoredDocument> search(Query query, Filter filter, Sort sort, int count, Set<String> fieldsToLoad) {
+	public List<ScoredDocument> search(Query query, Filter filter, Sort sort, Integer count, Set<String> fieldsToLoad) {
 		Log.debug("Searching with query %s ", query);
 		Log.debug("Searching with filter %s", filter);
 		Log.debug("Searching with count %d", count);
 		Log.debug("Searching with sort %s", sort);
+
+		if (query == null) {
+			throw new IllegalArgumentException("Query required");
+		}
+		if (count == null || count < 0) {
+			throw new IllegalArgumentException("Positive count required");
+		}
+		if (fieldsToLoad == null || fieldsToLoad.isEmpty()) {
+			throw new IllegalArgumentException("Fields to load required");
+		}
+
 		try {
 			IndexSearcher indexSearcher = searcherManager.acquire();
 			try {
 
 				// Search
-				TopDocs topDocs = indexSearcher.search(query, filter, count, sort, true, true);
+				TopDocs topDocs;
+				if (sort == null) {
+					if (filter == null) {
+						topDocs = indexSearcher.search(query, count);
+					} else {
+						topDocs = indexSearcher.search(query, filter, count);
+					}
+				} else {
+					if (filter == null) {
+						topDocs = indexSearcher.search(query, count, sort);
+					} else {
+						topDocs = indexSearcher.search(query, filter, count, sort, true, true);
+					}
+				}
 				ScoreDoc[] scoreDocs = topDocs.scoreDocs;
 
 				// Get the document keys from query result

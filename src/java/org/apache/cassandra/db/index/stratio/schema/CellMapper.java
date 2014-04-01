@@ -3,6 +3,9 @@ package org.apache.cassandra.db.index.stratio.schema;
 import java.nio.ByteBuffer;
 
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.marshal.ListType;
+import org.apache.cassandra.db.marshal.MapType;
+import org.apache.cassandra.db.marshal.SetType;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.core.KeywordAnalyzer;
 import org.apache.lucene.document.Field;
@@ -36,8 +39,10 @@ public abstract class CellMapper<BASE> {
 
 	protected static final Store STORE = Store.NO;
 
-	protected CellMapper() {
+	protected final AbstractType<?>[] supportedTypes;
 
+	protected CellMapper(AbstractType<?>[] supportedTypes) {
+		this.supportedTypes = supportedTypes;
 	}
 
 	public static Cell build(String name, Object value) {
@@ -80,4 +85,26 @@ public abstract class CellMapper<BASE> {
 	public abstract BASE indexValue(Object value);
 
 	public abstract BASE queryValue(Object value);
+
+	public boolean supports(final AbstractType<?> type) {
+
+		AbstractType<?> checkedType = type;
+		if (type.isCollection()) {
+			if (type instanceof MapType<?, ?>) {
+				checkedType = ((MapType<?, ?>) type).values;
+			} else if (type instanceof ListType<?>) {
+				checkedType = ((ListType<?>) type).elements;
+			} else if (type instanceof SetType) {
+				checkedType = ((SetType<?>) type).elements;
+			}
+		}
+
+		for (AbstractType<?> n : supportedTypes) {
+			if (checkedType.getClass() == n.getClass()) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 }

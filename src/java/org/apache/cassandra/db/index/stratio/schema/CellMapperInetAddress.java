@@ -3,6 +3,10 @@ package org.apache.cassandra.db.index.stratio.schema;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
+import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.marshal.AsciiType;
+import org.apache.cassandra.db.marshal.InetAddressType;
+import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
@@ -17,7 +21,9 @@ public class CellMapperInetAddress extends CellMapper<String> {
 
 	@JsonCreator
 	public CellMapperInetAddress() {
-		super();
+		super(new AbstractType<?>[]{AsciiType.instance,
+		                             UTF8Type.instance,
+		                             InetAddressType.instance});
 	}
 
 	@Override

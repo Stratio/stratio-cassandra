@@ -110,12 +110,17 @@ public class RowIndex extends PerRowSecondaryIndex {
 
 	@Override
 	public void validateOptions() throws ConfigurationException {
+		Log.debug("Validating");
 		try {
 			ColumnDefinition columnDefinition = columnDefs.iterator().next();
-			RowServiceConfig.validate(columnDefinition);
-			Log.debug("Index options are valid");
+			if (baseCfs != null) {
+				RowServiceConfig.validate(baseCfs.metadata, columnDefinition);
+				Log.debug("Index options are valid");
+			} else {
+				Log.debug("Validation skipped");
+			}
 		} catch (Exception e) {
-			String message = "Error while validating index options";
+			String message = "Error while validating index options: " + e.getMessage();
 			Log.error(e, message);
 			throw new ConfigurationException(message, e);
 		}

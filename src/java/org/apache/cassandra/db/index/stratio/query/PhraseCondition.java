@@ -57,9 +57,11 @@ public class PhraseCondition extends Condition {
 	                   @JsonProperty("slop") Integer slop) {
 		super(boost);
 
-		assert field != null : "Field name required";
+		if (field == null || field.trim().isEmpty()) {
+			throw new IllegalArgumentException("Field name required");
+		}
 
-		this.field = field.toLowerCase();
+		this.field = field;
 		this.values = values;
 		this.slop = slop == null ? DEFAULT_SLOP : slop;
 	}
@@ -133,7 +135,8 @@ public class PhraseCondition extends Condition {
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("PhraseQuery [boost=");
+		builder.append(getClass().getSimpleName());
+		builder.append(" [boost=");
 		builder.append(boost);
 		builder.append(", field=");
 		builder.append(field);

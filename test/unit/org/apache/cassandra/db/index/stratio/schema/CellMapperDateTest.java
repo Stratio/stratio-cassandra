@@ -141,13 +141,11 @@ public class CellMapperDateTest {
 		Assert.assertEquals(CellMapperDate.class, cellMapper.getClass());
 	}
 
-	@Test
+	@Test(expected=IllegalArgumentException.class)
 	public void testParseJSONEmpty() throws IOException {
 		String json = "{fields:{}}";
 		CellsMapper cellsMapper = CellsMapper.fromJson(json);
-		CellMapper<?> cellMapper = cellsMapper.getMapper("age");
-		Assert.assertNotNull(cellMapper);
-		Assert.assertEquals(CellMapperText.class, cellMapper.getClass());
+		cellsMapper.getMapper("age");
 	}
 
 	@Test(expected = IllegalArgumentException.class)

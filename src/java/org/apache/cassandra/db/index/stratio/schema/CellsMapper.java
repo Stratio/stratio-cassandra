@@ -17,22 +17,18 @@ import org.apache.cassandra.db.Column;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.index.stratio.AnalyzerFactory;
-import org.apache.cassandra.db.index.stratio.RowQueryParser;
-import org.apache.cassandra.db.index.stratio.query.Search;
 import org.apache.cassandra.db.index.stratio.util.ByteBufferUtils;
 import org.apache.cassandra.db.index.stratio.util.JsonSerializer;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CollectionType;
 import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.db.marshal.UTF8Type;
+import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.queryparser.classic.ParseException;
-import org.apache.lucene.queryparser.classic.QueryParser;
-import org.apache.lucene.search.Query;
 import org.apache.lucene.util.Version;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonIgnore;
@@ -79,13 +75,9 @@ public class CellsMapper {
 	                   @JsonProperty("fields") Map<String, CellMapper<?>> cellMappers) {
 
 		// Copy lower cased mappers
-		this.cellMappers = new HashMap<String, CellMapper<?>>();
-		for (Entry<String, CellMapper<?>> entry : cellMappers.entrySet()) {
-			this.cellMappers.put(entry.getKey().toLowerCase(), entry.getValue());
-		}
-		System.out.println("SCHEMA IS " + this.cellMappers);
+		this.cellMappers = cellMappers;
 
-		// Setup analyzer
+		// Setup default analyzer
 		if (analyzerClassName == null) {
 			this.defaultAnalyzer = DEFAULT_ANALYZER;
 			this.defaultAnalyzerClassName = DEFAULT_ANALYZER.getClass().getName();
@@ -94,9 +86,9 @@ public class CellsMapper {
 			this.defaultAnalyzerClassName = analyzerClassName;
 		}
 
-		// Setup analyzer
+		// Setup per field analyzer
 		Map<String, Analyzer> analyzers = new HashMap<>();
-		for (Entry<String, CellMapper<?>> entry : this.cellMappers.entrySet()) {
+		for (Entry<String, CellMapper<?>> entry : cellMappers.entrySet()) {
 			String name = entry.getKey();
 			CellMapper<?> mapper = entry.getValue();
 			Analyzer fieldAnalyzer = mapper.analyzer();
@@ -104,8 +96,26 @@ public class CellsMapper {
 				analyzers.put(name, fieldAnalyzer);
 			}
 		}
-
 		perFieldAnalyzer = new PerFieldAnalyzerWrapper(defaultAnalyzer, analyzers);
+	}
+
+	public void validate(CFMetaData metadata) throws ConfigurationException {
+		for (Entry<String, CellMapper<?>> entry : cellMappers.entrySet()) {
+
+			String name = entry.getKey();
+			CellMapper<?> cellMapper = entry.getValue();
+			ByteBuffer columnName = UTF8Type.instance.decompose(name);
+
+			ColumnDefinition columnDefinition = metadata.getColumnDefinition(columnName);
+			if (columnDefinition == null) {
+				throw new RuntimeException("No column definition for mapper " + name);
+			}
+
+			AbstractType<?> type = columnDefinition.getValidator();
+			if (!cellMapper.supports(type)) {
+				throw new RuntimeException("Not supported type for mapper " + name);
+			}
+		}
 	}
 
 	/**
@@ -330,27 +340,6 @@ public class CellsMapper {
 			throw new IllegalArgumentException("Not found mapper for field " + field);
 		} else {
 			return cellMapper;
-		}
-	}
-
-	/**
-	 * Returns the Lucene's {@link Query} parsed from the specified {@code String}.
-	 * 
-	 * @param querySentence
-	 *            The {@code String} to be parsed.
-	 * @return The Lucene's {@link Query} parsed from the specified {@code String}.
-	 */
-	@JsonIgnore
-	public Query query(String query) throws IOException, ParseException {
-		try {
-			Search search = Search.fromJSON(query);
-			search.analyze(perFieldAnalyzer);
-			return search.query(this);
-		} catch (IOException e) {
-			QueryParser queryParser = new RowQueryParser(Version.LUCENE_46, "lucene", this);
-			queryParser.setAllowLeadingWildcard(true);
-			queryParser.setLowercaseExpandedTerms(false);
-			return queryParser.parse(query);
 		}
 	}
 

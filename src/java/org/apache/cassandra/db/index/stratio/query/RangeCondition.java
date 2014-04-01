@@ -64,16 +64,18 @@ public class RangeCondition extends Condition {
 	 */
 	@JsonCreator
 	public RangeCondition(@JsonProperty("boost") Float boost,
-	                  @JsonProperty("field") String field,
-	                  @JsonProperty("lower") Object lowerValue,
-	                  @JsonProperty("upper") Object upperValue,
-	                  @JsonProperty("include_lower") boolean includeLower,
-	                  @JsonProperty("include_upper") boolean includeUpper) {
+	                      @JsonProperty("field") String field,
+	                      @JsonProperty("lower") Object lowerValue,
+	                      @JsonProperty("upper") Object upperValue,
+	                      @JsonProperty("include_lower") boolean includeLower,
+	                      @JsonProperty("include_upper") boolean includeUpper) {
 		super(boost);
 
-		assert field != null : "Field name required";
-
-		this.field = field.toLowerCase();
+		if (field == null || field.trim().isEmpty()) {
+			throw new IllegalArgumentException("Field name required");
+		}
+		
+		this.field = field;
 		this.lower = lowerValue;
 		this.upper = upperValue;
 		this.includeLower = includeLower;
@@ -180,7 +182,8 @@ public class RangeCondition extends Condition {
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("RangeQuery [boost=");
+		builder.append(getClass().getSimpleName());
+		builder.append(" [boost=");
 		builder.append(boost);
 		builder.append(", field=");
 		builder.append(field);

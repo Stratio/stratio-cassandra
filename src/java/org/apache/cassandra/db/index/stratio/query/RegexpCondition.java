@@ -50,10 +50,12 @@ public class RegexpCondition extends Condition {
 	                         @JsonProperty("field") String field,
 	                         @JsonProperty("value") Object value) {
 		super(boost);
-
-		assert field != null : "Field name required";
-
-		this.field = field.toLowerCase();
+		
+		if (field == null || field.trim().isEmpty()) {
+			throw new IllegalArgumentException("Field name required");
+		}
+		
+		this.field = field;
 		this.value = value;
 	}
 
@@ -108,7 +110,8 @@ public class RegexpCondition extends Condition {
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("WildcardQuery [boost=");
+		builder.append(getClass().getSimpleName());
+		builder.append(" [boost=");
 		builder.append(boost);
 		builder.append(", field=");
 		builder.append(field);

@@ -24,6 +24,7 @@ import org.apache.cassandra.db.filter.ExtendedFilter;
 import org.apache.cassandra.db.filter.QueryFilter;
 import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.db.index.stratio.RowDirectory.ScoredDocument;
+import org.apache.cassandra.db.index.stratio.query.Search;
 import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
 import org.apache.cassandra.db.index.stratio.util.ByteBufferUtils;
 import org.apache.cassandra.db.index.stratio.util.Log;
@@ -37,11 +38,13 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.ChainedFilter;
 import org.apache.lucene.queryparser.classic.ParseException;
+import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.FilteredQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.util.Version;
 
 /**
  * Class for mapping rows between Cassandra and Lucene.
@@ -242,10 +245,22 @@ public class RowService {
 		String querySentence = UTF8Type.instance.compose(columnValue);
 		DataRange dataRange = extendedFilter.dataRange;
 
-		// Setup Lucene's query, filter and sort
-		Query query = cellsMapper.query(querySentence);
 		Filter filter = cachedFilter(dataRange);
-		Sort sort = sort();
+
+		Sort sort;
+		Query query;
+		try {
+			Search search = Search.fromJSON(querySentence);
+			search.analyze(cellsMapper.analyzer());
+			query = search.query(cellsMapper);
+			sort = search.relevance() ? null : sort();
+		} catch (IOException e) {
+			QueryParser queryParser = new RowQueryParser(Version.LUCENE_46, "lucene", cellsMapper);
+			queryParser.setAllowLeadingWildcard(true);
+			queryParser.setLowercaseExpandedTerms(false);
+			query = queryParser.parse(querySentence);
+			sort = sort();
+		}
 
 		// Search in Lucene's index
 		long searchStart = System.currentTimeMillis();

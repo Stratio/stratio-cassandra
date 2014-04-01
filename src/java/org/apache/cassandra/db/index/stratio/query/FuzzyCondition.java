@@ -12,9 +12,9 @@ import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeName;
 
 /**
- * A {@link Condition} that implements the fuzzy search query. The similarity measurement is
- * based on the Damerau-Levenshtein (optimal string alignment) algorithm, though you can explicitly
- * choose classic Levenshtein by passing {@code false} to the {@code transpositions} parameter.
+ * A {@link Condition} that implements the fuzzy search query. The similarity measurement is based
+ * on the Damerau-Levenshtein (optimal string alignment) algorithm, though you can explicitly choose
+ * classic Levenshtein by passing {@code false} to the {@code transpositions} parameter.
  * 
  * @author adelapena
  * 
@@ -72,17 +72,19 @@ public class FuzzyCondition extends Condition {
 	 */
 	@JsonCreator
 	public FuzzyCondition(@JsonProperty("boost") Float boost,
-	                  @JsonProperty("field") String field,
-	                  @JsonProperty("value") Object value,
-	                  @JsonProperty("max_edits") Integer maxEdits,
-	                  @JsonProperty("prefix_length") Integer prefixLength,
-	                  @JsonProperty("max_expansions") Integer maxExpansions,
-	                  @JsonProperty("transpositions") Boolean transpositions) {
+	                      @JsonProperty("field") String field,
+	                      @JsonProperty("value") Object value,
+	                      @JsonProperty("max_edits") Integer maxEdits,
+	                      @JsonProperty("prefix_length") Integer prefixLength,
+	                      @JsonProperty("max_expansions") Integer maxExpansions,
+	                      @JsonProperty("transpositions") Boolean transpositions) {
 		super(boost);
 
-		assert field != null : "Field name required";
+		if (field == null || field.trim().isEmpty()) {
+			throw new IllegalArgumentException("Field name required");
+		}
 
-		this.field = field.toLowerCase();
+		this.field = field;
 		this.value = value;
 		this.maxEdits = maxEdits == null ? DEFAULT_MAX_EDITS : maxEdits;
 		this.prefixLength = prefixLength == null ? DEFAULT_PREFIX_LENGTH : prefixLength;
@@ -192,7 +194,8 @@ public class FuzzyCondition extends Condition {
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("FuzzyQuery [boost=");
+		builder.append(getClass().getSimpleName());
+		builder.append(" [boost=");
 		builder.append(boost);
 		builder.append(", field=");
 		builder.append(field);

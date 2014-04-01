@@ -3,9 +3,11 @@ package org.apache.cassandra.db.index.stratio;
 import java.io.File;
 import java.util.Map;
 
+import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
+import org.apache.cassandra.exceptions.ConfigurationException;
 
 /**
  * Class for building {@link RowService} instances.
@@ -94,8 +96,8 @@ public class RowServiceConfig {
 		path = directoryPathBuilder.toString();
 	}
 
-	public static void validate(ColumnDefinition columnDefinition) {
-		new RowServiceConfig(columnDefinition);
+	public static void validate(CFMetaData metadata, ColumnDefinition columnDefinition) throws ConfigurationException {
+		new RowServiceConfig(columnDefinition).cellsMapper.validate(metadata);
 	}
 
 	public CellsMapper getCellsMapper() {

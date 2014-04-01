@@ -334,8 +334,8 @@ public abstract class SecondaryIndex
         }
 
         index.addColumnDef(cdef);
-        index.validateOptions();
         index.setBaseCfs(baseCfs);
+        index.validateOptions();
 
         return index;
     }

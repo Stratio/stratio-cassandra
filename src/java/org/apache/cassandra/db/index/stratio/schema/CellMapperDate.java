@@ -5,6 +5,16 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.marshal.AsciiType;
+import org.apache.cassandra.db.marshal.DecimalType;
+import org.apache.cassandra.db.marshal.DoubleType;
+import org.apache.cassandra.db.marshal.FloatType;
+import org.apache.cassandra.db.marshal.Int32Type;
+import org.apache.cassandra.db.marshal.IntegerType;
+import org.apache.cassandra.db.marshal.LongType;
+import org.apache.cassandra.db.marshal.TimestampType;
+import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.LongField;
@@ -31,6 +41,15 @@ public class CellMapperDate extends CellMapper<Long> {
 
 	@JsonCreator
 	public CellMapperDate(@JsonProperty("pattern") String pattern) {
+		super(new AbstractType<?>[] { AsciiType.instance,
+		                             UTF8Type.instance,
+		                             Int32Type.instance,
+		                             LongType.instance,
+		                             IntegerType.instance,
+		                             FloatType.instance,
+		                             DoubleType.instance,
+		                             DecimalType.instance,
+		                             TimestampType.instance });
 		this.pattern = pattern == null ? DEFAULT_PATTERN : pattern;
 		concurrentDateFormat = new ThreadLocal<DateFormat>() {
 			@Override

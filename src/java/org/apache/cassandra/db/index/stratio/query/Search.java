@@ -19,6 +19,11 @@ import org.codehaus.jackson.annotate.JsonProperty;
  */
 public class Search {
 
+	public static final boolean DEFAULT_RELEVANCE = false;
+
+	@JsonProperty("relevance")
+	private final boolean relevance;
+
 	@JsonProperty("query")
 	private final Condition queryCondition;
 
@@ -26,9 +31,23 @@ public class Search {
 	private final Condition filterCondition;
 
 	@JsonCreator
-	public Search(@JsonProperty("query") Condition queryCondition, @JsonProperty("filter") Condition filterCondition) {
+	public Search(@JsonProperty("relevance") boolean relevance,
+	              @JsonProperty("query") Condition queryCondition,
+	              @JsonProperty("filter") Condition filterCondition) {
+		this.relevance = relevance;
 		this.queryCondition = queryCondition;
 		this.filterCondition = filterCondition;
+	}
+
+	/**
+	 * Returns {@code true} if the results must be ordered by relevance. If {@code false}, then the
+	 * results are sorted by the natural Cassandra's order.
+	 * 
+	 * @return {@code true} if the results must be ordered by relevance. If {@code false}, then the
+	 *         results are sorted by the natural Cassandra's order.
+	 */
+	public boolean relevance() {
+		return relevance;
 	}
 
 	/**

@@ -2,6 +2,11 @@ package org.apache.cassandra.db.index.stratio.schema;
 
 import java.util.UUID;
 
+import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.marshal.AsciiType;
+import org.apache.cassandra.db.marshal.TimeUUIDType;
+import org.apache.cassandra.db.marshal.UTF8Type;
+import org.apache.cassandra.db.marshal.UUIDType;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
@@ -16,7 +21,7 @@ public class CellMapperUUID extends CellMapper<String> {
 
 	@JsonCreator
 	public CellMapperUUID() {
-		super();
+		super(new AbstractType<?>[] { AsciiType.instance, UTF8Type.instance, UUIDType.instance, TimeUUIDType.instance });
 	}
 
 	@Override
@@ -31,7 +36,7 @@ public class CellMapperUUID extends CellMapper<String> {
 		} else if (value instanceof UUID) {
 			return value.toString();
 		} else if (value instanceof String) {
-			return UUID.fromString((String) value).toString();
+			return java.util.UUID.fromString((String) value).toString();
 		} else {
 			throw new IllegalArgumentException();
 		}

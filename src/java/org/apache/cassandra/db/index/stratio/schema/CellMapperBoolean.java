@@ -1,5 +1,9 @@
 package org.apache.cassandra.db.index.stratio.schema;
 
+import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.marshal.AsciiType;
+import org.apache.cassandra.db.marshal.BooleanType;
+import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
@@ -17,7 +21,7 @@ public class CellMapperBoolean extends CellMapper<String> {
 
 	@JsonCreator
 	public CellMapperBoolean() {
-		super();
+		super(new AbstractType<?>[] { AsciiType.instance, UTF8Type.instance, BooleanType.instance });
 	}
 
 	@Override

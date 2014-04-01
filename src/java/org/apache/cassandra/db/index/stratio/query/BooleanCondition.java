@@ -12,8 +12,8 @@ import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeName;
 
 /**
- * A {@link Condition} that matches documents matching boolean combinations of other queries,
- * e.g. {@link MatchCondition}s, {@link RangeCondition}s or other {@link BooleanCondition}s.
+ * A {@link Condition} that matches documents matching boolean combinations of other queries, e.g.
+ * {@link MatchCondition}s, {@link RangeCondition}s or other {@link BooleanCondition}s.
  * 
  * @version 0.1
  * @author adelapena
@@ -46,9 +46,9 @@ public class BooleanCondition extends Condition {
 	 */
 	@JsonCreator
 	public BooleanCondition(@JsonProperty("boost") Float boost,
-	                    @JsonProperty("must") List<Condition> must,
-	                    @JsonProperty("should") List<Condition> should,
-	                    @JsonProperty("not") List<Condition> not) {
+	                        @JsonProperty("must") List<Condition> must,
+	                        @JsonProperty("should") List<Condition> should,
+	                        @JsonProperty("not") List<Condition> not) {
 		super(boost);
 		this.must = must == null ? new LinkedList<Condition>() : must;
 		this.should = should == null ? new LinkedList<Condition>() : should;
@@ -150,7 +150,8 @@ public class BooleanCondition extends Condition {
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("BooleanQuery [boost=");
+		builder.append(getClass().getSimpleName());
+		builder.append(" [boost=");
 		builder.append(boost);
 		builder.append(", must=");
 		builder.append(must);
