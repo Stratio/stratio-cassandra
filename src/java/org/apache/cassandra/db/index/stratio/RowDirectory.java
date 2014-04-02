@@ -271,6 +271,7 @@ public class RowDirectory {
 	 * Finds the top {@code count} hits for {@code query}, applying {@code filter} if non-null, and
 	 * sorting the hits by the criteria in {@code sort}.
 	 * 
+	 * @param after
 	 * @param query
 	 *            The {@link Query} to search for.
 	 * @param filter
@@ -283,12 +284,18 @@ public class RowDirectory {
 	 *            The name of the fields to be loaded.
 	 * @return The found documents, sorted according to the supplied {@link Sort} instance.
 	 */
-	public List<ScoredDocument> search(Query query, Filter filter, Sort sort, Integer count, Set<String> fieldsToLoad) {
+	public List<ScoredDocument> search(ScoreDoc after,
+	                                   Query query,
+	                                   Filter filter,
+	                                   Sort sort,
+	                                   Integer count,
+	                                   Set<String> fieldsToLoad) {
 		Log.debug("Searching with query %s ", query);
 		Log.debug("Searching with filter %s", filter);
 		Log.debug("Searching with count %d", count);
 		Log.debug("Searching with sort %s", sort);
 
+		// Validate
 		if (query == null) {
 			throw new IllegalArgumentException("Query required");
 		}
@@ -305,27 +312,43 @@ public class RowDirectory {
 
 				// Search
 				TopDocs topDocs;
-				if (sort == null) {
-					if (filter == null) {
-						topDocs = indexSearcher.search(query, count);
+				if (after == null) {
+					if (sort == null) {
+						if (filter == null) {
+							topDocs = indexSearcher.search(query, count);
+						} else {
+							topDocs = indexSearcher.search(query, filter, count);
+						}
 					} else {
-						topDocs = indexSearcher.search(query, filter, count);
+						if (filter == null) {
+							topDocs = indexSearcher.search(query, count, sort);
+						} else {
+							topDocs = indexSearcher.search(query, filter, count, sort, true, true);
+						}
 					}
 				} else {
-					if (filter == null) {
-						topDocs = indexSearcher.search(query, count, sort);
+					if (sort == null) {
+						if (filter == null) {
+							topDocs = indexSearcher.searchAfter(after, query, count);
+						} else {
+							topDocs = indexSearcher.searchAfter(after, query, filter, count);
+						}
 					} else {
-						topDocs = indexSearcher.search(query, filter, count, sort, true, true);
+						if (filter == null) {
+							topDocs = indexSearcher.searchAfter(after, query, count, sort);
+						} else {
+							topDocs = indexSearcher.searchAfter(after, query, filter, count, sort, true, true);
+						}
 					}
 				}
 				ScoreDoc[] scoreDocs = topDocs.scoreDocs;
 
-				// Get the document keys from query result
+				// Collect the documents from query result
 				List<ScoredDocument> scoredDocuments = new ArrayList<>(scoreDocs.length);
 				for (ScoreDoc scoreDoc : scoreDocs) {
 					Document document = indexSearcher.doc(scoreDoc.doc, fieldsToLoad);
 					Float score = scoreDoc.score;
-					ScoredDocument scoredDocument = new ScoredDocument(document, score);
+					ScoredDocument scoredDocument = new ScoredDocument(scoreDoc, document, score);
 					scoredDocuments.add(scoredDocument);
 					// Log.debug("Found %s", scoredDocument);
 				}
@@ -347,10 +370,12 @@ public class RowDirectory {
 	 */
 	public static class ScoredDocument {
 
+		public final ScoreDoc scoreDoc;
 		public final Document document;
 		public final Float score;
 
-		public ScoredDocument(Document document, Float score) {
+		public ScoredDocument(ScoreDoc scoreDoc, Document document, Float score) {
+			this.scoreDoc = scoreDoc;
 			this.document = document;
 			this.score = score;
 		}

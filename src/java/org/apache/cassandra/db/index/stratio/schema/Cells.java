@@ -74,6 +74,15 @@ public class Cells implements Iterable<Cell> {
 		return cells.size();
 	}
 
+	public Cell getCell(String name) {
+		for (Cell cell : cells) {
+			if (cell.getName().equals(name)) {
+				return cell;
+			}
+		}
+		return null;
+	}
+
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();

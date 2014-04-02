@@ -112,11 +112,13 @@ public abstract class Condition {
 			TermToBytesRefAttribute termAtt = source.getAttribute(TermToBytesRefAttribute.class);
 			BytesRef bytes = termAtt.getBytesRef();
 
-			if (!source.incrementToken())
+			if (!source.incrementToken()) {
 				return null;
+			}
 			termAtt.fillBytesRef();
-			if (source.incrementToken())
+			if (source.incrementToken()) {
 				throw new IllegalArgumentException("analyzer returned too many terms for multiTerm term: " + value);
+			}
 			source.end();
 			return BytesRef.deepCopyOf(bytes).utf8ToString();
 		} catch (IOException e) {

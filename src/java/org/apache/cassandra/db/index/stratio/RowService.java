@@ -5,6 +5,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
@@ -25,9 +26,12 @@ import org.apache.cassandra.db.filter.QueryFilter;
 import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.db.index.stratio.RowDirectory.ScoredDocument;
 import org.apache.cassandra.db.index.stratio.query.Search;
+import org.apache.cassandra.db.index.stratio.schema.Cell;
+import org.apache.cassandra.db.index.stratio.schema.Cells;
 import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
 import org.apache.cassandra.db.index.stratio.util.ByteBufferUtils;
 import org.apache.cassandra.db.index.stratio.util.Log;
+import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.thrift.IndexExpression;
@@ -42,6 +46,7 @@ import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.FilteredQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.util.Version;
@@ -53,6 +58,8 @@ import org.apache.lucene.util.Version;
  * 
  */
 public class RowService {
+
+	public static final int MAX_PAGE_SIZE = 100;
 
 	private final ColumnFamilyStore baseCfs;
 	private final CFMetaData metadata;
@@ -239,22 +246,32 @@ public class RowService {
 	public List<Row> search(ExtendedFilter extendedFilter) throws IOException, ParseException {
 
 		// Get filtering options
-		int columns = extendedFilter.maxColumns();
-		IndexExpression indexExpression = extendedFilter.getClause().get(0);
+		int requestedRows = extendedFilter.maxColumns();
+		IndexExpression indexExpression = null;
+		List<IndexExpression> extraExpressions = new ArrayList<>();
+		for (IndexExpression ie : extendedFilter.getClause()) {
+			ByteBuffer columnName = ie.column_name;
+			if (columnName.equals(columnIdentifier.key)) {
+				indexExpression = ie;
+			} else {
+				extraExpressions.add(ie);
+			}
+		}
 		ByteBuffer columnValue = indexExpression.value;
+
 		String querySentence = UTF8Type.instance.compose(columnValue);
 		DataRange dataRange = extendedFilter.dataRange;
 
+		// Setup search arguments
 		Filter filter = cachedFilter(dataRange);
-
 		Sort sort;
 		Query query;
-		try {
+		try { // Try with JSON syntax
 			Search search = Search.fromJSON(querySentence);
 			search.analyze(cellsMapper.analyzer());
 			query = search.query(cellsMapper);
 			sort = search.relevance() ? null : sort();
-		} catch (IOException e) {
+		} catch (IOException e) { // Try with Lucene syntax
 			QueryParser queryParser = new RowQueryParser(Version.LUCENE_46, "lucene", cellsMapper);
 			queryParser.setAllowLeadingWildcard(true);
 			queryParser.setLowercaseExpandedTerms(false);
@@ -262,18 +279,34 @@ public class RowService {
 			sort = sort();
 		}
 
-		// Search in Lucene's index
-		long searchStart = System.currentTimeMillis();
-		List<ScoredDocument> scoredDocuments = rowDirectory.search(query, filter, sort, columns, fieldsToLoad);
-		Log.debug("Lucene search time " + (System.currentTimeMillis() - searchStart));
+		// Setup search pagination
+		List<Row> rows = new LinkedList<>(); // The row list to be returned
+		int pageSize; // The page size
+		ScoreDoc lastDoc = null; // The last search result
 
-		// Collect matching rows
-		long collectStart = System.currentTimeMillis();
-		List<Row> rows = new ArrayList<>(scoredDocuments.size());
-		for (ScoredDocument sc : scoredDocuments) {
-			rows.add(row(sc.document, sc.score));
-		}
-		Log.debug("Cassandra collection time " + (System.currentTimeMillis() - collectStart));
+		// Paginate search collecting documents
+		List<ScoredDocument> scoredDocuments;
+		do {
+
+			// Calculate page size
+			int pendingRows = requestedRows - rows.size();
+			pageSize = Math.min(MAX_PAGE_SIZE, pendingRows);
+
+			// Search in Lucene
+			scoredDocuments = rowDirectory.search(lastDoc, query, filter, sort, pageSize, fieldsToLoad);
+
+			// Collect rows from Cassandra
+			for (ScoredDocument sd : scoredDocuments) {
+				lastDoc = sd.scoreDoc;
+				Row row = row(sd.document, sd.score, extraExpressions); // Collect from Cassandra
+				if (row != null) { // May be null if not satisfies the filter expressions
+					rows.add(row);
+				}
+				if (rows.size() >= requestedRows) { // Break if we have enough rows
+					return rows;
+				}
+			}
+		} while (scoredDocuments.size() == pageSize); // Repeat while there may be more rows
 
 		return rows;
 	}
@@ -288,7 +321,7 @@ public class RowService {
 	 *            The search score.
 	 * @return The Cassandra's {@link Row} identified by the specified Lucene's {@link Document}.
 	 */
-	private Row row(Document document, Float score) {
+	private Row row(Document document, Float score, List<IndexExpression> expressions) {
 
 		// Get the decorated partition key
 		DecoratedKey decoratedKey = partitionKeyMapper.decoratedKey(document);
@@ -298,6 +331,11 @@ public class RowService {
 		ByteBuffer clusteringKey = isWide ? clusteringKeyMapper.byteBuffer(document) : null;
 		QueryFilter queryFilter = queryFilter(partitionKey, clusteringKey);
 		ColumnFamily cf = baseCfs.getColumnFamily(queryFilter);
+
+		// Check filter
+		if (!accepted(partitionKey, cf, expressions)) {
+			return null;
+		}
 
 		// Create the score column
 		ByteBuffer name = isWide ? clusteringKeyMapper.name(document, columnIdentifier)
@@ -311,6 +349,53 @@ public class RowService {
 		decoratedCf.addAll(cf, HeapAllocator.instance);
 
 		return new Row(decoratedKey, decoratedCf);
+	}
+
+	private boolean accepted(DecoratedKey key, ColumnFamily cf, List<IndexExpression> expressions) {
+		if (!expressions.isEmpty()) {
+			Cells cells = cellsMapper.cells(metadata, key, cf);
+			for (IndexExpression expression : expressions) {
+				if (!accepted(cells, expression)) {
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+
+	private boolean accepted(Cells cells, IndexExpression expression) {
+
+		ByteBuffer expectedValue = expression.value;
+
+		ColumnDefinition def = metadata.getColumnDefinition(expression.column_name);
+		String name = UTF8Type.instance.compose(def.name);
+
+		Cell cell = cells.getCell(name);
+		if (cell == null) {
+			return false;
+		}
+
+		ByteBuffer actualValue = cell.getRawValue();
+		if (actualValue == null) {
+			return false;
+		}
+
+		AbstractType<?> validator = def.getValidator();
+		int comparison = validator.compare(actualValue, expectedValue);
+		switch (expression.op) {
+			case EQ:
+				return comparison == 0;
+			case GTE:
+				return comparison >= 0;
+			case GT:
+				return comparison > 0;
+			case LTE:
+				return comparison <= 0;
+			case LT:
+				return comparison < 0;
+			default:
+				throw new IllegalStateException();
+		}
 	}
 
 	/**

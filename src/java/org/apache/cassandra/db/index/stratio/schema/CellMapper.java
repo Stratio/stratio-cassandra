@@ -45,12 +45,12 @@ public abstract class CellMapper<BASE> {
 		this.supportedTypes = supportedTypes;
 	}
 
-	public static Cell build(String name, Object value) {
-		return new Cell(name, value);
+	public static Cell cell(String name, ByteBuffer value, AbstractType<?> type) {
+		return new Cell(name, value, type);
 	}
 
-	public static Cell cell(String name, ByteBuffer value, AbstractType<?> type) {
-		return new Cell(name, type.compose(value));
+	public static Cell cell(String name, String nameSufix, ByteBuffer value, AbstractType<?> type) {
+		return new Cell(name, nameSufix, value, type);
 	}
 
 	public abstract Analyzer analyzer();

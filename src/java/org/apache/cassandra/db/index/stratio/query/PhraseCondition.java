@@ -7,6 +7,7 @@ import org.apache.cassandra.db.index.stratio.schema.CellMapper;
 import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
@@ -25,15 +26,12 @@ public class PhraseCondition extends Condition {
 	public static final int DEFAULT_SLOP = 0;
 
 	/** The field name */
-	@JsonProperty("field")
 	private final String field;
 
 	/** The field values */
-	@JsonProperty("values")
 	private List<Object> values;
 
 	/** The slop */
-	@JsonProperty("slop")
 	private final int slop;
 
 	/**
@@ -52,9 +50,9 @@ public class PhraseCondition extends Condition {
 	 */
 	@JsonCreator
 	public PhraseCondition(@JsonProperty("boost") Float boost,
-	                   @JsonProperty("field") String field,
-	                   @JsonProperty("values") List<Object> values,
-	                   @JsonProperty("slop") Integer slop) {
+	                       @JsonProperty("field") String field,
+	                       @JsonProperty("values") List<Object> values,
+	                       @JsonProperty("slop") Integer slop) {
 		super(boost);
 
 		if (field == null || field.trim().isEmpty()) {
@@ -114,13 +112,17 @@ public class PhraseCondition extends Condition {
 		CellMapper<?> cellMapper = cellsMapper.getMapper(field);
 		Class<?> clazz = cellMapper.baseClass();
 		if (clazz == String.class) {
-			org.apache.lucene.search.PhraseQuery query = new org.apache.lucene.search.PhraseQuery();
+			PhraseQuery query = new PhraseQuery();
 			query.setSlop(slop);
 			query.setBoost(boost);
+			int count = 0;
 			for (Object o : values) {
-				String value = (String) cellMapper.queryValue(o);
-				Term term = new Term(field, value);
-				query.add(term);
+				if (o != null) {
+					String value = (String) cellMapper.queryValue(o);
+					Term term = new Term(field, value);
+					query.add(term, count);
+				}
+				count++;
 			}
 			return query;
 		} else {

@@ -45,6 +45,7 @@ public class RowQueryParser extends QueryParser {
 		String field = term.field();
 		String text = term.text();
 		MatchCondition condition = new MatchCondition(Condition.DEFAULT_BOOST, field, text);
+		System.out.println(" => QUERYING " + condition);
 		return condition.query(mapper);
 	}
 

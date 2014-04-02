@@ -1,5 +1,9 @@
 package org.apache.cassandra.db.index.stratio.schema;
 
+import java.nio.ByteBuffer;
+
+import org.apache.cassandra.db.marshal.AbstractType;
+
 /**
  * A cell of a CQL3 logic {@link Cell}, which in most cases is different from a storage engine
  * column.
@@ -11,20 +15,24 @@ public class Cell {
 
 	/** The column's name */
 	private String name;
-	/** The column's value */
-	private final Object value;
 
-	/**
-	 * Returns a new {@link Cell}.
-	 * 
-	 * @param name
-	 *            the name.
-	 * @param value
-	 *            the value.
-	 */
-	public Cell(String name, Object value) {
+	private String nameSufix;
+
+	private ByteBuffer value;
+
+	private AbstractType<?> type;
+
+	public Cell(String name, ByteBuffer value, AbstractType<?> type) {
 		this.name = name;
 		this.value = value;
+		this.type = type;
+	}
+
+	public Cell(String name, String nameSufix, ByteBuffer value, AbstractType<?> type) {
+		this.name = name;
+		this.nameSufix = nameSufix;
+		this.value = value;
+		this.type = type;
 	}
 
 	/**
@@ -36,25 +44,25 @@ public class Cell {
 		return name;
 	}
 
+	public String getFieldName() {
+		return nameSufix == null ? name : name + "." + nameSufix;
+	}
+
 	/**
 	 * Returns the value.
 	 * 
 	 * @return the value.
 	 */
-	public Object getValue() {
+	public ByteBuffer getRawValue() {
 		return value;
 	}
 
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append(getClass().getSimpleName());
-		builder.append(" [name=");
-		builder.append(name);
-		builder.append(", value=");
-		builder.append(value);
-		builder.append("]");
-		return builder.toString();
+	public Object getValue() {
+		return type.compose(value);
+	}
+
+	public AbstractType<?> getType() {
+		return type;
 	}
 
 }

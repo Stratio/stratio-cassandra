@@ -3,13 +3,10 @@ package org.apache.cassandra.db.index.stratio.schema;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
@@ -24,6 +21,7 @@ import org.apache.cassandra.db.marshal.CollectionType;
 import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.exceptions.ConfigurationException;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
@@ -118,6 +116,14 @@ public class CellsMapper {
 		}
 	}
 
+	public Cells cells(CFMetaData metadata, DecoratedKey partitionKey, ColumnFamily columnFamily) {
+		Cells cells = new Cells();
+		cells.addAll(partitionKeyCells(metadata, partitionKey));
+		cells.addAll(clusteringKeyCells(metadata, columnFamily));
+		cells.addAll(regularCells(metadata, columnFamily));
+		return cells;
+	}
+
 	/**
 	 * Returns the {@link Cell}s representing the CQL3 cells contained in the specified partition
 	 * key.
@@ -196,11 +202,7 @@ public class CellsMapper {
 
 		// Stuff for grouping collection cells (sets, lists and maps)
 		String name = null;
-		String lastName = null;
 		CollectionType collectionType = null;
-		Set<Object> set = new HashSet<>();
-		List<Object> list = new LinkedList<>();
-		Map<Object, Object> map = new HashMap<>();
 
 		int clusteringPosition = metadata.getCfDef().columns.size();
 		CompositeType nameType = (CompositeType) metadata.comparator;
@@ -218,63 +220,36 @@ public class CellsMapper {
 			final AbstractType<?> valueType = columnDefinition.getValidator();
 			int position = position(columnDefinition);
 
-			lastName = name;
 			name = UTF8Type.instance.compose(columnDefinition.name);
-
-			if (lastName != null && !name.equals(lastName)) {
-
-				// Empty previous collections
-				if (!set.isEmpty()) {
-					cells.add(CellMapper.build(lastName, set));
-					set = new HashSet<>();
-				} else if (!list.isEmpty()) {
-					cells.add(CellMapper.build(lastName, list));
-					list = new LinkedList<>();
-				} else if (!map.isEmpty()) {
-					cells.add(CellMapper.build(lastName, map));
-					map = new HashMap<>();
-				}
-			}
 
 			if (valueType.isCollection()) {
 				collectionType = (CollectionType<?>) valueType;
 				switch (collectionType.kind) {
 					case SET: {
-						AbstractType<?> setItemType = collectionType.nameComparator();
-						ByteBuffer setItemValue = ByteBufferUtils.split(column.name(), nameType)[position + 1];
-						set.add(setItemType.compose(setItemValue));
+						AbstractType<?> type = collectionType.nameComparator();
+						ByteBuffer value = ByteBufferUtils.split(column.name(), nameType)[position + 1];
+						cells.add(CellMapper.cell(name, value, type));
 						break;
 					}
 					case LIST: {
-						AbstractType<?> listItemType = collectionType.valueComparator();
-						ByteBuffer listItemValue = column.value();
-						list.add(listItemType.compose(listItemValue));
+						AbstractType<?> type = collectionType.valueComparator();
+						ByteBuffer value = column.value();
+						cells.add(CellMapper.cell(name, value, type));
 						break;
 					}
 					case MAP: {
-						AbstractType<?> mapValueType = collectionType.valueComparator();
-						AbstractType<?> mapKeyType = collectionType.nameComparator();
-						ByteBuffer mapKeyValue = ByteBufferUtils.split(column.name(), nameType)[position + 1];
-						ByteBuffer mapValueValue = column.value();
-						map.put(mapKeyType.compose(mapKeyValue), mapValueType.compose(mapValueValue));
+						AbstractType<?> type = collectionType.valueComparator();
+						AbstractType<?> keyType = collectionType.nameComparator();
+						ByteBuffer keyValue = ByteBufferUtils.split(column.name(), nameType)[position + 1];
+						ByteBuffer value = column.value();
+						String nameSufix = keyType.compose(keyValue).toString();
+						cells.add(CellMapper.cell(name, nameSufix, value, type));
 						break;
 					}
 				}
 			} else {
 				cells.add(CellMapper.cell(name, columnValue, valueType));
 			}
-		}
-
-		// Empty remaining collections
-		if (!set.isEmpty()) {
-			cells.add(CellMapper.build(name, set));
-			set = new HashSet<>();
-		} else if (!list.isEmpty()) {
-			cells.add(CellMapper.build(name, list));
-			list = new LinkedList<>();
-		} else if (!map.isEmpty()) {
-			cells.add(CellMapper.build(name, map));
-			map = new HashMap<>();
 		}
 
 		return cells;
@@ -296,48 +271,35 @@ public class CellsMapper {
 
 	@JsonIgnore
 	public void addFields(Document document, CFMetaData metadata, DecoratedKey partitionKey, ColumnFamily columnFamily) {
-		Cells cells = new Cells();
-		cells.addAll(partitionKeyCells(metadata, partitionKey));
-		cells.addAll(clusteringKeyCells(metadata, columnFamily));
-		cells.addAll(regularCells(metadata, columnFamily));
+		Cells cells = cells(metadata, partitionKey, columnFamily);
 		for (Cell cell : cells) {
 			String name = cell.getName();
+			String fieldName = cell.getFieldName();
 			Object value = cell.getValue();
 			CellMapper<?> cellMapper = cellMappers.get(name);
 			if (cellMapper != null) {
-				if (value instanceof Map) {
-					Map<?, ?> map = (Map<?, ?>) value;
-					for (Entry<?, ?> entry : map.entrySet()) {
-						Object entryKey = entry.getKey();
-						Object entryValue = entry.getValue();
-						String entryName = name + '.' + entryKey.toString();
-						Field field = cellMapper.field(entryName, entryValue);
-						document.add(field);
-					}
-				} else if (value instanceof Set) {
-					Set<?> set = (Set<?>) value;
-					for (Object entry : set) {
-						Field field = cellMapper.field(name, entry);
-						document.add(field);
-					}
-				} else if (value instanceof List) {
-					List<?> list = (List<?>) value;
-					for (Object entry : list) {
-						Field field = cellMapper.field(name, entry);
-						document.add(field);
-					}
-				} else {
-					Field field = cellMapper.field(name, value);
-					document.add(field);
-				}
+				Field field = cellMapper.field(fieldName, value);
+				document.add(field);
 			}
 		}
 	}
 
 	public CellMapper<?> getMapper(String field) {
+		System.out.println("GETTING MAPPER FOR " + field);
 		CellMapper<?> cellMapper = cellMappers.get(field.toLowerCase());
 		if (cellMapper == null) {
-			throw new IllegalArgumentException("Not found mapper for field " + field);
+			String[] components = field.split("\\.");
+			System.out.println("SPLITTED " + ArrayUtils.toString(components));
+			if (components.length < 2) {
+				throw new IllegalArgumentException("Not found mapper for field " + field);
+			}
+			StringBuilder sb = new StringBuilder();
+			for (int i = 0; i < components.length - 1; i++) {
+				sb.append(components[i]);
+				if (i < components.length - 2)
+					sb.append(".");
+			}
+			return getMapper(sb.toString());
 		} else {
 			return cellMapper;
 		}
