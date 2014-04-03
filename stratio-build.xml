@@ -21,6 +21,7 @@
 
     <import file="build.xml"/>
 
+    <property file="build.properties.stratio" />
     <condition property="nexus-repository-id" value="${nexus-releases-repository-id}" else="${nexus-snapshots-repository-id}">
         <isset property="release"/>
     </condition>
