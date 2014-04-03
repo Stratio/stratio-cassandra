@@ -6,9 +6,9 @@ import java.util.Set;
 
 import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.filter.ExtendedFilter;
-import org.apache.cassandra.db.index.SecondaryIndex;
 import org.apache.cassandra.db.index.SecondaryIndexManager;
 import org.apache.cassandra.db.index.SecondaryIndexSearcher;
+import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.thrift.IndexExpression;
 import org.apache.cassandra.thrift.IndexOperator;
 import org.slf4j.Logger;
@@ -26,23 +26,29 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
 
 	private final RowService rowService;
 
-	private final RowIndex currentIndex;
+	private final String keyspaceName;
+	private final String tableName;
+	private final String indexName;
+	private final String columnName;
 
 	/**
 	 * Returns a new {@code RowIndexSearcher}.
 	 * 
 	 * @param indexManager
-	 * @param currentIndex
+	 * @param index
 	 * @param columns
 	 * @param rowService
 	 */
 	public RowIndexSearcher(SecondaryIndexManager indexManager,
-	                        RowIndex currentIndex,
+	                        RowIndex index,
 	                        Set<ByteBuffer> columns,
 	                        RowService rowService) {
 		super(indexManager, columns);
-		this.currentIndex = currentIndex;
 		this.rowService = rowService;
+		this.indexName = index.getIndexName();
+		this.keyspaceName = index.getIndexName();
+		this.tableName = index.getTableName();
+		this.columnName = index.getColumnName();
 	}
 
 	@Override
@@ -59,14 +65,28 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
 	@Override
 	public boolean isIndexing(List<IndexExpression> clause) {
 		for (IndexExpression expression : clause) {
-			SecondaryIndex index = indexManager.getIndexForColumn(expression.column_name);
-			if (index != null && expression.op.equals(IndexOperator.EQ) && index == currentIndex) {
+			String columnName = UTF8Type.instance.compose(expression.column_name);
+			boolean sameName = columnName.equals(this.columnName);
+			if (expression.op.equals(IndexOperator.EQ) && sameName) {
 				return true;
-			} else {
-				continue;
 			}
 		}
 		return false;
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("RowIndexSearcher [index=");
+		builder.append(indexName);
+		builder.append(", keyspace=");
+		builder.append(keyspaceName);
+		builder.append(", table=");
+		builder.append(tableName);
+		builder.append(", column=");
+		builder.append(columnName);
+		builder.append("]");
+		return builder.toString();
 	}
 
 }

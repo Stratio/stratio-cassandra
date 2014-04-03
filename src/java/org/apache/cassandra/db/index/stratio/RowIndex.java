@@ -14,6 +14,7 @@ import org.apache.cassandra.db.index.PerRowSecondaryIndex;
 import org.apache.cassandra.db.index.SecondaryIndexManager;
 import org.apache.cassandra.db.index.SecondaryIndexSearcher;
 import org.apache.cassandra.db.index.stratio.util.Log;
+import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.exceptions.ConfigurationException;
 
 /**
@@ -25,14 +26,15 @@ import org.apache.cassandra.exceptions.ConfigurationException;
  */
 public class RowIndex extends PerRowSecondaryIndex {
 
-	protected SecondaryIndexManager secondaryIndexManager;
-	protected CFMetaData metadata;
-	protected ColumnDefinition columnDefinition;
+	private SecondaryIndexManager secondaryIndexManager;
+	private CFMetaData metadata;
+	private ColumnDefinition columnDefinition;
 
-	protected String ksName;
-	protected String cfName;
-	protected String indexName;
-	protected String indexFullName;
+	private String keyspaceName;
+	private String tableName;
+	private String indexName;
+	private String columnName;
+	private String logName;
 
 	private RowService rowService;
 
@@ -40,8 +42,25 @@ public class RowIndex extends PerRowSecondaryIndex {
 	private ReadWriteLock lock = new ReentrantReadWriteLock();
 
 	@Override
+	public String getIndexName() {
+		return indexName;
+	}
+
+	public String getKeyspaceName() {
+		return keyspaceName;
+	}
+
+	public String getTableName() {
+		return tableName;
+	}
+
+	public String getColumnName() {
+		return columnName;
+	}
+
+	@Override
 	public void init() {
-		Log.info("Initializing index %s.%s.%s", ksName, cfName, indexName);
+		Log.info("Initializing index %s.%s.%s", keyspaceName, tableName, indexName);
 		lock.readLock().lock();
 		try {
 			setup();
@@ -56,10 +75,11 @@ public class RowIndex extends PerRowSecondaryIndex {
 		secondaryIndexManager = baseCfs.indexManager;
 		metadata = baseCfs.metadata;
 		columnDefinition = columnDefs.iterator().next();
-		ksName = metadata.ksName;
-		cfName = metadata.cfName;
 		indexName = columnDefinition.getIndexName();
-		indexFullName = String.format("%s.%s.%s", ksName, cfName, indexName);
+		keyspaceName = metadata.ksName;
+		tableName = metadata.cfName;
+		columnName = UTF8Type.instance.compose(columnDefinition.name);
+		logName = String.format("%s.%s.%s", keyspaceName, tableName, indexName);
 
 		// Build row mapper
 		rowService = new RowService(baseCfs, columnDefinition);
@@ -75,7 +95,7 @@ public class RowIndex extends PerRowSecondaryIndex {
 	 */
 	@Override
 	public void index(ByteBuffer key, ColumnFamily columnFamily) {
-		Log.debug("Indexing row %s in index %s", key, indexFullName);
+		Log.debug("Indexing row %s in index %s", key, logName);
 		lock.readLock().lock();
 		try {
 			rowService.index(key, columnFamily);
@@ -93,7 +113,7 @@ public class RowIndex extends PerRowSecondaryIndex {
 	 */
 	@Override
 	public void delete(DecoratedKey key) {
-		Log.debug("Removing row %s from index %s", key, indexFullName);
+		Log.debug("Removing row %s from index %s", key, logName);
 		lock.writeLock().lock();
 		try {
 			rowService.delete(key);
@@ -127,11 +147,6 @@ public class RowIndex extends PerRowSecondaryIndex {
 	}
 
 	@Override
-	public String getIndexName() {
-		return indexName;
-	}
-
-	@Override
 	public long getLiveSize() {
 		return 0;
 	}
@@ -143,7 +158,7 @@ public class RowIndex extends PerRowSecondaryIndex {
 
 	@Override
 	public void removeIndex(ByteBuffer columnName) {
-		Log.info("Removing index %s", indexFullName);
+		Log.info("Removing index %s", logName);
 		lock.writeLock().lock();
 		try {
 			rowService.delete();
@@ -155,20 +170,20 @@ public class RowIndex extends PerRowSecondaryIndex {
 
 	@Override
 	public void invalidate() {
-		Log.info("Invalidating index %s", indexFullName);
+		Log.info("Invalidating index %s", logName);
 		rowService.delete();
 		rowService = null;
 	}
 
 	@Override
 	public void truncateBlocking(long truncatedAt) {
-		Log.info("Truncating index %s", indexFullName);
+		Log.info("Truncating index %s", logName);
 		rowService.truncate();
 	}
 
 	@Override
 	public void reload() {
-		Log.info("Reloading index %s", indexFullName);
+		Log.info("Reloading index %s", logName);
 		lock.writeLock().lock();
 		try {
 			if (rowService == null) {
@@ -181,7 +196,7 @@ public class RowIndex extends PerRowSecondaryIndex {
 
 	@Override
 	public void forceBlockingFlush() {
-		Log.info("Flushing index %s", indexFullName);
+		Log.info("Flushing index %s", logName);
 		lock.writeLock().lock();
 		try {
 			rowService.commit();
@@ -192,8 +207,23 @@ public class RowIndex extends PerRowSecondaryIndex {
 
 	@Override
 	protected SecondaryIndexSearcher createSecondaryIndexSearcher(Set<ByteBuffer> columns) {
-		Log.debug("Searching index %s", indexFullName);
+		Log.debug("Searching index %s", logName);
 		return new RowIndexSearcher(secondaryIndexManager, this, columns, rowService);
 	}
+
+	@Override
+    public String toString() {
+	    StringBuilder builder = new StringBuilder();
+	    builder.append("RowIndex [index=");
+	    builder.append(indexName);
+	    builder.append(", keyspace=");
+	    builder.append(keyspaceName);
+	    builder.append(", table=");
+	    builder.append(tableName);
+	    builder.append(", column=");
+	    builder.append(columnName);
+	    builder.append("]");
+	    return builder.toString();
+    }
 
 }
