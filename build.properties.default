@@ -5,3 +5,5 @@ artifact.remoteRepository.apache:      https://repository.apache.org/content/rep
 artifact.remoteRepository.jclouds:     http://jclouds.googlecode.com/svn/repo
 artifact.remoteRepository.oauth:       http://oauth.googlecode.com/svn/code/maven
 
+cassandra-version=2.0.53
+
