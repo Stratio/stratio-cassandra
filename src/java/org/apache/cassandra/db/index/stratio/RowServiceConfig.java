@@ -21,7 +21,6 @@ public class RowServiceConfig {
 	private static final Integer DEFAULT_REFESH_SECONDS = 60;
 
 	private static final String FILTER_CACHE_SIZE_OPTION = "num_cached_filters";
-	private static final Integer DEFAULT_FILTER_CACHE_SIZE = DatabaseDescriptor.getNumTokens();
 
 	private static final String PATH_OPTION = "path";
 	private static final String DEFAULT_PATH_PREFIX = "lucene";
@@ -51,10 +50,12 @@ public class RowServiceConfig {
 			try {
 				refreshSeconds = Integer.parseInt(refreshOption);
 			} catch (NumberFormatException e) {
-				throw new RuntimeException(REFRESH_SECONDS_OPTION + " must be a strictly positive integer");
+				String msg = String.format("'%s' must be a strictly positive integer", REFRESH_SECONDS_OPTION);
+				throw new RuntimeException(msg);
 			}
 			if (refreshSeconds <= 0) {
-				throw new RuntimeException(REFRESH_SECONDS_OPTION + " must be strictly positive");
+				String msg = String.format("'%s' must be strictly positive", REFRESH_SECONDS_OPTION);
+				throw new RuntimeException(msg);
 			}
 		} else {
 			refreshSeconds = DEFAULT_REFESH_SECONDS;
@@ -67,10 +68,11 @@ public class RowServiceConfig {
 			try {
 				filterCacheSize = Integer.parseInt(filterCacheSizeOption);
 			} catch (NumberFormatException e) {
-				throw new RuntimeException(RAM_BUFFER_MB_OPTION + " must be a strictly positive integer");
+				String msg = String.format("'%s' must be a strictly positive integer", RAM_BUFFER_MB_OPTION);
+				throw new RuntimeException(msg);
 			}
 		} else {
-			filterCacheSize = DEFAULT_FILTER_CACHE_SIZE;
+			filterCacheSize = DatabaseDescriptor.getNumTokens() + 1;
 		}
 		filterCache = filterCacheSize <= 0 ? null : new FilterCache(filterCacheSize);
 
@@ -80,10 +82,12 @@ public class RowServiceConfig {
 			try {
 				ramBufferMB = Integer.parseInt(ramBufferSizeOption);
 			} catch (NumberFormatException e) {
-				throw new RuntimeException(RAM_BUFFER_MB_OPTION + " must be a strictly positive integer");
+				String msg = String.format("'%s' must be a strictly positive integer", RAM_BUFFER_MB_OPTION);
+				throw new RuntimeException(msg);
 			}
 			if (ramBufferMB <= 0) {
-				throw new RuntimeException(RAM_BUFFER_MB_OPTION + " must be strictly positive");
+				String msg = String.format("'%s' must be strictly positive", RAM_BUFFER_MB_OPTION);
+				throw new RuntimeException(msg);
 			}
 		} else {
 			ramBufferMB = DEFAULT_RAM_BUFFER_MB;
@@ -95,10 +99,12 @@ public class RowServiceConfig {
 			try {
 				maxMergeMB = Integer.parseInt(maxMergeSizeMBOption);
 			} catch (NumberFormatException e) {
-				throw new RuntimeException(MAX_MERGE_MB_OPTION + " must be a strictly positive integer");
+				String msg = String.format("'%s' must be a strictly positive integer", MAX_MERGE_MB_OPTION);
+				throw new RuntimeException(msg);
 			}
 			if (maxMergeMB <= 0) {
-				throw new RuntimeException(MAX_MERGE_MB_OPTION + " must be strictly positive");
+				String msg = String.format("'%s' must be strictly positive", MAX_MERGE_MB_OPTION);
+				throw new RuntimeException(msg);
 			}
 		} else {
 			maxMergeMB = DEFAULT_MAX_MERGE_MB;
@@ -110,10 +116,12 @@ public class RowServiceConfig {
 			try {
 				maxCachedMB = Integer.parseInt(maxCachedMBOption);
 			} catch (NumberFormatException e) {
-				throw new RuntimeException(DEFAULT_MAX_CACHED_MB + " must be a strictly positive integer");
+				String msg = String.format("'%s'  must be a strictly positive integer", DEFAULT_MAX_CACHED_MB);
+				throw new RuntimeException(msg);
 			}
 			if (maxCachedMB <= 0) {
-				throw new RuntimeException(DEFAULT_MAX_CACHED_MB + " must be strictly positive");
+				String msg = String.format("'%s'  must be strictly positive", DEFAULT_MAX_CACHED_MB);
+				throw new RuntimeException(msg);
 			}
 		} else {
 			maxCachedMB = DEFAULT_MAX_CACHED_MB;
@@ -126,10 +134,12 @@ public class RowServiceConfig {
 				cellsMapper = CellsMapper.fromJson(schemaOption);
 				cellsMapper.validate(metadata);
 			} catch (Exception e) {
-				throw new RuntimeException(SCHEMA_OPTION + " is invalid", e);
+				String msg = String.format("'%s' is invalid : %s", SCHEMA_OPTION, e.getMessage());
+				throw new RuntimeException(msg);
 			}
 		} else {
-			throw new RuntimeException(SCHEMA_OPTION + " required");
+			String msg = String.format("'%s' required", SCHEMA_OPTION);
+			throw new RuntimeException(msg);
 		}
 
 		// Get Lucene's directory path
