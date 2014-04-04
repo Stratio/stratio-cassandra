@@ -21,7 +21,7 @@ public class RowServiceConfig {
 	private static final Integer DEFAULT_REFESH_SECONDS = 60;
 
 	private static final String FILTER_CACHE_SIZE_OPTION = "num_cached_filters";
-	private static final Integer DEFAULT_FILTER_CACHE_SIZE = 0;
+	private static final Integer DEFAULT_FILTER_CACHE_SIZE = DatabaseDescriptor.getNumTokens();
 
 	private static final String PATH_OPTION = "path";
 	private static final String DEFAULT_PATH_PREFIX = "lucene";
@@ -69,13 +69,10 @@ public class RowServiceConfig {
 			} catch (NumberFormatException e) {
 				throw new RuntimeException(RAM_BUFFER_MB_OPTION + " must be a strictly positive integer");
 			}
-			if (filterCacheSize <= 0) {
-				throw new RuntimeException(FILTER_CACHE_SIZE_OPTION + " must be strictly positive");
-			}
 		} else {
 			filterCacheSize = DEFAULT_FILTER_CACHE_SIZE;
 		}
-		filterCache = new FilterCache(filterCacheSize);
+		filterCache = filterCacheSize <= 0 ? null : new FilterCache(filterCacheSize);
 
 		// Setup write buffer size
 		String ramBufferSizeOption = options.get(RAM_BUFFER_MB_OPTION);
