@@ -4,10 +4,8 @@ import java.io.File;
 import java.util.Map;
 
 import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
-import org.apache.cassandra.exceptions.ConfigurationException;
 
 /**
  * Class for building {@link RowService} instances.
@@ -45,37 +43,97 @@ public class RowServiceConfig {
 	private final int maxMergeMB;
 	private final int maxCachedMB;
 
-	public RowServiceConfig(ColumnDefinition columnDefinition) {
+	public RowServiceConfig(CFMetaData metadata, String indexName, Map<String, String> options) {
 
-		assert columnDefinition != null;
-
-		// Get index options
-		Map<String, String> options = columnDefinition.getIndexOptions();
-
-		// Get refresh time
+		// Setup refresh seconds
 		String refreshOption = options.get(REFRESH_SECONDS_OPTION);
-		refreshSeconds = refreshOption == null ? DEFAULT_REFESH_SECONDS : Integer.parseInt(refreshOption);
+		if (refreshOption != null) {
+			try {
+				refreshSeconds = Integer.parseInt(refreshOption);
+			} catch (NumberFormatException e) {
+				throw new RuntimeException(REFRESH_SECONDS_OPTION + " must be a strictly positive integer");
+			}
+			if (refreshSeconds <= 0) {
+				throw new RuntimeException(REFRESH_SECONDS_OPTION + " must be strictly positive");
+			}
+		} else {
+			refreshSeconds = DEFAULT_REFESH_SECONDS;
+		}
 
-		// Get filter cache size
+		// Setup filter cache size
 		String filterCacheSizeOption = options.get(FILTER_CACHE_SIZE_OPTION);
-		int filterCacheSize = filterCacheSizeOption == null ? DEFAULT_FILTER_CACHE_SIZE
-		                                                   : Integer.parseInt(filterCacheSizeOption);
-		filterCache = filterCacheSize > 0 ? new FilterCache(filterCacheSize) : null;
+		int filterCacheSize;
+		if (filterCacheSizeOption != null) {
+			try {
+				filterCacheSize = Integer.parseInt(filterCacheSizeOption);
+			} catch (NumberFormatException e) {
+				throw new RuntimeException(RAM_BUFFER_MB_OPTION + " must be a strictly positive integer");
+			}
+			if (filterCacheSize <= 0) {
+				throw new RuntimeException(FILTER_CACHE_SIZE_OPTION + " must be strictly positive");
+			}
+		} else {
+			filterCacheSize = DEFAULT_FILTER_CACHE_SIZE;
+		}
+		filterCache = new FilterCache(filterCacheSize);
 
-		// Get write buffer size
+		// Setup write buffer size
 		String ramBufferSizeOption = options.get(RAM_BUFFER_MB_OPTION);
-		ramBufferMB = ramBufferSizeOption == null ? DEFAULT_RAM_BUFFER_MB : Integer.parseInt(ramBufferSizeOption);
+		if (ramBufferSizeOption != null) {
+			try {
+				ramBufferMB = Integer.parseInt(ramBufferSizeOption);
+			} catch (NumberFormatException e) {
+				throw new RuntimeException(RAM_BUFFER_MB_OPTION + " must be a strictly positive integer");
+			}
+			if (ramBufferMB <= 0) {
+				throw new RuntimeException(RAM_BUFFER_MB_OPTION + " must be strictly positive");
+			}
+		} else {
+			ramBufferMB = DEFAULT_RAM_BUFFER_MB;
+		}
 
+		// Setup max merge size
 		String maxMergeSizeMBOption = options.get(MAX_MERGE_MB_OPTION);
-		maxMergeMB = maxMergeSizeMBOption == null ? DEFAULT_MAX_MERGE_MB : Integer.parseInt(maxMergeSizeMBOption);
+		if (maxMergeSizeMBOption != null) {
+			try {
+				maxMergeMB = Integer.parseInt(maxMergeSizeMBOption);
+			} catch (NumberFormatException e) {
+				throw new RuntimeException(MAX_MERGE_MB_OPTION + " must be a strictly positive integer");
+			}
+			if (maxMergeMB <= 0) {
+				throw new RuntimeException(MAX_MERGE_MB_OPTION + " must be strictly positive");
+			}
+		} else {
+			maxMergeMB = DEFAULT_MAX_MERGE_MB;
+		}
 
+		// Setup max cached MB
 		String maxCachedMBOption = options.get(MAX_CACHED_MB_OPTION);
-		maxCachedMB = maxCachedMBOption == null ? DEFAULT_MAX_CACHED_MB : Integer.parseInt(maxCachedMBOption);
+		if (maxCachedMBOption != null) {
+			try {
+				maxCachedMB = Integer.parseInt(maxCachedMBOption);
+			} catch (NumberFormatException e) {
+				throw new RuntimeException(DEFAULT_MAX_CACHED_MB + " must be a strictly positive integer");
+			}
+			if (maxCachedMB <= 0) {
+				throw new RuntimeException(DEFAULT_MAX_CACHED_MB + " must be strictly positive");
+			}
+		} else {
+			maxCachedMB = DEFAULT_MAX_CACHED_MB;
+		}
 
 		// Get columns mapping schema
 		String schemaOption = options.get(SCHEMA_OPTION);
-		assert schemaOption != null && !schemaOption.isEmpty();
-		cellsMapper = CellsMapper.fromJson(schemaOption);
+		if (schemaOption != null && !schemaOption.trim().isEmpty()) {
+			try {
+				cellsMapper = CellsMapper.fromJson(schemaOption);
+				cellsMapper.validate(metadata);
+			} catch (Exception e) {
+				throw new RuntimeException(SCHEMA_OPTION + " is invalid", e);
+			}
+		} else {
+			throw new RuntimeException(SCHEMA_OPTION + " required");
+		}
 
 		// Get Lucene's directory path
 		StringBuilder directoryPathBuilder = new StringBuilder();
@@ -92,12 +150,8 @@ public class RowServiceConfig {
 				directoryPathBuilder.append(File.separatorChar);
 			}
 		}
-		directoryPathBuilder.append(columnDefinition.getIndexName());
+		directoryPathBuilder.append(indexName);
 		path = directoryPathBuilder.toString();
-	}
-
-	public static void validate(CFMetaData metadata, ColumnDefinition columnDefinition) throws ConfigurationException {
-		new RowServiceConfig(columnDefinition).cellsMapper.validate(metadata);
 	}
 
 	public CellsMapper getCellsMapper() {

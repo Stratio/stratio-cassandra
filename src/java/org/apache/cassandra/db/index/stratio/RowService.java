@@ -101,7 +101,9 @@ public class RowService {
 		nameType = (CompositeType) metadata.comparator;
 		columnIdentifier = new ColumnIdentifier(columnDefinition.name, columnDefinition.getValidator());
 
-		RowServiceConfig config = new RowServiceConfig(columnDefinition);
+		RowServiceConfig config = new RowServiceConfig(metadata,
+		                                               columnDefinition.getIndexName(),
+		                                               columnDefinition.getIndexOptions());
 
 		filterCache = config.getFilterCache();
 

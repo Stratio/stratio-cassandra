@@ -26,6 +26,10 @@ import org.apache.cassandra.auth.Permission;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.db.index.PerRowSecondaryIndex;
+import org.apache.cassandra.db.index.SecondaryIndex;
 import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.service.ClientState;
@@ -92,6 +96,25 @@ public class CreateIndexStatement extends SchemaAlteringStatement
 
         if (cd.type == ColumnDefinition.Type.PARTITION_KEY && cd.componentIndex == null)
             throw new InvalidRequestException(String.format("Cannot add secondary index to already primarily indexed column %s", columnName));
+    
+        if (properties.isCustom)
+        {
+	        try 
+	        {
+		        ColumnDefinition def = cd.clone();
+		        def.setIndexType(IndexType.CUSTOM, properties.getOptions());
+		        ColumnFamilyStore cfs = Keyspace.open(keyspace()).getColumnFamilyStore(columnFamily());
+		        SecondaryIndex index = SecondaryIndex.createInstance(cfs, def); // Performs validation
+		        if (index instanceof PerRowSecondaryIndex) // Ensure unique per table
+		        	for (SecondaryIndex other : cfs.indexManager.getIndexes()) 
+		        		if (other instanceof PerRowSecondaryIndex) 
+		        			throw new InvalidRequestException(String.format("This table has already another per row index called %s", other.getIndexName()));
+	        }
+	        catch (Exception e) 
+	        {
+	        	throw new InvalidRequestException(e.getMessage());
+	        }
+        }
     }
 
     public void announceMigration() throws RequestValidationException

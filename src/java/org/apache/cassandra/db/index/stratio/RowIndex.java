@@ -1,6 +1,7 @@
 package org.apache.cassandra.db.index.stratio;
 
 import java.nio.ByteBuffer;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -128,13 +129,19 @@ public class RowIndex extends PerRowSecondaryIndex {
 		return true;
 	}
 
+	public static void validate(CFMetaData metadata, String indexName, Map<String, String> options) {
+		new RowServiceConfig(metadata, indexName, options);
+	}
+
 	@Override
 	public void validateOptions() throws ConfigurationException {
 		Log.debug("Validating");
 		try {
 			ColumnDefinition columnDefinition = columnDefs.iterator().next();
 			if (baseCfs != null) {
-				RowServiceConfig.validate(baseCfs.metadata, columnDefinition);
+				new RowServiceConfig(baseCfs.metadata,
+				                     columnDefinition.getIndexName(),
+				                     columnDefinition.getIndexOptions());
 				Log.debug("Index options are valid");
 			} else {
 				Log.debug("Validation skipped");
@@ -212,18 +219,18 @@ public class RowIndex extends PerRowSecondaryIndex {
 	}
 
 	@Override
-    public String toString() {
-	    StringBuilder builder = new StringBuilder();
-	    builder.append("RowIndex [index=");
-	    builder.append(indexName);
-	    builder.append(", keyspace=");
-	    builder.append(keyspaceName);
-	    builder.append(", table=");
-	    builder.append(tableName);
-	    builder.append(", column=");
-	    builder.append(columnName);
-	    builder.append("]");
-	    return builder.toString();
-    }
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("RowIndex [index=");
+		builder.append(indexName);
+		builder.append(", keyspace=");
+		builder.append(keyspaceName);
+		builder.append(", table=");
+		builder.append(tableName);
+		builder.append(", column=");
+		builder.append(columnName);
+		builder.append("]");
+		return builder.toString();
+	}
 
 }
