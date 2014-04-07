@@ -529,10 +529,20 @@ public class SecondaryIndexManager
 
         if (indexSearchers.isEmpty())
             return Collections.emptyList();
-
-        //We currently don't support searching across multiple index types
-        if (indexSearchers.size() > 1)
-            throw new RuntimeException("Unable to search across multiple secondary index types");
+        
+        List<SecondaryIndexSearcher> customIndexSearchers = new ArrayList<>(indexSearchers.size());
+        for (SecondaryIndexSearcher searcher : indexSearchers) {
+        	ByteBuffer name = searcher.columns.iterator().next();
+        	ColumnDefinition cDef = baseCfs.metadata.getColumnDefinition(name);
+        	if (cDef.getIndexType() == IndexType.CUSTOM) {
+        		customIndexSearchers.add(searcher);
+        	}
+        }
+        if (!customIndexSearchers.isEmpty()) {
+        	if (customIndexSearchers.size() > 1)
+                throw new RuntimeException("Unable to search across multiple custom secondary index types");
+        	indexSearchers = customIndexSearchers;
+        }
 
         return indexSearchers.get(0).search(filter);
     }

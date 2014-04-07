@@ -143,22 +143,23 @@ public class RowServiceConfig {
 		}
 
 		// Get Lucene's directory path
-		StringBuilder directoryPathBuilder = new StringBuilder();
 		String directoryOption = options.get(PATH_OPTION);
 		if (directoryOption == null) {
 			String[] dataFileLocations = DatabaseDescriptor.getAllDataFileLocations();
+			StringBuilder directoryPathBuilder = new StringBuilder();
 			directoryPathBuilder.append(dataFileLocations[0]);
 			directoryPathBuilder.append(File.separatorChar);
 			directoryPathBuilder.append(DEFAULT_PATH_PREFIX);
 			directoryPathBuilder.append(File.separatorChar);
+			directoryPathBuilder.append(metadata.ksName);
+			directoryPathBuilder.append(File.separatorChar);
+			directoryPathBuilder.append(metadata.cfName);
+			directoryPathBuilder.append(File.separatorChar);
+			directoryPathBuilder.append(indexName);
+			path = directoryPathBuilder.toString();
 		} else {
-			directoryPathBuilder.append(directoryOption);
-			if (!directoryOption.endsWith("" + File.separatorChar)) {
-				directoryPathBuilder.append(File.separatorChar);
-			}
+			path = directoryOption;
 		}
-		directoryPathBuilder.append(indexName);
-		path = directoryPathBuilder.toString();
 	}
 
 	public CellsMapper getCellsMapper() {
