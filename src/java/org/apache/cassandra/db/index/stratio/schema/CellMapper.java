@@ -40,7 +40,7 @@ import org.codehaus.jackson.annotate.JsonTypeInfo;
                @JsonSubTypes.Type(value = CellMapperDate.class, name = "date"),
                @JsonSubTypes.Type(value = CellMapperDouble.class, name = "double"),
                @JsonSubTypes.Type(value = CellMapperFloat.class, name = "float"),
-               @JsonSubTypes.Type(value = CellMapperInetAddress.class, name = "inet"),
+               @JsonSubTypes.Type(value = CellMapperInet.class, name = "inet"),
                @JsonSubTypes.Type(value = CellMapperInteger.class, name = "integer"),
                @JsonSubTypes.Type(value = CellMapperLong.class, name = "long"),
                @JsonSubTypes.Type(value = CellMapperString.class, name = "string"),

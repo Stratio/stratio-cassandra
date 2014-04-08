@@ -7,6 +7,7 @@ import org.apache.cassandra.db.index.stratio.schema.CellMapper;
 import org.apache.cassandra.db.index.stratio.schema.CellMapperBoolean;
 import org.apache.cassandra.db.index.stratio.schema.CellMapperDouble;
 import org.apache.cassandra.db.index.stratio.schema.CellMapperFloat;
+import org.apache.cassandra.db.index.stratio.schema.CellMapperInet;
 import org.apache.cassandra.db.index.stratio.schema.CellMapperInteger;
 import org.apache.cassandra.db.index.stratio.schema.CellMapperLong;
 import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
@@ -217,6 +218,46 @@ public class RangeQueryTest {
 		Assert.assertEquals(null, ((NumericRangeQuery<?>) query).getMax());
 		Assert.assertEquals(true, ((NumericRangeQuery<?>) query).includesMin());
 		Assert.assertEquals(false, ((NumericRangeQuery<?>) query).includesMax());
+		Assert.assertEquals(0.5f, query.getBoost(), 0);
+	}
+	
+	@Test
+	public void testInetV4() {
+
+		Map<String, CellMapper<?>> map = new HashMap<>();
+		map.put("name", new CellMapperInet());
+		CellsMapper mappers = new CellsMapper(EnglishAnalyzer.class.getName(), map);
+
+		RangeCondition rangeCondition = new RangeCondition(0.5f, "name", "192.168.0.01", "192.168.0.045", true, true);
+		Query query = rangeCondition.query(mappers);
+
+		Assert.assertNotNull(query);
+		Assert.assertEquals(TermRangeQuery.class, query.getClass());
+		Assert.assertEquals("name", ((TermRangeQuery) query).getField());
+		Assert.assertEquals("192.168.0.1", ((TermRangeQuery) query).getLowerTerm().utf8ToString());
+		Assert.assertEquals("192.168.0.45", ((TermRangeQuery) query).getUpperTerm().utf8ToString());
+		Assert.assertEquals(true, ((TermRangeQuery) query).includesLower());
+		Assert.assertEquals(true, ((TermRangeQuery) query).includesUpper());
+		Assert.assertEquals(0.5f, query.getBoost(), 0);
+	}
+	
+	@Test
+	public void testInetV6() {
+
+		Map<String, CellMapper<?>> map = new HashMap<>();
+		map.put("name", new CellMapperInet());
+		CellsMapper mappers = new CellsMapper(EnglishAnalyzer.class.getName(), map);
+
+		RangeCondition rangeCondition = new RangeCondition(0.5f, "name", "2001:DB8:2de::e13", "2001:DB8:02de::e23", true, true);
+		Query query = rangeCondition.query(mappers);
+
+		Assert.assertNotNull(query);
+		Assert.assertEquals(TermRangeQuery.class, query.getClass());
+		Assert.assertEquals("name", ((TermRangeQuery) query).getField());
+		Assert.assertEquals("2001:db8:2de:0:0:0:0:e13", ((TermRangeQuery) query).getLowerTerm().utf8ToString());
+		Assert.assertEquals("2001:db8:2de:0:0:0:0:e23", ((TermRangeQuery) query).getUpperTerm().utf8ToString());
+		Assert.assertEquals(true, ((TermRangeQuery) query).includesLower());
+		Assert.assertEquals(true, ((TermRangeQuery) query).includesUpper());
 		Assert.assertEquals(0.5f, query.getBoost(), 0);
 	}
 

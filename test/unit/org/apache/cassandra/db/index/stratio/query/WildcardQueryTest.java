@@ -6,6 +6,7 @@ import java.util.Map;
 import org.apache.cassandra.db.index.stratio.schema.CellMapper;
 import org.apache.cassandra.db.index.stratio.schema.CellMapperDouble;
 import org.apache.cassandra.db.index.stratio.schema.CellMapperFloat;
+import org.apache.cassandra.db.index.stratio.schema.CellMapperInet;
 import org.apache.cassandra.db.index.stratio.schema.CellMapperInteger;
 import org.apache.cassandra.db.index.stratio.schema.CellMapperLong;
 import org.apache.cassandra.db.index.stratio.schema.CellMapperString;
@@ -77,6 +78,42 @@ public class WildcardQueryTest {
 
 		WildcardCondition wildcardCondition = new WildcardCondition(0.5f, "name", 22D);
 		wildcardCondition.query(mappers);
+	}
+
+	@Test
+	public void testInetV4() {
+
+		Map<String, CellMapper<?>> map = new HashMap<>();
+		map.put("name", new CellMapperInet());
+		CellsMapper mappers = new CellsMapper(EnglishAnalyzer.class.getName(), map);
+
+		WildcardCondition wildcardCondition = new WildcardCondition(0.5f, "name", "192.168.*");
+		Query query = wildcardCondition.query(mappers);
+
+		Assert.assertNotNull(query);
+		Assert.assertEquals(org.apache.lucene.search.WildcardQuery.class, query.getClass());
+		org.apache.lucene.search.WildcardQuery luceneQuery = (org.apache.lucene.search.WildcardQuery) query;
+		Assert.assertEquals("name", luceneQuery.getField());
+		Assert.assertEquals("192.168.*", luceneQuery.getTerm().text());
+		Assert.assertEquals(0.5f, query.getBoost(), 0);
+	}
+
+	@Test
+	public void testInetV6() {
+
+		Map<String, CellMapper<?>> map = new HashMap<>();
+		map.put("name", new CellMapperInet());
+		CellsMapper mappers = new CellsMapper(EnglishAnalyzer.class.getName(), map);
+
+		WildcardCondition wildcardCondition = new WildcardCondition(0.5f, "name", "2001:db8:2de:0:0:0:0:e*");
+		Query query = wildcardCondition.query(mappers);
+
+		Assert.assertNotNull(query);
+		Assert.assertEquals(org.apache.lucene.search.WildcardQuery.class, query.getClass());
+		org.apache.lucene.search.WildcardQuery luceneQuery = (org.apache.lucene.search.WildcardQuery) query;
+		Assert.assertEquals("name", luceneQuery.getField());
+		Assert.assertEquals("2001:db8:2de:0:0:0:0:e*", luceneQuery.getTerm().text());
+		Assert.assertEquals(0.5f, query.getBoost(), 0);
 	}
 
 }
