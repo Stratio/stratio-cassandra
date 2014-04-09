@@ -74,7 +74,7 @@ public class TokenMapperGeneric extends TokenMapper {
 	 */
 	@Override
 	public Filter filter(DataRange dataRange) {
-		return new TokenMapperGenericFilter(this, dataRange);
+		return new TokenMapperGenericDataRangeFilter(this, dataRange);
 	}
 
 	/**

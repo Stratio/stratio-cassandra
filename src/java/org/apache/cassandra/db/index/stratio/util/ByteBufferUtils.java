@@ -173,7 +173,7 @@ public class ByteBufferUtils {
 			List<AbstractType<?>> types = composite.types;
 			ByteBuffer[] components = composite.split(byteBuffer);
 			StringBuilder sb = new StringBuilder();
-			for (int i = 0; i < types.size(); i++) {
+			for (int i = 0; i < components.length; i++) {
 				AbstractType<?> componentType = types.get(i);
 				ByteBuffer component = components[i];
 				sb.append(componentType.compose(component));

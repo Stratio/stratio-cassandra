@@ -111,6 +111,14 @@ public class CellsMapper {
 		perFieldAnalyzer = new PerFieldAnalyzerWrapper(defaultAnalyzer, analyzers);
 	}
 
+	/**
+	 * Checks if this is consistent with the specified column family metadata.
+	 * 
+	 * @param metadata
+	 *            A column family metadata.
+	 * @throws ConfigurationException
+	 *             If this is not consistent with the specified column family metadata.
+	 */
 	public void validate(CFMetaData metadata) throws ConfigurationException {
 		for (Entry<String, CellMapper<?>> entry : cellMappers.entrySet()) {
 
@@ -130,11 +138,25 @@ public class CellsMapper {
 		}
 	}
 
-	public Cells cells(CFMetaData metadata, DecoratedKey partitionKey, ColumnFamily columnFamily) {
+	/**
+	 * Returns all the {@link Cell}s representing the CQL3 columns contained in the specified column
+	 * family.
+	 * 
+	 * @param metadata
+	 *            The column family metadata
+	 * @param partitionKey
+	 *            A partition key.
+	 * @param columnFamily
+	 *            A column family.
+	 * @param timestamp
+	 *            The operation time stamp.
+	 * @return The cells contained in the specified columns.
+	 */
+	public Cells cells(CFMetaData metadata, DecoratedKey partitionKey, ColumnFamily columnFamily, long timestamp) {
 		Cells cells = new Cells();
 		cells.addAll(partitionKeyCells(metadata, partitionKey));
 		cells.addAll(clusteringKeyCells(metadata, columnFamily));
-		cells.addAll(regularCells(metadata, columnFamily));
+		cells.addAll(regularCells(metadata, columnFamily, timestamp));
 		return cells;
 	}
 
@@ -202,11 +224,13 @@ public class CellsMapper {
 	 *            The indexed column family meta data.
 	 * @param columnFamily
 	 *            The column family.
+	 * @param timestamp
+	 *            The operation time stamp.
 	 * @return The regular {@link Cell}s representing the CQL3 columns contained in the specified
 	 *         column family.
 	 */
 	@SuppressWarnings("rawtypes")
-	private Cells regularCells(CFMetaData metadata, ColumnFamily cf) {
+	private Cells regularCells(CFMetaData metadata, ColumnFamily cf, long timestamp) {
 
 		Cells cells = new Cells();
 
@@ -224,6 +248,12 @@ public class CellsMapper {
 		while (columnIterator.hasNext()) {
 
 			Column column = columnIterator.next();
+
+			// Skip deleted columns
+			if (column.isMarkedForDelete(timestamp)) {
+				continue;
+			}
+
 			ByteBuffer columnName = column.name();
 			ByteBuffer columnValue = column.value();
 
@@ -284,8 +314,12 @@ public class CellsMapper {
 	}
 
 	@JsonIgnore
-	public void addFields(Document document, CFMetaData metadata, DecoratedKey partitionKey, ColumnFamily columnFamily) {
-		Cells cells = cells(metadata, partitionKey, columnFamily);
+	public void addFields(Document document,
+	                      CFMetaData metadata,
+	                      DecoratedKey partitionKey,
+	                      ColumnFamily columnFamily,
+	                      long timestamp) {
+		Cells cells = cells(metadata, partitionKey, columnFamily, timestamp);
 		for (Cell cell : cells) {
 			String name = cell.getName();
 			String fieldName = cell.getFieldName();

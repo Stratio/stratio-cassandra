@@ -38,7 +38,7 @@ import org.apache.lucene.util.OpenBitSet;
  * @author adelapena
  * 
  */
-public class TokenMapperGenericFilter extends Filter {
+public class TokenMapperGenericDataRangeFilter extends Filter {
 
 	private final TokenMapperGeneric tokenMapperGeneric;
 
@@ -54,7 +54,7 @@ public class TokenMapperGenericFilter extends Filter {
 	 * @param dataRange
 	 *            The partition data range to be filtered.
 	 */
-	public TokenMapperGenericFilter(TokenMapperGeneric tokenMapperGeneric, DataRange dataRange) {
+	public TokenMapperGenericDataRangeFilter(TokenMapperGeneric tokenMapperGeneric, DataRange dataRange) {
 		this.tokenMapperGeneric = tokenMapperGeneric;
 		this.keyRange = dataRange.keyRange().toTokenBounds();
 	}

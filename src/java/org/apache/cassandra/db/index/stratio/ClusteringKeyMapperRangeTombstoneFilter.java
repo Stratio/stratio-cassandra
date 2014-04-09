@@ -1,23 +1,24 @@
 /*
-* Copyright 2014, Stratio.
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-* http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Copyright 2014, Stratio.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.cassandra.db.index.stratio;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import org.apache.cassandra.db.RangeTombstone;
 import org.apache.cassandra.db.index.stratio.util.ByteBufferUtils;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.lucene.index.AtomicReader;
@@ -32,17 +33,18 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.OpenBitSet;
 
-public class ColumnsFilter extends Filter {
+public class ClusteringKeyMapperRangeTombstoneFilter extends Filter {
 
 	private final ByteBuffer min;
 	private final ByteBuffer max;
 	private final AbstractType<?> columnNameType;
 
-	public ColumnsFilter(ByteBuffer min, ByteBuffer max, AbstractType<?> columnNameType) {
+	public ClusteringKeyMapperRangeTombstoneFilter(ClusteringKeyMapper clusteringKeyMapper,
+	                                               RangeTombstone rangeTombstone) {
 		super();
-		this.min = min;
-		this.max = max;
-		this.columnNameType = columnNameType;
+		this.min = rangeTombstone.min;
+		this.max = rangeTombstone.max;
+		this.columnNameType = clusteringKeyMapper.getType();
 	}
 
 	@Override

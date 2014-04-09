@@ -44,7 +44,7 @@ import org.apache.lucene.util.OpenBitSet;
  * @author adelapena
  * 
  */
-public class ClusteringKeyMapperFilter extends Filter {
+public class ClusteringKeyMapperDataRangeFilter extends Filter {
 
 	/** The {@link ClusteringKeyMapper} to be used. */
 	private final ClusteringKeyMapper clusteringKeyMapper;
@@ -61,7 +61,7 @@ public class ClusteringKeyMapperFilter extends Filter {
 	 * @param dataRange
 	 *            The filtering data range.
 	 */
-	public ClusteringKeyMapperFilter(ClusteringKeyMapper clusteringKeyMapper, DataRange dataRange) {
+	public ClusteringKeyMapperDataRangeFilter(ClusteringKeyMapper clusteringKeyMapper, DataRange dataRange) {
 		this.clusteringKeyMapper = clusteringKeyMapper;
 		this.sliceQueryFilter = (SliceQueryFilter) dataRange.columnFilter(ByteBufferUtil.EMPTY_BYTE_BUFFER);
 	}
