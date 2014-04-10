@@ -21,6 +21,7 @@ import java.util.List;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.filter.*;
+import org.apache.cassandra.db.index.SecondaryIndexSearcher;
 import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.service.IReadCommand;
@@ -35,6 +36,7 @@ public abstract class AbstractRangeCommand implements IReadCommand
     public final AbstractBounds<RowPosition> keyRange;
     public final IDiskAtomFilter predicate;
     public final List<IndexExpression> rowFilter;
+    public final SecondaryIndexSearcher searcher;
 
     public AbstractRangeCommand(String keyspace, String columnFamily, long timestamp, AbstractBounds<RowPosition> keyRange, IDiskAtomFilter predicate, List<IndexExpression> rowFilter)
     {
@@ -44,7 +46,21 @@ public abstract class AbstractRangeCommand implements IReadCommand
         this.keyRange = keyRange;
         this.predicate = predicate;
         this.rowFilter = rowFilter;
+        searcher = Keyspace.open(keyspace).getColumnFamilyStore(columnFamily).indexManager.searcher(rowFilter);
     }
+    
+    public boolean requiresFullScan() {
+		return searcher == null ? false : searcher.requiresFullScan(rowFilter);
+	}
+
+	public List<Row> combine(List<Row> rows) {
+		if (searcher != null)
+			return searcher.combine(this, rows);
+		else if (countCQL3Rows())
+			return rows;
+		else
+			return rows.size() > limit() ? rows.subList(0, limit()) : rows;
+	}
 
     public String getKeyspace()
     {

@@ -61,7 +61,7 @@ public class FullKeyMapper {
 
 	public void addFields(Document document, DecoratedKey partitionKey, ByteBuffer name) {
 		ByteBuffer fullKey = type.builder().add(partitionKey.key).add(name).build();
-		Field field = new StringField(FIELD_NAME, ByteBufferUtils.toString(fullKey), Store.NO);
+		Field field = new StringField(FIELD_NAME, ByteBufferUtils.toString(fullKey), Store.YES);
 		document.add(field);
 	}
 

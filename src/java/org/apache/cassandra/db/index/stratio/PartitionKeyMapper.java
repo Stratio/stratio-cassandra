@@ -132,13 +132,11 @@ public class PartitionKeyMapper {
 	 * Returns the column name defined by the specified document and the specified column logic
 	 * name.
 	 * 
-	 * @param document
-	 *            The Lucene's {@link Document} containing the partition key.
 	 * @param columnIdentifier
 	 *            The column logic name.
 	 * @return
 	 */
-	public ByteBuffer name(Document document, ColumnIdentifier columnIdentifier) {
+	public ByteBuffer name(ColumnIdentifier columnIdentifier) {
 		return nameType.builder().add(columnIdentifier.key).build();
 	}
 

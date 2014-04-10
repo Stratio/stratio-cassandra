@@ -17,9 +17,7 @@ package org.apache.cassandra.db.index.stratio;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Set;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.cql3.ColumnIdentifier;
@@ -130,16 +128,11 @@ public class ClusteringKeyMapper {
 	 * @param columnFamily
 	 * @return
 	 */
-	public Set<ByteBuffer> byteBuffers(ColumnFamily columnFamily) {
-		Set<ByteBuffer> keys = new HashSet<>();
+	public ByteBuffer byteBuffer(ColumnFamily columnFamily) {
 		Iterator<Column> iterator = columnFamily.iterator();
-		while (iterator.hasNext()) {
-			Column column = iterator.next();
-			ByteBuffer columnName = column.name();
-			ByteBuffer clusteringKey = start(columnName);
-			keys.add(clusteringKey);
-		}
-		return keys;
+		Column column = iterator.next();
+		ByteBuffer columnName = column.name();
+		return start(columnName);
 	}
 
 	/**

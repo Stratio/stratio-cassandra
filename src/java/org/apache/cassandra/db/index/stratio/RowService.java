@@ -18,10 +18,12 @@ package org.apache.cassandra.db.index.stratio;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.cassandra.config.CFMetaData;
@@ -50,17 +52,26 @@ import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.thrift.IndexExpression;
 import org.apache.cassandra.utils.HeapAllocator;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.ChainedFilter;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.FilteredQuery;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.RAMDirectory;
 import org.apache.lucene.util.Version;
 
 /**
@@ -137,6 +148,7 @@ public class RowService {
 		fieldsToLoad.add(PartitionKeyMapper.FIELD_NAME);
 		if (isWide) {
 			fieldsToLoad.add(ClusteringKeyMapper.FIELD_NAME);
+			fieldsToLoad.add(FullKeyMapper.FIELD_NAME);
 		}
 	}
 
@@ -160,25 +172,16 @@ public class RowService {
 		if (columnFamily.iterator().hasNext()) {
 
 			if (isWide) {
-				for (ByteBuffer clusteringKey : clusteringKeyMapper.byteBuffers(columnFamily)) {
-					QueryFilter queryFilter = queryFilter(partitionKey, clusteringKey, timestamp);
-					ColumnFamily allColumns = baseCfs.getColumnFamily(queryFilter);
-					Document document = new Document();
-					partitionKeyMapper.addFields(document, partitionKey);
-					tokenMapper.addFields(document, partitionKey);
-					cellsMapper.addFields(document, metadata, partitionKey, allColumns, timestamp);
-					clusteringKeyMapper.addFields(document, clusteringKey);
-					fullKeyMapper.addFields(document, partitionKey, clusteringKey);
-					Term term = term(partitionKey, clusteringKey);
-					rowDirectory.updateDocument(term, document);
-				}
+				ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(columnFamily);
+				QueryFilter queryFilter = queryFilter(partitionKey, clusteringKey, timestamp);
+				ColumnFamily allColumns = baseCfs.getColumnFamily(queryFilter);
+				Document document = document(partitionKey, allColumns, timestamp);
+				Term term = term(partitionKey, clusteringKey);
+				rowDirectory.updateDocument(term, document);
 			} else {
 				QueryFilter queryFilter = queryFilter(partitionKey, null, timestamp);
 				ColumnFamily allColumns = baseCfs.getColumnFamily(queryFilter);
-				Document document = new Document();
-				partitionKeyMapper.addFields(document, partitionKey);
-				tokenMapper.addFields(document, partitionKey);
-				cellsMapper.addFields(document, metadata, partitionKey, allColumns, timestamp);
+				Document document = document(partitionKey, allColumns, timestamp);
 				Term term = term(partitionKey, null);
 				rowDirectory.updateDocument(term, document);
 			}
@@ -198,6 +201,29 @@ public class RowService {
 				}
 			}
 		}
+	}
+
+	public Document document(Row row, long timestamp) {
+		DecoratedKey partitionKey = row.key;
+		ColumnFamily columnFamily = row.cf;
+		return document(partitionKey, columnFamily, timestamp);
+	}
+
+	public Document document(DecoratedKey partitionKey, ColumnFamily columnFamily, long timestamp) {
+		Document document = new Document();
+		if (isWide) {
+			ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(columnFamily);
+			partitionKeyMapper.addFields(document, partitionKey);
+			tokenMapper.addFields(document, partitionKey);
+			cellsMapper.addFields(document, metadata, partitionKey, columnFamily, timestamp);
+			clusteringKeyMapper.addFields(document, clusteringKey);
+			fullKeyMapper.addFields(document, partitionKey, clusteringKey);
+		} else {
+			partitionKeyMapper.addFields(document, partitionKey);
+			tokenMapper.addFields(document, partitionKey);
+			cellsMapper.addFields(document, metadata, partitionKey, columnFamily, timestamp);
+		}
+		return document;
 	}
 
 	/**
@@ -246,6 +272,34 @@ public class RowService {
 			return new QueryFilter(partitionKey, baseCfs.name, dataFilter, timestamp);
 		} else {
 			return QueryFilter.getIdentityFilter(partitionKey, metadata.cfName, timestamp);
+		}
+	}
+
+	public boolean usesRelevance(List<IndexExpression> clause) {
+		Search search = search(clause);
+		return search == null ? false : search.relevance();
+	}
+
+	public Search search(List<IndexExpression> clause) {
+		IndexExpression indexExpression = null;
+		for (IndexExpression ie : clause) {
+			ByteBuffer columnName = ie.column_name;
+			if (columnName.equals(columnIdentifier.key)) {
+				indexExpression = ie;
+			}
+		}
+		if (indexExpression == null) {
+			return null;
+		}
+		ByteBuffer columnValue = indexExpression.value;
+		String querySentence = UTF8Type.instance.compose(columnValue);
+		try {
+			Search search = Search.fromJSON(querySentence);
+			search.analyze(cellsMapper.analyzer());
+			return search;
+		} catch (Exception e) {
+			Log.error(e, e.getMessage());
+			return null;
 		}
 	}
 
@@ -350,8 +404,7 @@ public class RowService {
 		}
 
 		// Create the score column
-		ByteBuffer name = isWide ? clusteringKeyMapper.name(columnIdentifier, clusteringKey)
-		                        : partitionKeyMapper.name(document, columnIdentifier);
+		ByteBuffer name = scoreColumnName(clusteringKey);
 		ByteBuffer value = UTF8Type.instance.decompose(score.toString());
 		Column column = new Column(name, value);
 
@@ -361,6 +414,27 @@ public class RowService {
 		decoratedCf.addAll(cf, HeapAllocator.instance);
 
 		return new Row(decoratedKey, decoratedCf);
+	}
+
+	public ByteBuffer scoreColumnName(ByteBuffer clusteringKey) {
+		return isWide ? clusteringKeyMapper.name(columnIdentifier, clusteringKey)
+		             : partitionKeyMapper.name(columnIdentifier);
+	}
+
+	public Float score(Row row) {
+		ColumnFamily columnFamily = row.cf;
+		ByteBuffer columnName;
+		if (isWide) {
+			ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(columnFamily);
+			columnName = clusteringKeyMapper.name(columnIdentifier, clusteringKey);
+		} else {
+			columnName = partitionKeyMapper.name(columnIdentifier);
+		}
+		Column column = columnFamily.getColumn(columnName);
+		ByteBuffer columnValue = column.value();
+		String string = UTF8Type.instance.compose(columnValue);
+		Float score = Float.valueOf(string);
+		return score;
 	}
 
 	private boolean accepted(DecoratedKey key, ColumnFamily cf, List<IndexExpression> expressions, long timestamp) {
@@ -480,6 +554,52 @@ public class RowService {
 		} else {
 			return partitionKeyMapper.term(partitionKey);
 		}
+	}
+
+	public List<Row> sort(List<Row> rows, List<IndexExpression> clause, int limit, long timestamp) throws IOException {
+
+		System.out.println(" ===> STARTING SORT ");
+		Search search = search(clause);
+		System.out.println(" ===> SEARCHIG " + search);
+		Query query = search.query(cellsMapper);
+		System.out.println(" ===> QUERYING " + query);
+
+		Analyzer analyzer = cellsMapper.analyzer();
+		Directory directory = new RAMDirectory();
+		IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_46, analyzer);
+		config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
+		config.setUseCompoundFile(false);
+		IndexWriter indexWriter = new IndexWriter(directory, config);
+		String docIdFieldName = isWide ? FullKeyMapper.FIELD_NAME : PartitionKeyMapper.FIELD_NAME;
+
+		Map<String, Row> map = new HashMap<>(rows.size());
+		for (Row row : rows) {
+			Document document = document(row, timestamp);
+			String docId = document.get(docIdFieldName);
+			System.out.println("\tADDED " + docId + " - " + document + " - " + row);
+			indexWriter.addDocument(document);
+			map.put(docId, row);
+		}
+		indexWriter.commit();
+		indexWriter.close();
+		System.out.println(" ===> COMMITED ");
+
+		IndexReader indexReader = DirectoryReader.open(directory);
+		IndexSearcher indexSearcher = new IndexSearcher(indexReader);
+		TopDocs topdocs = indexSearcher.search(query, limit);
+		List<Row> result = new ArrayList<>(rows.size());
+		for (ScoreDoc scoreDoc : topdocs.scoreDocs) {
+			Document document = indexSearcher.doc(scoreDoc.doc, fieldsToLoad);
+			String docId = document.get(docIdFieldName);
+			Row row = map.get(docId);
+			System.out.println("\tFOUND " + docId + " - " + document + " - " + row);
+			result.add(row);
+		}
+		indexReader.close();
+
+		System.out.println(" ===> RETURNING " + result);
+
+		return result;
 	}
 
 }

@@ -515,20 +515,12 @@ public class SecondaryIndexManager
 
         return indexSearchers;
     }
-
-    /**
-     * Performs a search across a number of column indexes
-     * TODO: add support for querying across index types
-     *
-     * @param filter the column range to restrict to
-     * @return found indexed rows
-     */
-    public List<Row> search(ExtendedFilter filter)
-    {
-        List<SecondaryIndexSearcher> indexSearchers = getIndexSearchersForQuery(filter.getClause());
+    
+    public SecondaryIndexSearcher searcher(List<IndexExpression> clause) {
+    	List<SecondaryIndexSearcher> indexSearchers = getIndexSearchersForQuery(clause);
 
         if (indexSearchers.isEmpty())
-            return Collections.emptyList();
+            return null;
         
         List<SecondaryIndexSearcher> customIndexSearchers = new ArrayList<>(indexSearchers.size());
         for (SecondaryIndexSearcher searcher : indexSearchers) {
@@ -544,7 +536,19 @@ public class SecondaryIndexManager
         	indexSearchers = customIndexSearchers;
         }
 
-        return indexSearchers.get(0).search(filter);
+        return indexSearchers.get(0);
+    }
+
+    /**
+     * Performs a search across a number of column indexes
+     * TODO: add support for querying across index types
+     *
+     * @param filter the column range to restrict to
+     * @return found indexed rows
+     */
+    public List<Row> search(ExtendedFilter filter)
+    {
+        return searcher(filter.getClause()).search(filter);
     }
 
     public Collection<SecondaryIndex> getIndexesByNames(Set<String> idxNames)

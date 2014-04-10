@@ -74,6 +74,10 @@ public class RowIndex extends PerRowSecondaryIndex {
 		return columnName;
 	}
 
+	public ColumnDefinition getColumnDefinition() {
+		return columnDefinition;
+	}
+
 	@Override
 	public void init() {
 		Log.info("Initializing index %s.%s.%s", keyspaceName, tableName, indexName);

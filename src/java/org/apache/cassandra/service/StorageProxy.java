@@ -1448,6 +1448,9 @@ public class StorageProxy implements StorageProxyMBean
     public static List<Row> getRangeSlice(AbstractRangeCommand command, ConsistencyLevel consistency_level)
     throws UnavailableException, ReadTimeoutException
     {
+    	
+    	logger.info(" ==> GET RANGE SLICE -> " + command);
+    	
         Tracing.trace("Determining replicas to query");
         long startTime = System.nanoTime();
 
@@ -1585,7 +1588,7 @@ public class StorageProxy implements StorageProxyMBean
 
                 // if we're done, great, otherwise, move to the next range
                 int count = nodeCmd.countCQL3Rows() ? cql3RowCount : rows.size();
-                if (count >= nodeCmd.limit())
+                if (!command.requiresFullScan() &&count >= nodeCmd.limit())
                     break;
             }
         }
@@ -1595,16 +1598,7 @@ public class StorageProxy implements StorageProxyMBean
             rangeMetrics.addNano(latency);
             Keyspace.open(command.keyspace).getColumnFamilyStore(command.columnFamily).metric.coordinatorScanLatency.update(latency, TimeUnit.NANOSECONDS);
         }
-        return trim(command, rows);
-    }
-
-    private static List<Row> trim(AbstractRangeCommand command, List<Row> rows)
-    {
-        // When maxIsColumns, we let the caller trim the result.
-        if (command.countCQL3Rows())
-            return rows;
-        else
-            return rows.size() > command.limit() ? rows.subList(0, command.limit()) : rows;
+        return command.combine(rows);
     }
 
     public Map<String, List<String>> getSchemaVersions()
