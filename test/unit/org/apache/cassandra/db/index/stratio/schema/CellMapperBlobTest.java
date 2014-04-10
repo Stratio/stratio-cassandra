@@ -57,23 +57,44 @@ public class CellMapperBlobTest {
 	}
 
 	@Test
-	public void testValueStringLowerCase() {
+	public void testValueStringLowerCaseWithoutPrefix() {
 		CellMapperBlob mapper = new CellMapperBlob();
 		String parsed = mapper.indexValue("f1");
 		Assert.assertEquals("f1", parsed);
 	}
 
 	@Test
-	public void testValueStringUpperCase() {
+	public void testValueStringUpperCaseWithoutPrefix() {
 		CellMapperBlob mapper = new CellMapperBlob();
 		String parsed = mapper.indexValue("F1");
 		Assert.assertEquals("f1", parsed);
 	}
 
 	@Test
-	public void testValueStringMixedCase() {
+	public void testValueStringMixedCaseWithoutPrefix() {
 		CellMapperBlob mapper = new CellMapperBlob();
 		String parsed = mapper.indexValue("F1a2B3");
+		Assert.assertEquals("f1a2b3", parsed);
+	}
+
+	@Test
+	public void testValueStringLowerCaseWithPrefix() {
+		CellMapperBlob mapper = new CellMapperBlob();
+		String parsed = mapper.indexValue("0xf1");
+		Assert.assertEquals("f1", parsed);
+	}
+
+	@Test
+	public void testValueStringUpperCaseWithPrefix() {
+		CellMapperBlob mapper = new CellMapperBlob();
+		String parsed = mapper.indexValue("0xF1");
+		Assert.assertEquals("f1", parsed);
+	}
+
+	@Test
+	public void testValueStringMixedCaseWithPrefix() {
+		CellMapperBlob mapper = new CellMapperBlob();
+		String parsed = mapper.indexValue("0xF1a2B3");
 		Assert.assertEquals("f1a2b3", parsed);
 	}
 
