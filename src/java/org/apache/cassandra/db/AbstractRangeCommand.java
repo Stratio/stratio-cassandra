@@ -27,29 +27,33 @@ import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.service.IReadCommand;
 import org.apache.cassandra.thrift.IndexExpression;
 
-public abstract class AbstractRangeCommand implements IReadCommand
-{
-    public final String keyspace;
-    public final String columnFamily;
-    public final long timestamp;
+public abstract class AbstractRangeCommand implements IReadCommand {
+	public final String keyspace;
+	public final String columnFamily;
+	public final long timestamp;
 
-    public final AbstractBounds<RowPosition> keyRange;
-    public final IDiskAtomFilter predicate;
-    public final List<IndexExpression> rowFilter;
-    public final SecondaryIndexSearcher searcher;
+	public final AbstractBounds<RowPosition> keyRange;
+	public final IDiskAtomFilter predicate;
+	public final List<IndexExpression> rowFilter;
+	
+	public final SecondaryIndexSearcher searcher;
 
-    public AbstractRangeCommand(String keyspace, String columnFamily, long timestamp, AbstractBounds<RowPosition> keyRange, IDiskAtomFilter predicate, List<IndexExpression> rowFilter)
-    {
-        this.keyspace = keyspace;
-        this.columnFamily = columnFamily;
-        this.timestamp = timestamp;
-        this.keyRange = keyRange;
-        this.predicate = predicate;
-        this.rowFilter = rowFilter;
-        searcher = Keyspace.open(keyspace).getColumnFamilyStore(columnFamily).indexManager.searcher(rowFilter);
-    }
-    
-    public boolean requiresFullScan() {
+	public AbstractRangeCommand(String keyspace,
+	                            String columnFamily,
+	                            long timestamp,
+	                            AbstractBounds<RowPosition> keyRange,
+	                            IDiskAtomFilter predicate,
+	                            List<IndexExpression> rowFilter) {
+		this.keyspace = keyspace;
+		this.columnFamily = columnFamily;
+		this.timestamp = timestamp;
+		this.keyRange = keyRange;
+		this.predicate = predicate;
+		this.rowFilter = rowFilter;
+		this.searcher = Keyspace.open(keyspace).getColumnFamilyStore(columnFamily).indexManager.searcher(rowFilter);
+	}
+
+	public boolean requiresFullScan() {
 		return searcher == null ? false : searcher.requiresFullScan(rowFilter);
 	}
 
@@ -62,21 +66,23 @@ public abstract class AbstractRangeCommand implements IReadCommand
 			return rows.size() > limit() ? rows.subList(0, limit()) : rows;
 	}
 
-    public String getKeyspace()
-    {
-        return keyspace;
-    }
+	public String getKeyspace() {
+		return keyspace;
+	}
 
-    public abstract MessageOut<? extends AbstractRangeCommand> createMessage();
-    public abstract AbstractRangeCommand forSubRange(AbstractBounds<RowPosition> range);
-    public abstract AbstractRangeCommand withUpdatedLimit(int newLimit);
+	public abstract MessageOut<? extends AbstractRangeCommand> createMessage();
 
-    public abstract int limit();
-    public abstract boolean countCQL3Rows();
-    public abstract List<Row> executeLocally();
+	public abstract AbstractRangeCommand forSubRange(AbstractBounds<RowPosition> range);
 
-    public long getTimeout()
-    {
-        return DatabaseDescriptor.getRangeRpcTimeout();
-    }
+	public abstract AbstractRangeCommand withUpdatedLimit(int newLimit);
+
+	public abstract int limit();
+
+	public abstract boolean countCQL3Rows();
+
+	public abstract List<Row> executeLocally();
+
+	public long getTimeout() {
+		return DatabaseDescriptor.getRangeRpcTimeout();
+	}
 }

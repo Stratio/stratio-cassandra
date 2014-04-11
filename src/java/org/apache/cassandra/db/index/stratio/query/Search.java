@@ -16,9 +16,15 @@
 package org.apache.cassandra.db.index.stratio.query;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.List;
 
+import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
 import org.apache.cassandra.db.index.stratio.util.JsonSerializer;
+import org.apache.cassandra.db.index.stratio.util.Log;
+import org.apache.cassandra.db.marshal.UTF8Type;
+import org.apache.cassandra.thrift.IndexExpression;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.FilteredQuery;
@@ -36,14 +42,13 @@ public class Search {
 
 	public static final boolean DEFAULT_RELEVANCE = false;
 
-	@JsonProperty("relevance")
 	private final boolean relevance;
 
-	@JsonProperty("query")
 	private final Condition queryCondition;
 
-	@JsonProperty("filter")
 	private final Condition filterCondition;
+
+	private DataRange dataRange;
 
 	@JsonCreator
 	public Search(@JsonProperty("relevance") boolean relevance,
@@ -65,6 +70,10 @@ public class Search {
 		return relevance;
 	}
 
+	public DataRange dataRange() {
+		return dataRange;
+	}
+
 	/**
 	 * Returns the Lucene's {@link Query} representation of this search.
 	 * 
@@ -73,6 +82,7 @@ public class Search {
 	 * @return The Lucene's {@link Query} representation of this search.
 	 */
 	public Query query(CellsMapper cellsMapper) {
+		analyze(cellsMapper.analyzer());
 		Query query = (queryCondition == null) ? new MatchAllDocsQuery() : queryCondition.query(cellsMapper);
 		Filter filter = (filterCondition == null) ? null : filterCondition.filter(cellsMapper);
 		if (filter != null) {
@@ -88,12 +98,34 @@ public class Search {
 	 * @param analyzer
 	 *            An {@link Analyzer}.
 	 */
-	public void analyze(Analyzer analyzer) {
+	private void analyze(Analyzer analyzer) {
 		if (queryCondition != null) {
 			queryCondition.analyze(analyzer);
 		}
 		if (filterCondition != null) {
 			filterCondition.analyze(analyzer);
+		}
+	}
+
+	public static Search fromClause(List<IndexExpression> clause, ByteBuffer name) {
+		IndexExpression indexExpression = null;
+		for (IndexExpression ie : clause) {
+			ByteBuffer columnName = ie.column_name;
+			if (columnName.equals(name)) {
+				indexExpression = ie;
+			}
+		}
+		if (indexExpression == null) {
+			return null;
+		}
+		ByteBuffer columnValue = indexExpression.value;
+		String querySentence = UTF8Type.instance.compose(columnValue);
+		try {
+			Search search = Search.fromJSON(querySentence);
+			return search;
+		} catch (Exception e) {
+			Log.error(e, e.getMessage());
+			return null;
 		}
 	}
 

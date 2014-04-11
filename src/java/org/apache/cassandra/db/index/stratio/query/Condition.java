@@ -1,18 +1,18 @@
 /*
-* Copyright 2014, Stratio.
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-* http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Copyright 2014, Stratio.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.cassandra.db.index.stratio.query;
 
 import java.io.IOException;
@@ -50,11 +50,12 @@ import org.codehaus.jackson.annotate.JsonTypeInfo;
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 @JsonSubTypes({ @JsonSubTypes.Type(value = BooleanCondition.class, name = "boolean"),
+               @JsonSubTypes.Type(value = FuzzyCondition.class, name = "fuzzy"),
+               @JsonSubTypes.Type(value = LuceneCondition.class, name = "lucene"),
                @JsonSubTypes.Type(value = MatchCondition.class, name = "match"),
                @JsonSubTypes.Type(value = RangeCondition.class, name = "range"),
                @JsonSubTypes.Type(value = PhraseCondition.class, name = "phrase"),
                @JsonSubTypes.Type(value = PrefixCondition.class, name = "prefix"),
-               @JsonSubTypes.Type(value = FuzzyCondition.class, name = "fuzzy"),
                @JsonSubTypes.Type(value = RegexpCondition.class, name = "regexp"),
                @JsonSubTypes.Type(value = WildcardCondition.class, name = "wildcard"), })
 public abstract class Condition {

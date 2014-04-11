@@ -61,7 +61,6 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.ChainedFilter;
 import org.apache.lucene.queryparser.classic.ParseException;
-import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.FilteredQuery;
 import org.apache.lucene.search.IndexSearcher;
@@ -89,6 +88,7 @@ public class RowService {
 	private final CellsMapper cellsMapper;
 	private final Set<String> fieldsToLoad;
 	private final RowDirectory rowDirectory;
+	private final ByteBuffer columnName;
 	private final ColumnIdentifier columnIdentifier;
 	private final int clusteringPosition;
 	private final boolean isWide;
@@ -120,6 +120,7 @@ public class RowService {
 
 		this.baseCfs = baseCfs;
 		metadata = baseCfs.metadata;
+		columnName = columnDefinition.name;
 		columnIdentifier = new ColumnIdentifier(columnDefinition.name, columnDefinition.getValidator());
 
 		RowServiceConfig config = new RowServiceConfig(metadata,
@@ -148,8 +149,11 @@ public class RowService {
 		fieldsToLoad.add(PartitionKeyMapper.FIELD_NAME);
 		if (isWide) {
 			fieldsToLoad.add(ClusteringKeyMapper.FIELD_NAME);
-			fieldsToLoad.add(FullKeyMapper.FIELD_NAME);
 		}
+	}
+
+	public CellsMapper getCellsMapper() {
+		return cellsMapper;
 	}
 
 	/**
@@ -275,34 +279,6 @@ public class RowService {
 		}
 	}
 
-	public boolean usesRelevance(List<IndexExpression> clause) {
-		Search search = search(clause);
-		return search == null ? false : search.relevance();
-	}
-
-	public Search search(List<IndexExpression> clause) {
-		IndexExpression indexExpression = null;
-		for (IndexExpression ie : clause) {
-			ByteBuffer columnName = ie.column_name;
-			if (columnName.equals(columnIdentifier.key)) {
-				indexExpression = ie;
-			}
-		}
-		if (indexExpression == null) {
-			return null;
-		}
-		ByteBuffer columnValue = indexExpression.value;
-		String querySentence = UTF8Type.instance.compose(columnValue);
-		try {
-			Search search = Search.fromJSON(querySentence);
-			search.analyze(cellsMapper.analyzer());
-			return search;
-		} catch (Exception e) {
-			Log.error(e, e.getMessage());
-			return null;
-		}
-	}
-
 	/**
 	 * Returns the Cassandra rows satisfying {@code extendedFilter}. This rows are retrieved from
 	 * the Cassandra storage engine.
@@ -315,39 +291,25 @@ public class RowService {
 
 		long timestamp = extendedFilter.timestamp;
 
-		// Get filtering options
-		int requestedRows = extendedFilter.maxColumns();
-		IndexExpression indexExpression = null;
-		List<IndexExpression> extraExpressions = new ArrayList<>();
-		for (IndexExpression ie : extendedFilter.getClause()) {
+		List<IndexExpression> clause = extendedFilter.getClause();
+		List<IndexExpression> extraExpressions = new ArrayList<>(clause.size());
+		for (IndexExpression ie : clause) {
 			ByteBuffer columnName = ie.column_name;
-			if (columnName.equals(columnIdentifier.key)) {
-				indexExpression = ie;
-			} else {
+			if (!columnName.equals(columnIdentifier.key)) {
 				extraExpressions.add(ie);
 			}
 		}
-		ByteBuffer columnValue = indexExpression.value;
 
-		String querySentence = UTF8Type.instance.compose(columnValue);
+		// Get filtering options
+		int requestedRows = extendedFilter.maxColumns();
+
 		DataRange dataRange = extendedFilter.dataRange;
 
 		// Setup search arguments
 		Filter filter = cachedFilter(dataRange);
-		Sort sort;
-		Query query;
-		try { // Try with JSON syntax
-			Search search = Search.fromJSON(querySentence);
-			search.analyze(cellsMapper.analyzer());
-			query = search.query(cellsMapper);
-			sort = search.relevance() ? null : sort();
-		} catch (IOException e) { // Try with Lucene syntax
-			QueryParser queryParser = new RowQueryParser(Version.LUCENE_46, "lucene", cellsMapper);
-			queryParser.setAllowLeadingWildcard(true);
-			queryParser.setLowercaseExpandedTerms(false);
-			query = queryParser.parse(querySentence);
-			sort = sort();
-		}
+		Search search = Search.fromClause(clause, columnName);
+		Query query = search.query(cellsMapper);
+		Sort sort = search.relevance() ? null : sort();
 
 		// Setup search pagination
 		List<Row> rows = new LinkedList<>(); // The row list to be returned
@@ -556,50 +518,57 @@ public class RowService {
 		}
 	}
 
-	public List<Row> sort(List<Row> rows, List<IndexExpression> clause, int limit, long timestamp) throws IOException {
+	public List<Row> sort(List<Row> rows, Search search, int limit, long timestamp) throws IOException {
 
-		System.out.println(" ===> STARTING SORT ");
-		Search search = search(clause);
-		System.out.println(" ===> SEARCHIG " + search);
-		Query query = search.query(cellsMapper);
-		System.out.println(" ===> QUERYING " + query);
-
-		Analyzer analyzer = cellsMapper.analyzer();
+		// Setup RAM directory for index and query again partial results.
 		Directory directory = new RAMDirectory();
+
+		// Index partial results
+		Analyzer analyzer = cellsMapper.analyzer();
 		IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_46, analyzer);
 		config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
 		config.setUseCompoundFile(false);
 		IndexWriter indexWriter = new IndexWriter(directory, config);
-		String docIdFieldName = isWide ? FullKeyMapper.FIELD_NAME : PartitionKeyMapper.FIELD_NAME;
-
-		Map<String, Row> map = new HashMap<>(rows.size());
+		Map<ByteBuffer, Row> map = new HashMap<>(rows.size());
 		for (Row row : rows) {
 			Document document = document(row, timestamp);
-			String docId = document.get(docIdFieldName);
-			System.out.println("\tADDED " + docId + " - " + document + " - " + row);
 			indexWriter.addDocument(document);
+			ByteBuffer docId = getUniqueId(document);
 			map.put(docId, row);
+			System.out.println("\tADDED " + docId + " - " + document + " - " + row);
 		}
 		indexWriter.commit();
 		indexWriter.close();
-		System.out.println(" ===> COMMITED ");
 
+		// Search in partial results
 		IndexReader indexReader = DirectoryReader.open(directory);
 		IndexSearcher indexSearcher = new IndexSearcher(indexReader);
+		Query query = search.query(cellsMapper);
 		TopDocs topdocs = indexSearcher.search(query, limit);
-		List<Row> result = new ArrayList<>(rows.size());
+		List<Row> result = new ArrayList<>(Math.min(limit, rows.size()));
 		for (ScoreDoc scoreDoc : topdocs.scoreDocs) {
 			Document document = indexSearcher.doc(scoreDoc.doc, fieldsToLoad);
-			String docId = document.get(docIdFieldName);
+			ByteBuffer docId = getUniqueId(document);
 			Row row = map.get(docId);
-			System.out.println("\tFOUND " + docId + " - " + document + " - " + row);
 			result.add(row);
+			System.out.println("\tFOUND " + docId + " - " + document + " - " + row);
 		}
 		indexReader.close();
 
+		directory.close();
 		System.out.println(" ===> RETURNING " + result);
 
 		return result;
+	}
+
+	private ByteBuffer getUniqueId(Document document) {
+		DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
+		if (isWide) {
+			ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(document);
+			return fullKeyMapper.byteBuffer(partitionKey, clusteringKey);
+		} else {
+			return partitionKey.key;
+		}
 	}
 
 }

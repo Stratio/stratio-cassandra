@@ -234,7 +234,7 @@ public class RowIndex extends PerRowSecondaryIndex {
 
 	@Override
 	protected SecondaryIndexSearcher createSecondaryIndexSearcher(Set<ByteBuffer> columns) {
-		Log.debug("Searching index %s", logName);
+		Log.debug("Creating searcher for index %s", logName);
 		return new RowIndexSearcher(secondaryIndexManager, this, columns, rowService);
 	}
 

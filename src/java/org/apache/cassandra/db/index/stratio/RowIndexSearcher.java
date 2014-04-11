@@ -17,9 +17,6 @@ package org.apache.cassandra.db.index.stratio;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
@@ -28,6 +25,7 @@ import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.filter.ExtendedFilter;
 import org.apache.cassandra.db.index.SecondaryIndexManager;
 import org.apache.cassandra.db.index.SecondaryIndexSearcher;
+import org.apache.cassandra.db.index.stratio.query.Search;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.thrift.IndexExpression;
 import org.apache.cassandra.thrift.IndexOperator;
@@ -46,6 +44,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
 
 	private final RowIndex index;
 	private final RowService rowService;
+	private final ByteBuffer rawColumnName;
 
 	/**
 	 * Returns a new {@code RowIndexSearcher}.
@@ -62,6 +61,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
 		super(indexManager, columns);
 		this.index = index;
 		this.rowService = rowService;
+		this.rawColumnName = index.getColumnDefinition().name;
 	}
 
 	@Override
@@ -90,13 +90,15 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
 
 	@Override
 	public boolean requiresFullScan(List<IndexExpression> clause) {
-		return rowService.usesRelevance(clause);
+		return Search.fromClause(clause, rawColumnName).relevance();
 	}
 
 	public List<Row> combine(AbstractRangeCommand command, List<Row> rows) {
-		if (rowService.usesRelevance(command.rowFilter)) {
+		List<IndexExpression> clause = command.rowFilter;
+		Search search = Search.fromClause(clause, rawColumnName);
+		if (search.relevance()) {
 			try {
-				return rowService.sort(rows, command.rowFilter, command.limit(), command.timestamp);
+				return rowService.sort(rows, search, command.limit(), command.timestamp);
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}

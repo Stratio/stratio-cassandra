@@ -59,9 +59,13 @@ public class FullKeyMapper {
 		return type;
 	}
 
-	public void addFields(Document document, DecoratedKey partitionKey, ByteBuffer name) {
-		ByteBuffer fullKey = type.builder().add(partitionKey.key).add(name).build();
-		Field field = new StringField(FIELD_NAME, ByteBufferUtils.toString(fullKey), Store.YES);
+	public ByteBuffer byteBuffer(DecoratedKey partitionKey, ByteBuffer clusteringKey) {
+		return type.builder().add(partitionKey.key).add(clusteringKey).build();
+	}
+
+	public void addFields(Document document, DecoratedKey partitionKey, ByteBuffer clusteringKey) {
+		ByteBuffer fullKey = byteBuffer(partitionKey, clusteringKey);
+		Field field = new StringField(FIELD_NAME, ByteBufferUtils.toString(fullKey), Store.NO);
 		document.add(field);
 	}
 
