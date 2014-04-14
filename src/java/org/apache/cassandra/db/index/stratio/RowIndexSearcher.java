@@ -89,16 +89,15 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
 	}
 
 	@Override
-	public boolean requiresFullScan(List<IndexExpression> clause) {
-		return Search.fromClause(clause, rawColumnName).relevance();
+	public boolean requiresFullScan(AbstractRangeCommand command) {
+		return Search.fromCommand(command, rawColumnName).relevance();
 	}
 
 	public List<Row> combine(AbstractRangeCommand command, List<Row> rows) {
-		List<IndexExpression> clause = command.rowFilter;
-		Search search = Search.fromClause(clause, rawColumnName);
+		Search search = Search.fromCommand(command, rawColumnName);
 		if (search.relevance()) {
 			try {
-				return rowService.sort(rows, search, command.limit(), command.timestamp);
+				return rowService.combine(rows, search, command.limit(), command.timestamp);
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}

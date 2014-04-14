@@ -35,7 +35,7 @@ public abstract class AbstractRangeCommand implements IReadCommand {
 	public final AbstractBounds<RowPosition> keyRange;
 	public final IDiskAtomFilter predicate;
 	public final List<IndexExpression> rowFilter;
-	
+
 	public final SecondaryIndexSearcher searcher;
 
 	public AbstractRangeCommand(String keyspace,
@@ -54,7 +54,7 @@ public abstract class AbstractRangeCommand implements IReadCommand {
 	}
 
 	public boolean requiresFullScan() {
-		return searcher == null ? false : searcher.requiresFullScan(rowFilter);
+		return searcher == null ? false : searcher.requiresFullScan(this);
 	}
 
 	public List<Row> combine(List<Row> rows) {

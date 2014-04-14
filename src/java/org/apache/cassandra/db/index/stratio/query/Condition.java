@@ -106,23 +106,18 @@ public abstract class Condition {
 		return new QueryWrapperFilter(query(cellsMapper));
 	}
 
-	/**
-	 * Applies the specified {@link Analyzer} to the required arguments.
-	 * 
-	 * @param analyzer
-	 *            An {@link Analyzer}.
-	 */
-	public abstract void analyze(Analyzer analyzer);
+	// /**
+	// * Applies the specified {@link Analyzer} to the required arguments.
+	// *
+	// * @param analyzer
+	// * An {@link Analyzer}.
+	// */
+	// public abstract void analyze(Analyzer analyzer);
 
-	protected Object analyze(String field, Object value, Analyzer analyzer) {
-
-		if (!(value instanceof String)) {
-			return value;
-		}
-
+	protected String analyze(String field, String value, Analyzer analyzer) {
 		TokenStream source = null;
 		try {
-			source = analyzer.tokenStream(field, (String) value);
+			source = analyzer.tokenStream(field, value);
 			source.reset();
 
 			TermToBytesRefAttribute termAtt = source.getAttribute(TermToBytesRefAttribute.class);

@@ -81,11 +81,11 @@ public class RowIndex extends PerRowSecondaryIndex {
 	@Override
 	public void init() {
 		Log.info("Initializing index %s.%s.%s", keyspaceName, tableName, indexName);
-		lock.readLock().lock();
+		lock.writeLock().lock();
 		try {
 			setup();
 		} finally {
-			lock.readLock().unlock();
+			lock.writeLock().unlock();
 		}
 	}
 
@@ -188,8 +188,10 @@ public class RowIndex extends PerRowSecondaryIndex {
 		Log.info("Removing index %s", logName);
 		lock.writeLock().lock();
 		try {
-			rowService.delete();
-			rowService = null;
+			if (rowService != null) {
+				rowService.delete();
+				rowService = null;
+			}
 		} finally {
 			lock.writeLock().unlock();
 		}
@@ -198,14 +200,28 @@ public class RowIndex extends PerRowSecondaryIndex {
 	@Override
 	public void invalidate() {
 		Log.info("Invalidating index %s", logName);
-		rowService.delete();
-		rowService = null;
+		lock.writeLock().lock();
+		try {
+			if (rowService != null) {
+				rowService.delete();
+				rowService = null;
+			}
+		} finally {
+			lock.writeLock().unlock();
+		}
 	}
 
 	@Override
 	public void truncateBlocking(long truncatedAt) {
 		Log.info("Truncating index %s", logName);
-		rowService.truncate();
+		lock.writeLock().lock();
+		try {
+			if (rowService != null) {
+				rowService.truncate();
+			}
+		} finally {
+			lock.writeLock().unlock();
+		}
 	}
 
 	@Override

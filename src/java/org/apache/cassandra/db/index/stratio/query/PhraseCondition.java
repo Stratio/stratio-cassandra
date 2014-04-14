@@ -1,21 +1,20 @@
 /*
-* Copyright 2014, Stratio.
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-* http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Copyright 2014, Stratio.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.cassandra.db.index.stratio.query;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.cassandra.db.index.stratio.schema.CellMapper;
@@ -110,23 +109,11 @@ public class PhraseCondition extends Condition {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public void analyze(Analyzer analyzer) {
-		List<Object> values = new ArrayList<>(this.values.size());
-		for (Object value : this.values) {
-			Object analyzedValue = analyze(field, value, analyzer);
-			values.add(analyzedValue);
-		}
-		this.values = values;
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
 	public Query query(CellsMapper cellsMapper) {
 		CellMapper<?> cellMapper = cellsMapper.getMapper(field);
 		Class<?> clazz = cellMapper.baseClass();
 		if (clazz == String.class) {
+			Analyzer analyzer = cellsMapper.analyzer();
 			PhraseQuery query = new PhraseQuery();
 			query.setSlop(slop);
 			query.setBoost(boost);
@@ -134,8 +121,11 @@ public class PhraseCondition extends Condition {
 			for (Object o : values) {
 				if (o != null) {
 					String value = (String) cellMapper.queryValue(o);
-					Term term = new Term(field, value);
-					query.add(term, count);
+					value = analyze(field, value, analyzer);
+					if (value != null) {
+						Term term = new Term(field, value);
+						query.add(term, count);
+					}
 				}
 				count++;
 			}

@@ -1,23 +1,22 @@
 /*
-* Copyright 2014, Stratio.
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-* http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Copyright 2014, Stratio.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.cassandra.db.index.stratio.query;
 
 import org.apache.cassandra.db.index.stratio.schema.CellMapper;
 import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
-import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.search.NumericRangeQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermRangeQuery;
@@ -89,7 +88,7 @@ public class RangeCondition extends Condition {
 		if (field == null || field.trim().isEmpty()) {
 			throw new IllegalArgumentException("Field name required");
 		}
-		
+
 		this.field = field;
 		this.lower = lowerValue;
 		this.upper = upperValue;
@@ -150,15 +149,6 @@ public class RangeCondition extends Condition {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public void analyze(Analyzer analyzer) {
-		this.lower = analyze(field, lower, analyzer);
-		this.upper = analyze(field, upper, analyzer);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
 	public Query query(CellsMapper cellsMapper) {
 		CellMapper<?> cellMapper = cellsMapper.getMapper(field);
 		Class<?> clazz = cellMapper.baseClass();
@@ -166,6 +156,8 @@ public class RangeCondition extends Condition {
 		if (clazz == String.class) {
 			String lower = (String) cellMapper.queryValue(this.lower);
 			String upper = (String) cellMapper.queryValue(this.upper);
+			lower = analyze(field, lower, cellMapper.analyzer());
+			upper = analyze(field, upper, cellMapper.analyzer());
 			query = TermRangeQuery.newStringRange(field, lower, upper, includeLower, includeUpper);
 		} else if (clazz == Integer.class) {
 			Integer lower = (Integer) cellMapper.queryValue(this.lower);

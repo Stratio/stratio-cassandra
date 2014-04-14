@@ -1,18 +1,18 @@
 /*
-* Copyright 2014, Stratio.
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-* http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Copyright 2014, Stratio.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.cassandra.db.index.stratio;
 
 import java.io.File;
@@ -299,14 +299,8 @@ public class RowDirectory {
 	 *            The name of the fields to be loaded.
 	 * @return The found documents, sorted according to the supplied {@link Sort} instance.
 	 */
-	public List<ScoredDocument> search(ScoreDoc after,
-	                                   Query query,
-	                                   Filter filter,
-	                                   Sort sort,
-	                                   Integer count,
-	                                   Set<String> fieldsToLoad) {
+	public List<ScoredDocument> search(ScoreDoc after, Query query, Sort sort, Integer count, Set<String> fieldsToLoad) {
 		Log.debug("Searching with query %s ", query);
-		Log.debug("Searching with filter %s", filter);
 		Log.debug("Searching with count %d", count);
 		Log.debug("Searching with sort %s", sort);
 
@@ -329,31 +323,15 @@ public class RowDirectory {
 				TopDocs topDocs;
 				if (after == null) {
 					if (sort == null) {
-						if (filter == null) {
-							topDocs = indexSearcher.search(query, count);
-						} else {
-							topDocs = indexSearcher.search(query, filter, count);
-						}
+						topDocs = indexSearcher.search(query, count);
 					} else {
-						if (filter == null) {
-							topDocs = indexSearcher.search(query, count, sort);
-						} else {
-							topDocs = indexSearcher.search(query, filter, count, sort, true, true);
-						}
+						topDocs = indexSearcher.search(query, count, sort);
 					}
 				} else {
 					if (sort == null) {
-						if (filter == null) {
-							topDocs = indexSearcher.searchAfter(after, query, count);
-						} else {
-							topDocs = indexSearcher.searchAfter(after, query, filter, count);
-						}
+						topDocs = indexSearcher.searchAfter(after, query, count);
 					} else {
-						if (filter == null) {
-							topDocs = indexSearcher.searchAfter(after, query, count, sort);
-						} else {
-							topDocs = indexSearcher.searchAfter(after, query, filter, count, sort, true, true);
-						}
+						topDocs = indexSearcher.searchAfter(after, query, count, sort);
 					}
 				}
 				ScoreDoc[] scoreDocs = topDocs.scoreDocs;
@@ -362,8 +340,7 @@ public class RowDirectory {
 				List<ScoredDocument> scoredDocuments = new ArrayList<>(scoreDocs.length);
 				for (ScoreDoc scoreDoc : scoreDocs) {
 					Document document = indexSearcher.doc(scoreDoc.doc, fieldsToLoad);
-					Float score = scoreDoc.score;
-					ScoredDocument scoredDocument = new ScoredDocument(scoreDoc, document, score);
+					ScoredDocument scoredDocument = new ScoredDocument(scoreDoc, document);
 					scoredDocuments.add(scoredDocument);
 					// Log.debug("Found %s", scoredDocument);
 				}
@@ -387,12 +364,10 @@ public class RowDirectory {
 
 		public final ScoreDoc scoreDoc;
 		public final Document document;
-		public final Float score;
 
-		public ScoredDocument(ScoreDoc scoreDoc, Document document, Float score) {
+		public ScoredDocument(ScoreDoc scoreDoc, Document document) {
 			this.scoreDoc = scoreDoc;
 			this.document = document;
-			this.score = score;
 		}
 
 		@Override
@@ -400,8 +375,6 @@ public class RowDirectory {
 			StringBuilder builder = new StringBuilder();
 			builder.append("ScoredDocument [document=");
 			builder.append(document);
-			builder.append(", score=");
-			builder.append(score);
 			builder.append("]");
 			return builder.toString();
 		}
