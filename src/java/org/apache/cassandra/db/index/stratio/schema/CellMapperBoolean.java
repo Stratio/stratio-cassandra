@@ -45,7 +45,7 @@ public class CellMapperBoolean extends CellMapper<String> {
 	}
 
 	@Override
-	public String indexValue(Object value) {
+	public String indexValue(String name, Object value) {
 		if (value == null) {
 			return null;
 		} else if (value instanceof Boolean) {
@@ -62,7 +62,7 @@ public class CellMapperBoolean extends CellMapper<String> {
 	}
 
 	@Override
-	public String queryValue(Object value) {
+	public String queryValue(String name, Object value) {
 		if (value == null) {
 			return null;
 		} else if (value instanceof Boolean) {
@@ -74,7 +74,7 @@ public class CellMapperBoolean extends CellMapper<String> {
 
 	@Override
 	public Field field(String name, Object value) {
-		return new StringField(name, indexValue(value), STORE);
+		return new StringField(name, indexValue(name, value), STORE);
 	}
 
 	@Override

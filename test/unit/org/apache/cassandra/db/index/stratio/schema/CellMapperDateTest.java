@@ -15,7 +15,7 @@ public class CellMapperDateTest {
 	@Test()
 	public void testValueNull() {
 		CellMapperDate mapper = new CellMapperDate(PATTERN);
-		Long parsed = mapper.indexValue(null);
+		Long parsed = mapper.indexValue("test", null);
 		Assert.assertNull(parsed);
 	}
 
@@ -23,35 +23,35 @@ public class CellMapperDateTest {
 	public void testValueDate() {
 		CellMapperDate mapper = new CellMapperDate(PATTERN);
 		Date date = new Date();
-		long parsed = mapper.indexValue(date);
+		long parsed = mapper.indexValue("test", date);
 		Assert.assertEquals(date.getTime(), parsed);
 	}
 
 	@Test
 	public void testValueInteger() {
 		CellMapperDate mapper = new CellMapperDate(PATTERN);
-		Long parsed = mapper.indexValue(3);
+		Long parsed = mapper.indexValue("test", 3);
 		Assert.assertEquals(Long.valueOf(3), parsed);
 	}
 
 	@Test
 	public void testValueLong() {
 		CellMapperDate mapper = new CellMapperDate(PATTERN);
-		Long parsed = mapper.indexValue(3l);
+		Long parsed = mapper.indexValue("test", 3l);
 		Assert.assertEquals(Long.valueOf(3), parsed);
 	}
 
 	@Test
 	public void testValueFloatWithoutDecimal() {
 		CellMapperDate mapper = new CellMapperDate(PATTERN);
-		Long parsed = mapper.indexValue(3f);
+		Long parsed = mapper.indexValue("test", 3f);
 		Assert.assertEquals(Long.valueOf(3), parsed);
 	}
 
 	@Test
 	public void testValueFloatWithDecimalFloor() {
 		CellMapperDate mapper = new CellMapperDate(PATTERN);
-		Long parsed = mapper.indexValue(3.5f);
+		Long parsed = mapper.indexValue("test", 3.5f);
 		Assert.assertEquals(Long.valueOf(3), parsed);
 
 	}
@@ -59,7 +59,7 @@ public class CellMapperDateTest {
 	@Test
 	public void testValueFloatWithDecimalCeil() {
 		CellMapperDate mapper = new CellMapperDate(PATTERN);
-		Long parsed = mapper.indexValue(3.6f);
+		Long parsed = mapper.indexValue("test", 3.6f);
 		Assert.assertEquals(Long.valueOf(3), parsed);
 
 	}
@@ -67,14 +67,14 @@ public class CellMapperDateTest {
 	@Test
 	public void testValueDoubleWithoutDecimal() {
 		CellMapperDate mapper = new CellMapperDate(PATTERN);
-		Long parsed = mapper.indexValue(3d);
+		Long parsed = mapper.indexValue("test", 3d);
 		Assert.assertEquals(Long.valueOf(3), parsed);
 	}
 
 	@Test
 	public void testValueDoubleWithDecimalFloor() {
 		CellMapperDate mapper = new CellMapperDate(PATTERN);
-		Long parsed = mapper.indexValue(3.5d);
+		Long parsed = mapper.indexValue("test", 3.5d);
 		Assert.assertEquals(Long.valueOf(3), parsed);
 
 	}
@@ -82,7 +82,7 @@ public class CellMapperDateTest {
 	@Test
 	public void testValueDoubleWithDecimalCeil() {
 		CellMapperDate mapper = new CellMapperDate(PATTERN);
-		Long parsed = mapper.indexValue(3.6d);
+		Long parsed = mapper.indexValue("test", 3.6d);
 		Assert.assertEquals(Long.valueOf(3), parsed);
 
 	}
@@ -90,28 +90,28 @@ public class CellMapperDateTest {
 	@Test
 	public void testValueStringWithPattern() {
 		CellMapperDate mapper = new CellMapperDate(PATTERN);
-		Long parsed = mapper.indexValue("2014-03-19");
+		Long parsed = mapper.indexValue("test", "2014-03-19");
 		Assert.assertEquals(Long.valueOf(1395183600000L), parsed);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueStringWithPatternInvalid() {
 		CellMapperDate mapper = new CellMapperDate(PATTERN);
-		Long parsed = mapper.indexValue("2014/03/19");
+		Long parsed = mapper.indexValue("test", "2014/03/19");
 		Assert.assertEquals(Long.valueOf(1395183600000L), parsed);
 	}
 
 	@Test
 	public void testValueStringWithoutPattern() {
 		CellMapperDate mapper = new CellMapperDate(null);
-		Long parsed = mapper.indexValue("2014/03/19 00:00:00.000");
+		Long parsed = mapper.indexValue("test", "2014/03/19 00:00:00.000");
 		Assert.assertEquals(Long.valueOf(1395183600000L), parsed);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueStringWithoutPatternInvalid() {
 		CellMapperDate mapper = new CellMapperDate(null);
-		Long parsed = mapper.indexValue("2014-03-19");
+		Long parsed = mapper.indexValue("test", "2014-03-19");
 		Assert.assertEquals(Long.valueOf(1395183600000L), parsed);
 	}
 

@@ -93,13 +93,15 @@ public abstract class CellMapper<BASE> {
 	/**
 	 * Returns the cell value resulting from the mapping of the specified object.
 	 * 
+	 * @param field
+	 *            The field name.
 	 * @param value
 	 *            The object to be mapped.
 	 * @return The cell value resulting from the mapping of the specified object.
 	 */
-	public abstract BASE indexValue(Object value);
+	public abstract BASE indexValue(String field, Object value);
 
-	public abstract BASE queryValue(Object value);
+	public abstract BASE queryValue(String field, Object value);
 
 	public boolean supports(final AbstractType<?> type) {
 

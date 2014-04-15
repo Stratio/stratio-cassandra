@@ -26,6 +26,7 @@ import org.apache.lucene.search.Query;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeName;
+import org.codehaus.jackson.map.annotate.JacksonInject;
 
 /**
  * A {@link Condition} implementation that matches documents containing a particular sequence of
@@ -51,6 +52,8 @@ public class PhraseCondition extends Condition {
 	/**
 	 * Constructor using the field name and the value to be matched.
 	 * 
+	 * @param schema
+	 *            The schema to be used.
 	 * @param boost
 	 *            The boost for this query clause. Documents matching this clause will (in addition
 	 *            to the normal weightings) have their score multiplied by {@code boost}. If
@@ -63,15 +66,12 @@ public class PhraseCondition extends Condition {
 	 *            The slop.
 	 */
 	@JsonCreator
-	public PhraseCondition(@JsonProperty("boost") Float boost,
+	public PhraseCondition(@JacksonInject("schema") Schema schema,
+	                         @JsonProperty("boost") Float boost,
 	                       @JsonProperty("field") String field,
 	                       @JsonProperty("values") List<Object> values,
 	                       @JsonProperty("slop") Integer slop) {
-		super(boost);
-
-		if (field == null || field.trim().isEmpty()) {
-			throw new IllegalArgumentException("Field name required");
-		}
+		super(schema, boost);
 
 		this.field = field;
 		this.values = values;
@@ -109,7 +109,15 @@ public class PhraseCondition extends Condition {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Query query(Schema schema) {
+	public Query query( ) {
+
+		if (field == null || field.trim().isEmpty()) {
+			throw new IllegalArgumentException("Field name required");
+		}
+		if (values == null) {
+			throw new IllegalArgumentException("Field values required");
+		}
+		
 		CellMapper<?> cellMapper = schema.getMapper(field);
 		Class<?> clazz = cellMapper.baseClass();
 		if (clazz == String.class) {
@@ -120,7 +128,7 @@ public class PhraseCondition extends Condition {
 			int count = 0;
 			for (Object o : values) {
 				if (o != null) {
-					String value = (String) cellMapper.queryValue(o);
+					String value = (String) cellMapper.queryValue(field, o);
 					value = analyze(field, value, analyzer);
 					if (value != null) {
 						Term term = new Term(field, value);

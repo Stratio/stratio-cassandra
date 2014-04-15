@@ -80,7 +80,7 @@ public class CellMapperDate extends CellMapper<Long> {
 	}
 
 	@Override
-	public Long indexValue(Object value) {
+	public Long indexValue(String name, Object value) {
 		if (value == null) {
 			return null;
 		} else if (value instanceof Date) {
@@ -99,13 +99,13 @@ public class CellMapperDate extends CellMapper<Long> {
 	}
 
 	@Override
-	public Long queryValue(Object value) {
-		return indexValue(value);
+	public Long queryValue(String name, Object value) {
+		return indexValue(name, value);
 	}
 
 	@Override
 	public Field field(String name, Object value) {
-		return new LongField(name, indexValue(value), STORE);
+		return new LongField(name, indexValue(name, value), STORE);
 	}
 
 	@Override

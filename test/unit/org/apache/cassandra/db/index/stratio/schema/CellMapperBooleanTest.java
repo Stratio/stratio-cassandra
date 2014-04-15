@@ -14,106 +14,106 @@ public class CellMapperBooleanTest {
 	@Test()
 	public void testValueNull() {
 		CellMapperBoolean mapper = new CellMapperBoolean();
-		String parsed = mapper.indexValue(null);
+		String parsed = mapper.indexValue("test", null);
 		Assert.assertNull(parsed);
 	}
 
 	@Test
 	public void testValueBooleanTrue() {
 		CellMapperBoolean mapper = new CellMapperBoolean();
-		String parsed = mapper.indexValue(true);
+		String parsed = mapper.indexValue("test", true);
 		Assert.assertEquals("true", parsed);
 	}
 
 	@Test
 	public void testValueBooleanFalse() {
 		CellMapperBoolean mapper = new CellMapperBoolean();
-		String parsed = mapper.indexValue(false);
+		String parsed = mapper.indexValue("test", false);
 		Assert.assertEquals("false", parsed);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueDate() {
 		CellMapperBoolean mapper = new CellMapperBoolean();
-		mapper.indexValue(new Date());
+		mapper.indexValue("test", new Date());
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueInteger() {
 		CellMapperBoolean mapper = new CellMapperBoolean();
-		mapper.indexValue(3);
+		mapper.indexValue("test", 3);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueLong() {
 		CellMapperBoolean mapper = new CellMapperBoolean();
-		mapper.indexValue(3l);
+		mapper.indexValue("test", 3l);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueFloat() {
 		CellMapperBoolean mapper = new CellMapperBoolean();
-		mapper.indexValue(3.6f);
+		mapper.indexValue("test", 3.6f);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueDouble() {
 		CellMapperBoolean mapper = new CellMapperBoolean();
-		mapper.indexValue(3.5d);
+		mapper.indexValue("test", 3.5d);
 	}
 
 	@Test
 	public void testValueStringTrueLowercase() {
 		CellMapperBoolean mapper = new CellMapperBoolean();
-		String parsed = mapper.indexValue("true");
+		String parsed = mapper.indexValue("test", "true");
 		Assert.assertEquals("true", parsed);
 	}
 
 	@Test
 	public void testValueStringTrueUppercase() {
 		CellMapperBoolean mapper = new CellMapperBoolean();
-		String parsed = mapper.indexValue("TRUE");
+		String parsed = mapper.indexValue("test", "TRUE");
 		Assert.assertEquals("true", parsed);
 	}
 
 	@Test
 	public void testValueStringTrueMixedcase() {
 		CellMapperBoolean mapper = new CellMapperBoolean();
-		String parsed = mapper.indexValue("TrUe");
+		String parsed = mapper.indexValue("test", "TrUe");
 		Assert.assertEquals("true", parsed);
 	}
 
 	@Test
 	public void testValueStringFalseLowercase() {
 		CellMapperBoolean mapper = new CellMapperBoolean();
-		String parsed = mapper.indexValue("false");
+		String parsed = mapper.indexValue("test", "false");
 		Assert.assertEquals("false", parsed);
 	}
 
 	@Test
 	public void testValueStringFalseUppercase() {
 		CellMapperBoolean mapper = new CellMapperBoolean();
-		String parsed = mapper.indexValue("FALSE");
+		String parsed = mapper.indexValue("test", "FALSE");
 		Assert.assertEquals("false", parsed);
 	}
 
 	@Test
 	public void testValueStringFalseMixedcase() {
 		CellMapperBoolean mapper = new CellMapperBoolean();
-		String parsed = mapper.indexValue("fALsE");
+		String parsed = mapper.indexValue("test", "fALsE");
 		Assert.assertEquals("false", parsed);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueStringInvalid() {
 		CellMapperBoolean mapper = new CellMapperBoolean();
-		mapper.indexValue("hello");
+		mapper.indexValue("test", "hello");
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueUUID() {
 		CellMapperBoolean mapper = new CellMapperBoolean();
-		mapper.indexValue(UUID.fromString("550e8400-e29b-41d4-a716-446655440000"));
+		mapper.indexValue("test", UUID.fromString("550e8400-e29b-41d4-a716-446655440000"));
 	}
 
 	@Test

@@ -16,99 +16,99 @@ public class CellMapperBlobTest {
 	@Test()
 	public void testValueNull() {
 		CellMapperBlob mapper = new CellMapperBlob();
-		String parsed = mapper.indexValue(null);
+		String parsed = mapper.indexValue("test", null);
 		Assert.assertNull(parsed);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueInteger() {
 		CellMapperBlob mapper = new CellMapperBlob();
-		mapper.indexValue(3);
+		mapper.indexValue("test", 3);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueLong() {
 		CellMapperBlob mapper = new CellMapperBlob();
-		mapper.indexValue(3l);
+		mapper.indexValue("test", 3l);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueFloat() {
 		CellMapperBlob mapper = new CellMapperBlob();
-		mapper.indexValue(3.5f);
+		mapper.indexValue("test", 3.5f);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueDouble() {
 		CellMapperBlob mapper = new CellMapperBlob();
-		mapper.indexValue(3.6d);
+		mapper.indexValue("test", 3.6d);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueUUID() {
 		CellMapperBlob mapper = new CellMapperBlob();
-		mapper.indexValue(UUID.randomUUID());
+		mapper.indexValue("test", UUID.randomUUID());
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueStringInvalid() {
 		CellMapperBlob mapper = new CellMapperBlob();
-		mapper.indexValue("Hello");
+		mapper.indexValue("test", "Hello");
 	}
 
 	@Test
 	public void testValueStringLowerCaseWithoutPrefix() {
 		CellMapperBlob mapper = new CellMapperBlob();
-		String parsed = mapper.indexValue("f1");
+		String parsed = mapper.indexValue("test", "f1");
 		Assert.assertEquals("f1", parsed);
 	}
 
 	@Test
 	public void testValueStringUpperCaseWithoutPrefix() {
 		CellMapperBlob mapper = new CellMapperBlob();
-		String parsed = mapper.indexValue("F1");
+		String parsed = mapper.indexValue("test", "F1");
 		Assert.assertEquals("f1", parsed);
 	}
 
 	@Test
 	public void testValueStringMixedCaseWithoutPrefix() {
 		CellMapperBlob mapper = new CellMapperBlob();
-		String parsed = mapper.indexValue("F1a2B3");
+		String parsed = mapper.indexValue("test", "F1a2B3");
 		Assert.assertEquals("f1a2b3", parsed);
 	}
 
 	@Test
 	public void testValueStringLowerCaseWithPrefix() {
 		CellMapperBlob mapper = new CellMapperBlob();
-		String parsed = mapper.indexValue("0xf1");
+		String parsed = mapper.indexValue("test", "0xf1");
 		Assert.assertEquals("f1", parsed);
 	}
 
 	@Test
 	public void testValueStringUpperCaseWithPrefix() {
 		CellMapperBlob mapper = new CellMapperBlob();
-		String parsed = mapper.indexValue("0xF1");
+		String parsed = mapper.indexValue("test", "0xF1");
 		Assert.assertEquals("f1", parsed);
 	}
 
 	@Test
 	public void testValueStringMixedCaseWithPrefix() {
 		CellMapperBlob mapper = new CellMapperBlob();
-		String parsed = mapper.indexValue("0xF1a2B3");
+		String parsed = mapper.indexValue("test", "0xF1a2B3");
 		Assert.assertEquals("f1a2b3", parsed);
 	}
 
 	@Test(expected = NumberFormatException.class)
 	public void testValueStringOdd() {
 		CellMapperBlob mapper = new CellMapperBlob();
-		mapper.indexValue("f");
+		mapper.indexValue("test", "f");
 	}
 
 	@Test
 	public void testValueByteBuffer() {
 		CellMapperBlob mapper = new CellMapperBlob();
 		ByteBuffer bb = ByteBufferUtil.hexToBytes("f1");
-		String parsed = mapper.indexValue(bb);
+		String parsed = mapper.indexValue("test", bb);
 		Assert.assertEquals("f1", parsed);
 	}
 
@@ -116,7 +116,7 @@ public class CellMapperBlobTest {
 	public void testValueBytes() {
 		CellMapperBlob mapper = new CellMapperBlob();
 		byte[] bytes = Hex.hexToBytes("f1");
-		String parsed = mapper.indexValue(bytes);
+		String parsed = mapper.indexValue("test", bytes);
 		Assert.assertEquals("f1", parsed);
 	}
 

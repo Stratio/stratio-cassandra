@@ -23,6 +23,7 @@ import org.apache.lucene.search.TermRangeQuery;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeName;
+import org.codehaus.jackson.map.annotate.JacksonInject;
 
 /**
  * A {@link Condition} implementation that matches a field within an range of values.
@@ -61,6 +62,8 @@ public class RangeCondition extends Condition {
 	 * endpoints may not be exclusive (you can't select all but the first or last term without
 	 * explicitly specifying the term to exclude.)
 	 * 
+	 * @param schema
+	 *            The schema to be used.
 	 * @param boost
 	 *            The boost for this query clause. Documents matching this clause will (in addition
 	 *            to the normal weightings) have their score multiplied by {@code boost}. If
@@ -77,17 +80,14 @@ public class RangeCondition extends Condition {
 	 *            if {@code true}, the {@code upperValue} is included in the range.
 	 */
 	@JsonCreator
-	public RangeCondition(@JsonProperty("boost") Float boost,
+	public RangeCondition(@JacksonInject("schema") Schema schema,
+	                         @JsonProperty("boost") Float boost,
 	                      @JsonProperty("field") String field,
 	                      @JsonProperty("lower") Object lowerValue,
 	                      @JsonProperty("upper") Object upperValue,
 	                      @JsonProperty("include_lower") boolean includeLower,
 	                      @JsonProperty("include_upper") boolean includeUpper) {
-		super(boost);
-
-		if (field == null || field.trim().isEmpty()) {
-			throw new IllegalArgumentException("Field name required");
-		}
+		super(schema, boost);
 
 		this.field = field;
 		this.lower = lowerValue;
@@ -149,31 +149,40 @@ public class RangeCondition extends Condition {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Query query(Schema schema) {
+	public Query query() {
+
+		if (field == null || field.trim().isEmpty()) {
+			throw new IllegalArgumentException("Field name required");
+		}
+		
 		CellMapper<?> cellMapper = schema.getMapper(field);
 		Class<?> clazz = cellMapper.baseClass();
 		Query query;
 		if (clazz == String.class) {
-			String lower = (String) cellMapper.queryValue(this.lower);
-			String upper = (String) cellMapper.queryValue(this.upper);
-			lower = analyze(field, lower, cellMapper.analyzer());
-			upper = analyze(field, upper, cellMapper.analyzer());
+			String lower = (String) cellMapper.queryValue(field, this.lower);
+			String upper = (String) cellMapper.queryValue(field, this.upper);
+			if (lower != null) {
+				lower = analyze(field, lower, cellMapper.analyzer());
+			}
+			if (upper != null) {
+				upper = analyze(field, upper, cellMapper.analyzer());
+			}
 			query = TermRangeQuery.newStringRange(field, lower, upper, includeLower, includeUpper);
 		} else if (clazz == Integer.class) {
-			Integer lower = (Integer) cellMapper.queryValue(this.lower);
-			Integer upper = (Integer) cellMapper.queryValue(this.upper);
+			Integer lower = (Integer) cellMapper.queryValue(field, this.lower);
+			Integer upper = (Integer) cellMapper.queryValue(field, this.upper);
 			query = NumericRangeQuery.newIntRange(field, lower, upper, includeLower, includeUpper);
 		} else if (clazz == Long.class) {
-			Long lower = (Long) cellMapper.queryValue(this.lower);
-			Long upper = (Long) cellMapper.queryValue(this.upper);
+			Long lower = (Long) cellMapper.queryValue(field, this.lower);
+			Long upper = (Long) cellMapper.queryValue(field, this.upper);
 			query = NumericRangeQuery.newLongRange(field, lower, upper, includeLower, includeUpper);
 		} else if (clazz == Float.class) {
-			Float lower = (Float) cellMapper.queryValue(this.lower);
-			Float upper = (Float) cellMapper.queryValue(this.upper);
+			Float lower = (Float) cellMapper.queryValue(field, this.lower);
+			Float upper = (Float) cellMapper.queryValue(field, this.upper);
 			query = NumericRangeQuery.newFloatRange(field, lower, upper, includeLower, includeUpper);
 		} else if (clazz == Double.class) {
-			Double lower = (Double) cellMapper.queryValue(this.lower);
-			Double upper = (Double) cellMapper.queryValue(this.upper);
+			Double lower = (Double) cellMapper.queryValue(field, this.lower);
+			Double upper = (Double) cellMapper.queryValue(field, this.upper);
 			query = NumericRangeQuery.newDoubleRange(field, lower, upper, includeLower, includeUpper);
 		} else {
 			String message = String.format("Range queries are not supported by %s mapper", clazz.getSimpleName());

@@ -12,35 +12,35 @@ public class CellMapperLongTest {
 	@Test()
 	public void testValueNull() {
 		CellMapperLong mapper = new CellMapperLong(1f);
-		Long parsed = mapper.indexValue(null);
+		Long parsed = mapper.indexValue("test", null);
 		Assert.assertNull(parsed);
 	}
 
 	@Test
 	public void testValueInteger() {
 		CellMapperLong mapper = new CellMapperLong(1f);
-		Long parsed = mapper.indexValue(3);
+		Long parsed = mapper.indexValue("test", 3);
 		Assert.assertEquals(Long.valueOf(3), parsed);
 	}
 
 	@Test
 	public void testValueLong() {
 		CellMapperLong mapper = new CellMapperLong(1f);
-		Long parsed = mapper.indexValue(3l);
+		Long parsed = mapper.indexValue("test", 3l);
 		Assert.assertEquals(Long.valueOf(3), parsed);
 	}
 
 	@Test
 	public void testValueFloatWithoutDecimal() {
 		CellMapperLong mapper = new CellMapperLong(1f);
-		Long parsed = mapper.indexValue(3f);
+		Long parsed = mapper.indexValue("test", 3f);
 		Assert.assertEquals(Long.valueOf(3), parsed);
 	}
 
 	@Test
 	public void testValueFloatWithDecimalFloor() {
 		CellMapperLong mapper = new CellMapperLong(1f);
-		Long parsed = mapper.indexValue(3.5f);
+		Long parsed = mapper.indexValue("test", 3.5f);
 		Assert.assertEquals(Long.valueOf(3), parsed);
 
 	}
@@ -48,7 +48,7 @@ public class CellMapperLongTest {
 	@Test
 	public void testValueFloatWithDecimalCeil() {
 		CellMapperLong mapper = new CellMapperLong(1f);
-		Long parsed = mapper.indexValue(3.6f);
+		Long parsed = mapper.indexValue("test", 3.6f);
 		Assert.assertEquals(Long.valueOf(3), parsed);
 
 	}
@@ -56,14 +56,14 @@ public class CellMapperLongTest {
 	@Test
 	public void testValueDoubleWithoutDecimal() {
 		CellMapperLong mapper = new CellMapperLong(1f);
-		Long parsed = mapper.indexValue(3d);
+		Long parsed = mapper.indexValue("test", 3d);
 		Assert.assertEquals(Long.valueOf(3), parsed);
 	}
 
 	@Test
 	public void testValueDoubleWithDecimalFloor() {
 		CellMapperLong mapper = new CellMapperLong(1f);
-		Long parsed = mapper.indexValue(3.5d);
+		Long parsed = mapper.indexValue("test", 3.5d);
 		Assert.assertEquals(Long.valueOf(3), parsed);
 
 	}
@@ -71,7 +71,7 @@ public class CellMapperLongTest {
 	@Test
 	public void testValueDoubleWithDecimalCeil() {
 		CellMapperLong mapper = new CellMapperLong(1f);
-		Long parsed = mapper.indexValue(3.6d);
+		Long parsed = mapper.indexValue("test", 3.6d);
 		Assert.assertEquals(Long.valueOf(3), parsed);
 
 	}
@@ -79,14 +79,14 @@ public class CellMapperLongTest {
 	@Test
 	public void testValueStringWithoutDecimal() {
 		CellMapperLong mapper = new CellMapperLong(1f);
-		Long parsed = mapper.indexValue("3");
+		Long parsed = mapper.indexValue("test", "3");
 		Assert.assertEquals(Long.valueOf(3), parsed);
 	}
 
 	@Test
 	public void testValueStringWithDecimalFloor() {
 		CellMapperLong mapper = new CellMapperLong(1f);
-		Long parsed = mapper.indexValue("3.2");
+		Long parsed = mapper.indexValue("test", "3.2");
 		Assert.assertEquals(Long.valueOf(3), parsed);
 
 	}
@@ -94,7 +94,7 @@ public class CellMapperLongTest {
 	@Test
 	public void testValueStringWithDecimalCeil() {
 		CellMapperLong mapper = new CellMapperLong(1f);
-		Long parsed = mapper.indexValue("3.2");
+		Long parsed = mapper.indexValue("test", "3.2");
 		Assert.assertEquals(Long.valueOf(3), parsed);
 
 	}

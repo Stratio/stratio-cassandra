@@ -30,6 +30,7 @@ import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonSubTypes;
 import org.codehaus.jackson.annotate.JsonTypeInfo;
+import org.codehaus.jackson.map.annotate.JacksonInject;
 
 /**
  * The abstract base class for queries.
@@ -62,7 +63,7 @@ public abstract class Condition {
 
 	public static final float DEFAULT_BOOST = 1.0f;
 
-	@JsonProperty("boost")
+	protected final Schema schema;
 	protected final float boost;
 
 	/**
@@ -72,7 +73,8 @@ public abstract class Condition {
 	 *            to the normal weightings) have their score multiplied by {@code boost}.
 	 */
 	@JsonCreator
-	public Condition(@JsonProperty("boost") Float boost) {
+	public Condition(@JacksonInject("schema") Schema schema, @JsonProperty("boost") Float boost) {
+		this.schema = schema;
 		this.boost = boost == null ? DEFAULT_BOOST : boost;
 	}
 
@@ -89,30 +91,18 @@ public abstract class Condition {
 	/**
 	 * Returns the Lucene's {@link Query} representation of this condition.
 	 * 
-	 * @param schema
-	 *            The {@link Schema} to be used.
 	 * @return The Lucene's {@link Query} representation of this condition.
 	 */
-	public abstract Query query(Schema schema);
+	public abstract Query query();
 
 	/**
 	 * Returns the Lucene's {@link Filter} representation of this condition.
 	 * 
-	 * @param schema
-	 *            The {@link Schema} to be used.
 	 * @return The Lucene's {@link Filter} representation of this condition.
 	 */
-	public Filter filter(Schema schema) {
-		return new QueryWrapperFilter(query(schema));
+	public Filter filter() {
+		return new QueryWrapperFilter(query());
 	}
-
-	// /**
-	// * Applies the specified {@link Analyzer} to the required arguments.
-	// *
-	// * @param analyzer
-	// * An {@link Analyzer}.
-	// */
-	// public abstract void analyze(Analyzer analyzer);
 
 	protected String analyze(String field, String value, Analyzer analyzer) {
 		TokenStream source = null;

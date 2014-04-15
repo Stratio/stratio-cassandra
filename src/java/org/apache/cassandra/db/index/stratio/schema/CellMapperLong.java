@@ -1,18 +1,18 @@
 /*
-* Copyright 2014, Stratio.
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-* http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Copyright 2014, Stratio.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.cassandra.db.index.stratio.schema;
 
 import org.apache.cassandra.db.marshal.AbstractType;
@@ -61,26 +61,33 @@ public class CellMapperLong extends CellMapper<Long> {
 	}
 
 	@Override
-	public Long indexValue(Object value) {
+	public Long indexValue(String name, Object value) {
 		if (value == null) {
 			return null;
 		} else if (value instanceof Number) {
 			return ((Number) value).longValue();
 		} else if (value instanceof String) {
-			return Double.valueOf(value.toString()).longValue();
+			String svalue = (String) value;
+			try {
+				return Double.valueOf(svalue).longValue();
+			} catch (NumberFormatException e) {
+				String message = String.format("Field %s requires a base 10 long, but found \"%s\"", name, svalue);
+				throw new IllegalArgumentException(message);
+			}
 		} else {
-			throw new IllegalArgumentException(String.format("Value '%s' cannot be cast to Long", value));
+			String message = String.format("Field %s requires a base 10 long, but found \"%s\"", name, value);
+			throw new IllegalArgumentException(message);
 		}
 	}
 
 	@Override
-	public Long queryValue(Object value) {
-		return indexValue(value);
+	public Long queryValue(String name, Object value) {
+		return indexValue(name, value);
 	}
 
 	@Override
 	public Field field(String name, Object value) {
-		Long number = indexValue(value);
+		Long number = indexValue(name, value);
 		Field field = new LongField(name, number, STORE);
 		field.setBoost(boost);
 		return field;

@@ -21,14 +21,18 @@ import java.util.List;
 
 import org.apache.cassandra.db.AbstractRangeCommand;
 import org.apache.cassandra.db.index.stratio.schema.Schema;
-import org.apache.cassandra.db.index.stratio.util.JsonSerializer;
+import org.apache.cassandra.db.index.stratio.util.Log;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.thrift.IndexExpression;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
+import org.codehaus.jackson.JsonParser;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
+import org.codehaus.jackson.map.InjectableValues;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.map.annotate.JacksonInject;
 
 /**
  * 
@@ -41,11 +45,13 @@ import org.codehaus.jackson.annotate.JsonProperty;
  */
 public class Search {
 
+	protected final Schema schema;
+
 	/** The querying condition */
-	private final Condition queryCondition;
+	private final Condition query;
 
 	/** The filtering condition */
-	private final Condition filterCondition;
+	private final Condition filter;
 
 	/**
 	 * Returns a new {@link Search} composed by the specified querying and filtering conditions.
@@ -56,9 +62,12 @@ public class Search {
 	 *            The filter, maybe {@code null} meaning no filtering.
 	 */
 	@JsonCreator
-	public Search(@JsonProperty("query") Condition query, @JsonProperty("filter") Condition filter) {
-		this.queryCondition = query;
-		this.filterCondition = filter;
+	public Search(@JacksonInject("schema") Schema schema,
+	              @JsonProperty("query") Condition query,
+	              @JsonProperty("filter") Condition filter) {
+		this.schema = schema;
+		this.query = query;
+		this.filter = filter;
 	}
 
 	/**
@@ -72,7 +81,7 @@ public class Search {
 	 *         results are sorted by the natural Cassandra's order.
 	 */
 	public boolean relevance() {
-		return queryCondition != null;
+		return query != null;
 	}
 
 	/**
@@ -80,19 +89,17 @@ public class Search {
 	 * both the querying and filtering {@link Condition}s. If none of them is set, then a
 	 * {@link MatchAllDocsQuery} is returned.
 	 * 
-	 * @param schema
-	 *            The {@link Schema} to be used.
 	 * @return The Lucene's {@link Query} representation of this search.
 	 */
-	public Query query(Schema schema) {
-		return queryCondition == null ? new MatchAllDocsQuery() : queryCondition.query(schema);
+	public Query query() {
+		return query == null ? new MatchAllDocsQuery() : query.query();
 	}
 
-	public Filter filter(Schema schema) {
-		return filterCondition == null ? null : filterCondition.filter(schema);
+	public Filter filter() {
+		return filter == null ? null : filter.filter();
 	}
 
-	public static Search fromClause(List<IndexExpression> clause, ByteBuffer indexedColumnName) {
+	public static Search fromClause(List<IndexExpression> clause, ByteBuffer indexedColumnName, Schema schema) {
 		IndexExpression indexExpression = null;
 		for (IndexExpression ie : clause) {
 			ByteBuffer columnName = ie.column_name;
@@ -104,25 +111,30 @@ public class Search {
 			return null;
 		}
 		ByteBuffer columnValue = indexExpression.value;
+
 		String json = UTF8Type.instance.compose(columnValue);
+
 		try {
-			Search search = JsonSerializer.fromString(json, Search.class);
-			return search;
+			InjectableValues inject = new InjectableValues.Std().addValue("schema", schema);
+			ObjectMapper mapper = new ObjectMapper();
+			mapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
+			return mapper.reader(Search.class).withInjectableValues(inject).readValue(json);
 		} catch (IOException e) {
+			Log.error(e, "Unparseable JSON index expression");
 			throw new IllegalArgumentException("Unparseable JSON index expression");
 		} catch (Exception e) {
 			throw new IllegalArgumentException(e.getMessage());
 		}
 	}
 
-	public void validate(Schema schema) {
-		query(schema);
-		filter(schema);
+	public void validate() {
+		query();
+		filter();
 	}
 
-	public static final Search fromCommand(AbstractRangeCommand command, ByteBuffer indexedColumnName) {
+	public static final Search fromCommand(AbstractRangeCommand command, ByteBuffer indexedColumnName, Schema schema) {
 		List<IndexExpression> clause = command.rowFilter;
-		return fromClause(clause, indexedColumnName);
+		return fromClause(clause, indexedColumnName, schema);
 	}
 
 	/**
@@ -132,9 +144,9 @@ public class Search {
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
 		builder.append("Search [query=");
-		builder.append(queryCondition);
+		builder.append(query);
 		builder.append(", filter=");
-		builder.append(filterCondition);
+		builder.append(filter);
 		builder.append("]");
 		return builder.toString();
 	}

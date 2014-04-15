@@ -92,15 +92,26 @@ public class CellMapperBigDecimal extends CellMapper<String> {
 	}
 
 	@Override
-	public String indexValue(Object value) {
+	public String indexValue(String name, Object value) {
+		
+		// Check not null
 		if (value == null) {
 			return null;
 		}
 
+		// Parse big decimal
+		String svalue = value.toString();
+		BigDecimal bd;
+		try {
+			bd = new BigDecimal(value.toString());
+		} catch (NumberFormatException e) {
+			String message = String.format("Field %s requires a base 10 decimal, but found \"%s\"", name, svalue);
+			throw new IllegalArgumentException(message);
+		}
+
 		// Split integer and decimal part
-		BigDecimal bi = new BigDecimal(value.toString());
-		bi = bi.stripTrailingZeros();
-		String[] parts = bi.toPlainString().split("\\.");
+		bd = bd.stripTrailingZeros();
+		String[] parts = bd.toPlainString().split("\\.");
 		String integerPart = parts[0];
 		String decimalPart = parts.length == 1 ? "0" : parts[1];
 
@@ -111,7 +122,7 @@ public class CellMapperBigDecimal extends CellMapper<String> {
 			throw new IllegalArgumentException("Too much digits in decimal part");
 		}
 
-		BigDecimal complemented = bi.add(complement);
+		BigDecimal complemented = bd.add(complement);
 		String bds[] = complemented.toString().split("\\.");
 		integerPart = bds[0];
 		decimalPart = bds.length == 2 ? bds[1] : "0";
@@ -121,13 +132,13 @@ public class CellMapperBigDecimal extends CellMapper<String> {
 	}
 
 	@Override
-	public String queryValue(Object value) {
-		return indexValue(value);
+	public String queryValue(String name, Object value) {
+		return indexValue(name, value);
 	}
 
 	@Override
 	public Field field(String name, Object value) {
-		String string = indexValue(value);
+		String string = indexValue(name, value);
 		return new StringField(name, string, STORE);
 	}
 

@@ -24,6 +24,7 @@ import org.apache.lucene.search.TermQuery;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeName;
+import org.codehaus.jackson.map.annotate.JacksonInject;
 
 /**
  * A {@link Condition} implementation that matches documents containing a value for a field.
@@ -45,6 +46,8 @@ public class MatchCondition extends Condition {
 	/**
 	 * Constructor using the field name and the value to be matched.
 	 * 
+	 * @param schema
+	 *            The schema to be used.
 	 * @param boost
 	 *            The boost for this query clause. Documents matching this clause will (in addition
 	 *            to the normal weightings) have their score multiplied by {@code boost}. If
@@ -55,10 +58,11 @@ public class MatchCondition extends Condition {
 	 *            the field value.
 	 */
 	@JsonCreator
-	public MatchCondition(@JsonProperty("boost") Float boost,
+	public MatchCondition(@JacksonInject("schema") Schema schema,
+	                         @JsonProperty("boost") Float boost,
 	                      @JsonProperty("field") String field,
 	                      @JsonProperty("value") Object value) {
-		super(boost);
+		super(schema, boost);
 
 		if (field == null || field.trim().isEmpty()) {
 			throw new IllegalArgumentException("Field name required");
@@ -93,26 +97,34 @@ public class MatchCondition extends Condition {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Query query(Schema schema) {
+	public Query query( ) {
+
+		if (field == null || field.trim().isEmpty()) {
+			throw new IllegalArgumentException("Field name required");
+		}
+		if (value == null) {
+			throw new IllegalArgumentException("Field value required");
+		}
+		
 		CellMapper<?> cellMapper = schema.getMapper(field);
 		Class<?> clazz = cellMapper.baseClass();
 		Query query;
 		if (clazz == String.class) {
-			String value = (String) cellMapper.queryValue(this.value);
+			String value = (String) cellMapper.queryValue(field, this.value);
 			value = analyze(field, value, schema.analyzer());
 			Term term = new Term(field, value);
 			query = new TermQuery(term);
 		} else if (clazz == Integer.class) {
-			Integer value = (Integer) cellMapper.queryValue(this.value);
+			Integer value = (Integer) cellMapper.queryValue(field, this.value);
 			query = NumericRangeQuery.newIntRange(field, value, value, true, true);
 		} else if (clazz == Long.class) {
-			Long value = (Long) cellMapper.queryValue(this.value);
+			Long value = (Long) cellMapper.queryValue(field, this.value);
 			query = NumericRangeQuery.newLongRange(field, value, value, true, true);
 		} else if (clazz == Float.class) {
-			Float value = (Float) cellMapper.queryValue(this.value);
+			Float value = (Float) cellMapper.queryValue(field, this.value);
 			query = NumericRangeQuery.newFloatRange(field, value, value, true, true);
 		} else if (clazz == Double.class) {
-			Double value = (Double) cellMapper.queryValue(this.value);
+			Double value = (Double) cellMapper.queryValue(field, this.value);
 			query = NumericRangeQuery.newDoubleRange(field, value, value, true, true);
 		} else {
 			String message = String.format("Match queries are not supported by %s mapper", clazz.getSimpleName());

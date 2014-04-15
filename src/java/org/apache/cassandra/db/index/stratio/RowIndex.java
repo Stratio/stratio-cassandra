@@ -118,8 +118,10 @@ public class RowIndex extends PerRowSecondaryIndex {
 		Log.debug("Indexing row %s in index %s", key, logName);
 		lock.readLock().lock();
 		try {
-			long timestamp = System.currentTimeMillis();
-			rowService.index(key, columnFamily, timestamp);
+			if (rowService != null) {
+				long timestamp = System.currentTimeMillis();
+				rowService.index(key, columnFamily, timestamp);
+			}
 		} catch (Exception e) { // Ignore errors
 			Log.error(e, "Ignoring error while indexing row %s", key);
 		} finally {

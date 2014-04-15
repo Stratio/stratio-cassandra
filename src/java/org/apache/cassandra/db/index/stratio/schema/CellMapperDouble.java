@@ -1,18 +1,18 @@
 /*
-* Copyright 2014, Stratio.
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-* http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Copyright 2014, Stratio.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.cassandra.db.index.stratio.schema;
 
 import org.apache.cassandra.db.marshal.AbstractType;
@@ -44,14 +44,14 @@ public class CellMapperDouble extends CellMapper<Double> {
 
 	@JsonCreator
 	public CellMapperDouble(@JsonProperty("boost") Float boost) {
-		super(new AbstractType<?>[]{AsciiType.instance,
+		super(new AbstractType<?>[] { AsciiType.instance,
 		                             UTF8Type.instance,
 		                             Int32Type.instance,
 		                             LongType.instance,
 		                             IntegerType.instance,
 		                             FloatType.instance,
 		                             DoubleType.instance,
-		                             DecimalType.instance});
+		                             DecimalType.instance });
 		this.boost = boost == null ? DEFAULT_BOOST : boost;
 	}
 
@@ -61,26 +61,33 @@ public class CellMapperDouble extends CellMapper<Double> {
 	}
 
 	@Override
-	public Double indexValue(Object value) {
+	public Double indexValue(String name, Object value) {
 		if (value == null) {
 			return null;
 		} else if (value instanceof Number) {
 			return ((Number) value).doubleValue();
 		} else if (value instanceof String) {
-			return Double.valueOf(value.toString());
+			String svalue = (String) value;
+			try {
+				return Double.valueOf(svalue);
+			} catch (NumberFormatException e) {
+				String message = String.format("Field %s requires a base 10 double, but found \"%s\"", name, svalue);
+				throw new IllegalArgumentException(message);
+			}
 		} else {
-			throw new IllegalArgumentException(String.format("Value '%s' cannot be cast to Double", value));
+			String message = String.format("Field %s requires a base 10 double, but found \"%s\"", name, value);
+			throw new IllegalArgumentException(message);
 		}
 	}
 
 	@Override
-	public Double queryValue(Object value) {
-		return indexValue(value);
+	public Double queryValue(String name, Object value) {
+		return indexValue(name, value);
 	}
 
 	@Override
 	public Field field(String name, Object value) {
-		Double number = indexValue(value);
+		Double number = indexValue(name, value);
 		Field field = new DoubleField(name, number, STORE);
 		field.setBoost(boost);
 		return field;

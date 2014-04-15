@@ -50,7 +50,7 @@ public class CellMapperInet extends CellMapper<String> {
 	}
 
 	@Override
-	public String indexValue(Object value) {
+	public String indexValue(String name, Object value) {
 		if (value == null) {
 			return null;
 		} else if (value instanceof InetAddress) {
@@ -70,7 +70,7 @@ public class CellMapperInet extends CellMapper<String> {
 	}
 
 	@Override
-	public String queryValue(Object value) {
+	public String queryValue(String name, Object value) {
 		if (value == null) {
 			return null;
 		} else if (value instanceof InetAddress) {
@@ -93,7 +93,7 @@ public class CellMapperInet extends CellMapper<String> {
 
 	@Override
 	public Field field(String name, Object value) {
-		String string = indexValue(value);
+		String string = indexValue(name, value);
 		return new StringField(name, string, STORE);
 	}
 

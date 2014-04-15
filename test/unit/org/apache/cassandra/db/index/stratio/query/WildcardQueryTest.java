@@ -25,8 +25,8 @@ public class WildcardQueryTest {
 		map.put("name", new CellMapperString());
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		WildcardCondition wildcardCondition = new WildcardCondition(0.5f, "name", "tr*");
-		Query query = wildcardCondition.query(mappers);
+		WildcardCondition wildcardCondition = new WildcardCondition( mappers, 0.5f, "name", "tr*");
+		Query query = wildcardCondition.query();
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(org.apache.lucene.search.WildcardQuery.class, query.getClass());
@@ -43,8 +43,8 @@ public class WildcardQueryTest {
 		map.put("name", new CellMapperInteger(1f));
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		WildcardCondition wildcardCondition = new WildcardCondition(0.5f, "name", "22*");
-		wildcardCondition.query(mappers);
+		WildcardCondition wildcardCondition = new WildcardCondition( mappers, 0.5f, "name", "22*");
+		wildcardCondition.query();
 	}
 
 	@Test(expected = UnsupportedOperationException.class)
@@ -54,8 +54,8 @@ public class WildcardQueryTest {
 		map.put("name", new CellMapperLong(1f));
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		WildcardCondition wildcardCondition = new WildcardCondition(0.5f, "name", 22L);
-		wildcardCondition.query(mappers);
+		WildcardCondition wildcardCondition = new WildcardCondition( mappers, 0.5f, "name", 22L);
+		wildcardCondition.query();
 	}
 
 	@Test(expected = UnsupportedOperationException.class)
@@ -65,8 +65,8 @@ public class WildcardQueryTest {
 		map.put("name", new CellMapperFloat(1f));
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		WildcardCondition wildcardCondition = new WildcardCondition(0.5f, "name", 22F);
-		wildcardCondition.query(mappers);
+		WildcardCondition wildcardCondition = new WildcardCondition( mappers, 0.5f, "name", 22F);
+		wildcardCondition.query();
 	}
 
 	@Test(expected = UnsupportedOperationException.class)
@@ -76,8 +76,8 @@ public class WildcardQueryTest {
 		map.put("name", new CellMapperDouble(1f));
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		WildcardCondition wildcardCondition = new WildcardCondition(0.5f, "name", 22D);
-		wildcardCondition.query(mappers);
+		WildcardCondition wildcardCondition = new WildcardCondition(mappers, 0.5f, "name", 22D);
+		wildcardCondition.query();
 	}
 
 	@Test
@@ -87,8 +87,8 @@ public class WildcardQueryTest {
 		map.put("name", new CellMapperInet());
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		WildcardCondition wildcardCondition = new WildcardCondition(0.5f, "name", "192.168.*");
-		Query query = wildcardCondition.query(mappers);
+		WildcardCondition wildcardCondition = new WildcardCondition(mappers, 0.5f, "name", "192.168.*");
+		Query query = wildcardCondition.query();
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(org.apache.lucene.search.WildcardQuery.class, query.getClass());
@@ -105,8 +105,8 @@ public class WildcardQueryTest {
 		map.put("name", new CellMapperInet());
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		WildcardCondition wildcardCondition = new WildcardCondition(0.5f, "name", "2001:db8:2de:0:0:0:0:e*");
-		Query query = wildcardCondition.query(mappers);
+		WildcardCondition wildcardCondition = new WildcardCondition(mappers, 0.5f, "name", "2001:db8:2de:0:0:0:0:e*");
+		Query query = wildcardCondition.query();
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(org.apache.lucene.search.WildcardQuery.class, query.getClass());

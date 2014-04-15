@@ -15,78 +15,78 @@ public class CellMapperInetTest {
 	@Test()
 	public void testValueNull() {
 		CellMapperInet mapper = new CellMapperInet();
-		String parsed = mapper.indexValue(null);
+		String parsed = mapper.indexValue("test", null);
 		Assert.assertNull(parsed);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueInteger() {
 		CellMapperInet mapper = new CellMapperInet();
-		mapper.indexValue(3);
+		mapper.indexValue("test", 3);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueLong() {
 		CellMapperInet mapper = new CellMapperInet();
-		mapper.indexValue(3l);
+		mapper.indexValue("test", 3l);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueFloat() {
 		CellMapperInet mapper = new CellMapperInet();
-		mapper.indexValue(3.5f);
+		mapper.indexValue("test", 3.5f);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueDouble() {
 		CellMapperInet mapper = new CellMapperInet();
-		mapper.indexValue(3.6d);
+		mapper.indexValue("test", 3.6d);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueUUID() {
 		CellMapperInet mapper = new CellMapperInet();
-		mapper.indexValue(UUID.randomUUID());
+		mapper.indexValue("test", UUID.randomUUID());
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueStringInvalid() {
 		CellMapperInet mapper = new CellMapperInet();
-		mapper.indexValue("Hello");
+		mapper.indexValue("test", "Hello");
 	}
 
 	@Test
 	public void testValueStringV4WithoutZeros() {
 		CellMapperInet mapper = new CellMapperInet();
-		String parsed = mapper.indexValue("192.168.0.1");
+		String parsed = mapper.indexValue("test", "192.168.0.1");
 		Assert.assertEquals("192.168.0.1", parsed);
 	}
 
 	@Test
 	public void testValueStringV4WithZeros() {
 		CellMapperInet mapper = new CellMapperInet();
-		String parsed = mapper.indexValue("192.168.000.001");
+		String parsed = mapper.indexValue("test", "192.168.000.001");
 		Assert.assertEquals("192.168.0.1", parsed);
 	}
 
 	@Test
 	public void testValueStringV6WithoutZeros() {
 		CellMapperInet mapper = new CellMapperInet();
-		String parsed = mapper.indexValue("2001:db8:2de:0:0:0:0:e13");
+		String parsed = mapper.indexValue("test", "2001:db8:2de:0:0:0:0:e13");
 		Assert.assertEquals("2001:db8:2de:0:0:0:0:e13", parsed);
 	}
 
 	@Test
 	public void testValueStringV6WithZeros() {
 		CellMapperInet mapper = new CellMapperInet();
-		String parsed = mapper.indexValue("2001:0db8:02de:0000:0000:0000:0000:0e13");
+		String parsed = mapper.indexValue("test", "2001:0db8:02de:0000:0000:0000:0000:0e13");
 		Assert.assertEquals("2001:db8:2de:0:0:0:0:e13", parsed);
 	}
 
 	@Test
 	public void testValueStringV6Compact() {
 		CellMapperInet mapper = new CellMapperInet();
-		String parsed = mapper.indexValue("2001:DB8:2de::0e13");
+		String parsed = mapper.indexValue("test", "2001:DB8:2de::0e13");
 		Assert.assertEquals("2001:db8:2de:0:0:0:0:e13", parsed);
 	}
 
@@ -94,7 +94,7 @@ public class CellMapperInetTest {
 	public void testValueInetV4() throws UnknownHostException {
 		CellMapperInet mapper = new CellMapperInet();
 		InetAddress inet = InetAddress.getByName("192.168.0.13");
-		String parsed = mapper.indexValue(inet);
+		String parsed = mapper.indexValue("test", inet);
 		Assert.assertEquals("192.168.0.13", parsed);
 	}
 
@@ -102,7 +102,7 @@ public class CellMapperInetTest {
 	public void testValueInetV6() throws UnknownHostException {
 		CellMapperInet mapper = new CellMapperInet();
 		InetAddress inet = InetAddress.getByName("2001:db8:2de:0:0:0:0:e13");
-		String parsed = mapper.indexValue(inet);
+		String parsed = mapper.indexValue("test", inet);
 		Assert.assertEquals("2001:db8:2de:0:0:0:0:e13", parsed);
 	}
 

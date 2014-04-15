@@ -30,8 +30,8 @@ public class PhraseQueryTest {
 		values.add("false");
 		values.add(true);
 
-		PhraseCondition phraseCondition = new PhraseCondition(0.5f, "name", values, 2);
-		Query query = phraseCondition.query(mappers);
+		PhraseCondition phraseCondition = new PhraseCondition(mappers, 0.5f, "name", values, 2);
+		Query query = phraseCondition.query();
 		Assert.assertNotNull(query);
 		Assert.assertEquals(org.apache.lucene.search.PhraseQuery.class, query.getClass());
 		org.apache.lucene.search.PhraseQuery luceneQuery = (org.apache.lucene.search.PhraseQuery) query;
@@ -50,8 +50,8 @@ public class PhraseQueryTest {
 		List<Object> values = new ArrayList<>();
 		values.add(42);
 
-		PhraseCondition phraseCondition = new PhraseCondition(0.5f, "name", values, 2);
-		phraseCondition.query(mappers);
+		PhraseCondition phraseCondition = new PhraseCondition(mappers, 0.5f, "name", values, 2);
+		phraseCondition.query();
 	}
 
 	@Test(expected = UnsupportedOperationException.class)
@@ -64,8 +64,8 @@ public class PhraseQueryTest {
 		List<Object> values = new ArrayList<>();
 		values.add(42L);
 
-		PhraseCondition phraseCondition = new PhraseCondition(0.5f, "name", values, 2);
-		phraseCondition.query(mappers);
+		PhraseCondition phraseCondition = new PhraseCondition(mappers, 0.5f, "name", values, 2);
+		phraseCondition.query();
 	}
 
 	@Test(expected = UnsupportedOperationException.class)
@@ -78,8 +78,8 @@ public class PhraseQueryTest {
 		List<Object> values = new ArrayList<>();
 		values.add(42F);
 
-		PhraseCondition phraseCondition = new PhraseCondition(0.5f, "name", values, 2);
-		phraseCondition.query(mappers);
+		PhraseCondition phraseCondition = new PhraseCondition(mappers, 0.5f, "name", values, 2);
+		phraseCondition.query();
 	}
 
 	@Test(expected = UnsupportedOperationException.class)
@@ -92,8 +92,8 @@ public class PhraseQueryTest {
 		List<Object> values = new ArrayList<>();
 		values.add(42D);
 
-		PhraseCondition phraseCondition = new PhraseCondition(0.5f, "name", values, 2);
-		phraseCondition.query(mappers);
+		PhraseCondition phraseCondition = new PhraseCondition(mappers, 0.5f, "name", values, 2);
+		phraseCondition.query();
 	}
 
 }

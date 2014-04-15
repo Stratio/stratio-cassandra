@@ -25,6 +25,7 @@ import org.apache.lucene.util.automaton.LevenshteinAutomata;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeName;
+import org.codehaus.jackson.map.annotate.JacksonInject;
 
 /**
  * A {@link Condition} that implements the fuzzy search query. The similarity measurement is based
@@ -65,6 +66,8 @@ public class FuzzyCondition extends Condition {
 	/**
 	 * Returns a new {@link FuzzyCondition}.
 	 * 
+	 * @param schema
+	 *            The schema to be used.
 	 * @param boost
 	 *            The boost for this query clause. Documents matching this clause will (in addition
 	 *            to the normal weightings) have their score multiplied by {@code boost}. If
@@ -86,14 +89,15 @@ public class FuzzyCondition extends Condition {
 	 *            false, comparisons will implement the classic Levenshtein algorithm.
 	 */
 	@JsonCreator
-	public FuzzyCondition(@JsonProperty("boost") Float boost,
+	public FuzzyCondition(@JacksonInject("schema") Schema schema,
+	                      @JsonProperty("boost") Float boost,
 	                      @JsonProperty("field") String field,
 	                      @JsonProperty("value") Object value,
 	                      @JsonProperty("max_edits") Integer maxEdits,
 	                      @JsonProperty("prefix_length") Integer prefixLength,
 	                      @JsonProperty("max_expansions") Integer maxExpansions,
 	                      @JsonProperty("transpositions") Boolean transpositions) {
-		super(boost);
+		super(schema, boost);
 
 		if (field == null || field.trim().isEmpty()) {
 			throw new IllegalArgumentException("Field name required");
@@ -165,11 +169,19 @@ public class FuzzyCondition extends Condition {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Query query(Schema schema) {
+	public Query query() {
+
+		if (field == null || field.trim().isEmpty()) {
+			throw new IllegalArgumentException("Field name required");
+		}
+		if (value == null) {
+			throw new IllegalArgumentException("Field value required");
+		}
+
 		CellMapper<?> cellMapper = schema.getMapper(field);
 		Class<?> clazz = cellMapper.baseClass();
 		if (clazz == String.class) {
-			String value = (String) cellMapper.queryValue(this.value);
+			String value = (String) cellMapper.queryValue(field, this.value);
 			value = analyze(field, value, schema.analyzer());
 			Term term = new Term(field, value);
 			Query query = new FuzzyQuery(term, maxEdits, prefixLength, maxExpansions, transpositions);

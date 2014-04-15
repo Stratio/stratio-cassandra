@@ -47,6 +47,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
 	private final RowIndex index;
 	private final RowService rowService;
 	private final ByteBuffer rawColumnName;
+	private final Schema schema;
 
 	/**
 	 * Returns a new {@code RowIndexSearcher}.
@@ -63,6 +64,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
 		super(indexManager, columns);
 		this.index = index;
 		this.rowService = rowService;
+		this.schema = rowService.getSchema();
 		this.rawColumnName = index.getColumnDefinition().name;
 	}
 
@@ -92,18 +94,17 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
 
 	@Override
 	public void validate(List<IndexExpression> clause) {
-		Schema schema = rowService.getCellsMapper();
-		Search search = Search.fromClause(clause, rawColumnName);
-		search.validate(schema);
+		Search search = Search.fromClause(clause, rawColumnName, schema);
+		search.validate();
 	}
 
 	@Override
 	public boolean requiresFullScan(AbstractRangeCommand command) {
-		return Search.fromCommand(command, rawColumnName).relevance();
+		return Search.fromCommand(command, rawColumnName, schema).relevance();
 	}
 
 	public List<Row> combine(AbstractRangeCommand command, List<Row> rows) {
-		Search search = Search.fromCommand(command, rawColumnName);
+		Search search = Search.fromCommand(command, rawColumnName, schema);
 		if (search.relevance()) {
 			try {
 				return rowService.combine(rows, search, command.limit(), command.timestamp);

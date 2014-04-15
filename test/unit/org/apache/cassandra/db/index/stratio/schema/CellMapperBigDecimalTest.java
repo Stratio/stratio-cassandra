@@ -14,7 +14,7 @@ public class CellMapperBigDecimalTest {
 	@Test()
 	public void testValueNull() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(10, 10);
-		String parsed = mapper.indexValue(null);
+		String parsed = mapper.indexValue("test", null);
 		Assert.assertNull(parsed);
 	}
 
@@ -72,31 +72,31 @@ public class CellMapperBigDecimalTest {
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueBooleanTrue() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(100, 100);
-		mapper.indexValue(true);
+		mapper.indexValue("test", true);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueBooleanFalse() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(100, 100);
-		mapper.indexValue(false);
+		mapper.indexValue("test", false);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueUUID() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(100, 100);
-		mapper.indexValue(UUID.fromString("550e8400-e29b-41d4-a716-446655440000"));
+		mapper.indexValue("test", UUID.fromString("550e8400-e29b-41d4-a716-446655440000"));
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueDate() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(100, 100);
-		mapper.indexValue(new Date());
+		mapper.indexValue("test", new Date());
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueStringInvalid() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(100, 100);
-		mapper.indexValue("0s0");
+		mapper.indexValue("test", "0s0");
 	}
 
 	// /////////////
@@ -104,42 +104,42 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValueStringMinPositive() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(4, 4);
-		String parsed = mapper.indexValue("1");
+		String parsed = mapper.indexValue("test", "1");
 		Assert.assertEquals("10000.9999", parsed);
 	}
 
 	@Test
 	public void testValueStringMaxPositive() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(4, 4);
-		String parsed = mapper.indexValue("9999.9999");
+		String parsed = mapper.indexValue("test", "9999.9999");
 		Assert.assertEquals("19999.9998", parsed);
 	}
 
 	@Test
 	public void testValueStringMinNegative() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(4, 4);
-		String parsed = mapper.indexValue("-1");
+		String parsed = mapper.indexValue("test", "-1");
 		Assert.assertEquals("09998.9999", parsed);
 	}
 
 	@Test
 	public void testValueStringMaxNegative() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(4, 4);
-		String parsed = mapper.indexValue("-9999.9999");
+		String parsed = mapper.indexValue("test", "-9999.9999");
 		Assert.assertEquals("00000.0000", parsed);
 	}
 
 	@Test
 	public void testValueStringZero() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(4, 4);
-		String parsed = mapper.indexValue("0");
+		String parsed = mapper.indexValue("test", "0");
 		Assert.assertEquals("09999.9999", parsed);
 	}
 
 	@Test
 	public void testValueStringLeadingZeros() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(4, 4);
-		String parsed = mapper.indexValue("000.042");
+		String parsed = mapper.indexValue("test", "000.042");
 		Assert.assertEquals("10000.0419", parsed);
 	}
 
@@ -148,35 +148,35 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValueIntegerMinPositive() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(4, 4);
-		String parsed = mapper.indexValue(1);
+		String parsed = mapper.indexValue("test", 1);
 		Assert.assertEquals("10000.9999", parsed);
 	}
 
 	@Test
 	public void testValueIntegerMaxPositive() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(4, 4);
-		String parsed = mapper.indexValue(9999.9999);
+		String parsed = mapper.indexValue("test", 9999.9999);
 		Assert.assertEquals("19999.9998", parsed);
 	}
 
 	@Test
 	public void testValueIntegerMinNegative() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(4, 4);
-		String parsed = mapper.indexValue(-1);
+		String parsed = mapper.indexValue("test", -1);
 		Assert.assertEquals("09998.9999", parsed);
 	}
 
 	@Test
 	public void testValueIntegerMaxNegative() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(4, 4);
-		String parsed = mapper.indexValue(-9999.9999);
+		String parsed = mapper.indexValue("test", -9999.9999);
 		Assert.assertEquals("00000.0000", parsed);
 	}
 
 	@Test
 	public void testValueIntegerZero() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(4, 4);
-		String parsed = mapper.indexValue(0);
+		String parsed = mapper.indexValue("test", 0);
 		Assert.assertEquals("09999.9999", parsed);
 	}
 
@@ -185,25 +185,25 @@ public class CellMapperBigDecimalTest {
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueTooBigInteger() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(4, 4);
-		mapper.indexValue(10000);
+		mapper.indexValue("test", 10000);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueTooBigDecimal() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(4, 4);
-		mapper.indexValue(42.00001);
+		mapper.indexValue("test", 42.00001);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueTooSmallInteger() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(4, 4);
-		mapper.indexValue(-10000);
+		mapper.indexValue("test", -10000);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueTooSmallDecimal() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(4, 4);
-		mapper.indexValue(-0.00001);
+		mapper.indexValue("test", -0.00001);
 	}
 
 	// /////
@@ -211,8 +211,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValueIntegerNegativeMaxSort() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(8, 100);
-		String lower = mapper.indexValue(-99999999);
-		String upper = mapper.indexValue(-99999998);
+		String lower = mapper.indexValue("test", -99999999);
+		String upper = mapper.indexValue("test", -99999998);
 		int compare = lower.compareTo(upper);
 		Assert.assertTrue(compare < 0);
 	}
@@ -220,8 +220,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValueIntegerNegativeMinSort() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(8, 100);
-		String lower = mapper.indexValue(-2);
-		String upper = mapper.indexValue(-1);
+		String lower = mapper.indexValue("test", -2);
+		String upper = mapper.indexValue("test", -1);
 		int compare = lower.compareTo(upper);
 		Assert.assertTrue(compare < 0);
 	}
@@ -229,8 +229,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValueIntegerPositiveMaxSort() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(8, 100);
-		String lower = mapper.indexValue(99999998);
-		String upper = mapper.indexValue(99999999);
+		String lower = mapper.indexValue("test", 99999998);
+		String upper = mapper.indexValue("test", 99999999);
 		int compare = lower.compareTo(upper);
 		Assert.assertTrue(compare < 0);
 	}
@@ -238,8 +238,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValueIntegerPositiveMinSort() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(8, 100);
-		String lower = mapper.indexValue(1);
-		String upper = mapper.indexValue(2);
+		String lower = mapper.indexValue("test", 1);
+		String upper = mapper.indexValue("test", 2);
 		int compare = lower.compareTo(upper);
 		Assert.assertTrue(compare < 0);
 	}
@@ -247,8 +247,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValueIntegerNegativeZeroSort() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(8, 100);
-		String lower = mapper.indexValue(-1);
-		String upper = mapper.indexValue(0);
+		String lower = mapper.indexValue("test", -1);
+		String upper = mapper.indexValue("test", 0);
 		int compare = lower.compareTo(upper);
 		Assert.assertTrue(compare < 0);
 	}
@@ -256,8 +256,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValueIntegerPositiveZeroSort() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(8, 100);
-		String lower = mapper.indexValue(0);
-		String upper = mapper.indexValue(1);
+		String lower = mapper.indexValue("test", 0);
+		String upper = mapper.indexValue("test", 1);
 		int compare = lower.compareTo(upper);
 		Assert.assertTrue(compare < 0);
 	}
@@ -265,8 +265,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValueIntegerExtremeSort() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(8, 100);
-		String lower = mapper.indexValue(-99999999);
-		String upper = mapper.indexValue(99999999);
+		String lower = mapper.indexValue("test", -99999999);
+		String upper = mapper.indexValue("test", 99999999);
 		int compare = lower.compareTo(upper);
 		Assert.assertTrue(compare < 0);
 	}
@@ -274,8 +274,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValueIntegerNegativePositiveSort() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(8, 100);
-		String lower = mapper.indexValue(-1);
-		String upper = mapper.indexValue(1);
+		String lower = mapper.indexValue("test", -1);
+		String upper = mapper.indexValue("test", 1);
 		int compare = lower.compareTo(upper);
 		Assert.assertTrue(compare < 0);
 	}
@@ -283,8 +283,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValueDecimalNegativeMaxSort() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(2, 8);
-		String lower = mapper.indexValue(-0.99999999);
-		String upper = mapper.indexValue(-0.99999998);
+		String lower = mapper.indexValue("test", -0.99999999);
+		String upper = mapper.indexValue("test", -0.99999998);
 		int compare = lower.compareTo(upper);
 		Assert.assertTrue(compare < 0);
 	}
@@ -292,8 +292,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValueDecimalNegativeMinSort() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(2, 8);
-		String lower = mapper.indexValue(-0.2);
-		String upper = mapper.indexValue(-0.1);
+		String lower = mapper.indexValue("test", -0.2);
+		String upper = mapper.indexValue("test", -0.1);
 		int compare = lower.compareTo(upper);
 		Assert.assertTrue(compare < 0);
 	}
@@ -301,8 +301,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValueDecimalPositiveMaxSort() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(2, 8);
-		String lower = mapper.indexValue(0.99999998);
-		String upper = mapper.indexValue(0.99999999);
+		String lower = mapper.indexValue("test", 0.99999998);
+		String upper = mapper.indexValue("test", 0.99999999);
 		int compare = lower.compareTo(upper);
 		Assert.assertTrue(compare < 0);
 	}
@@ -310,8 +310,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValueDecimalPositiveMinSort() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(2, 8);
-		String lower = mapper.indexValue(0.1);
-		String upper = mapper.indexValue(0.2);
+		String lower = mapper.indexValue("test", 0.1);
+		String upper = mapper.indexValue("test", 0.2);
 		int compare = lower.compareTo(upper);
 		Assert.assertTrue(compare < 0);
 	}
@@ -319,8 +319,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValueDecimalNegativeZeroSort() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(2, 8);
-		String lower = mapper.indexValue(-0.1);
-		String upper = mapper.indexValue(0.0);
+		String lower = mapper.indexValue("test", -0.1);
+		String upper = mapper.indexValue("test", 0.0);
 		int compare = lower.compareTo(upper);
 		Assert.assertTrue(compare < 0);
 	}
@@ -328,8 +328,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValueDecimalPositiveZeroSort() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(2, 8);
-		String lower = mapper.indexValue(0.0);
-		String upper = mapper.indexValue(0.1);
+		String lower = mapper.indexValue("test", 0.0);
+		String upper = mapper.indexValue("test", 0.1);
 		int compare = lower.compareTo(upper);
 		Assert.assertTrue(compare < 0);
 	}
@@ -337,8 +337,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValueDecimalExtremeSort() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(2, 8);
-		String lower = mapper.indexValue(-0.99999999);
-		String upper = mapper.indexValue(0.99999999);
+		String lower = mapper.indexValue("test", -0.99999999);
+		String upper = mapper.indexValue("test", 0.99999999);
 		int compare = lower.compareTo(upper);
 		Assert.assertTrue(compare < 0);
 	}
@@ -346,8 +346,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValueDecimalNegativePositiveSort() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(2, 8);
-		String lower = mapper.indexValue(-0.1);
-		String upper = mapper.indexValue(0.1);
+		String lower = mapper.indexValue("test", -0.1);
+		String upper = mapper.indexValue("test", 0.1);
 		int compare = lower.compareTo(upper);
 		Assert.assertTrue(compare < 0);
 	}
@@ -357,8 +357,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValueNegativeMaxSort() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(4, 4);
-		String lower = mapper.indexValue(-9999.9999);
-		String upper = mapper.indexValue(-9999.9998);
+		String lower = mapper.indexValue("test", -9999.9999);
+		String upper = mapper.indexValue("test", -9999.9998);
 		int compare = lower.compareTo(upper);
 		Assert.assertTrue(compare < 0);
 	}
@@ -366,8 +366,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValueNegativeMinSort() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(4, 4);
-		String lower = mapper.indexValue(-0.0002);
-		String upper = mapper.indexValue(-0.0001);
+		String lower = mapper.indexValue("test", -0.0002);
+		String upper = mapper.indexValue("test", -0.0001);
 		int compare = lower.compareTo(upper);
 		Assert.assertTrue(compare < 0);
 	}
@@ -375,8 +375,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValuePositiveMaxSort() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(4, 4);
-		String lower = mapper.indexValue(9999.9998);
-		String upper = mapper.indexValue(9999.9999);
+		String lower = mapper.indexValue("test", 9999.9998);
+		String upper = mapper.indexValue("test", 9999.9999);
 		int compare = lower.compareTo(upper);
 		Assert.assertTrue(compare < 0);
 	}
@@ -384,8 +384,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValuePositiveMinSort() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(4, 4);
-		String lower = mapper.indexValue(0.0001);
-		String upper = mapper.indexValue(0.0002);
+		String lower = mapper.indexValue("test", 0.0001);
+		String upper = mapper.indexValue("test", 0.0002);
 		int compare = lower.compareTo(upper);
 		Assert.assertTrue(compare < 0);
 	}
@@ -393,8 +393,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValueNegativeZeroSort() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(4, 4);
-		String lower = mapper.indexValue(-0.0001);
-		String upper = mapper.indexValue(0.0);
+		String lower = mapper.indexValue("test", -0.0001);
+		String upper = mapper.indexValue("test", 0.0);
 		int compare = lower.compareTo(upper);
 		Assert.assertTrue(compare < 0);
 	}
@@ -402,8 +402,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValuePositiveZeroSort() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(4, 4);
-		String lower = mapper.indexValue(0.0);
-		String upper = mapper.indexValue(0.0001);
+		String lower = mapper.indexValue("test", 0.0);
+		String upper = mapper.indexValue("test", 0.0001);
 		int compare = lower.compareTo(upper);
 		Assert.assertTrue(compare < 0);
 	}
@@ -411,8 +411,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValueExtremeSort() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(4, 4);
-		String lower = mapper.indexValue(-9999.9999);
-		String upper = mapper.indexValue(9999.9999);
+		String lower = mapper.indexValue("test", -9999.9999);
+		String upper = mapper.indexValue("test", 9999.9999);
 		int compare = lower.compareTo(upper);
 		Assert.assertTrue(compare < 0);
 	}
@@ -420,8 +420,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValueNegativePositiveSort() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(4, 4);
-		String lower = mapper.indexValue(-2.4);
-		String upper = mapper.indexValue(2.4);
+		String lower = mapper.indexValue("test", -2.4);
+		String upper = mapper.indexValue("test", 2.4);
 		int compare = lower.compareTo(upper);
 		Assert.assertTrue(compare < 0);
 	}
@@ -429,8 +429,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValuePositivePositionsSort() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(4, 4);
-		String lower = mapper.indexValue(1.9);
-		String upper = mapper.indexValue(1.99);
+		String lower = mapper.indexValue("test", 1.9);
+		String upper = mapper.indexValue("test", 1.99);
 		int compare = lower.compareTo(upper);
 		Assert.assertTrue(compare < 0);
 	}
@@ -438,8 +438,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testValueNegativePositionsSort() {
 		CellMapperBigDecimal mapper = new CellMapperBigDecimal(4, 4);
-		String lower = mapper.indexValue(-1.9999);
-		String upper = mapper.indexValue(-1.9);
+		String lower = mapper.indexValue("test", -1.9999);
+		String upper = mapper.indexValue("test", -1.9);
 		int compare = lower.compareTo(upper);
 		Assert.assertTrue(compare < 0);
 	}

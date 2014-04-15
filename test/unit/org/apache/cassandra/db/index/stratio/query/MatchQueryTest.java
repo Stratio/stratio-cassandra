@@ -28,8 +28,8 @@ public class MatchQueryTest {
 		map.put("name", new CellMapperString());
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		MatchCondition matchCondition = new MatchCondition(0.5f, "name", "casa");
-		Query query = matchCondition.query(mappers);
+		MatchCondition matchCondition = new MatchCondition(mappers, 0.5f, "name", "casa");
+		Query query = matchCondition.query();
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(TermQuery.class, query.getClass());
@@ -44,8 +44,8 @@ public class MatchQueryTest {
 		map.put("name", new CellMapperInteger(1f));
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		MatchCondition matchCondition = new MatchCondition(0.5f, "name", 42);
-		Query query = matchCondition.query(mappers);
+		MatchCondition matchCondition = new MatchCondition(mappers, 0.5f, "name", 42);
+		Query query = matchCondition.query();
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(NumericRangeQuery.class, query.getClass());
@@ -63,8 +63,8 @@ public class MatchQueryTest {
 		map.put("name", new CellMapperLong(1f));
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		MatchCondition matchCondition = new MatchCondition(0.5f, "name", 42L);
-		Query query = matchCondition.query(mappers);
+		MatchCondition matchCondition = new MatchCondition(mappers, 0.5f, "name", 42L);
+		Query query = matchCondition.query();
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(NumericRangeQuery.class, query.getClass());
@@ -82,8 +82,8 @@ public class MatchQueryTest {
 		map.put("name", new CellMapperFloat(1f));
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		MatchCondition matchCondition = new MatchCondition(0.5f, "name", 42.42F);
-		Query query = matchCondition.query(mappers);
+		MatchCondition matchCondition = new MatchCondition(mappers, 0.5f, "name", 42.42F);
+		Query query = matchCondition.query();
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(NumericRangeQuery.class, query.getClass());
@@ -101,8 +101,8 @@ public class MatchQueryTest {
 		map.put("name", new CellMapperDouble(1f));
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		MatchCondition matchCondition = new MatchCondition(0.5f, "name", 42.42D);
-		Query query = matchCondition.query(mappers);
+		MatchCondition matchCondition = new MatchCondition(mappers, 0.5f, "name", 42.42D);
+		Query query = matchCondition.query();
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(NumericRangeQuery.class, query.getClass());
@@ -120,8 +120,8 @@ public class MatchQueryTest {
 		map.put("name", new CellMapperBlob());
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		MatchCondition matchCondition = new MatchCondition(0.5f, "name", "0Fa1");
-		Query query = matchCondition.query(mappers);
+		MatchCondition matchCondition = new MatchCondition(mappers, 0.5f, "name", "0Fa1");
+		Query query = matchCondition.query();
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(TermQuery.class, query.getClass());
@@ -136,8 +136,8 @@ public class MatchQueryTest {
 		map.put("name", new CellMapperInet());
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		MatchCondition matchCondition = new MatchCondition(0.5f, "name", "192.168.0.01");
-		Query query = matchCondition.query(mappers);
+		MatchCondition matchCondition = new MatchCondition(mappers, 0.5f, "name", "192.168.0.01");
+		Query query = matchCondition.query();
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(TermQuery.class, query.getClass());
@@ -152,8 +152,8 @@ public class MatchQueryTest {
 		map.put("name", new CellMapperInet());
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		MatchCondition matchCondition = new MatchCondition(0.5f, "name", "2001:DB8:2de::0e13");
-		Query query = matchCondition.query(mappers);
+		MatchCondition matchCondition = new MatchCondition(mappers, 0.5f, "name", "2001:DB8:2de::0e13");
+		Query query = matchCondition.query();
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(TermQuery.class, query.getClass());

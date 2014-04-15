@@ -64,7 +64,7 @@ public class CellMapperString extends CellMapper<String> {
 	}
 
 	@Override
-	public String indexValue(Object value) {
+	public String indexValue(String name, Object value) {
 		if (value == null) {
 			return null;
 		} else {
@@ -73,13 +73,13 @@ public class CellMapperString extends CellMapper<String> {
 	}
 
 	@Override
-	public String queryValue(Object value) {
-		return indexValue(value);
+	public String queryValue(String name, Object value) {
+		return indexValue(name, value);
 	}
 
 	@Override
 	public Field field(String name, Object value) {
-		String string = indexValue(value);
+		String string = indexValue(name, value);
 		return new StringField(name, string, STORE);
 	}
 

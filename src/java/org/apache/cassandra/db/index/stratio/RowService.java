@@ -148,7 +148,7 @@ public class RowService {
 		}
 	}
 
-	public Schema getCellsMapper() {
+	public Schema getSchema() {
 		return schema;
 	}
 
@@ -189,7 +189,7 @@ public class RowService {
 
 		} else if (deletionInfo != null) {
 			Iterator<RangeTombstone> iterator = deletionInfo.rangeIterator();
-			if (!iterator.hasNext()) { // Delete full storage row
+			if (!iterator.hasNext() || !isWide) { // Delete full storage row
 				Term term = partitionKeyMapper.term(partitionKey);
 				rowDirectory.deleteDocuments(term);
 			} else { // Just for delete ranges of wide rows
@@ -301,11 +301,11 @@ public class RowService {
 		int requestedRows = extendedFilter.maxColumns();
 
 		DataRange dataRange = extendedFilter.dataRange;
-		Search search = Search.fromClause(clause, columnName);
+		Search search = Search.fromClause(clause, columnName, schema);
 
 		// Setup search arguments
 		Filter rangefilter = cachedFilter(dataRange);
-		Filter columnsFilter = search.filter(schema);
+		Filter columnsFilter = search.filter();
 		Filter filter = null;
 		if (columnsFilter == null) {
 			filter = rangefilter;
@@ -318,7 +318,7 @@ public class RowService {
 		System.out.println(" => COLUMNS FILTER " + columnsFilter);
 		System.out.println(" => FILTER FILTER " + filter);
 
-		Query query = new FilteredQuery(search.query(schema), filter);
+		Query query = new FilteredQuery(search.query(), filter);
 
 		Sort sort = search.relevance() ? null : sort();
 
@@ -521,7 +521,7 @@ public class RowService {
 		// Search in partial results
 		IndexReader indexReader = DirectoryReader.open(directory);
 		IndexSearcher indexSearcher = new IndexSearcher(indexReader);
-		Query query = search.query(schema);
+		Query query = search.query();
 		TopDocs topdocs = indexSearcher.search(query, limit);
 		List<Row> result = new ArrayList<>(Math.min(limit, rows.size()));
 		for (ScoreDoc scoreDoc : topdocs.scoreDocs) {

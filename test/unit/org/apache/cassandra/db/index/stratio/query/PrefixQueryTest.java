@@ -26,8 +26,8 @@ public class PrefixQueryTest {
 		map.put("name", new CellMapperString());
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		PrefixCondition prefixCondition = new PrefixCondition(0.5f, "name", "tr");
-		Query query = prefixCondition.query(mappers);
+		PrefixCondition prefixCondition = new PrefixCondition(mappers, 0.5f, "name", "tr");
+		Query query = prefixCondition.query();
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(PrefixQuery.class, query.getClass());
@@ -44,8 +44,8 @@ public class PrefixQueryTest {
 		map.put("name", new CellMapperInteger(1f));
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		PrefixCondition prefixCondition = new PrefixCondition(0.5f, "name", "2*");
-		prefixCondition.query(mappers);
+		PrefixCondition prefixCondition = new PrefixCondition(mappers, 0.5f, "name", "2*");
+		prefixCondition.query();
 	}
 
 	@Test(expected = UnsupportedOperationException.class)
@@ -55,8 +55,8 @@ public class PrefixQueryTest {
 		map.put("name", new CellMapperLong(1f));
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		PrefixCondition prefixCondition = new PrefixCondition(0.5f, "name", 22L);
-		prefixCondition.query(mappers);
+		PrefixCondition prefixCondition = new PrefixCondition(mappers, 0.5f, "name", 22L);
+		prefixCondition.query();
 	}
 
 	@Test(expected = UnsupportedOperationException.class)
@@ -66,8 +66,8 @@ public class PrefixQueryTest {
 		map.put("name", new CellMapperFloat(1f));
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		PrefixCondition prefixCondition = new PrefixCondition(0.5f, "name", 22F);
-		prefixCondition.query(mappers);
+		PrefixCondition prefixCondition = new PrefixCondition(mappers, 0.5f, "name", 22F);
+		prefixCondition.query();
 	}
 
 	@Test(expected = UnsupportedOperationException.class)
@@ -77,8 +77,8 @@ public class PrefixQueryTest {
 		map.put("name", new CellMapperDouble(1f));
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		PrefixCondition prefixCondition = new PrefixCondition(0.5f, "name", 22D);
-		prefixCondition.query(mappers);
+		PrefixCondition prefixCondition = new PrefixCondition(mappers, 0.5f, "name", 22D);
+		prefixCondition.query();
 	}
 
 	@Test
@@ -88,8 +88,8 @@ public class PrefixQueryTest {
 		map.put("name", new CellMapperInet());
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		PrefixCondition wildcardCondition = new PrefixCondition(0.5f, "name", "192.168.");
-		Query query = wildcardCondition.query(mappers);
+		PrefixCondition wildcardCondition = new PrefixCondition(mappers, 0.5f, "name", "192.168.");
+		Query query = wildcardCondition.query();
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(PrefixQuery.class, query.getClass());
@@ -106,8 +106,8 @@ public class PrefixQueryTest {
 		map.put("name", new CellMapperInet());
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		PrefixCondition wildcardCondition = new PrefixCondition(0.5f, "name", "2001:db8:2de:0:0:0:0:e");
-		Query query = wildcardCondition.query(mappers);
+		PrefixCondition wildcardCondition = new PrefixCondition(mappers, 0.5f, "name", "2001:db8:2de:0:0:0:0:e");
+		Query query = wildcardCondition.query();
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(PrefixQuery.class, query.getClass());

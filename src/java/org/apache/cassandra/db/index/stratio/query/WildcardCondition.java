@@ -23,6 +23,7 @@ import org.apache.lucene.search.WildcardQuery;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeName;
+import org.codehaus.jackson.map.annotate.JacksonInject;
 
 /**
  * 
@@ -40,11 +41,9 @@ import org.codehaus.jackson.annotate.JsonTypeName;
 public class WildcardCondition extends Condition {
 
 	/** The field name */
-	@JsonProperty("field")
 	private final String field;
 
 	/** The field value */
-	@JsonProperty("value")
 	private final Object value;
 
 	/**
@@ -60,14 +59,11 @@ public class WildcardCondition extends Condition {
 	 *            the field value.
 	 */
 	@JsonCreator
-	public WildcardCondition(@JsonProperty("boost") Float boost,
+	public WildcardCondition(@JacksonInject("schema") Schema schema,
+	                         @JsonProperty("boost") Float boost,
 	                         @JsonProperty("field") String field,
 	                         @JsonProperty("value") Object value) {
-		super(boost);
-
-		if (field == null || field.trim().isEmpty()) {
-			throw new IllegalArgumentException("Field name required");
-		}
+		super(schema, boost);
 
 		this.field = field;
 		this.value = value;
@@ -95,12 +91,20 @@ public class WildcardCondition extends Condition {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Query query(Schema schema) {
+	public Query query() {
+
+		if (field == null || field.trim().isEmpty()) {
+			throw new IllegalArgumentException("Field name required");
+		}
+		if (value == null) {
+			throw new IllegalArgumentException("Field value required");
+		}
+
 		CellMapper<?> cellMapper = schema.getMapper(field);
 		Class<?> clazz = cellMapper.baseClass();
 		Query query;
 		if (clazz == String.class) {
-			String value = (String) cellMapper.queryValue(this.value);
+			String value = (String) cellMapper.queryValue(field, this.value);
 			Term term = new Term(field, value);
 			query = new WildcardQuery(term);
 		} else {
