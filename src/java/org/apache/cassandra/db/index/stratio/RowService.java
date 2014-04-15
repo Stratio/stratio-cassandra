@@ -43,7 +43,7 @@ import org.apache.cassandra.db.index.stratio.RowDirectory.ScoredDocument;
 import org.apache.cassandra.db.index.stratio.query.Search;
 import org.apache.cassandra.db.index.stratio.schema.Cell;
 import org.apache.cassandra.db.index.stratio.schema.Cells;
-import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
+import org.apache.cassandra.db.index.stratio.schema.Schema;
 import org.apache.cassandra.db.index.stratio.util.Log;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.UTF8Type;
@@ -57,7 +57,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.ChainedFilter;
-import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.FilteredQuery;
 import org.apache.lucene.search.IndexSearcher;
@@ -82,7 +81,7 @@ public class RowService {
 
 	private final ColumnFamilyStore baseCfs;
 	private final CFMetaData metadata;
-	private final CellsMapper cellsMapper;
+	private final Schema schema;
 	private final Set<String> fieldsToLoad;
 	private final RowDirectory rowDirectory;
 	private final ByteBuffer columnName;
@@ -106,7 +105,7 @@ public class RowService {
 	 *            The index name.
 	 * @param columnIdentifier
 	 *            The indexed column name.
-	 * @param cellsMapper
+	 * @param schema
 	 *            The user column mapping schema.
 	 * @param rowDirectory
 	 *            The Lucene's manager.
@@ -126,7 +125,7 @@ public class RowService {
 
 		filterCache = config.getFilterCache();
 
-		cellsMapper = config.getCellsMapper();
+		schema = config.getCellsMapper();
 		partitionKeyMapper = PartitionKeyMapper.instance(metadata);
 		tokenMapper = TokenMapper.instance();
 		clusteringKeyMapper = ClusteringKeyMapper.instance(metadata);
@@ -137,7 +136,7 @@ public class RowService {
 		                                config.getRamBufferMB(),
 		                                config.getMaxMergeMB(),
 		                                config.getMaxCachedMB(),
-		                                cellsMapper.analyzer());
+		                                schema.analyzer());
 
 		clusteringPosition = metadata.clusteringKeyColumns().size();
 		isWide = clusteringPosition > 0;
@@ -149,8 +148,8 @@ public class RowService {
 		}
 	}
 
-	public CellsMapper getCellsMapper() {
-		return cellsMapper;
+	public Schema getCellsMapper() {
+		return schema;
 	}
 
 	/**
@@ -217,13 +216,13 @@ public class RowService {
 			ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(columnFamily);
 			partitionKeyMapper.addFields(document, partitionKey);
 			tokenMapper.addFields(document, partitionKey);
-			cellsMapper.addFields(document, metadata, partitionKey, columnFamily, timestamp);
+			schema.addFields(document, metadata, partitionKey, columnFamily, timestamp);
 			clusteringKeyMapper.addFields(document, clusteringKey);
 			fullKeyMapper.addFields(document, partitionKey, clusteringKey);
 		} else {
 			partitionKeyMapper.addFields(document, partitionKey);
 			tokenMapper.addFields(document, partitionKey);
-			cellsMapper.addFields(document, metadata, partitionKey, columnFamily, timestamp);
+			schema.addFields(document, metadata, partitionKey, columnFamily, timestamp);
 		}
 		return document;
 	}
@@ -285,7 +284,7 @@ public class RowService {
 	 *            The filter to be satisfied.
 	 * @return The Cassandra rows satisfying {@code extendedFilter}.
 	 */
-	public List<Row> search(ExtendedFilter extendedFilter) throws IOException, ParseException {
+	public List<Row> search(ExtendedFilter extendedFilter) {
 
 		long timestamp = extendedFilter.timestamp;
 
@@ -306,10 +305,20 @@ public class RowService {
 
 		// Setup search arguments
 		Filter rangefilter = cachedFilter(dataRange);
-		Filter columnsFilter = search.filter(cellsMapper);
-		Filter filter = columnsFilter == null ? rangefilter : new ChainedFilter(new Filter[] { rangefilter,
-		                                                                                      columnsFilter });
-		Query query = new FilteredQuery(search.query(cellsMapper), filter);
+		Filter columnsFilter = search.filter(schema);
+		Filter filter = null;
+		if (columnsFilter == null) {
+			filter = rangefilter;
+		} else {
+			Filter[] filters = new Filter[] { rangefilter, columnsFilter };
+			filter = new ChainedFilter(filters, ChainedFilter.AND);
+		}
+
+		System.out.println(" => RANGE FILTER " + rangefilter);
+		System.out.println(" => COLUMNS FILTER " + columnsFilter);
+		System.out.println(" => FILTER FILTER " + filter);
+
+		Query query = new FilteredQuery(search.query(schema), filter);
 
 		Sort sort = search.relevance() ? null : sort();
 
@@ -371,7 +380,7 @@ public class RowService {
 
 	private boolean accepted(DecoratedKey key, ColumnFamily cf, List<IndexExpression> expressions, long timestamp) {
 		if (!expressions.isEmpty()) {
-			Cells cells = cellsMapper.cells(metadata, key, cf, timestamp);
+			Cells cells = schema.cells(metadata, key, cf, timestamp);
 			for (IndexExpression expression : expressions) {
 				if (!accepted(cells, expression)) {
 					return false;
@@ -494,7 +503,7 @@ public class RowService {
 		Directory directory = new RAMDirectory();
 
 		// Index partial results
-		Analyzer analyzer = cellsMapper.analyzer();
+		Analyzer analyzer = schema.analyzer();
 		IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_46, analyzer);
 		config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
 		config.setUseCompoundFile(false);
@@ -512,7 +521,7 @@ public class RowService {
 		// Search in partial results
 		IndexReader indexReader = DirectoryReader.open(directory);
 		IndexSearcher indexSearcher = new IndexSearcher(indexReader);
-		Query query = search.query(cellsMapper);
+		Query query = search.query(schema);
 		TopDocs topdocs = indexSearcher.search(query, limit);
 		List<Row> result = new ArrayList<>(Math.min(limit, rows.size()));
 		for (ScoreDoc scoreDoc : topdocs.scoreDocs) {

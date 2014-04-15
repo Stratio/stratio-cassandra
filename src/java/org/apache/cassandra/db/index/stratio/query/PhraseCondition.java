@@ -18,7 +18,7 @@ package org.apache.cassandra.db.index.stratio.query;
 import java.util.List;
 
 import org.apache.cassandra.db.index.stratio.schema.CellMapper;
-import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
+import org.apache.cassandra.db.index.stratio.schema.Schema;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.PhraseQuery;
@@ -109,11 +109,11 @@ public class PhraseCondition extends Condition {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Query query(CellsMapper cellsMapper) {
-		CellMapper<?> cellMapper = cellsMapper.getMapper(field);
+	public Query query(Schema schema) {
+		CellMapper<?> cellMapper = schema.getMapper(field);
 		Class<?> clazz = cellMapper.baseClass();
 		if (clazz == String.class) {
-			Analyzer analyzer = cellsMapper.analyzer();
+			Analyzer analyzer = schema.analyzer();
 			PhraseQuery query = new PhraseQuery();
 			query.setSlop(slop);
 			query.setBoost(boost);

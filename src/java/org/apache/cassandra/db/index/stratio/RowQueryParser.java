@@ -21,7 +21,7 @@ import org.apache.cassandra.db.index.stratio.query.PrefixCondition;
 import org.apache.cassandra.db.index.stratio.query.RangeCondition;
 import org.apache.cassandra.db.index.stratio.query.RegexpCondition;
 import org.apache.cassandra.db.index.stratio.query.WildcardCondition;
-import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
+import org.apache.cassandra.db.index.stratio.schema.Schema;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
@@ -37,9 +37,9 @@ import org.apache.lucene.util.Version;
  */
 public class RowQueryParser extends QueryParser {
 
-	private final CellsMapper mapper;
+	private final Schema mapper;
 
-	public RowQueryParser(Version matchVersion, String f, CellsMapper mapper) {
+	public RowQueryParser(Version matchVersion, String f, Schema mapper) {
 		super(matchVersion, f, mapper.analyzer());
 		this.mapper = mapper;
 	}

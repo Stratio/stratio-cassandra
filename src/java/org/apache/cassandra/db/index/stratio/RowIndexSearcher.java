@@ -17,6 +17,7 @@ package org.apache.cassandra.db.index.stratio;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -26,6 +27,7 @@ import org.apache.cassandra.db.filter.ExtendedFilter;
 import org.apache.cassandra.db.index.SecondaryIndexManager;
 import org.apache.cassandra.db.index.SecondaryIndexSearcher;
 import org.apache.cassandra.db.index.stratio.query.Search;
+import org.apache.cassandra.db.index.stratio.schema.Schema;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.thrift.IndexExpression;
 import org.apache.cassandra.thrift.IndexOperator;
@@ -71,7 +73,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
 			return rowService.search(extendedFilter);
 		} catch (Exception e) {
 			logger.error("Error while searching: '%s'", e.getMessage(), e);
-			return null; // Force upper component NPE to allow fail by RPC timeout
+			return new ArrayList<>(0);
 		}
 	}
 
@@ -86,6 +88,13 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
 			}
 		}
 		return false;
+	}
+
+	@Override
+	public void validate(List<IndexExpression> clause) {
+		Schema schema = rowService.getCellsMapper();
+		Search search = Search.fromClause(clause, rawColumnName);
+		search.validate(schema);
 	}
 
 	@Override

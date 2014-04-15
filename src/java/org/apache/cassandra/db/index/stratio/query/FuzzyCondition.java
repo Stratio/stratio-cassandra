@@ -16,9 +16,10 @@
 package org.apache.cassandra.db.index.stratio.query;
 
 import org.apache.cassandra.db.index.stratio.schema.CellMapper;
-import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
+import org.apache.cassandra.db.index.stratio.schema.Schema;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.FuzzyQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.automaton.LevenshteinAutomata;
 import org.codehaus.jackson.annotate.JsonCreator;
@@ -164,22 +165,18 @@ public class FuzzyCondition extends Condition {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Query query(CellsMapper cellsMapper) {
-		CellMapper<?> cellMapper = cellsMapper.getMapper(field);
+	public Query query(Schema schema) {
+		CellMapper<?> cellMapper = schema.getMapper(field);
 		Class<?> clazz = cellMapper.baseClass();
 		if (clazz == String.class) {
 			String value = (String) cellMapper.queryValue(this.value);
-			value = analyze(field, value, cellsMapper.analyzer());
+			value = analyze(field, value, schema.analyzer());
 			Term term = new Term(field, value);
-			Query query = new org.apache.lucene.search.FuzzyQuery(term,
-			                                                      maxEdits,
-			                                                      prefixLength,
-			                                                      maxExpansions,
-			                                                      transpositions);
+			Query query = new FuzzyQuery(term, maxEdits, prefixLength, maxExpansions, transpositions);
 			query.setBoost(boost);
 			return query;
 		} else {
-			String message = String.format("Unsupported query %s for mapper %s", this, cellMapper);
+			String message = String.format("Fuzzy queries are not supported by %s mapper", clazz.getSimpleName());
 			throw new UnsupportedOperationException(message);
 		}
 	}

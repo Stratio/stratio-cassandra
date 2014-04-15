@@ -11,7 +11,7 @@ import org.apache.cassandra.db.index.stratio.schema.CellMapperDouble;
 import org.apache.cassandra.db.index.stratio.schema.CellMapperFloat;
 import org.apache.cassandra.db.index.stratio.schema.CellMapperInteger;
 import org.apache.cassandra.db.index.stratio.schema.CellMapperLong;
-import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
+import org.apache.cassandra.db.index.stratio.schema.Schema;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.search.Query;
 import org.junit.Assert;
@@ -24,7 +24,7 @@ public class PhraseQueryTest {
 
 		Map<String, CellMapper<?>> map = new HashMap<>();
 		map.put("name", new CellMapperBoolean());
-		CellsMapper mappers = new CellsMapper(EnglishAnalyzer.class.getName(), map);
+		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
 		List<Object> values = new ArrayList<>();
 		values.add("false");
@@ -45,7 +45,7 @@ public class PhraseQueryTest {
 
 		Map<String, CellMapper<?>> map = new HashMap<>();
 		map.put("name", new CellMapperInteger(1f));
-		CellsMapper mappers = new CellsMapper(EnglishAnalyzer.class.getName(), map);
+		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
 		List<Object> values = new ArrayList<>();
 		values.add(42);
@@ -59,7 +59,7 @@ public class PhraseQueryTest {
 
 		Map<String, CellMapper<?>> map = new HashMap<>();
 		map.put("name", new CellMapperLong(1f));
-		CellsMapper mappers = new CellsMapper(EnglishAnalyzer.class.getName(), map);
+		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
 		List<Object> values = new ArrayList<>();
 		values.add(42L);
@@ -73,7 +73,7 @@ public class PhraseQueryTest {
 
 		Map<String, CellMapper<?>> map = new HashMap<>();
 		map.put("name", new CellMapperFloat(1f));
-		CellsMapper mappers = new CellsMapper(EnglishAnalyzer.class.getName(), map);
+		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
 		List<Object> values = new ArrayList<>();
 		values.add(42F);
@@ -87,7 +87,7 @@ public class PhraseQueryTest {
 
 		Map<String, CellMapper<?>> map = new HashMap<>();
 		map.put("name", new CellMapperDouble(1f));
-		CellsMapper mappers = new CellsMapper(EnglishAnalyzer.class.getName(), map);
+		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
 		List<Object> values = new ArrayList<>();
 		values.add(42D);

@@ -52,7 +52,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * @author adelapena
  * 
  */
-public class CellsMapper {
+public class Schema {
 
 	/** The default Lucene's analyzer to be used if no other specified. */
 	@JsonIgnore
@@ -83,7 +83,7 @@ public class CellsMapper {
 	 *            The {@link Cell} mappers to be used.
 	 */
 	@JsonCreator
-	public CellsMapper(@JsonProperty("default_analyzer") String analyzerClassName,
+	public Schema(@JsonProperty("default_analyzer") String analyzerClassName,
 	                   @JsonProperty("fields") Map<String, CellMapper<?>> cellMappers) {
 
 		// Copy lower cased mappers
@@ -342,8 +342,9 @@ public class CellsMapper {
 			StringBuilder sb = new StringBuilder();
 			for (int i = 0; i < components.length - 1; i++) {
 				sb.append(components[i]);
-				if (i < components.length - 2)
+				if (i < components.length - 2) {
 					sb.append(".");
+				}
 			}
 			return getMapper(sb.toString());
 		} else {
@@ -352,17 +353,17 @@ public class CellsMapper {
 	}
 
 	/**
-	 * Returns the {@link CellsMapper} contained in the specified JSON {@code String}.
+	 * Returns the {@link Schema} contained in the specified JSON {@code String}.
 	 * 
 	 * @param json
-	 *            A {@code String} containing the JSON representation of the {@link CellsMapper} to
+	 *            A {@code String} containing the JSON representation of the {@link Schema} to
 	 *            be parsed.
-	 * @return The {@link CellsMapper} contained in the specified JSON {@code String}.
+	 * @return The {@link Schema} contained in the specified JSON {@code String}.
 	 */
 	@JsonIgnore
-	public static CellsMapper fromJson(String json) {
+	public static Schema fromJson(String json) {
 		try {
-			return JsonSerializer.fromString(json, CellsMapper.class);
+			return JsonSerializer.fromString(json, Schema.class);
 		} catch (IOException e) {
 			throw new IllegalArgumentException("Schema unparseable: " + json, e);
 		}

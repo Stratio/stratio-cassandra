@@ -11,7 +11,7 @@ import org.apache.cassandra.db.index.stratio.schema.CellMapperInet;
 import org.apache.cassandra.db.index.stratio.schema.CellMapperInteger;
 import org.apache.cassandra.db.index.stratio.schema.CellMapperLong;
 import org.apache.cassandra.db.index.stratio.schema.CellMapperString;
-import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
+import org.apache.cassandra.db.index.stratio.schema.Schema;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.search.NumericRangeQuery;
 import org.apache.lucene.search.Query;
@@ -26,7 +26,7 @@ public class MatchQueryTest {
 
 		Map<String, CellMapper<?>> map = new HashMap<>();
 		map.put("name", new CellMapperString());
-		CellsMapper mappers = new CellsMapper(EnglishAnalyzer.class.getName(), map);
+		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
 		MatchCondition matchCondition = new MatchCondition(0.5f, "name", "casa");
 		Query query = matchCondition.query(mappers);
@@ -42,7 +42,7 @@ public class MatchQueryTest {
 
 		Map<String, CellMapper<?>> map = new HashMap<>();
 		map.put("name", new CellMapperInteger(1f));
-		CellsMapper mappers = new CellsMapper(EnglishAnalyzer.class.getName(), map);
+		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
 		MatchCondition matchCondition = new MatchCondition(0.5f, "name", 42);
 		Query query = matchCondition.query(mappers);
@@ -61,7 +61,7 @@ public class MatchQueryTest {
 
 		Map<String, CellMapper<?>> map = new HashMap<>();
 		map.put("name", new CellMapperLong(1f));
-		CellsMapper mappers = new CellsMapper(EnglishAnalyzer.class.getName(), map);
+		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
 		MatchCondition matchCondition = new MatchCondition(0.5f, "name", 42L);
 		Query query = matchCondition.query(mappers);
@@ -80,7 +80,7 @@ public class MatchQueryTest {
 
 		Map<String, CellMapper<?>> map = new HashMap<>();
 		map.put("name", new CellMapperFloat(1f));
-		CellsMapper mappers = new CellsMapper(EnglishAnalyzer.class.getName(), map);
+		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
 		MatchCondition matchCondition = new MatchCondition(0.5f, "name", 42.42F);
 		Query query = matchCondition.query(mappers);
@@ -99,7 +99,7 @@ public class MatchQueryTest {
 
 		Map<String, CellMapper<?>> map = new HashMap<>();
 		map.put("name", new CellMapperDouble(1f));
-		CellsMapper mappers = new CellsMapper(EnglishAnalyzer.class.getName(), map);
+		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
 		MatchCondition matchCondition = new MatchCondition(0.5f, "name", 42.42D);
 		Query query = matchCondition.query(mappers);
@@ -118,7 +118,7 @@ public class MatchQueryTest {
 
 		Map<String, CellMapper<?>> map = new HashMap<>();
 		map.put("name", new CellMapperBlob());
-		CellsMapper mappers = new CellsMapper(EnglishAnalyzer.class.getName(), map);
+		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
 		MatchCondition matchCondition = new MatchCondition(0.5f, "name", "0Fa1");
 		Query query = matchCondition.query(mappers);
@@ -134,7 +134,7 @@ public class MatchQueryTest {
 
 		Map<String, CellMapper<?>> map = new HashMap<>();
 		map.put("name", new CellMapperInet());
-		CellsMapper mappers = new CellsMapper(EnglishAnalyzer.class.getName(), map);
+		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
 		MatchCondition matchCondition = new MatchCondition(0.5f, "name", "192.168.0.01");
 		Query query = matchCondition.query(mappers);
@@ -150,7 +150,7 @@ public class MatchQueryTest {
 
 		Map<String, CellMapper<?>> map = new HashMap<>();
 		map.put("name", new CellMapperInet());
-		CellsMapper mappers = new CellsMapper(EnglishAnalyzer.class.getName(), map);
+		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
 		MatchCondition matchCondition = new MatchCondition(0.5f, "name", "2001:DB8:2de::0e13");
 		Query query = matchCondition.query(mappers);

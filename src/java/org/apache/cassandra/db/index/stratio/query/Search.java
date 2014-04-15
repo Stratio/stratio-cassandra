@@ -15,13 +15,13 @@
  */
 package org.apache.cassandra.db.index.stratio.query;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
 import org.apache.cassandra.db.AbstractRangeCommand;
-import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
+import org.apache.cassandra.db.index.stratio.schema.Schema;
 import org.apache.cassandra.db.index.stratio.util.JsonSerializer;
-import org.apache.cassandra.db.index.stratio.util.Log;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.thrift.IndexExpression;
 import org.apache.lucene.search.Filter;
@@ -34,7 +34,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * 
  * Class representing an Lucene's index search. It is formed by an optional querying
  * {@link Condition} and an optional filtering {@link Condition}. It can be translated to a Lucene's
- * {@link Query} using a {@link CellsMapper}.
+ * {@link Query} using a {@link Schema}.
  * 
  * @author adelapena
  * 
@@ -42,23 +42,23 @@ import org.codehaus.jackson.annotate.JsonProperty;
 public class Search {
 
 	/** The querying condition */
-	private final Condition query;
+	private final Condition queryCondition;
 
 	/** The filtering condition */
-	private final Condition filter;
+	private final Condition filterCondition;
 
 	/**
 	 * Returns a new {@link Search} composed by the specified querying and filtering conditions.
 	 * 
-	 * @param queryCondition
+	 * @param query
 	 *            The query, maybe {@code null} meaning {@link MatchAllDocsQuery}.
-	 * @param filterCondition
+	 * @param filter
 	 *            The filter, maybe {@code null} meaning no filtering.
 	 */
 	@JsonCreator
-	public Search(@JsonProperty("query") Condition queryCondition, @JsonProperty("filter") Condition filterCondition) {
-		this.query = queryCondition;
-		this.filter = filterCondition;
+	public Search(@JsonProperty("query") Condition query, @JsonProperty("filter") Condition filter) {
+		this.queryCondition = query;
+		this.filterCondition = filter;
 	}
 
 	/**
@@ -72,7 +72,7 @@ public class Search {
 	 *         results are sorted by the natural Cassandra's order.
 	 */
 	public boolean relevance() {
-		return query != null;
+		return queryCondition != null;
 	}
 
 	/**
@@ -80,16 +80,16 @@ public class Search {
 	 * both the querying and filtering {@link Condition}s. If none of them is set, then a
 	 * {@link MatchAllDocsQuery} is returned.
 	 * 
-	 * @param cellsMapper
-	 *            The {@link CellsMapper} to be used.
+	 * @param schema
+	 *            The {@link Schema} to be used.
 	 * @return The Lucene's {@link Query} representation of this search.
 	 */
-	public Query query(CellsMapper cellsMapper) {
-		return query == null ? new MatchAllDocsQuery() : query.query(cellsMapper);
+	public Query query(Schema schema) {
+		return queryCondition == null ? new MatchAllDocsQuery() : queryCondition.query(schema);
 	}
 
-	public Filter filter(CellsMapper cellsMapper) {
-		return filter == null ? null : filter.filter(cellsMapper);
+	public Filter filter(Schema schema) {
+		return filterCondition == null ? null : filterCondition.filter(schema);
 	}
 
 	public static Search fromClause(List<IndexExpression> clause, ByteBuffer indexedColumnName) {
@@ -108,10 +108,16 @@ public class Search {
 		try {
 			Search search = JsonSerializer.fromString(json, Search.class);
 			return search;
+		} catch (IOException e) {
+			throw new IllegalArgumentException("Unparseable JSON index expression");
 		} catch (Exception e) {
-			Log.error(e, "Error while parsing index expression clause");
-			throw new IllegalArgumentException(e);
+			throw new IllegalArgumentException(e.getMessage());
 		}
+	}
+
+	public void validate(Schema schema) {
+		query(schema);
+		filter(schema);
 	}
 
 	public static final Search fromCommand(AbstractRangeCommand command, ByteBuffer indexedColumnName) {
@@ -126,9 +132,9 @@ public class Search {
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
 		builder.append("Search [query=");
-		builder.append(query);
+		builder.append(queryCondition);
 		builder.append(", filter=");
-		builder.append(filter);
+		builder.append(filterCondition);
 		builder.append("]");
 		return builder.toString();
 	}

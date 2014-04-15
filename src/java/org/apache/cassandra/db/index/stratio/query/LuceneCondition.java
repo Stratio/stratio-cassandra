@@ -15,7 +15,7 @@
  */
 package org.apache.cassandra.db.index.stratio.query;
 
-import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
+import org.apache.cassandra.db.index.stratio.schema.Schema;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
@@ -90,9 +90,9 @@ public class LuceneCondition extends Condition {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Query query(CellsMapper cellsMapper) {
+	public Query query(Schema schema) {
 		try {
-			Analyzer analyzer = cellsMapper.analyzer();
+			Analyzer analyzer = schema.analyzer();
 			QueryParser queryParser = new QueryParser(Version.LUCENE_46, defaultField, analyzer);
 			queryParser.setAllowLeadingWildcard(true);
 			queryParser.setLowercaseExpandedTerms(false);

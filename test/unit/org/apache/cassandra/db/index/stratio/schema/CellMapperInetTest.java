@@ -126,8 +126,8 @@ public class CellMapperInetTest {
 	@Test
 	public void testParseJSON() throws IOException {
 		String json = "{fields:{age:{type:\"inet\"}}}";
-		CellsMapper cellsMapper = CellsMapper.fromJson(json);
-		CellMapper<?> cellMapper = cellsMapper.getMapper("age");
+		Schema schema = Schema.fromJson(json);
+		CellMapper<?> cellMapper = schema.getMapper("age");
 		Assert.assertNotNull(cellMapper);
 		Assert.assertEquals(CellMapperInet.class, cellMapper.getClass());
 	}
@@ -135,13 +135,13 @@ public class CellMapperInetTest {
 	@Test(expected = IllegalArgumentException.class)
 	public void testParseJSONEmpty() throws IOException {
 		String json = "{fields:{}}";
-		CellsMapper cellsMapper = CellsMapper.fromJson(json);
-		cellsMapper.getMapper("age");
+		Schema schema = Schema.fromJson(json);
+		schema.getMapper("age");
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testParseJSONInvalid() throws IOException {
 		String json = "{fields:{age:{}}";
-		CellsMapper.fromJson(json);
+		Schema.fromJson(json);
 	}
 }

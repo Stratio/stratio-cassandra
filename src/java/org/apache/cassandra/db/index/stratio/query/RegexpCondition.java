@@ -16,7 +16,7 @@
 package org.apache.cassandra.db.index.stratio.query;
 
 import org.apache.cassandra.db.index.stratio.schema.CellMapper;
-import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
+import org.apache.cassandra.db.index.stratio.schema.Schema;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.RegexpQuery;
@@ -95,17 +95,17 @@ public class RegexpCondition extends Condition {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Query query(CellsMapper cellsMapper) {
-		CellMapper<?> cellMapper = cellsMapper.getMapper(field);
+	public Query query(Schema schema) {
+		CellMapper<?> cellMapper = schema.getMapper(field);
 		Class<?> clazz = cellMapper.baseClass();
 		Query query;
 		if (clazz == String.class) {
 			String value = (String) cellMapper.queryValue(this.value);
-			value = analyze(field, value, cellsMapper.analyzer());
+			value = analyze(field, value, schema.analyzer());
 			Term term = new Term(field, value);
 			query = new RegexpQuery(term);
 		} else {
-			String message = String.format("Unsupported query %s for mapper %s", this, cellMapper);
+			String message = String.format("Regexp queries are not supported by %s mapper", clazz.getSimpleName());
 			throw new UnsupportedOperationException(message);
 		}
 		query.setBoost(boost);

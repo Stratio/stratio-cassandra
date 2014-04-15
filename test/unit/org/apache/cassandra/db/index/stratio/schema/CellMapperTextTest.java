@@ -139,8 +139,8 @@ public class CellMapperTextTest {
 	@Test
 	public void testParseJSONWithAnayzer() throws IOException {
 		String json = "{fields:{age:{type:\"text\", analyzer:\"org.apache.lucene.analysis.en.EnglishAnalyzer\"}}}";
-		CellsMapper cellsMapper = CellsMapper.fromJson(json);
-		CellMapper<?> cellMapper = cellsMapper.getMapper("age");
+		Schema schema = Schema.fromJson(json);
+		CellMapper<?> cellMapper = schema.getMapper("age");
 		Assert.assertNotNull(cellMapper);
 		Assert.assertEquals(CellMapperText.class, cellMapper.getClass());
 	}
@@ -148,8 +148,8 @@ public class CellMapperTextTest {
 	@Test
 	public void testParseJSONWithoutAnalyzer() throws IOException {
 		String json = "{fields:{age:{type:\"text\"}}}";
-		CellsMapper cellsMapper = CellsMapper.fromJson(json);
-		CellMapper<?> cellMapper = cellsMapper.getMapper("age");
+		Schema schema = Schema.fromJson(json);
+		CellMapper<?> cellMapper = schema.getMapper("age");
 		Assert.assertNotNull(cellMapper);
 		Assert.assertEquals(CellMapperText.class, cellMapper.getClass());
 	}
@@ -157,13 +157,13 @@ public class CellMapperTextTest {
 	@Test(expected=IllegalArgumentException.class)
 	public void testParseJSONEmpty() throws IOException {
 		String json = "{fields:{}}";
-		CellsMapper cellsMapper = CellsMapper.fromJson(json);
-		cellsMapper.getMapper("age");
+		Schema schema = Schema.fromJson(json);
+		schema.getMapper("age");
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testParseJSONInvalid() throws IOException {
 		String json = "{fields:{age:{}}";
-		CellsMapper.fromJson(json);
+		Schema.fromJson(json);
 	}
 }

@@ -464,8 +464,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testParseJSONWithoutDigits() throws IOException {
 		String json = "{fields:{age:{type:\"bigdec\"}}}";
-		CellsMapper cellsMapper = CellsMapper.fromJson(json);
-		CellMapper<?> cellMapper = cellsMapper.getMapper("age");
+		Schema schema = Schema.fromJson(json);
+		CellMapper<?> cellMapper = schema.getMapper("age");
 		Assert.assertNotNull(cellMapper);
 		Assert.assertEquals(CellMapperBigDecimal.class, cellMapper.getClass());
 	}
@@ -473,8 +473,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testParseJSONWithIntegerDigits() throws IOException {
 		String json = "{fields:{age:{type:\"bigdec\", integer_digits:20}}}";
-		CellsMapper cellsMapper = CellsMapper.fromJson(json);
-		CellMapper<?> cellMapper = cellsMapper.getMapper("age");
+		Schema schema = Schema.fromJson(json);
+		CellMapper<?> cellMapper = schema.getMapper("age");
 		Assert.assertNotNull(cellMapper);
 		Assert.assertEquals(CellMapperBigDecimal.class, cellMapper.getClass());
 		Assert.assertEquals(20, ((CellMapperBigDecimal) cellMapper).getIntegerDigits());
@@ -485,8 +485,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testParseJSONWithDecimalDigits() throws IOException {
 		String json = "{fields:{age:{type:\"bigdec\", decimal_digits:20}}}";
-		CellsMapper cellsMapper = CellsMapper.fromJson(json);
-		CellMapper<?> cellMapper = cellsMapper.getMapper("age");
+		Schema schema = Schema.fromJson(json);
+		CellMapper<?> cellMapper = schema.getMapper("age");
 		Assert.assertNotNull(cellMapper);
 		Assert.assertEquals(CellMapperBigDecimal.class, cellMapper.getClass());
 		Assert.assertEquals(CellMapperBigDecimal.DEFAULT_INTEGER_DIGITS,
@@ -497,8 +497,8 @@ public class CellMapperBigDecimalTest {
 	@Test
 	public void testParseJSONWithBothDigits() throws IOException {
 		String json = "{fields:{age:{type:\"bigdec\", integer_digits:20, decimal_digits:30}}}";
-		CellsMapper cellsMapper = CellsMapper.fromJson(json);
-		CellMapper<?> cellMapper = cellsMapper.getMapper("age");
+		Schema schema = Schema.fromJson(json);
+		CellMapper<?> cellMapper = schema.getMapper("age");
 		Assert.assertNotNull(cellMapper);
 		Assert.assertEquals(CellMapperBigDecimal.class, cellMapper.getClass());
 		Assert.assertEquals(20, ((CellMapperBigDecimal) cellMapper).getIntegerDigits());
@@ -508,13 +508,13 @@ public class CellMapperBigDecimalTest {
 	@Test(expected=IllegalArgumentException.class)
 	public void testParseJSONEmpty() throws IOException {
 		String json = "{fields:{}}";
-		CellsMapper cellsMapper = CellsMapper.fromJson(json);
-		cellsMapper.getMapper("age");
+		Schema schema = Schema.fromJson(json);
+		schema.getMapper("age");
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testParseJSONInvalid() throws IOException {
 		String json = "{fields:{age:{}}";
-		CellsMapper.fromJson(json);
+		Schema.fromJson(json);
 	}
 }

@@ -9,7 +9,7 @@ import org.apache.cassandra.db.index.stratio.schema.CellMapperDouble;
 import org.apache.cassandra.db.index.stratio.schema.CellMapperFloat;
 import org.apache.cassandra.db.index.stratio.schema.CellMapperInteger;
 import org.apache.cassandra.db.index.stratio.schema.CellMapperLong;
-import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
+import org.apache.cassandra.db.index.stratio.schema.Schema;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.search.Query;
 import org.junit.Assert;
@@ -22,7 +22,7 @@ public class FuzzyQueryTest {
 
 		Map<String, CellMapper<?>> map = new HashMap<>();
 		map.put("name", new CellMapperBoolean());
-		CellsMapper mappers = new CellsMapper(EnglishAnalyzer.class.getName(), map);
+		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
 		FuzzyCondition fuzzyCondition = new FuzzyCondition(0.5f, "name", "tr", 1, 2, 49, true);
 		Query query = fuzzyCondition.query(mappers);
@@ -42,7 +42,7 @@ public class FuzzyQueryTest {
 
 		Map<String, CellMapper<?>> map = new HashMap<>();
 		map.put("name", new CellMapperInteger(1f));
-		CellsMapper mappers = new CellsMapper(EnglishAnalyzer.class.getName(), map);
+		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
 		FuzzyCondition fuzzyCondition = new FuzzyCondition(0.5f, "name", 42, 1, 2, 49, true);
 		fuzzyCondition.query(mappers);
@@ -53,7 +53,7 @@ public class FuzzyQueryTest {
 
 		Map<String, CellMapper<?>> map = new HashMap<>();
 		map.put("name", new CellMapperLong(1f));
-		CellsMapper mappers = new CellsMapper(EnglishAnalyzer.class.getName(), map);
+		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
 		FuzzyCondition fuzzyCondition = new FuzzyCondition(0.5f, "name", 42L, 1, 2, 49, true);
 		fuzzyCondition.query(mappers);
@@ -64,7 +64,7 @@ public class FuzzyQueryTest {
 
 		Map<String, CellMapper<?>> map = new HashMap<>();
 		map.put("name", new CellMapperFloat(1f));
-		CellsMapper mappers = new CellsMapper(EnglishAnalyzer.class.getName(), map);
+		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
 		FuzzyCondition fuzzyCondition = new FuzzyCondition(0.5f, "name", 42F, 1, 2, 49, true);
 		fuzzyCondition.query(mappers);
@@ -75,7 +75,7 @@ public class FuzzyQueryTest {
 
 		Map<String, CellMapper<?>> map = new HashMap<>();
 		map.put("name", new CellMapperDouble(1f));
-		CellsMapper mappers = new CellsMapper(EnglishAnalyzer.class.getName(), map);
+		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
 		FuzzyCondition fuzzyCondition = new FuzzyCondition(0.5f, "name", 42D, 1, 2, 49, true);
 		fuzzyCondition.query(mappers);

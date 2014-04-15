@@ -20,7 +20,7 @@ import java.util.Map;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
+import org.apache.cassandra.db.index.stratio.schema.Schema;
 
 /**
  * Class for building {@link RowService} instances.
@@ -49,7 +49,7 @@ public class RowServiceConfig {
 	private static final String MAX_CACHED_MB_OPTION = "max_cached_mb";
 	private static final Integer DEFAULT_MAX_CACHED_MB = 30;
 
-	private final CellsMapper cellsMapper;
+	private final Schema schema;
 	private final int refreshSeconds;
 	private final FilterCache filterCache;
 	private final String path;
@@ -146,8 +146,8 @@ public class RowServiceConfig {
 		String schemaOption = options.get(SCHEMA_OPTION);
 		if (schemaOption != null && !schemaOption.trim().isEmpty()) {
 			try {
-				cellsMapper = CellsMapper.fromJson(schemaOption);
-				cellsMapper.validate(metadata);
+				schema = Schema.fromJson(schemaOption);
+				schema.validate(metadata);
 			} catch (Exception e) {
 				String msg = String.format("'%s' is invalid : %s", SCHEMA_OPTION, e.getMessage());
 				throw new RuntimeException(msg);
@@ -177,8 +177,8 @@ public class RowServiceConfig {
 		}
 	}
 
-	public CellsMapper getCellsMapper() {
-		return cellsMapper;
+	public Schema getCellsMapper() {
+		return schema;
 	}
 
 	public int getRefreshSeconds() {

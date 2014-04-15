@@ -17,7 +17,7 @@ package org.apache.cassandra.db.index.stratio.query;
 
 import java.io.IOException;
 
-import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
+import org.apache.cassandra.db.index.stratio.schema.Schema;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
@@ -89,21 +89,21 @@ public abstract class Condition {
 	/**
 	 * Returns the Lucene's {@link Query} representation of this condition.
 	 * 
-	 * @param cellsMapper
-	 *            The {@link CellsMapper} to be used.
+	 * @param schema
+	 *            The {@link Schema} to be used.
 	 * @return The Lucene's {@link Query} representation of this condition.
 	 */
-	public abstract Query query(CellsMapper cellsMapper);
+	public abstract Query query(Schema schema);
 
 	/**
 	 * Returns the Lucene's {@link Filter} representation of this condition.
 	 * 
-	 * @param cellsMapper
-	 *            The {@link CellsMapper} to be used.
+	 * @param schema
+	 *            The {@link Schema} to be used.
 	 * @return The Lucene's {@link Filter} representation of this condition.
 	 */
-	public Filter filter(CellsMapper cellsMapper) {
-		return new QueryWrapperFilter(query(cellsMapper));
+	public Filter filter(Schema schema) {
+		return new QueryWrapperFilter(query(schema));
 	}
 
 	// /**

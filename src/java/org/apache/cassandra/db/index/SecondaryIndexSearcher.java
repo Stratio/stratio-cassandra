@@ -77,6 +77,9 @@ public abstract class SecondaryIndexSearcher {
 
 		return best;
 	}
+	
+	public void validate(List<IndexExpression> clause) {
+	}
 
 	public boolean requiresFullScan(AbstractRangeCommand command) {
 		return false;

@@ -18,8 +18,9 @@ package org.apache.cassandra.db.index.stratio.query;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.apache.cassandra.db.index.stratio.schema.CellsMapper;
+import org.apache.cassandra.db.index.stratio.schema.Schema;
 import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.Query;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
@@ -136,17 +137,17 @@ public class BooleanCondition extends Condition {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Query query(CellsMapper cellsMapper) {
-		org.apache.lucene.search.BooleanQuery luceneQuery = new org.apache.lucene.search.BooleanQuery();
+	public Query query(Schema schema) {
+		BooleanQuery luceneQuery = new BooleanQuery();
 		luceneQuery.setBoost(boost);
 		for (Condition query : must) {
-			luceneQuery.add(query.query(cellsMapper), Occur.MUST);
+			luceneQuery.add(query.query(schema), Occur.MUST);
 		}
 		for (Condition query : should) {
-			luceneQuery.add(query.query(cellsMapper), Occur.SHOULD);
+			luceneQuery.add(query.query(schema), Occur.SHOULD);
 		}
 		for (Condition query : not) {
-			luceneQuery.add(query.query(cellsMapper), Occur.MUST_NOT);
+			luceneQuery.add(query.query(schema), Occur.MUST_NOT);
 		}
 		return luceneQuery;
 	}
