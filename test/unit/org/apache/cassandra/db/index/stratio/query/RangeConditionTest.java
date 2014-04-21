@@ -18,7 +18,7 @@ import org.apache.lucene.search.TermRangeQuery;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class RangeQueryTest {
+public class RangeConditionTest {
 
 	@Test
 	public void testStringClose() {
@@ -27,8 +27,8 @@ public class RangeQueryTest {
 		map.put("name", new CellMapperBoolean());
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		RangeCondition rangeCondition = new RangeCondition(mappers, 0.5f, "name", "alpha", "beta", true, true);
-		Query query = rangeCondition.query();
+		RangeCondition rangeCondition = new RangeCondition(0.5f, "name", "alpha", "beta", true, true);
+		Query query = rangeCondition.query(mappers);
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(TermRangeQuery.class, query.getClass());
@@ -47,8 +47,8 @@ public class RangeQueryTest {
 		map.put("name", new CellMapperBoolean());
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		RangeCondition rangeCondition = new RangeCondition(mappers, 0.5f, "name", "alpha", null, true, false);
-		Query query = rangeCondition.query();
+		RangeCondition rangeCondition = new RangeCondition(0.5f, "name", "alpha", null, true, false);
+		Query query = rangeCondition.query(mappers);
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(TermRangeQuery.class, query.getClass());
@@ -68,8 +68,8 @@ public class RangeQueryTest {
 		map.put("name", new CellMapperInteger(1f));
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		RangeCondition rangeCondition = new RangeCondition(mappers, 0.5f, "name", 42, 43, false, false);
-		Query query = rangeCondition.query();
+		RangeCondition rangeCondition = new RangeCondition(0.5f, "name", 42, 43, false, false);
+		Query query = rangeCondition.query(mappers);
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(NumericRangeQuery.class, query.getClass());
@@ -88,8 +88,8 @@ public class RangeQueryTest {
 		map.put("name", new CellMapperInteger(1f));
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		RangeCondition rangeCondition = new RangeCondition(mappers, 0.5f, "name", 42, null, true, false);
-		Query query = rangeCondition.query();
+		RangeCondition rangeCondition = new RangeCondition(0.5f, "name", 42, null, true, false);
+		Query query = rangeCondition.query(mappers);
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(NumericRangeQuery.class, query.getClass());
@@ -108,8 +108,8 @@ public class RangeQueryTest {
 		map.put("name", new CellMapperLong(1f));
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		RangeCondition rangeCondition = new RangeCondition(mappers, 0.5f, "name", 42L, 43, false, false);
-		Query query = rangeCondition.query();
+		RangeCondition rangeCondition = new RangeCondition(0.5f, "name", 42L, 43, false, false);
+		Query query = rangeCondition.query(mappers);
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(NumericRangeQuery.class, query.getClass());
@@ -128,8 +128,8 @@ public class RangeQueryTest {
 		map.put("name", new CellMapperLong(1f));
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		RangeCondition rangeCondition = new RangeCondition(mappers, 0.5f, "name", 42f, null, true, false);
-		Query query = rangeCondition.query();
+		RangeCondition rangeCondition = new RangeCondition(0.5f, "name", 42f, null, true, false);
+		Query query = rangeCondition.query(mappers);
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(NumericRangeQuery.class, query.getClass());
@@ -148,8 +148,8 @@ public class RangeQueryTest {
 		map.put("name", new CellMapperFloat(1f));
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		RangeCondition rangeCondition = new RangeCondition(mappers, 0.5f, "name", 42.42D, 43.42F, false, false);
-		Query query = rangeCondition.query();
+		RangeCondition rangeCondition = new RangeCondition(0.5f, "name", 42.42D, 43.42F, false, false);
+		Query query = rangeCondition.query(mappers);
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(NumericRangeQuery.class, query.getClass());
@@ -168,8 +168,8 @@ public class RangeQueryTest {
 		map.put("name", new CellMapperFloat(1f));
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		RangeCondition rangeCondition = new RangeCondition(mappers, 0.5f, "name", 42.42f, null, true, false);
-		Query query = rangeCondition.query();
+		RangeCondition rangeCondition = new RangeCondition(0.5f, "name", 42.42f, null, true, false);
+		Query query = rangeCondition.query(mappers);
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(NumericRangeQuery.class, query.getClass());
@@ -188,8 +188,8 @@ public class RangeQueryTest {
 		map.put("name", new CellMapperDouble(1f));
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		RangeCondition rangeCondition = new RangeCondition(mappers, 0.5f, "name", 42.42D, 43.42D, false, false);
-		Query query = rangeCondition.query();
+		RangeCondition rangeCondition = new RangeCondition(0.5f, "name", 42.42D, 43.42D, false, false);
+		Query query = rangeCondition.query(mappers);
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(NumericRangeQuery.class, query.getClass());
@@ -208,8 +208,8 @@ public class RangeQueryTest {
 		map.put("name", new CellMapperDouble(1f));
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		RangeCondition rangeCondition = new RangeCondition(mappers, 0.5f, "name", 42.42D, null, true, false);
-		Query query = rangeCondition.query();
+		RangeCondition rangeCondition = new RangeCondition(0.5f, "name", 42.42D, null, true, false);
+		Query query = rangeCondition.query(mappers);
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(NumericRangeQuery.class, query.getClass());
@@ -228,8 +228,8 @@ public class RangeQueryTest {
 		map.put("name", new CellMapperInet());
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		RangeCondition rangeCondition = new RangeCondition(mappers, 0.5f, "name", "192.168.0.01", "192.168.0.045", true, true);
-		Query query = rangeCondition.query();
+		RangeCondition rangeCondition = new RangeCondition(0.5f, "name", "192.168.0.01", "192.168.0.045", true, true);
+		Query query = rangeCondition.query(mappers);
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(TermRangeQuery.class, query.getClass());
@@ -248,8 +248,8 @@ public class RangeQueryTest {
 		map.put("name", new CellMapperInet());
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		RangeCondition rangeCondition = new RangeCondition(mappers, 0.5f, "name", "2001:DB8:2de::e13", "2001:DB8:02de::e23", true, true);
-		Query query = rangeCondition.query();
+		RangeCondition rangeCondition = new RangeCondition(0.5f, "name", "2001:DB8:2de::e13", "2001:DB8:02de::e23", true, true);
+		Query query = rangeCondition.query(mappers);
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(TermRangeQuery.class, query.getClass());

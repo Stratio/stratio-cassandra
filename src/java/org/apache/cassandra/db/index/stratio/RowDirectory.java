@@ -75,7 +75,7 @@ public class RowDirectory {
 	 * @param analyzer
 	 */
 	public RowDirectory(String path,
-	                    Integer refreshSeconds,
+	                    Double refreshSeconds,
 	                    Integer ramBufferMB,
 	                    Integer maxMergeMB,
 	                    Integer maxCachedMB,

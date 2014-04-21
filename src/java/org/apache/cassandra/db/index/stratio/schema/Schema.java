@@ -84,7 +84,7 @@ public class Schema {
 	 */
 	@JsonCreator
 	public Schema(@JsonProperty("default_analyzer") String analyzerClassName,
-	                   @JsonProperty("fields") Map<String, CellMapper<?>> cellMappers) {
+	              @JsonProperty("fields") Map<String, CellMapper<?>> cellMappers) {
 
 		// Copy lower cased mappers
 		this.cellMappers = cellMappers;
@@ -152,11 +152,11 @@ public class Schema {
 	 *            The operation time stamp.
 	 * @return The cells contained in the specified columns.
 	 */
-	public Cells cells(CFMetaData metadata, DecoratedKey partitionKey, ColumnFamily columnFamily, long timestamp) {
+	public Cells cells(CFMetaData metadata, DecoratedKey partitionKey, ColumnFamily columnFamily) {
 		Cells cells = new Cells();
 		cells.addAll(partitionKeyCells(metadata, partitionKey));
 		cells.addAll(clusteringKeyCells(metadata, columnFamily));
-		cells.addAll(regularCells(metadata, columnFamily, timestamp));
+		cells.addAll(regularCells(metadata, columnFamily));
 		return cells;
 	}
 
@@ -224,13 +224,11 @@ public class Schema {
 	 *            The indexed column family meta data.
 	 * @param columnFamily
 	 *            The column family.
-	 * @param timestamp
-	 *            The operation time stamp.
 	 * @return The regular {@link Cell}s representing the CQL3 columns contained in the specified
 	 *         column family.
 	 */
 	@SuppressWarnings("rawtypes")
-	private Cells regularCells(CFMetaData metadata, ColumnFamily cf, long timestamp) {
+	private Cells regularCells(CFMetaData metadata, ColumnFamily cf) {
 
 		Cells cells = new Cells();
 
@@ -248,11 +246,6 @@ public class Schema {
 		while (columnIterator.hasNext()) {
 
 			Column column = columnIterator.next();
-
-			// Skip deleted columns
-			if (column.isMarkedForDelete(timestamp)) {
-				continue;
-			}
 
 			ByteBuffer columnName = column.name();
 			ByteBuffer columnValue = column.value();
@@ -314,12 +307,8 @@ public class Schema {
 	}
 
 	@JsonIgnore
-	public void addFields(Document document,
-	                      CFMetaData metadata,
-	                      DecoratedKey partitionKey,
-	                      ColumnFamily columnFamily,
-	                      long timestamp) {
-		Cells cells = cells(metadata, partitionKey, columnFamily, timestamp);
+	public void addFields(Document document, CFMetaData metadata, DecoratedKey partitionKey, ColumnFamily columnFamily) {
+		Cells cells = cells(metadata, partitionKey, columnFamily);
 		for (Cell cell : cells) {
 			String name = cell.getName();
 			String fieldName = cell.getFieldName();
@@ -356,8 +345,8 @@ public class Schema {
 	 * Returns the {@link Schema} contained in the specified JSON {@code String}.
 	 * 
 	 * @param json
-	 *            A {@code String} containing the JSON representation of the {@link Schema} to
-	 *            be parsed.
+	 *            A {@code String} containing the JSON representation of the {@link Schema} to be
+	 *            parsed.
 	 * @return The {@link Schema} contained in the specified JSON {@code String}.
 	 */
 	@JsonIgnore

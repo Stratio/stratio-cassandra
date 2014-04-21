@@ -23,7 +23,6 @@ import org.apache.lucene.search.TermRangeQuery;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeName;
-import org.codehaus.jackson.map.annotate.JacksonInject;
 
 /**
  * A {@link Condition} implementation that matches a field within an range of values.
@@ -62,8 +61,6 @@ public class RangeCondition extends Condition {
 	 * endpoints may not be exclusive (you can't select all but the first or last term without
 	 * explicitly specifying the term to exclude.)
 	 * 
-	 * @param schema
-	 *            The schema to be used.
 	 * @param boost
 	 *            The boost for this query clause. Documents matching this clause will (in addition
 	 *            to the normal weightings) have their score multiplied by {@code boost}. If
@@ -80,14 +77,13 @@ public class RangeCondition extends Condition {
 	 *            if {@code true}, the {@code upperValue} is included in the range.
 	 */
 	@JsonCreator
-	public RangeCondition(@JacksonInject("schema") Schema schema,
-	                         @JsonProperty("boost") Float boost,
+	public RangeCondition(@JsonProperty("boost") Float boost,
 	                      @JsonProperty("field") String field,
 	                      @JsonProperty("lower") Object lowerValue,
 	                      @JsonProperty("upper") Object upperValue,
 	                      @JsonProperty("include_lower") boolean includeLower,
 	                      @JsonProperty("include_upper") boolean includeUpper) {
-		super(schema, boost);
+		super(boost);
 
 		this.field = field;
 		this.lower = lowerValue;
@@ -149,7 +145,7 @@ public class RangeCondition extends Condition {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Query query() {
+	public Query query(Schema schema) {
 
 		if (field == null || field.trim().isEmpty()) {
 			throw new IllegalArgumentException("Field name required");

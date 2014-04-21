@@ -26,7 +26,6 @@ import org.apache.lucene.search.Query;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeName;
-import org.codehaus.jackson.map.annotate.JacksonInject;
 
 /**
  * A {@link Condition} implementation that matches documents containing a particular sequence of
@@ -44,16 +43,14 @@ public class PhraseCondition extends Condition {
 	private final String field;
 
 	/** The field values */
-	private List<Object> values;
+	private List<String> values;
 
 	/** The slop */
-	private final int slop;
+	private final Integer slop;
 
 	/**
 	 * Constructor using the field name and the value to be matched.
 	 * 
-	 * @param schema
-	 *            The schema to be used.
 	 * @param boost
 	 *            The boost for this query clause. Documents matching this clause will (in addition
 	 *            to the normal weightings) have their score multiplied by {@code boost}. If
@@ -66,12 +63,11 @@ public class PhraseCondition extends Condition {
 	 *            The slop.
 	 */
 	@JsonCreator
-	public PhraseCondition(@JacksonInject("schema") Schema schema,
-	                         @JsonProperty("boost") Float boost,
+	public PhraseCondition(@JsonProperty("boost") Float boost,
 	                       @JsonProperty("field") String field,
-	                       @JsonProperty("values") List<Object> values,
+	                       @JsonProperty("values") List<String> values,
 	                       @JsonProperty("slop") Integer slop) {
-		super(schema, boost);
+		super(boost);
 
 		this.field = field;
 		this.values = values;
@@ -92,7 +88,7 @@ public class PhraseCondition extends Condition {
 	 * 
 	 * @return the field values.
 	 */
-	public List<Object> getValues() {
+	public List<String> getValues() {
 		return values;
 	}
 
@@ -109,7 +105,7 @@ public class PhraseCondition extends Condition {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Query query( ) {
+	public Query query(Schema schema) {
 
 		if (field == null || field.trim().isEmpty()) {
 			throw new IllegalArgumentException("Field name required");
@@ -117,7 +113,13 @@ public class PhraseCondition extends Condition {
 		if (values == null) {
 			throw new IllegalArgumentException("Field values required");
 		}
-		
+		if (slop == null) {
+			throw new IllegalArgumentException("Slop required");
+		}
+		if (slop < 0) {
+			throw new IllegalArgumentException("Slop must be positive");
+		}
+
 		CellMapper<?> cellMapper = schema.getMapper(field);
 		Class<?> clazz = cellMapper.baseClass();
 		if (clazz == String.class) {

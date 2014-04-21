@@ -23,17 +23,17 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.index.stratio.schema.Schema;
 
 /**
- * Class for building {@link RowService} instances.
+ * Class for building {@link RowIndexService} instances.
  * 
  * @author adelapena
  * 
  */
-public class RowServiceConfig {
+public class RowIndexConfig {
 
 	private static final String SCHEMA_OPTION = "schema";
 
 	private static final String REFRESH_SECONDS_OPTION = "refresh_seconds";
-	private static final Integer DEFAULT_REFESH_SECONDS = 60;
+	private static final double DEFAULT_REFESH_SECONDS = 60;
 
 	private static final String FILTER_CACHE_SIZE_OPTION = "num_cached_filters";
 
@@ -41,31 +41,31 @@ public class RowServiceConfig {
 	private static final String DEFAULT_PATH_PREFIX = "lucene";
 
 	private static final String RAM_BUFFER_MB_OPTION = "ram_buffer_mb";
-	private static final Integer DEFAULT_RAM_BUFFER_MB = 64;
+	private static final int DEFAULT_RAM_BUFFER_MB = 64;
 
 	private static final String MAX_MERGE_MB_OPTION = "max_merge_mb";
-	private static final Integer DEFAULT_MAX_MERGE_MB = 5;
+	private static final int DEFAULT_MAX_MERGE_MB = 5;
 
 	private static final String MAX_CACHED_MB_OPTION = "max_cached_mb";
-	private static final Integer DEFAULT_MAX_CACHED_MB = 30;
+	private static final int DEFAULT_MAX_CACHED_MB = 30;
 
 	private final Schema schema;
-	private final int refreshSeconds;
+	private final double refreshSeconds;
 	private final FilterCache filterCache;
 	private final String path;
 	private final int ramBufferMB;
 	private final int maxMergeMB;
 	private final int maxCachedMB;
 
-	public RowServiceConfig(CFMetaData metadata, String indexName, Map<String, String> options) {
+	public RowIndexConfig(CFMetaData metadata, String indexName, Map<String, String> options) {
 
 		// Setup refresh seconds
 		String refreshOption = options.get(REFRESH_SECONDS_OPTION);
 		if (refreshOption != null) {
 			try {
-				refreshSeconds = Integer.parseInt(refreshOption);
+				refreshSeconds = Double.parseDouble(refreshOption);
 			} catch (NumberFormatException e) {
-				String msg = String.format("'%s' must be a strictly positive integer", REFRESH_SECONDS_OPTION);
+				String msg = String.format("'%s' must be a strictly positive double", REFRESH_SECONDS_OPTION);
 				throw new RuntimeException(msg);
 			}
 			if (refreshSeconds <= 0) {
@@ -177,11 +177,11 @@ public class RowServiceConfig {
 		}
 	}
 
-	public Schema getCellsMapper() {
+	public Schema getSchema() {
 		return schema;
 	}
 
-	public int getRefreshSeconds() {
+	public double getRefreshSeconds() {
 		return refreshSeconds;
 	}
 

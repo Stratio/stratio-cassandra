@@ -15,20 +15,16 @@
  */
 package org.apache.cassandra.db.index.stratio;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.cql3.ColumnIdentifier;
+import org.apache.cassandra.db.Column;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DataRange;
@@ -36,7 +32,7 @@ import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.DeletionInfo;
 import org.apache.cassandra.db.RangeTombstone;
 import org.apache.cassandra.db.Row;
-import org.apache.cassandra.db.filter.ExtendedFilter;
+import org.apache.cassandra.db.TreeMapBackedSortedColumns;
 import org.apache.cassandra.db.filter.QueryFilter;
 import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.db.index.stratio.RowDirectory.ScoredDocument;
@@ -49,25 +45,15 @@ import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.thrift.IndexExpression;
 import org.apache.commons.lang3.ArrayUtils;
-import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.ChainedFilter;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.FilteredQuery;
-import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.RAMDirectory;
-import org.apache.lucene.util.Version;
 
 /**
  * Class for mapping rows between Cassandra and Lucene.
@@ -75,17 +61,15 @@ import org.apache.lucene.util.Version;
  * @author adelapena
  * 
  */
-public class RowService {
+public class RowIndexService {
 
-	private static final int MAX_PAGE_SIZE = 100;
+	private static final int PAGE_SIZE = 100;
 
 	private final ColumnFamilyStore baseCfs;
 	private final CFMetaData metadata;
 	private final Schema schema;
 	private final Set<String> fieldsToLoad;
 	private final RowDirectory rowDirectory;
-	private final ByteBuffer columnName;
-	private final ColumnIdentifier columnIdentifier;
 	private final int clusteringPosition;
 	private final boolean isWide;
 
@@ -97,35 +81,25 @@ public class RowService {
 	private final FullKeyMapper fullKeyMapper;
 
 	/**
-	 * Returns a new {@code RowService}
+	 * Returns a new {@code RowService}.
 	 * 
 	 * @param baseCfs
 	 *            The base column family store.
-	 * @param indexName
-	 *            The index name.
-	 * @param columnIdentifier
-	 *            The indexed column name.
-	 * @param schema
-	 *            The user column mapping schema.
-	 * @param rowDirectory
-	 *            The Lucene's manager.
-	 * @param filterCache
-	 *            The filters cache, may be {@code null} meaning no caching.
+	 * @param columnDefinition
+	 *            The indexed column definition.
 	 */
-	public RowService(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) {
+	public RowIndexService(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) {
 
 		this.baseCfs = baseCfs;
 		metadata = baseCfs.metadata;
-		columnName = columnDefinition.name;
-		columnIdentifier = new ColumnIdentifier(columnDefinition.name, columnDefinition.getValidator());
 
-		RowServiceConfig config = new RowServiceConfig(metadata,
-		                                               columnDefinition.getIndexName(),
-		                                               columnDefinition.getIndexOptions());
+		RowIndexConfig config = new RowIndexConfig(metadata,
+		                                           columnDefinition.getIndexName(),
+		                                           columnDefinition.getIndexOptions());
 
 		filterCache = config.getFilterCache();
 
-		schema = config.getCellsMapper();
+		schema = config.getSchema();
 		partitionKeyMapper = PartitionKeyMapper.instance(metadata);
 		tokenMapper = TokenMapper.instance();
 		clusteringKeyMapper = ClusteringKeyMapper.instance(metadata);
@@ -148,14 +122,27 @@ public class RowService {
 		}
 	}
 
+	/**
+	 * Returns the used {@link Schema}.
+	 * 
+	 * @return The used {@link Schema}.
+	 */
 	public Schema getSchema() {
 		return schema;
 	}
 
 	/**
-	 * Puts in the Lucene index the Cassandra's storage row identified by the specified partition
-	 * key. Note that when using wide rows all the rows under the same partition key are indexed. It
-	 * will be improved in the future.
+	 * Returns the names of the document fields to be loaded when reading a Lucene's index.
+	 * 
+	 * @return The names of the document fields to be loaded.
+	 */
+	public Set<String> fieldsToLoad() {
+		return fieldsToLoad;
+	}
+
+	/**
+	 * Puts in the Lucene index the Cassandra's the row identified by the specified partition key
+	 * and the clustering keys contained in the specified {@link ColumnFamily}.
 	 * 
 	 * @param key
 	 *            The partition key.
@@ -164,7 +151,7 @@ public class RowService {
 	 * @param timestamp
 	 *            The operation time stamp.
 	 */
-	public final void index(ByteBuffer key, ColumnFamily columnFamily, long timestamp) {
+	public void index(ByteBuffer key, ColumnFamily columnFamily, long timestamp) {
 
 		DeletionInfo deletionInfo = columnFamily.deletionInfo();
 		DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(key);
@@ -173,17 +160,15 @@ public class RowService {
 
 			if (isWide) {
 				for (ByteBuffer clusteringKey : clusteringKeyMapper.byteBuffers(columnFamily)) {
-					QueryFilter queryFilter = queryFilter(partitionKey, clusteringKey, timestamp);
-					ColumnFamily allColumns = baseCfs.getColumnFamily(queryFilter);
-					Document document = document(partitionKey, allColumns, timestamp);
-					Term term = term(partitionKey, clusteringKey);
+					Row row = row(partitionKey, clusteringKey, timestamp);
+					Document document = document(row);
+					Term term = identifyingTerm(partitionKey, clusteringKey);
 					rowDirectory.updateDocument(term, document);
 				}
 			} else {
-				QueryFilter queryFilter = queryFilter(partitionKey, null, timestamp);
-				ColumnFamily allColumns = baseCfs.getColumnFamily(queryFilter);
-				Document document = document(partitionKey, allColumns, timestamp);
-				Term term = term(partitionKey, null);
+				Row row = row(partitionKey, null, timestamp);
+				Document document = document(row);
+				Term term = identifyingTerm(partitionKey, null);
 				rowDirectory.updateDocument(term, document);
 			}
 
@@ -204,36 +189,37 @@ public class RowService {
 		}
 	}
 
-	public Document document(Row row, long timestamp) {
+	/**
+	 * Returns the {@link Document} represented by the specified {@link Row}. It's assumed that the
+	 * {@link Row} is a CQL3 one, so its {@link ColumnFamily} musts contain one and only one
+	 * clustering key.
+	 * 
+	 * @param row
+	 *            A {@link Row}.
+	 * @return The Lucene {@link Document} representing the specified {@link Row}.
+	 */
+	public Document document(Row row) {
 		DecoratedKey partitionKey = row.key;
 		ColumnFamily columnFamily = row.cf;
-		return document(partitionKey, columnFamily, timestamp);
-	}
-
-	public Document document(DecoratedKey partitionKey, ColumnFamily columnFamily, long timestamp) {
 		Document document = new Document();
+		tokenMapper.addFields(document, partitionKey);
+		partitionKeyMapper.addFields(document, partitionKey);
+		schema.addFields(document, metadata, partitionKey, columnFamily);
 		if (isWide) {
 			ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(columnFamily);
-			partitionKeyMapper.addFields(document, partitionKey);
-			tokenMapper.addFields(document, partitionKey);
-			schema.addFields(document, metadata, partitionKey, columnFamily, timestamp);
 			clusteringKeyMapper.addFields(document, clusteringKey);
 			fullKeyMapper.addFields(document, partitionKey, clusteringKey);
-		} else {
-			partitionKeyMapper.addFields(document, partitionKey);
-			tokenMapper.addFields(document, partitionKey);
-			schema.addFields(document, metadata, partitionKey, columnFamily, timestamp);
 		}
 		return document;
 	}
 
 	/**
-	 * Deletes the row identified by the specified partition key.
+	 * Deletes the partition identified by the specified partition key.
 	 * 
 	 * @param partitionKey
-	 *            The partition key identifying the row to be deleted.
+	 *            The partition key identifying the partition to be deleted.
 	 */
-	public final void delete(DecoratedKey partitionKey) {
+	public void delete(DecoratedKey partitionKey) {
 		Term term = partitionKeyMapper.term(partitionKey);
 		rowDirectory.deleteDocuments(term);
 	}
@@ -261,7 +247,22 @@ public class RowService {
 		rowDirectory.commit();
 	}
 
-	private QueryFilter queryFilter(DecoratedKey partitionKey, ByteBuffer clusteringKey, long timestamp) {
+	/**
+	 * Reads and returns the CQL3 {@link Row} identified by the specified key pair, using the
+	 * specified time stamp to ignore deleted columns.
+	 * 
+	 * @param partitionKey
+	 *            The partition key.
+	 * @param clusteringKey
+	 *            The clustering key, maybe {@code null}.
+	 * @param timestamp
+	 *            The time stamp to ignore deleted columns.
+	 * @return The CQL3 {@link Row} identified by the specified key pair.
+	 */
+	private Row row(DecoratedKey partitionKey, ByteBuffer clusteringKey, long timestamp) {
+
+		// Setup columns query
+		QueryFilter queryFilter;
 		if (isWide) {
 			ByteBuffer start = clusteringKeyMapper.start(clusteringKey);
 			ByteBuffer stop = clusteringKeyMapper.stop(clusteringKey);
@@ -270,10 +271,24 @@ public class RowService {
 			                                                   false,
 			                                                   Integer.MAX_VALUE,
 			                                                   clusteringPosition);
-			return new QueryFilter(partitionKey, baseCfs.name, dataFilter, timestamp);
+			queryFilter = new QueryFilter(partitionKey, baseCfs.name, dataFilter, timestamp);
 		} else {
-			return QueryFilter.getIdentityFilter(partitionKey, metadata.cfName, timestamp);
+			queryFilter = QueryFilter.getIdentityFilter(partitionKey, metadata.cfName, timestamp);
 		}
+
+		// Read columns from storage
+		ColumnFamily columnFamily = baseCfs.getColumnFamily(queryFilter);
+
+		// Remove deleted column families
+		ColumnFamily cleanColumnFamily = TreeMapBackedSortedColumns.factory.create(baseCfs.metadata);
+		for (Column column : columnFamily) {
+			if (!column.isMarkedForDelete(timestamp)) {
+				cleanColumnFamily.addColumn(column);
+			}
+		}
+
+		// Return new row
+		return new Row(partitionKey, cleanColumnFamily);
 	}
 
 	/**
@@ -284,47 +299,19 @@ public class RowService {
 	 *            The filter to be satisfied.
 	 * @return The Cassandra rows satisfying {@code extendedFilter}.
 	 */
-	public List<Row> search(ExtendedFilter extendedFilter) {
-
-		long timestamp = extendedFilter.timestamp;
-
-		List<IndexExpression> clause = extendedFilter.getClause();
-		List<IndexExpression> extraExpressions = new ArrayList<>(clause.size());
-		for (IndexExpression ie : clause) {
-			ByteBuffer columnName = ie.column_name;
-			if (!columnName.equals(columnIdentifier.key)) {
-				extraExpressions.add(ie);
-			}
-		}
-
-		// Get filtering options
-		int requestedRows = extendedFilter.maxColumns();
-
-		DataRange dataRange = extendedFilter.dataRange;
-		Search search = Search.fromClause(clause, columnName, schema);
+	public List<Row> search(Search search,
+	                        List<IndexExpression> filteredExpressions,
+	                        DataRange dataRange,
+	                        int limit,
+	                        long timestamp) {
 
 		// Setup search arguments
 		Filter rangefilter = cachedFilter(dataRange);
-		Filter columnsFilter = search.filter();
-		Filter filter = null;
-		if (columnsFilter == null) {
-			filter = rangefilter;
-		} else {
-			Filter[] filters = new Filter[] { rangefilter, columnsFilter };
-			filter = new ChainedFilter(filters, ChainedFilter.AND);
-		}
-
-		System.out.println(" => RANGE FILTER " + rangefilter);
-		System.out.println(" => COLUMNS FILTER " + columnsFilter);
-		System.out.println(" => FILTER FILTER " + filter);
-
-		Query query = new FilteredQuery(search.query(), filter);
-
-		Sort sort = search.relevance() ? null : sort();
+		Query query = search.query(schema, rangefilter);
+		Sort sort = search.usesRelevance() ? null : sort();
 
 		// Setup search pagination
 		List<Row> rows = new LinkedList<>(); // The row list to be returned
-		int pageSize = Math.min(MAX_PAGE_SIZE, requestedRows); // The page size
 		ScoreDoc lastDoc = null; // The last search result
 
 		// Paginate search collecting documents
@@ -332,55 +319,31 @@ public class RowService {
 		do {
 
 			// Search in Lucene
-			scoredDocuments = rowDirectory.search(lastDoc, query, sort, pageSize, fieldsToLoad);
+			scoredDocuments = rowDirectory.search(lastDoc, query, sort, PAGE_SIZE, fieldsToLoad);
 
 			// Collect rows from Cassandra
 			for (ScoredDocument sd : scoredDocuments) {
 				lastDoc = sd.scoreDoc;
-				Row row = row(sd.document, extraExpressions, timestamp); // Collect
-				if (row != null) { // May be null if not satisfies the filter expressions
+				Document document = sd.document;
+				DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
+				ByteBuffer clusteringKey = isWide ? clusteringKeyMapper.byteBuffer(document) : null;
+				Row row =  row(partitionKey, clusteringKey, timestamp);
+				if (row != null && accepted(row, filteredExpressions)) { 
 					rows.add(row);
 				}
-				if (rows.size() >= requestedRows) { // Break if we have enough rows
+				if (rows.size() >= limit) { // Break if we have enough rows
 					return rows;
 				}
 			}
-		} while (scoredDocuments.size() == pageSize); // Repeat while there may be more rows
+		} while (scoredDocuments.size() == PAGE_SIZE); // Repeat while there may be more rows
 
-		System.out.println("Query time: " + (System.currentTimeMillis() - timestamp) + " ms");
+		Log.debug("Query time: " + (System.currentTimeMillis() - timestamp) + " ms");
 		return rows;
 	}
 
-	/**
-	 * Returns the Cassandra's {@link Row} identified by the specified Lucene's {@link Document}.
-	 * The specified search score is added as a column to the row.
-	 * 
-	 * @param document
-	 *            The Lucene's {@link Document} identifying the {@link Row} to be returned.
-	 * @return The Cassandra's {@link Row} identified by the specified Lucene's {@link Document}.
-	 */
-	private Row row(Document document, List<IndexExpression> expressions, long timestamp) {
-
-		// Get the decorated partition key
-		DecoratedKey decoratedKey = partitionKeyMapper.decoratedKey(document);
-
-		// Get the column family from Cassandra or Lucene
-		DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
-		ByteBuffer clusteringKey = isWide ? clusteringKeyMapper.byteBuffer(document) : null;
-		QueryFilter queryFilter = queryFilter(partitionKey, clusteringKey, timestamp);
-		ColumnFamily columnFamily = baseCfs.getColumnFamily(queryFilter);
-
-		// Check filter
-		if (!accepted(partitionKey, columnFamily, expressions, timestamp)) {
-			return null;
-		}
-
-		return new Row(decoratedKey, columnFamily);
-	}
-
-	private boolean accepted(DecoratedKey key, ColumnFamily cf, List<IndexExpression> expressions, long timestamp) {
+	private boolean accepted(Row row, List<IndexExpression> expressions) {
 		if (!expressions.isEmpty()) {
-			Cells cells = schema.cells(metadata, key, cf, timestamp);
+			Cells cells = schema.cells(metadata, row.key, row.cf);
 			for (IndexExpression expression : expressions) {
 				if (!accepted(cells, expression)) {
 					return false;
@@ -489,7 +452,7 @@ public class RowService {
 	 *            The row's clustering key.
 	 * @return A Lucene's {@link Term} to be used as the unique identifier of a row.
 	 */
-	private Term term(DecoratedKey partitionKey, ByteBuffer clusteringKey) {
+	private Term identifyingTerm(DecoratedKey partitionKey, ByteBuffer clusteringKey) {
 		if (isWide) {
 			return fullKeyMapper.term(partitionKey, clusteringKey);
 		} else {
@@ -497,47 +460,7 @@ public class RowService {
 		}
 	}
 
-	public List<Row> combine(List<Row> rows, Search search, int limit, long timestamp) throws IOException {
-
-		// Setup RAM directory for index and query again partial results.
-		Directory directory = new RAMDirectory();
-
-		// Index partial results
-		Analyzer analyzer = schema.analyzer();
-		IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_46, analyzer);
-		config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
-		config.setUseCompoundFile(false);
-		IndexWriter indexWriter = new IndexWriter(directory, config);
-		Map<ByteBuffer, Row> map = new HashMap<>(rows.size());
-		for (Row row : rows) {
-			Document document = document(row, timestamp);
-			indexWriter.addDocument(document);
-			ByteBuffer docId = getUniqueId(document);
-			map.put(docId, row);
-		}
-		indexWriter.commit();
-		indexWriter.close();
-
-		// Search in partial results
-		IndexReader indexReader = DirectoryReader.open(directory);
-		IndexSearcher indexSearcher = new IndexSearcher(indexReader);
-		Query query = search.query();
-		TopDocs topdocs = indexSearcher.search(query, limit);
-		List<Row> result = new ArrayList<>(Math.min(limit, rows.size()));
-		for (ScoreDoc scoreDoc : topdocs.scoreDocs) {
-			Document document = indexSearcher.doc(scoreDoc.doc, fieldsToLoad);
-			ByteBuffer docId = getUniqueId(document);
-			Row row = map.get(docId);
-			result.add(row);
-		}
-		indexReader.close();
-
-		directory.close();
-
-		return result;
-	}
-
-	private ByteBuffer getUniqueId(Document document) {
+	public ByteBuffer getUniqueId(Document document) {
 		DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
 		if (isWide) {
 			ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(document);

@@ -24,7 +24,6 @@ import org.apache.lucene.util.Version;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeName;
-import org.codehaus.jackson.map.annotate.JacksonInject;
 
 /**
  * A {@link Condition} implementation that matches documents satisfying a Lucene Query Syntax.
@@ -46,8 +45,6 @@ public class LuceneCondition extends Condition {
 	/**
 	 * Constructor using the field name and the value to be matched.
 	 * 
-	 * @param schema
-	 *            The schema to be used.
 	 * @param boost
 	 *            The boost for this query clause. Documents matching this clause will (in addition
 	 *            to the normal weightings) have their score multiplied by {@code boost}. If
@@ -58,11 +55,10 @@ public class LuceneCondition extends Condition {
 	 *            the Lucene Query Syntax query.
 	 */
 	@JsonCreator
-	public LuceneCondition(@JacksonInject("schema") Schema schema,
-	                         @JsonProperty("boost") Float boost,
+	public LuceneCondition(@JsonProperty("boost") Float boost,
 	                       @JsonProperty("default_field") String defaultField,
 	                       @JsonProperty("query") String query) {
-		super(schema, boost);
+		super(boost);
 
 		this.query = query;
 		this.defaultField = defaultField == null ? DEFAULT_FIELD : defaultField;
@@ -90,7 +86,7 @@ public class LuceneCondition extends Condition {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Query query( ) {
+	public Query query(Schema schema) {
 
 		if (query == null) {
 			throw new IllegalArgumentException("Query statement required");

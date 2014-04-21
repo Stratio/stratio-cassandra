@@ -4,11 +4,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.cassandra.db.index.stratio.schema.CellMapper;
-import org.apache.cassandra.db.index.stratio.schema.CellMapperDouble;
-import org.apache.cassandra.db.index.stratio.schema.CellMapperFloat;
 import org.apache.cassandra.db.index.stratio.schema.CellMapperInet;
 import org.apache.cassandra.db.index.stratio.schema.CellMapperInteger;
-import org.apache.cassandra.db.index.stratio.schema.CellMapperLong;
 import org.apache.cassandra.db.index.stratio.schema.CellMapperString;
 import org.apache.cassandra.db.index.stratio.schema.Schema;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
@@ -17,7 +14,7 @@ import org.apache.lucene.search.Query;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class PrefixQueryTest {
+public class PrefixConditionTest {
 
 	@Test
 	public void testString() {
@@ -26,8 +23,8 @@ public class PrefixQueryTest {
 		map.put("name", new CellMapperString());
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		PrefixCondition prefixCondition = new PrefixCondition(mappers, 0.5f, "name", "tr");
-		Query query = prefixCondition.query();
+		PrefixCondition prefixCondition = new PrefixCondition(0.5f, "name", "tr");
+		Query query = prefixCondition.query(mappers);
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(PrefixQuery.class, query.getClass());
@@ -44,41 +41,8 @@ public class PrefixQueryTest {
 		map.put("name", new CellMapperInteger(1f));
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		PrefixCondition prefixCondition = new PrefixCondition(mappers, 0.5f, "name", "2*");
-		prefixCondition.query();
-	}
-
-	@Test(expected = UnsupportedOperationException.class)
-	public void testLong() {
-
-		Map<String, CellMapper<?>> map = new HashMap<>();
-		map.put("name", new CellMapperLong(1f));
-		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
-
-		PrefixCondition prefixCondition = new PrefixCondition(mappers, 0.5f, "name", 22L);
-		prefixCondition.query();
-	}
-
-	@Test(expected = UnsupportedOperationException.class)
-	public void testFloat() {
-
-		Map<String, CellMapper<?>> map = new HashMap<>();
-		map.put("name", new CellMapperFloat(1f));
-		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
-
-		PrefixCondition prefixCondition = new PrefixCondition(mappers, 0.5f, "name", 22F);
-		prefixCondition.query();
-	}
-
-	@Test(expected = UnsupportedOperationException.class)
-	public void testDouble() {
-
-		Map<String, CellMapper<?>> map = new HashMap<>();
-		map.put("name", new CellMapperDouble(1f));
-		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
-
-		PrefixCondition prefixCondition = new PrefixCondition(mappers, 0.5f, "name", 22D);
-		prefixCondition.query();
+		PrefixCondition prefixCondition = new PrefixCondition(0.5f, "name", "2*");
+		prefixCondition.query(mappers);
 	}
 
 	@Test
@@ -88,8 +52,8 @@ public class PrefixQueryTest {
 		map.put("name", new CellMapperInet());
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		PrefixCondition wildcardCondition = new PrefixCondition(mappers, 0.5f, "name", "192.168.");
-		Query query = wildcardCondition.query();
+		PrefixCondition wildcardCondition = new PrefixCondition(0.5f, "name", "192.168.");
+		Query query = wildcardCondition.query(mappers);
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(PrefixQuery.class, query.getClass());
@@ -106,8 +70,8 @@ public class PrefixQueryTest {
 		map.put("name", new CellMapperInet());
 		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		PrefixCondition wildcardCondition = new PrefixCondition(mappers, 0.5f, "name", "2001:db8:2de:0:0:0:0:e");
-		Query query = wildcardCondition.query();
+		PrefixCondition wildcardCondition = new PrefixCondition(0.5f, "name", "2001:db8:2de:0:0:0:0:e");
+		Query query = wildcardCondition.query(mappers);
 
 		Assert.assertNotNull(query);
 		Assert.assertEquals(PrefixQuery.class, query.getClass());

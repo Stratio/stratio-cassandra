@@ -25,7 +25,6 @@ import org.apache.lucene.search.Query;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeName;
-import org.codehaus.jackson.map.annotate.JacksonInject;
 
 /**
  * A {@link Condition} that matches documents matching boolean combinations of other queries, e.g.
@@ -49,8 +48,6 @@ public class BooleanCondition extends Condition {
 	/**
 	 * Returns a new {@link BooleanCondition} compound by the specified {@link Condition}s.
 	 * 
-	 * @param schema
-	 *            The schema to be used.
 	 * @param boost
 	 *            The boost for this query clause. Documents matching this clause will (in addition
 	 *            to the normal weightings) have their score multiplied by {@code boost}. If
@@ -63,12 +60,11 @@ public class BooleanCondition extends Condition {
 	 *            the mandatory not {@link Condition}s.
 	 */
 	@JsonCreator
-	public BooleanCondition(@JacksonInject("schema") Schema schema,
-	                         @JsonProperty("boost") Float boost,
+	public BooleanCondition(@JsonProperty("boost") Float boost,
 	                        @JsonProperty("must") List<Condition> must,
 	                        @JsonProperty("should") List<Condition> should,
 	                        @JsonProperty("not") List<Condition> not) {
-		super(schema, boost);
+		super(boost);
 		this.must = must == null ? new LinkedList<Condition>() : must;
 		this.should = should == null ? new LinkedList<Condition>() : should;
 		this.not = not == null ? new LinkedList<Condition>() : not;
@@ -141,17 +137,17 @@ public class BooleanCondition extends Condition {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Query query( ) {
+	public Query query(Schema schema) {
 		BooleanQuery luceneQuery = new BooleanQuery();
 		luceneQuery.setBoost(boost);
 		for (Condition query : must) {
-			luceneQuery.add(query.query(), Occur.MUST);
+			luceneQuery.add(query.query(schema), Occur.MUST);
 		}
 		for (Condition query : should) {
-			luceneQuery.add(query.query(), Occur.SHOULD);
+			luceneQuery.add(query.query(schema), Occur.SHOULD);
 		}
 		for (Condition query : not) {
-			luceneQuery.add(query.query(), Occur.MUST_NOT);
+			luceneQuery.add(query.query(schema), Occur.MUST_NOT);
 		}
 		return luceneQuery;
 	}

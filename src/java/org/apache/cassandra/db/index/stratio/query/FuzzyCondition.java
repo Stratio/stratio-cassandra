@@ -25,7 +25,6 @@ import org.apache.lucene.util.automaton.LevenshteinAutomata;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeName;
-import org.codehaus.jackson.map.annotate.JacksonInject;
 
 /**
  * A {@link Condition} that implements the fuzzy search query. The similarity measurement is based
@@ -52,22 +51,20 @@ public class FuzzyCondition extends Condition {
 	private Object value;
 
 	@JsonProperty("max_edits")
-	private final int maxEdits;
+	private final Integer maxEdits;
 
 	@JsonProperty("prefix_length")
-	private final int prefixLength;
+	private final Integer prefixLength;
 
 	@JsonProperty("max_expansions")
-	private final int maxExpansions;
+	private final Integer maxExpansions;
 
 	@JsonProperty("transpositions")
-	private final boolean transpositions;
+	private final Boolean transpositions;
 
 	/**
 	 * Returns a new {@link FuzzyCondition}.
 	 * 
-	 * @param schema
-	 *            The schema to be used.
 	 * @param boost
 	 *            The boost for this query clause. Documents matching this clause will (in addition
 	 *            to the normal weightings) have their score multiplied by {@code boost}. If
@@ -89,19 +86,14 @@ public class FuzzyCondition extends Condition {
 	 *            false, comparisons will implement the classic Levenshtein algorithm.
 	 */
 	@JsonCreator
-	public FuzzyCondition(@JacksonInject("schema") Schema schema,
-	                      @JsonProperty("boost") Float boost,
+	public FuzzyCondition(@JsonProperty("boost") Float boost,
 	                      @JsonProperty("field") String field,
 	                      @JsonProperty("value") Object value,
 	                      @JsonProperty("max_edits") Integer maxEdits,
 	                      @JsonProperty("prefix_length") Integer prefixLength,
 	                      @JsonProperty("max_expansions") Integer maxExpansions,
 	                      @JsonProperty("transpositions") Boolean transpositions) {
-		super(schema, boost);
-
-		if (field == null || field.trim().isEmpty()) {
-			throw new IllegalArgumentException("Field name required");
-		}
+		super(boost);
 
 		this.field = field;
 		this.value = value;
@@ -134,7 +126,7 @@ public class FuzzyCondition extends Condition {
 	 * 
 	 * @return The Damerau-Levenshtein max distance.
 	 */
-	public int getMaxEdits() {
+	public Integer getMaxEdits() {
 		return maxEdits;
 	}
 
@@ -143,7 +135,7 @@ public class FuzzyCondition extends Condition {
 	 * 
 	 * @return The length of common (non-fuzzy) prefix.
 	 */
-	public int getPrefixLength() {
+	public Integer getPrefixLength() {
 		return prefixLength;
 	}
 
@@ -152,7 +144,7 @@ public class FuzzyCondition extends Condition {
 	 * 
 	 * @return The maximum number of terms to match.
 	 */
-	public int getMaxExpansions() {
+	public Integer getMaxExpansions() {
 		return maxExpansions;
 	}
 
@@ -161,7 +153,7 @@ public class FuzzyCondition extends Condition {
 	 * 
 	 * @return If transpositions should be treated as a primitive edit operation.
 	 */
-	public boolean getTranspositions() {
+	public Boolean getTranspositions() {
 		return transpositions;
 	}
 
@@ -169,13 +161,22 @@ public class FuzzyCondition extends Condition {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Query query() {
+	public Query query(Schema schema) {
 
 		if (field == null || field.trim().isEmpty()) {
 			throw new IllegalArgumentException("Field name required");
 		}
 		if (value == null) {
 			throw new IllegalArgumentException("Field value required");
+		}
+		if (maxEdits < 0 || maxEdits > 2) {
+			throw new IllegalArgumentException("max_edits must be between 0 and 2");
+		}
+		if (prefixLength < 0) {
+			throw new IllegalArgumentException("prefix_length must be positive.");
+		}
+		if (maxExpansions < 0) {
+			throw new IllegalArgumentException("max_expansions must be positive.");
 		}
 
 		CellMapper<?> cellMapper = schema.getMapper(field);

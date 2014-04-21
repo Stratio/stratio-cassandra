@@ -30,7 +30,6 @@ import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonSubTypes;
 import org.codehaus.jackson.annotate.JsonTypeInfo;
-import org.codehaus.jackson.map.annotate.JacksonInject;
 
 /**
  * The abstract base class for queries.
@@ -41,7 +40,7 @@ import org.codehaus.jackson.map.annotate.JacksonInject;
  * <li> {@link FuzzyCondition}
  * <li> {@link MatchCondition}
  * <li> {@link PhraseCondition}
- * <li> {@link PrefixQueryTest}
+ * <li> {@link PrefixCondition}
  * <li> {@link RangeCondition}
  * <li> {@link WildcardCondition}
  * </ul>
@@ -63,7 +62,6 @@ public abstract class Condition {
 
 	public static final float DEFAULT_BOOST = 1.0f;
 
-	protected final Schema schema;
 	protected final float boost;
 
 	/**
@@ -73,8 +71,7 @@ public abstract class Condition {
 	 *            to the normal weightings) have their score multiplied by {@code boost}.
 	 */
 	@JsonCreator
-	public Condition(@JacksonInject("schema") Schema schema, @JsonProperty("boost") Float boost) {
-		this.schema = schema;
+	public Condition(@JsonProperty("boost") Float boost) {
 		this.boost = boost == null ? DEFAULT_BOOST : boost;
 	}
 
@@ -91,17 +88,21 @@ public abstract class Condition {
 	/**
 	 * Returns the Lucene's {@link Query} representation of this condition.
 	 * 
+	 * @param schema
+	 *            The schema to be used.
 	 * @return The Lucene's {@link Query} representation of this condition.
 	 */
-	public abstract Query query();
+	public abstract Query query(Schema schema);
 
 	/**
 	 * Returns the Lucene's {@link Filter} representation of this condition.
 	 * 
+	 * @param schema
+	 *            The schema to be used.
 	 * @return The Lucene's {@link Filter} representation of this condition.
 	 */
-	public Filter filter() {
-		return new QueryWrapperFilter(query());
+	public Filter filter(Schema schema) {
+		return new QueryWrapperFilter(query(schema));
 	}
 
 	protected String analyze(String field, String value, Analyzer analyzer) {

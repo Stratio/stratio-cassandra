@@ -23,7 +23,6 @@ import org.apache.lucene.search.Query;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonTypeName;
-import org.codehaus.jackson.map.annotate.JacksonInject;
 
 /**
  * A {@link Condition} implementation that matches documents containing terms with a specified
@@ -41,13 +40,11 @@ public class PrefixCondition extends Condition {
 
 	/** The field value */
 	@JsonProperty("value")
-	private Object value;
+	private final String value;
 
 	/**
 	 * Constructor using the field name and the value to be matched.
 	 * 
-	 * @param schema
-	 *            The schema to be used.
 	 * @param boost
 	 *            The boost for this query clause. Documents matching this clause will (in addition
 	 *            to the normal weightings) have their score multiplied by {@code boost}. If
@@ -58,11 +55,10 @@ public class PrefixCondition extends Condition {
 	 *            the field value.
 	 */
 	@JsonCreator
-	public PrefixCondition(@JacksonInject("schema") Schema schema,
-	                         @JsonProperty("boost") Float boost,
+	public PrefixCondition(@JsonProperty("boost") Float boost,
 	                       @JsonProperty("field") String field,
-	                       @JsonProperty("value") Object value) {
-		super(schema, boost);
+	                       @JsonProperty("value") String value) {
+		super(boost);
 
 		this.field = field;
 		this.value = value;
@@ -82,7 +78,7 @@ public class PrefixCondition extends Condition {
 	 * 
 	 * @return the field value.
 	 */
-	public Object getValue() {
+	public String getValue() {
 		return value;
 	}
 
@@ -90,7 +86,7 @@ public class PrefixCondition extends Condition {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Query query( ) {
+	public Query query(Schema schema) {
 
 		if (field == null || field.trim().isEmpty()) {
 			throw new IllegalArgumentException("Field name required");
