@@ -28,8 +28,7 @@ import org.codehaus.jackson.annotate.JsonTypeName;
  * A {@link Condition} implementation that matches documents containing terms with a specified
  * prefix.
  * 
- * @version 0.1
- * @author adelapena
+ * @author Andres de la Pena <adelapen@stratio.com>
  */
 @JsonTypeName("prefix")
 public class PrefixCondition extends Condition {

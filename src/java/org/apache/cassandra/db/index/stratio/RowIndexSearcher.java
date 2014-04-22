@@ -40,6 +40,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
@@ -53,7 +54,7 @@ import org.slf4j.LoggerFactory;
 /**
  * A {@link SecondaryIndexSearcher} for {@link RowIndex}.
  * 
- * @author adelapena
+ * @author Andres de la Pena <adelapen@stratio.com>
  * 
  */
 public class RowIndexSearcher extends SecondaryIndexSearcher {
@@ -86,7 +87,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
 
 	@Override
 	public List<Row> search(ExtendedFilter extendedFilter) {
-		logger.info("Searching " + extendedFilter);
+		Log.debug("Searching %s", extendedFilter);
 		try {
 			long timestamp = extendedFilter.timestamp;
 			int limit = extendedFilter.maxColumns();
@@ -96,7 +97,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
 			Search search = search(clause);
 			return rowIndexService.search(search, filteredExpressions, dataRange, limit, timestamp);
 		} catch (Exception e) {
-			logger.error("Error while searching: '%s'", e.getMessage(), e);
+			Log.error(e, "Error while searching: %s", e.getMessage());
 			return new ArrayList<>(0);
 		}
 	}
@@ -121,11 +122,8 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
 
 	@Override
 	public boolean requiresFullScan(AbstractRangeCommand command) {
-		Log.debug("Checking full scan");
 		Search search = search(command.rowFilter);
-		boolean requiresFullScan = search.usesRelevance();
-		Log.debug("Checked full scan %s", requiresFullScan);
-		return requiresFullScan;
+		return search.usesRelevance();
 	}
 
 	@Override
@@ -153,7 +151,8 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
 			Map<ByteBuffer, Row> map = new HashMap<>(rows.size());
 			for (Row row : rows) {
 				Document document = rowIndexService.document(row);
-				indexWriter.addDocument(document);
+				Term term = rowIndexService.identifyingTerm(row);
+				indexWriter.updateDocument(term, document);
 				ByteBuffer docId = rowIndexService.getUniqueId(document);
 				map.put(docId, row);
 			}
@@ -166,6 +165,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
 			IndexSearcher indexSearcher = new IndexSearcher(indexReader);
 			Query query = search.query(schema, null);
 			int limit = Math.min(command.limit(), rows.size());
+			Log.debug(" -> COMBINING %d ROWS WITH LIMIT %d", rows.size(), limit);
 			TopDocs topdocs = indexSearcher.search(query, limit);
 			List<Row> result = new ArrayList<>(limit);
 			for (ScoreDoc scoreDoc : topdocs.scoreDocs) {
@@ -181,8 +181,9 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
 			return result;
 
 		} catch (Exception e) {
-			logger.error("Error while combining partial results", e);
-			throw new RuntimeException("Error while combining partial results: " + e.getMessage(), e);
+			String message = String.format("Error while combining partial results: %s", e.getMessage());
+			Log.error(e, message);
+			throw new RuntimeException(message, e);
 		}
 	}
 

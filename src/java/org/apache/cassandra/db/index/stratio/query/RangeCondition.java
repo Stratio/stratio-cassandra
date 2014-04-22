@@ -27,8 +27,7 @@ import org.codehaus.jackson.annotate.JsonTypeName;
 /**
  * A {@link Condition} implementation that matches a field within an range of values.
  * 
- * @version 0.1
- * @author adelapena
+ * @author Andres de la Pena <adelapen@stratio.com>
  */
 @JsonTypeName("range")
 public class RangeCondition extends Condition {

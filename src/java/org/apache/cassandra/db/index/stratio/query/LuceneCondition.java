@@ -28,8 +28,7 @@ import org.codehaus.jackson.annotate.JsonTypeName;
 /**
  * A {@link Condition} implementation that matches documents satisfying a Lucene Query Syntax.
  * 
- * @version 0.1
- * @author adelapena
+ * @author Andres de la Pena <adelapen@stratio.com>
  */
 @JsonTypeName("lucene")
 public class LuceneCondition extends Condition {

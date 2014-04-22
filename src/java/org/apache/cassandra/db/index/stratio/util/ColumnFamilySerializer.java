@@ -28,7 +28,7 @@ import org.apache.cassandra.net.MessagingService;
 /**
  * Class for serializing {@link ColumnFamily} from/to byte array.
  * 
- * @author adelapena
+ * @author Andres de la Pena <adelapen@stratio.com>
  * 
  */
 public class ColumnFamilySerializer {

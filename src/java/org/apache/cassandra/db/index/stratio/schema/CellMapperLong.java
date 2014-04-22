@@ -33,7 +33,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
 /**
  * A {@link CellMapper} to map a long field.
  * 
- * @author adelapena
+ * @author Andres de la Pena <adelapen@stratio.com>
  */
 public class CellMapperLong extends CellMapper<Long> {
 

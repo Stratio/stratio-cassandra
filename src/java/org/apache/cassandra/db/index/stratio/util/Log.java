@@ -20,6 +20,11 @@ import java.nio.ByteBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 
+ * @author Andres de la Pena <adelapen@stratio.com>
+ *
+ */
 public class Log {
 
 	protected static final Logger log = LoggerFactory.getLogger("stratio");

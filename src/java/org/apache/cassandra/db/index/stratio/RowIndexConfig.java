@@ -25,7 +25,7 @@ import org.apache.cassandra.db.index.stratio.schema.Schema;
 /**
  * Class for building {@link RowIndexService} instances.
  * 
- * @author adelapena
+ * @author Andres de la Pena <adelapen@stratio.com>
  * 
  */
 public class RowIndexConfig {
@@ -38,7 +38,7 @@ public class RowIndexConfig {
 	private static final String FILTER_CACHE_SIZE_OPTION = "num_cached_filters";
 
 	private static final String PATH_OPTION = "path";
-	private static final String DEFAULT_PATH_PREFIX = "lucene";
+	private static final String DEFAULT_PATH_PREFIX = "lucene_idx";
 
 	private static final String RAM_BUFFER_MB_OPTION = "ram_buffer_mb";
 	private static final int DEFAULT_RAM_BUFFER_MB = 64;
@@ -164,14 +164,13 @@ public class RowIndexConfig {
 			StringBuilder directoryPathBuilder = new StringBuilder();
 			directoryPathBuilder.append(dataFileLocations[0]);
 			directoryPathBuilder.append(File.separatorChar);
-			directoryPathBuilder.append(DEFAULT_PATH_PREFIX);
-			directoryPathBuilder.append(File.separatorChar);
 			directoryPathBuilder.append(metadata.ksName);
 			directoryPathBuilder.append(File.separatorChar);
 			directoryPathBuilder.append(metadata.cfName);
 			directoryPathBuilder.append(File.separatorChar);
-			directoryPathBuilder.append(indexName);
+			directoryPathBuilder.append(DEFAULT_PATH_PREFIX);
 			path = directoryPathBuilder.toString();
+			System.out.println(" -> CONFIG PATH " + path);
 		} else {
 			path = directoryOption;
 		}

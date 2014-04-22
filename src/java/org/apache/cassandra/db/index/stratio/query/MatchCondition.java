@@ -28,8 +28,7 @@ import org.codehaus.jackson.annotate.JsonTypeName;
 /**
  * A {@link Condition} implementation that matches documents containing a value for a field.
  * 
- * @version 0.1
- * @author adelapena
+ * @author Andres de la Pena <adelapen@stratio.com>
  */
 @JsonTypeName("match")
 public class MatchCondition extends Condition {

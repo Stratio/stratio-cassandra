@@ -1,18 +1,18 @@
 /*
-* Copyright 2014, Stratio.
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-* http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Copyright 2014, Stratio.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.cassandra.db.index.stratio;
 
 import java.util.Arrays;
@@ -26,21 +26,27 @@ import org.apache.lucene.search.CachingWrapperFilter;
 import org.apache.lucene.search.Filter;
 
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap;
+import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap.Builder;
 
 /**
  * Cache for Lucene's {@link Filter}s associated to Cassandra's {@link DataRange}s.
  * 
- * @author adelapena
+ * @author Andres de la Pena <adelapen@stratio.com>
  * 
  */
 public class FilterCache {
 
-	private final ConcurrentLinkedHashMap<FilterKey, CachingWrapperFilter> map;
+	private final ConcurrentLinkedHashMap<DataRangeKey, CachingWrapperFilter> map;
 
+	/**
+	 * Returns a new {@link FilterCache} with the specified capacity.
+	 * 
+	 * @param capacity
+	 *            The max number of {@link Filter}s to be cached.
+	 */
 	public FilterCache(int capacity) {
 		assert capacity > 0;
-		map = new ConcurrentLinkedHashMap.Builder<FilterKey, CachingWrapperFilter>().maximumWeightedCapacity(capacity)
-		                                                                            .build();
+		map = new Builder<DataRangeKey, CachingWrapperFilter>().maximumWeightedCapacity(capacity).build();
 	}
 
 	/**
@@ -54,31 +60,50 @@ public class FilterCache {
 	 *            Filter to be associated with the specified dataRange.
 	 */
 	public void put(DataRange dataRange, Filter filter) {
-		FilterKey filterKey = new FilterKey(dataRange);
+		DataRangeKey dataRangeKey = new DataRangeKey(dataRange);
 		CachingWrapperFilter cachingFilter = new CachingWrapperFilter(filter);
-		map.put(filterKey, cachingFilter);
+		map.put(dataRangeKey, cachingFilter);
 	}
 
+	/**
+	 * Returns the {@link Filter} associated with the {@link DataRange}, {@code null} if not found.
+	 * 
+	 * @param dataRange
+	 *            The {@link DataRange} used as key of this cache.
+	 * @return The {@link Filter} associated with the {@link DataRange}, {@code null} if not found.
+	 */
 	public CachingWrapperFilter get(DataRange dataRange) {
-		FilterKey filterKey = new FilterKey(dataRange);
-		return map.get(filterKey);
+		DataRangeKey dataRangeKey = new DataRangeKey(dataRange);
+		return map.get(dataRangeKey);
 	}
 
+	/**
+	 * Returns the number of {@link Filter}s in this map.
+	 * 
+	 * @return the number of {@link Filter}s in this map.
+	 */
 	public int size() {
 		return map.size();
 	}
 
+	/**
+	 * Removes all of the {@link Filter}s from this cache. The cache will be empty after this call
+	 * returns.
+	 */
 	public void clear() {
 		map.clear();
 	}
 
-	public static class FilterKey {
+	/**
+	 * Class representing the unique identifying key of a {@link DataRange}.
+	 */
+	private static final class DataRangeKey {
 
 		private final RowPosition left;
 		private final RowPosition right;
 		private final ColumnSlice[] slices;
 
-		public FilterKey(DataRange dataRange) {
+		public DataRangeKey(DataRange dataRange) {
 			left = dataRange.startKey();
 			right = dataRange.stopKey();
 			slices = ((SliceQueryFilter) dataRange.columnFilter(ByteBufferUtil.EMPTY_BYTE_BUFFER)).slices;
@@ -102,7 +127,7 @@ public class FilterCache {
 				return false;
 			if (getClass() != obj.getClass())
 				return false;
-			FilterKey other = (FilterKey) obj;
+			DataRangeKey other = (DataRangeKey) obj;
 
 			if (left == null) {
 				if (other.left != null) {

@@ -44,7 +44,7 @@ import org.apache.lucene.util.BytesRef;
  * Class for several clustering key mappings between Cassandra and Lucene. This class only be used
  * in column families with wide rows.
  * 
- * @author adelapena
+ * @author Andres de la Pena <adelapen@stratio.com>
  * 
  */
 public class ClusteringKeyMapper {
@@ -52,7 +52,10 @@ public class ClusteringKeyMapper {
 	/** The Lucene's field name. */
 	public static final String FIELD_NAME = "_clustering_key";
 
+	/** The type of the clustering key, which is the type of the column names. */
 	private final CompositeType type;
+
+	/** The index of the last component of the clustering key in the composite column names. */
 	private final int clusteringPosition;
 
 	/**
@@ -78,7 +81,8 @@ public class ClusteringKeyMapper {
 	}
 
 	/**
-	 * Returns the clustering key validation type.
+	 * Returns the clustering key validation type. It's always a {@link CompositeType} in CQL3
+	 * tables.
 	 * 
 	 * @return The clustering key validation type.
 	 */
@@ -125,10 +129,11 @@ public class ClusteringKeyMapper {
 	}
 
 	/**
-	 * Returns the common clustering keys of the specified column family
+	 * Returns the first clustering key of the specified column family. There could be more than
+	 * one.
 	 * 
 	 * @param columnFamily
-	 * @return
+	 * @return The first clustering key of the specified column family.
 	 */
 	public ByteBuffer byteBuffer(ColumnFamily columnFamily) {
 		Iterator<Column> iterator = columnFamily.iterator();
@@ -137,6 +142,12 @@ public class ClusteringKeyMapper {
 		return start(columnName);
 	}
 
+	/**
+	 * Returns the common clustering keys of the specified column family.
+	 * 
+	 * @param columnFamily
+	 * @return The common clustering keys of the specified column family.
+	 */
 	public Set<ByteBuffer> byteBuffers(ColumnFamily columnFamily) {
 		Set<ByteBuffer> keys = new HashSet<>();
 		Iterator<Column> iterator = columnFamily.iterator();
@@ -172,15 +183,15 @@ public class ClusteringKeyMapper {
 
 	/**
 	 * Adds the to the specified {@link Document} the {@link Fields} representing the clustering key
-	 * of the specified storage engine {@link Column}.
+	 * of the specified storage engine {@link Column} name.
 	 * 
 	 * @param document
 	 *            A {@link Document}.
-	 * @param column
-	 *            A {@link Column}.
+	 * @param columnName
+	 *            A {@link Column} name.
 	 */
-	public void addFields(Document document, ByteBuffer name) {
-		Field field = new StringField(FIELD_NAME, ByteBufferUtils.toString(name), Store.YES);
+	public void addFields(Document document, ByteBuffer columnName) {
+		Field field = new StringField(FIELD_NAME, ByteBufferUtils.toString(columnName), Store.YES);
 		document.add(field);
 	}
 
@@ -221,6 +232,15 @@ public class ClusteringKeyMapper {
 		return new ClusteringKeyMapperDataRangeFilter(this, dataRange);
 	}
 
+	/**
+	 * Returns a Lucene's {@link Filter} for filtering documents/rows according to the column
+	 * tombstone range specified in {@code rangeTombstone}.
+	 * 
+	 * @param dataRange
+	 *            The data range containing the column tombstone range to be filtered.
+	 * @return A Lucene's {@link Filter} for filtering documents/rows according to the column
+	 *         tombstone range specified in {@code rangeTombstone}.
+	 */
 	public Filter filter(RangeTombstone rangeTombstone) {
 		return new ClusteringKeyMapperRangeTombstoneFilter(this, rangeTombstone);
 	}

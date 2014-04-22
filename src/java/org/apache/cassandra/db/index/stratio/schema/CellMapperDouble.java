@@ -33,7 +33,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
 /**
  * A {@link CellMapper} to map a double field.
  * 
- * @author adelapena
+ * @author Andres de la Pena <adelapen@stratio.com>
  */
 public class CellMapperDouble extends CellMapper<Double> {
 

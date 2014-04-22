@@ -39,7 +39,7 @@ import org.apache.lucene.util.BytesRef;
  * {@link TokenMapper} to be used when any {@link IPartitioner} when there is not a more specific
  * implementation. It indexes the token raw binary value as a Lucene's string field.
  * 
- * @author adelapena
+ * @author Andres de la Pena <adelapen@stratio.com>
  * 
  */
 public class TokenMapperGeneric extends TokenMapper {

@@ -33,12 +33,34 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.OpenBitSet;
 
+/**
+ * {@link Filter} that filters documents which clustering key field satisfies a certain
+ * {@link RangeTombstone}. This means that the clustering key value must be contained in the slice
+ * query filter specified in the tombstone range.
+ * 
+ * @author Andres de la Pena <adelapen@stratio.com>
+ * 
+ */
 public class ClusteringKeyMapperRangeTombstoneFilter extends Filter {
 
+	/** The minimum accepted column name. */
 	private final ByteBuffer min;
+
+	/** The maximum accepted column name. */
 	private final ByteBuffer max;
+
+	/** The type of the column names to be filtered. */
 	private final AbstractType<?> columnNameType;
 
+	/**
+	 * Returns a new {@code ClusteringKeyMapperRangeTombstoneFilter} for {@code rangeTombstone}
+	 * using {@code clusteringKeyMapper}.
+	 * 
+	 * @param clusteringKeyMapper
+	 *            The {@link ClusteringKeyMapper} to be used.
+	 * @param rangeTombstone
+	 *            The filtering tombstone range.
+	 */
 	public ClusteringKeyMapperRangeTombstoneFilter(ClusteringKeyMapper clusteringKeyMapper,
 	                                               RangeTombstone rangeTombstone) {
 		super();
@@ -47,6 +69,9 @@ public class ClusteringKeyMapperRangeTombstoneFilter extends Filter {
 		this.columnNameType = clusteringKeyMapper.getType();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public DocIdSet getDocIdSet(AtomicReaderContext context, final Bits acceptDocs) throws IOException {
 		AtomicReader atomicReader = context.reader();

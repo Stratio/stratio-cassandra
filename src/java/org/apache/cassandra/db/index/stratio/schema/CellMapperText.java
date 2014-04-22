@@ -40,7 +40,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
 /**
  * A {@link CellMapper} to map a string, tokenized field.
  * 
- * @author adelapena
+ * @author Andres de la Pena <adelapen@stratio.com>
  */
 public class CellMapperText extends CellMapper<String> {
 

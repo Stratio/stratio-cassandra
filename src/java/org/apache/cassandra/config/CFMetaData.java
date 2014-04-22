@@ -1512,6 +1512,13 @@ public final class CFMetaData
 
         for (TriggerDefinition td : triggers.values())
             td.deleteFromSchema(rm, cfName, timestamp);
+        
+        for (String indexName : Keyspace.open(this.ksName).getColumnFamilyStore(this.cfName).getBuiltIndexes())
+        {
+            ColumnFamily indexCf = rm.addOrGet(IndexCf);
+            AbstractType type = indexCf.getComparator();
+            indexCf.addTombstone(type.decompose(indexName), ldt, timestamp);
+        }
 
         return rm;
     }

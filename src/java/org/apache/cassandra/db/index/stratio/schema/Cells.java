@@ -23,7 +23,7 @@ import java.util.List;
 /**
  * A sorted list of CQL3 logic {@link Cell}s.
  * 
- * @author adelapena
+ * @author Andres de la Pena <adelapen@stratio.com>
  * 
  */
 public class Cells implements Iterable<Cell> {

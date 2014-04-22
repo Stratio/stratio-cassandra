@@ -45,7 +45,7 @@ import org.apache.lucene.util.Version;
 /**
  * Class wrapping a Lucene's directory and its readers , writers and searchers for NRT.
  * 
- * @author adelapena
+ * @author Andres de la Pena <adelapen@stratio.com>
  * 
  */
 public class RowDirectory {
@@ -65,7 +65,8 @@ public class RowDirectory {
 	 *            The analyzer to be used. The path of the directory in where the Lucene's files
 	 *            will be stored.
 	 * @param refreshSeconds
-	 *            The index readers refresh time in seconds.
+	 *            The index readers refresh time in seconds. No guarantees that the writings are
+	 *            visible until this time.
 	 * @param ramBufferMB
 	 *            The index writer buffer size in MB.
 	 * @param maxMergeMB
@@ -81,6 +82,9 @@ public class RowDirectory {
 	                    Integer maxCachedMB,
 	                    Analyzer analyzer) {
 		try {
+			
+
+			System.out.println(" -> DIRECTORY PATH " + path);
 
 			// Get directory file
 			file = new File(path);
@@ -213,7 +217,7 @@ public class RowDirectory {
 		try {
 			indexWriter.deleteDocuments(query);
 		} catch (IOException e) {
-			Log.error(e, "Error deleting docuemnts by query");
+			Log.error(e, "Error deleting documents by query");
 			throw new RuntimeException(e);
 		}
 	}
@@ -356,8 +360,6 @@ public class RowDirectory {
 
 	/**
 	 * Tuple relating a {@link Document} to a search scoring.
-	 * 
-	 * @author adelapena
 	 * 
 	 */
 	public static class ScoredDocument {

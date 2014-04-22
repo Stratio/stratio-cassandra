@@ -16,7 +16,6 @@
 package org.apache.cassandra.db.index.stratio;
 
 import java.nio.ByteBuffer;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -37,7 +36,7 @@ import org.apache.cassandra.exceptions.ConfigurationException;
  * A {@link PerRowSecondaryIndex} that uses Apache Lucene as backend. It allows, among others,
  * multi-comun and full-text search.
  * 
- * @author adelapena
+ * @author Andres de la Pena <adelapen@stratio.com>
  * 
  */
 public class RowIndex extends PerRowSecondaryIndex {
@@ -80,10 +79,11 @@ public class RowIndex extends PerRowSecondaryIndex {
 
 	@Override
 	public void init() {
-		Log.info("Initializing index %s.%s.%s", keyspaceName, tableName, indexName);
+		Log.info("Initializing index %s", logName);
 		lock.writeLock().lock();
 		try {
 			setup();
+			Log.info("Initialized index %s", logName);
 		} finally {
 			lock.writeLock().unlock();
 		}
@@ -151,10 +151,6 @@ public class RowIndex extends PerRowSecondaryIndex {
 		return true;
 	}
 
-	public static void validate(CFMetaData metadata, String indexName, Map<String, String> options) {
-		new RowIndexConfig(metadata, indexName, options);
-	}
-
 	@Override
 	public void validateOptions() throws ConfigurationException {
 		Log.debug("Validating");
@@ -162,8 +158,8 @@ public class RowIndex extends PerRowSecondaryIndex {
 			ColumnDefinition columnDefinition = columnDefs.iterator().next();
 			if (baseCfs != null) {
 				new RowIndexConfig(baseCfs.metadata,
-				                     columnDefinition.getIndexName(),
-				                     columnDefinition.getIndexOptions());
+				                   columnDefinition.getIndexName(),
+				                   columnDefinition.getIndexOptions());
 				Log.debug("Index options are valid");
 			} else {
 				Log.debug("Validation skipped");
@@ -194,6 +190,10 @@ public class RowIndex extends PerRowSecondaryIndex {
 				rowIndexService.delete();
 				rowIndexService = null;
 			}
+			Log.info("Removed index %s", logName);
+		} catch (Exception e) {
+			Log.error("Removing index %s", logName);
+			throw new RuntimeException(e);
 		} finally {
 			lock.writeLock().unlock();
 		}
@@ -208,6 +208,10 @@ public class RowIndex extends PerRowSecondaryIndex {
 				rowIndexService.delete();
 				rowIndexService = null;
 			}
+			Log.info("Invalidated index %s", logName);
+		} catch (Exception e) {
+			Log.error("Invalidating index %s", logName);
+			throw new RuntimeException(e);
 		} finally {
 			lock.writeLock().unlock();
 		}
@@ -221,6 +225,10 @@ public class RowIndex extends PerRowSecondaryIndex {
 			if (rowIndexService != null) {
 				rowIndexService.truncate();
 			}
+			Log.info("Truncated index %s", logName);
+		} catch (Exception e) {
+			Log.error("Truncating index %s", logName);
+			throw new RuntimeException(e);
 		} finally {
 			lock.writeLock().unlock();
 		}
@@ -234,6 +242,10 @@ public class RowIndex extends PerRowSecondaryIndex {
 			if (rowIndexService == null) {
 				setup();
 			}
+			Log.info("Reloaded index %s", logName);
+		} catch (Exception e) {
+			Log.error("Reloading index %s", logName);
+			throw new RuntimeException(e);
 		} finally {
 			lock.writeLock().unlock();
 		}
@@ -245,6 +257,10 @@ public class RowIndex extends PerRowSecondaryIndex {
 		lock.writeLock().lock();
 		try {
 			rowIndexService.commit();
+			Log.info("Flushed index %s", logName);
+		} catch (Exception e) {
+			Log.error("Flushing index %s", logName);
+			throw new RuntimeException(e);
 		} finally {
 			lock.writeLock().unlock();
 		}

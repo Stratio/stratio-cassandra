@@ -19,10 +19,8 @@ import java.nio.ByteBuffer;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.index.stratio.util.ByteBufferUtils;
-import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -35,7 +33,7 @@ import org.apache.lucene.search.TermQuery;
 /**
  * Class for several partition key mappings between Cassandra and Lucene.
  * 
- * @author adelapena
+ * @author Andres de la Pena <adelapen@stratio.com>
  * 
  */
 public class PartitionKeyMapper {
@@ -45,14 +43,12 @@ public class PartitionKeyMapper {
 
 	/** The active active partition key. */
 	private final IPartitioner<?> partitioner;
-	private final CompositeType nameType;
 
 	/**
 	 * Returns a new {@code PartitionKeyMapper} according to the specified column family meta data.
 	 */
 	private PartitionKeyMapper(CFMetaData metadata) {
 		partitioner = DatabaseDescriptor.getPartitioner();
-		nameType = (CompositeType) metadata.comparator;
 	}
 
 	/**
@@ -126,18 +122,6 @@ public class PartitionKeyMapper {
 	 */
 	public DecoratedKey decoratedKey(ByteBuffer partitionKey) {
 		return partitioner.decorateKey(partitionKey);
-	}
-
-	/**
-	 * Returns the column name defined by the specified document and the specified column logic
-	 * name.
-	 * 
-	 * @param columnIdentifier
-	 *            The column logic name.
-	 * @return
-	 */
-	public ByteBuffer name(ColumnIdentifier columnIdentifier) {
-		return nameType.builder().add(columnIdentifier.key).build();
 	}
 
 }

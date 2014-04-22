@@ -31,7 +31,7 @@ import org.codehaus.jackson.annotate.JsonTypeName;
  * on the Damerau-Levenshtein (optimal string alignment) algorithm, though you can explicitly choose
  * classic Levenshtein by passing {@code false} to the {@code transpositions} parameter.
  * 
- * @author adelapena
+ * @author Andres de la Pena <adelapen@stratio.com>
  * 
  */
 @JsonTypeName("fuzzy")
@@ -48,7 +48,7 @@ public class FuzzyCondition extends Condition {
 
 	/** The field value */
 	@JsonProperty("value")
-	private Object value;
+	private String value;
 
 	@JsonProperty("max_edits")
 	private final Integer maxEdits;
@@ -88,7 +88,7 @@ public class FuzzyCondition extends Condition {
 	@JsonCreator
 	public FuzzyCondition(@JsonProperty("boost") Float boost,
 	                      @JsonProperty("field") String field,
-	                      @JsonProperty("value") Object value,
+	                      @JsonProperty("value") String value,
 	                      @JsonProperty("max_edits") Integer maxEdits,
 	                      @JsonProperty("prefix_length") Integer prefixLength,
 	                      @JsonProperty("max_expansions") Integer maxExpansions,
@@ -117,7 +117,7 @@ public class FuzzyCondition extends Condition {
 	 * 
 	 * @return the field value.
 	 */
-	public Object getValue() {
+	public String getValue() {
 		return value;
 	}
 
@@ -166,7 +166,7 @@ public class FuzzyCondition extends Condition {
 		if (field == null || field.trim().isEmpty()) {
 			throw new IllegalArgumentException("Field name required");
 		}
-		if (value == null) {
+		if (value == null || value.trim().isEmpty()) {
 			throw new IllegalArgumentException("Field value required");
 		}
 		if (maxEdits < 0 || maxEdits > 2) {

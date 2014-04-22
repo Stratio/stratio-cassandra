@@ -30,7 +30,7 @@ import org.codehaus.jackson.annotate.JsonCreator;
 /**
  * A {@link CellMapper} to map a UUID field.
  * 
- * @author adelapena
+ * @author Andres de la Pena <adelapen@stratio.com>
  */
 public class CellMapperUUID extends CellMapper<String> {
 

@@ -49,7 +49,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
 /**
  * Class for several culumns mappings between Cassandra and Lucene.
  * 
- * @author adelapena
+ * @author Andres de la Pena <adelapen@stratio.com>
  * 
  */
 public class Schema {

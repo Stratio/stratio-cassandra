@@ -41,7 +41,7 @@ import org.apache.lucene.util.OpenBitSet;
  * {@link DataRange}. This means that the clustering key value must be contained in the slice query
  * filter specified in the data range.
  * 
- * @author adelapena
+ * @author Andres de la Pena <adelapen@stratio.com>
  * 
  */
 public class ClusteringKeyMapperDataRangeFilter extends Filter {
@@ -53,7 +53,7 @@ public class ClusteringKeyMapperDataRangeFilter extends Filter {
 	private final SliceQueryFilter sliceQueryFilter;
 
 	/**
-	 * Build a new {@code ClusteringKeyFilter} for the {@code dataRange} using
+	 * Returns a new {@code ClusteringKeyFilter} for {@code dataRange} using
 	 * {@code clusteringKeyMapper}.
 	 * 
 	 * @param clusteringKeyMapper
@@ -66,6 +66,9 @@ public class ClusteringKeyMapperDataRangeFilter extends Filter {
 		this.sliceQueryFilter = (SliceQueryFilter) dataRange.columnFilter(ByteBufferUtil.EMPTY_BYTE_BUFFER);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public DocIdSet getDocIdSet(AtomicReaderContext context, final Bits acceptDocs) throws IOException {
 		AtomicReader atomicReader = context.reader();

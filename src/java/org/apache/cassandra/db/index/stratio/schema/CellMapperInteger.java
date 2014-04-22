@@ -33,7 +33,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
 /**
  * A {@link CellMapper} to map an integer field.
  * 
- * @author adelapena
+ * @author Andres de la Pena <adelapen@stratio.com>
  */
 public class CellMapperInteger extends CellMapper<Integer> {
 

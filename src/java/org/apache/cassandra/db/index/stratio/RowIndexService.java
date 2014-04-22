@@ -58,7 +58,7 @@ import org.apache.lucene.search.SortField;
 /**
  * Class for mapping rows between Cassandra and Lucene.
  * 
- * @author adelapena
+ * @author Andres de la Pena <adelapen@stratio.com>
  * 
  */
 public class RowIndexService {
@@ -156,28 +156,17 @@ public class RowIndexService {
 		DeletionInfo deletionInfo = columnFamily.deletionInfo();
 		DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(key);
 
-		if (columnFamily.iterator().hasNext()) {
-
-			if (isWide) {
+		if (isWide) {
+			if (columnFamily.iterator().hasNext()) {
 				for (ByteBuffer clusteringKey : clusteringKeyMapper.byteBuffers(columnFamily)) {
 					Row row = row(partitionKey, clusteringKey, timestamp);
 					Document document = document(row);
-					Term term = identifyingTerm(partitionKey, clusteringKey);
+					Term term = identifyingTerm(row);
 					rowDirectory.updateDocument(term, document);
 				}
-			} else {
-				Row row = row(partitionKey, null, timestamp);
-				Document document = document(row);
-				Term term = identifyingTerm(partitionKey, null);
-				rowDirectory.updateDocument(term, document);
-			}
 
-		} else if (deletionInfo != null) {
-			Iterator<RangeTombstone> iterator = deletionInfo.rangeIterator();
-			if (!iterator.hasNext() || !isWide) { // Delete full storage row
-				Term term = partitionKeyMapper.term(partitionKey);
-				rowDirectory.deleteDocuments(term);
-			} else { // Just for delete ranges of wide rows
+			} else if (deletionInfo != null) {
+				Iterator<RangeTombstone> iterator = deletionInfo.rangeIterator();
 				while (iterator.hasNext()) {
 					RangeTombstone rangeTombstone = iterator.next();
 					Filter filter = clusteringKeyMapper.filter(rangeTombstone);
@@ -185,6 +174,16 @@ public class RowIndexService {
 					Query query = new FilteredQuery(partitionKeyQuery, filter);
 					rowDirectory.deleteDocuments(query);
 				}
+			}
+		} else {
+			Row row = row(partitionKey, null, timestamp);
+			if (row.cf.iterator().hasNext()) {
+				Document document = document(row);
+				Term term = identifyingTerm(row);
+				rowDirectory.updateDocument(term, document);
+			} else if (deletionInfo != null) {
+				Term term = partitionKeyMapper.term(partitionKey);
+				rowDirectory.deleteDocuments(term);
 			}
 		}
 	}
@@ -327,8 +326,8 @@ public class RowIndexService {
 				Document document = sd.document;
 				DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
 				ByteBuffer clusteringKey = isWide ? clusteringKeyMapper.byteBuffer(document) : null;
-				Row row =  row(partitionKey, clusteringKey, timestamp);
-				if (row != null && accepted(row, filteredExpressions)) { 
+				Row row = row(partitionKey, clusteringKey, timestamp);
+				if (row != null && accepted(row, filteredExpressions)) {
 					rows.add(row);
 				}
 				if (rows.size() >= limit) { // Break if we have enough rows
@@ -446,14 +445,14 @@ public class RowIndexService {
 	/**
 	 * Returns a Lucene's {@link Term} to be used as the unique identifier of a row.
 	 * 
-	 * @param partitionKey
-	 *            The row's partition key.
-	 * @param clusteringKey
-	 *            The row's clustering key.
+	 * @param row
+	 *            A {@link Row}.
 	 * @return A Lucene's {@link Term} to be used as the unique identifier of a row.
 	 */
-	private Term identifyingTerm(DecoratedKey partitionKey, ByteBuffer clusteringKey) {
+	public Term identifyingTerm(Row row) {
+		DecoratedKey partitionKey = row.key;
 		if (isWide) {
+			ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(row.cf);
 			return fullKeyMapper.term(partitionKey, clusteringKey);
 		} else {
 			return partitionKeyMapper.term(partitionKey);

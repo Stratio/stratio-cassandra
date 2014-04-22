@@ -30,8 +30,7 @@ import org.codehaus.jackson.annotate.JsonTypeName;
  * A {@link Condition} that matches documents matching boolean combinations of other queries, e.g.
  * {@link MatchCondition}s, {@link RangeCondition}s or other {@link BooleanCondition}s.
  * 
- * @version 0.1
- * @author adelapena
+ * @author Andres de la Pena <adelapen@stratio.com>
  */
 @JsonTypeName("boolean")
 public class BooleanCondition extends Condition {

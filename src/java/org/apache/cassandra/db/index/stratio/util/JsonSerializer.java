@@ -21,6 +21,11 @@ import org.codehaus.jackson.JsonParser;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.SerializationConfig;
 
+/**
+ * 
+ * @author Andres de la Pena <adelapen@stratio.com>
+ *
+ */
 public class JsonSerializer {
 
 	/** The embedded JSON serializer. */

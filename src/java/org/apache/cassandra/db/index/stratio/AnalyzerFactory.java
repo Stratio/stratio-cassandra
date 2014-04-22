@@ -1,18 +1,18 @@
 /*
-* Copyright 2014, Stratio.
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-* http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Copyright 2014, Stratio.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.cassandra.db.index.stratio;
 
 import java.lang.reflect.Constructor;
@@ -26,7 +26,7 @@ import org.apache.lucene.util.Version;
  * Class for building Lucene's {@link org.apache.lucene.analysis.Analyzer}s. It uses an internal
  * cache which associates analyzer class names with analyzers.
  * 
- * @author adelapena
+ * @author Andres de la Pena <adelapen@stratio.com>
  * 
  */
 public final class AnalyzerFactory {
@@ -40,7 +40,8 @@ public final class AnalyzerFactory {
 	 * 
 	 * @param analyzerClassName
 	 *            The analyzer class name.
-	 * @return
+	 * @return The {@link org.apache.lucene.analysis.Analyzer} identified by the specified class
+	 *         name.
 	 */
 	public static Analyzer getAnalyzer(String analyzerClassName) {
 		Analyzer analyzer = analyzers.get(analyzerClassName);

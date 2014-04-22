@@ -33,7 +33,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
 /**
  * A {@link CellMapper} to map a float field.
  * 
- * @author adelapena
+ * @author Andres de la Pena <adelapen@stratio.com>
  */
 public class CellMapperFloat extends CellMapper<Float> {
 

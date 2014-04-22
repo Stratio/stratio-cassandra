@@ -23,7 +23,7 @@ import org.apache.cassandra.utils.ByteBufferUtil;
  * Class for mapping several binary types from/to {@link String} using a base of 256 UTF-8
  * characters.
  * 
- * @author adelapena
+ * @author Andres de la Pena <adelapen@stratio.com>
  * 
  */
 public class Base256Serializer {
