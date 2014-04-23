@@ -240,7 +240,7 @@ public final class KSMetaData {
 		rm.delete(SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF, timestamp);
 		rm.delete(SystemKeyspace.SCHEMA_COLUMNS_CF, timestamp);
 		rm.delete(SystemKeyspace.SCHEMA_TRIGGERS_CF, timestamp);
-		rm.delete(SystemKeyspace.INDEX_CF, timestamp);
+//		rm.delete(SystemKeyspace.INDEX_CF, timestamp);
 
 		return rm;
 	}
