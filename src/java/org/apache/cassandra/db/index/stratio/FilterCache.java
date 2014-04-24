@@ -31,7 +31,7 @@ import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap.Builder;
 /**
  * Cache for Lucene's {@link Filter}s associated to Cassandra's {@link DataRange}s.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
 public class FilterCache {

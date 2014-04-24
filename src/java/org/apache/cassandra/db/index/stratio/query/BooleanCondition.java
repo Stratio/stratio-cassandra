@@ -24,15 +24,13 @@ import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.Query;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
-import org.codehaus.jackson.annotate.JsonTypeName;
 
 /**
  * A {@link Condition} that matches documents matching boolean combinations of other queries, e.g.
  * {@link MatchCondition}s, {@link RangeCondition}s or other {@link BooleanCondition}s.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  */
-@JsonTypeName("boolean")
 public class BooleanCondition extends Condition {
 
 	@JsonProperty("must")

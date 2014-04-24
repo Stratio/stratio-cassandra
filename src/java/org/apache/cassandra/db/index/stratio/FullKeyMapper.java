@@ -33,7 +33,7 @@ import org.apache.lucene.index.Term;
  * Class for several row full key mappings between Cassandra and Lucene. The full key includes both
  * the partitioning and the clustering keys.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
 public class FullKeyMapper {

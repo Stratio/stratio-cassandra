@@ -41,7 +41,7 @@ import org.apache.lucene.util.OpenBitSet;
  * {@link DataRange}. This means that the clustering key value must be contained in the slice query
  * filter specified in the data range.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
 public class ClusteringKeyMapperDataRangeFilter extends Filter {

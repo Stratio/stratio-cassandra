@@ -43,35 +43,26 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.util.Version;
 import org.codehaus.jackson.annotate.JsonCreator;
-import org.codehaus.jackson.annotate.JsonIgnore;
 import org.codehaus.jackson.annotate.JsonProperty;
 
 /**
  * Class for several culumns mappings between Cassandra and Lucene.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
 public class Schema {
 
 	/** The default Lucene's analyzer to be used if no other specified. */
-	@JsonIgnore
 	public static final Analyzer DEFAULT_ANALYZER = new StandardAnalyzer(Version.LUCENE_46);
 
-	/** The Lucene's {@link corg.apache.lucene.analysis.Analyzer} class name. */
-	@JsonProperty("default_analyzer")
-	private final String defaultAnalyzerClassName;
-
 	/** The Lucene's {@link corg.apache.lucene.analysis.Analyzer}. */
-	@JsonIgnore
 	private final Analyzer defaultAnalyzer;
 
 	/** The per field Lucene's analyzer to be used. */
-	@JsonIgnore
 	private final PerFieldAnalyzerWrapper perFieldAnalyzer;
 
 	/** The cell mappers. */
-	@JsonProperty("fields")
 	private Map<String, CellMapper<?>> cellMappers;
 
 	/**
@@ -92,10 +83,8 @@ public class Schema {
 		// Setup default analyzer
 		if (analyzerClassName == null) {
 			this.defaultAnalyzer = DEFAULT_ANALYZER;
-			this.defaultAnalyzerClassName = DEFAULT_ANALYZER.getClass().getName();
 		} else {
 			this.defaultAnalyzer = AnalyzerFactory.getAnalyzer(analyzerClassName);
-			this.defaultAnalyzerClassName = analyzerClassName;
 		}
 
 		// Setup per field analyzer
@@ -171,7 +160,6 @@ public class Schema {
 	 * @return the {@link Cell}s representing the CQL3 cells contained in the specified partition
 	 *         key.
 	 */
-	@JsonIgnore
 	private Cells partitionKeyCells(CFMetaData metadata, DecoratedKey partitionKey) {
 		Cells cells = new Cells();
 		AbstractType<?> rawKeyType = metadata.getKeyValidator();
@@ -199,7 +187,6 @@ public class Schema {
 	 * @return The clustering key {@link Cell}s representing the CQL3 columns contained in the
 	 *         specified column family.
 	 */
-	@JsonIgnore
 	private Cells clusteringKeyCells(CFMetaData metadata, ColumnFamily columnFamily) {
 		Cells cells = new Cells();
 		ByteBuffer rawName = columnFamily.iterator().next().name();
@@ -301,12 +288,10 @@ public class Schema {
 	 * 
 	 * @return The used {@link PerFieldAnalyzerWrapper}.
 	 */
-	@JsonIgnore
 	public PerFieldAnalyzerWrapper analyzer() {
 		return perFieldAnalyzer;
 	}
 
-	@JsonIgnore
 	public void addFields(Document document, CFMetaData metadata, DecoratedKey partitionKey, ColumnFamily columnFamily) {
 		Cells cells = cells(metadata, partitionKey, columnFamily);
 		for (Cell cell : cells) {
@@ -349,7 +334,6 @@ public class Schema {
 	 *            parsed.
 	 * @return The {@link Schema} contained in the specified JSON {@code String}.
 	 */
-	@JsonIgnore
 	public static Schema fromJson(String json) {
 		try {
 			return JsonSerializer.fromString(json, Schema.class);

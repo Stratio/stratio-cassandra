@@ -25,7 +25,7 @@ import org.apache.cassandra.db.index.stratio.schema.Schema;
 /**
  * Class for building {@link RowIndexService} instances.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
 public class RowIndexConfig {

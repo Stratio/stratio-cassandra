@@ -36,7 +36,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
 /**
  * A {@link CellMapper} to map a string, not tokenized field.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class CellMapperBigDecimal extends CellMapper<String> {
 
@@ -93,7 +93,7 @@ public class CellMapperBigDecimal extends CellMapper<String> {
 
 	@Override
 	public String indexValue(String name, Object value) {
-		
+
 		// Check not null
 		if (value == null) {
 			return null;

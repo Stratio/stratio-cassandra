@@ -25,15 +25,13 @@ import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
-import org.codehaus.jackson.annotate.JsonTypeName;
 
 /**
  * A {@link Condition} implementation that matches documents containing a particular sequence of
  * terms.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  */
-@JsonTypeName("match")
 public class PhraseCondition extends Condition {
 
 	public static final int DEFAULT_SLOP = 0;

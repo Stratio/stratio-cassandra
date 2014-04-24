@@ -23,7 +23,7 @@ import org.apache.cassandra.db.marshal.AbstractType;
  * A cell of a CQL3 logic {@link Cell}, which in most cases is different from a storage engine
  * column.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
 public class Cell {

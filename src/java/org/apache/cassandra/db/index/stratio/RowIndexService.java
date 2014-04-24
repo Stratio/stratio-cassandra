@@ -58,7 +58,7 @@ import org.apache.lucene.search.SortField;
 /**
  * Class for mapping rows between Cassandra and Lucene.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
 public class RowIndexService {

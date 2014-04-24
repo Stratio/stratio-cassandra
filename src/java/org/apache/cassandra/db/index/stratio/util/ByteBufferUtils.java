@@ -30,7 +30,7 @@ import org.apache.cassandra.utils.Hex;
  * Utility class with some {@link java.nio.ByteBuffer}/
  * {@link org.apache.cassandra.db.marshal.AbstractType} utilities.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
 public class ByteBufferUtils {

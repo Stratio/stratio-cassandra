@@ -23,22 +23,18 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
-import org.codehaus.jackson.annotate.JsonTypeName;
 
 /**
  * A {@link Condition} implementation that matches documents containing a value for a field.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  */
-@JsonTypeName("match")
 public class MatchCondition extends Condition {
 
 	/** The field name */
-	@JsonProperty("field")
 	private final String field;
 
 	/** The field value */
-	@JsonProperty("value")
 	private Object value;
 
 	/**

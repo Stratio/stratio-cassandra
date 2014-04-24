@@ -23,22 +23,20 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.util.Version;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
-import org.codehaus.jackson.annotate.JsonTypeName;
 
 /**
  * A {@link Condition} implementation that matches documents satisfying a Lucene Query Syntax.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  */
-@JsonTypeName("lucene")
 public class LuceneCondition extends Condition {
 
 	public static final String DEFAULT_FIELD = "lucene";
 
-	/** The field name */
+	/** The default field name */
 	private final String defaultField;
 
-	/** The field value */
+	/** The query value */
 	private final String query;
 
 	/**
@@ -90,7 +88,7 @@ public class LuceneCondition extends Condition {
 		if (query == null) {
 			throw new IllegalArgumentException("Query statement required");
 		}
-		
+
 		try {
 			Analyzer analyzer = schema.analyzer();
 			QueryParser queryParser = new QueryParser(Version.LUCENE_46, defaultField, analyzer);

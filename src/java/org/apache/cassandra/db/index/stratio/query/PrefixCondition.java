@@ -22,23 +22,19 @@ import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.Query;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
-import org.codehaus.jackson.annotate.JsonTypeName;
 
 /**
  * A {@link Condition} implementation that matches documents containing terms with a specified
  * prefix.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  */
-@JsonTypeName("prefix")
 public class PrefixCondition extends Condition {
 
 	/** The field name */
-	@JsonProperty("field")
 	private final String field;
 
 	/** The field value */
-	@JsonProperty("value")
 	private final String value;
 
 	/**
@@ -93,7 +89,7 @@ public class PrefixCondition extends Condition {
 		if (value == null) {
 			throw new IllegalArgumentException("Field value required");
 		}
-		
+
 		CellMapper<?> cellMapper = schema.getMapper(field);
 		Class<?> clazz = cellMapper.baseClass();
 		Query query;

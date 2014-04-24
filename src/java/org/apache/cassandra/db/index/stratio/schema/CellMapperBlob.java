@@ -31,7 +31,7 @@ import org.codehaus.jackson.annotate.JsonCreator;
 /**
  * A {@link CellMapper} to map a string, not tokenized field.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class CellMapperBlob extends CellMapper<String> {
 

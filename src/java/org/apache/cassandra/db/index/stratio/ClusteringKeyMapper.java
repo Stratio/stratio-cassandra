@@ -44,7 +44,7 @@ import org.apache.lucene.util.BytesRef;
  * Class for several clustering key mappings between Cassandra and Lucene. This class only be used
  * in column families with wide rows.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
 public class ClusteringKeyMapper {

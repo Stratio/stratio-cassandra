@@ -33,7 +33,7 @@ import org.apache.lucene.search.TermQuery;
 /**
  * Class for several partition key mappings between Cassandra and Lucene.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
 public class PartitionKeyMapper {

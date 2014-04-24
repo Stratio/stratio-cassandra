@@ -29,7 +29,7 @@ import org.apache.lucene.util.BytesRef;
  * 
  * {@link FieldComparator} that compares token field sorting by its Cassandra's partitioner.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
 public class TokenMapperGenericSorter extends FieldComparator<BytesRef> {

@@ -24,17 +24,15 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.util.automaton.LevenshteinAutomata;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
-import org.codehaus.jackson.annotate.JsonTypeName;
 
 /**
  * A {@link Condition} that implements the fuzzy search query. The similarity measurement is based
  * on the Damerau-Levenshtein (optimal string alignment) algorithm, though you can explicitly choose
  * classic Levenshtein by passing {@code false} to the {@code transpositions} parameter.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
-@JsonTypeName("fuzzy")
 public class FuzzyCondition extends Condition {
 
 	public final static int DEFAULT_MAX_EDITS = LevenshteinAutomata.MAXIMUM_SUPPORTED_DISTANCE;
@@ -43,23 +41,14 @@ public class FuzzyCondition extends Condition {
 	public final static boolean DEFAULT_TRANSPOSITIONS = true;
 
 	/** The field name */
-	@JsonProperty("field")
 	private final String field;
 
 	/** The field value */
-	@JsonProperty("value")
 	private String value;
 
-	@JsonProperty("max_edits")
 	private final Integer maxEdits;
-
-	@JsonProperty("prefix_length")
 	private final Integer prefixLength;
-
-	@JsonProperty("max_expansions")
 	private final Integer maxExpansions;
-
-	@JsonProperty("transpositions")
 	private final Boolean transpositions;
 
 	/**

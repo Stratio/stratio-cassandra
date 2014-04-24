@@ -31,7 +31,7 @@ import org.apache.lucene.util.BytesRef;
  * {@link FieldComparator} that compares clustering key field sorting by its Cassandra's
  * {@link AbstractType}.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
 public class ClusteringKeyMapperSorter extends FieldComparator<BytesRef> {

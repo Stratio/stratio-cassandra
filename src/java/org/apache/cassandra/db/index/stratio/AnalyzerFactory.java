@@ -26,7 +26,7 @@ import org.apache.lucene.util.Version;
  * Class for building Lucene's {@link org.apache.lucene.analysis.Analyzer}s. It uses an internal
  * cache which associates analyzer class names with analyzers.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
 public final class AnalyzerFactory {

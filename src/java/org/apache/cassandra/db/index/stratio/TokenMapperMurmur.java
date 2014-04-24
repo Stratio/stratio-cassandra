@@ -32,7 +32,7 @@ import org.apache.lucene.search.SortField;
  * {@link PartitionKeyMapper} to be used when {@link Murmur3Partitioner} is used. It indexes the
  * token long value as a Lucene's long field.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
 public class TokenMapperMurmur extends TokenMapper {

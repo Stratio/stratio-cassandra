@@ -34,22 +34,16 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
 import org.codehaus.jackson.annotate.JsonCreator;
-import org.codehaus.jackson.annotate.JsonIgnore;
 import org.codehaus.jackson.annotate.JsonProperty;
 
 /**
  * A {@link CellMapper} to map a string, tokenized field.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class CellMapperText extends CellMapper<String> {
 
-	/** The Lucene's {@link corg.apache.lucene.analysis.Analyzer} class name. */
-	@JsonProperty("analyzer")
-	private String analyzerClassName;
-
 	/** The Lucene's {@link corg.apache.lucene.analysis.Analyzer}. */
-	@JsonIgnore
 	private Analyzer analyzer;
 
 	@JsonCreator
@@ -69,10 +63,8 @@ public class CellMapperText extends CellMapper<String> {
 		                             InetAddressType.instance });
 		if (analyzerClassName != null) {
 			this.analyzer = AnalyzerFactory.getAnalyzer(analyzerClassName);
-			this.analyzerClassName = analyzerClassName;
 		} else {
 			this.analyzer = null;
-			this.analyzerClassName = null;
 		}
 	}
 

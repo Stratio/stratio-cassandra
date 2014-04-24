@@ -45,7 +45,7 @@ import org.apache.lucene.util.Version;
 /**
  * Class wrapping a Lucene's directory and its readers , writers and searchers for NRT.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
 public class RowDirectory {

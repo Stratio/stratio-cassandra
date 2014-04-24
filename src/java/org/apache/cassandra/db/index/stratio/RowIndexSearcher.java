@@ -54,7 +54,7 @@ import org.slf4j.LoggerFactory;
 /**
  * A {@link SecondaryIndexSearcher} for {@link RowIndex}.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
 public class RowIndexSearcher extends SecondaryIndexSearcher {

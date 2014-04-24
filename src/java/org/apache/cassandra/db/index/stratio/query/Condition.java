@@ -45,7 +45,7 @@ import org.codehaus.jackson.annotate.JsonTypeInfo;
  * <li> {@link WildcardCondition}
  * </ul>
  * 
- *@author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 @JsonSubTypes({ @JsonSubTypes.Type(value = BooleanCondition.class, name = "boolean"),

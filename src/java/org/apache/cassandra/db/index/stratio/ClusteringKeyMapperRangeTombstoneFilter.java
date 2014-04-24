@@ -38,7 +38,7 @@ import org.apache.lucene.util.OpenBitSet;
  * {@link RangeTombstone}. This means that the clustering key value must be contained in the slice
  * query filter specified in the tombstone range.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
 public class ClusteringKeyMapperRangeTombstoneFilter extends Filter {

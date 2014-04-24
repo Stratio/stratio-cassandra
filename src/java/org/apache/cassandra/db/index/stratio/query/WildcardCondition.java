@@ -22,7 +22,6 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.WildcardQuery;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
-import org.codehaus.jackson.annotate.JsonTypeName;
 
 /**
  * 
@@ -33,9 +32,8 @@ import org.codehaus.jackson.annotate.JsonTypeName;
  * Note this query can be slow, as it needs to iterate over many terms. In order to prevent
  * extremely slow WildcardQueries, a Wildcard term should not start with the wildcard {@code *}.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  */
-@JsonTypeName("wildcard")
 public class WildcardCondition extends Condition {
 
 	/** The field name */

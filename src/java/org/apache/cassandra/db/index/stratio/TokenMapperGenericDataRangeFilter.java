@@ -35,7 +35,7 @@ import org.apache.lucene.util.OpenBitSet;
 /**
  * {@link Filter} that filters documents which token field satisfies a certain {@link DataRange}.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
 public class TokenMapperGenericDataRangeFilter extends Filter {

@@ -32,7 +32,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * {@link Condition} and an optional filtering {@link Condition}. It can be translated to a Lucene's
  * {@link Query} using a {@link Schema}.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
 public class Search {

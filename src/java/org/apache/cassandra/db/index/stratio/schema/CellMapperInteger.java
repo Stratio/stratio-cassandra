@@ -33,13 +33,12 @@ import org.codehaus.jackson.annotate.JsonProperty;
 /**
  * A {@link CellMapper} to map an integer field.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class CellMapperInteger extends CellMapper<Integer> {
 
 	private Float DEFAULT_BOOST = 1.0f;
 
-	@JsonProperty("boost")
 	private final Float boost;
 
 	@JsonCreator
@@ -101,8 +100,9 @@ public class CellMapperInteger extends CellMapper<Integer> {
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append(getClass().getSimpleName());
-		builder.append(" []");
+		builder.append("CellMapperInteger [boost=");
+		builder.append(boost);
+		builder.append("]");
 		return builder.toString();
 	}
 

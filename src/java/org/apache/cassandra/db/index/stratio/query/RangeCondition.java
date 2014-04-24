@@ -22,34 +22,27 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermRangeQuery;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
-import org.codehaus.jackson.annotate.JsonTypeName;
 
 /**
  * A {@link Condition} implementation that matches a field within an range of values.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  */
-@JsonTypeName("range")
 public class RangeCondition extends Condition {
 
 	/** The field name. */
-	@JsonProperty("field")
 	private final String field;
 
 	/** The lower field value included in the range. */
-	@JsonProperty("lower")
 	private Object lower;
 
 	/** The upper field value included in the range. */
-	@JsonProperty("upper")
 	private Object upper;
 
 	/** If the lower value is included in the range. */
-	@JsonProperty("include_lower")
 	private final boolean includeLower;
 
 	/** If the upper value is included in the range. */
-	@JsonProperty("include_upper")
 	private final boolean includeUpper;
 
 	/**
@@ -149,7 +142,7 @@ public class RangeCondition extends Condition {
 		if (field == null || field.trim().isEmpty()) {
 			throw new IllegalArgumentException("Field name required");
 		}
-		
+
 		CellMapper<?> cellMapper = schema.getMapper(field);
 		Class<?> clazz = cellMapper.baseClass();
 		Query query;

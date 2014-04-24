@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  *
  */
 public class Log {

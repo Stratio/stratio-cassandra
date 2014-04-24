@@ -36,7 +36,7 @@ import org.apache.cassandra.exceptions.ConfigurationException;
  * A {@link PerRowSecondaryIndex} that uses Apache Lucene as backend. It allows, among others,
  * multi-comun and full-text search.
  * 
- * @author Andres de la Pena <adelapen@stratio.com>
+ * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
 public class RowIndex extends PerRowSecondaryIndex {
