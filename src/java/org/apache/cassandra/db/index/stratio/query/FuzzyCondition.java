@@ -182,9 +182,8 @@ public class FuzzyCondition extends Condition {
 		CellMapper<?> cellMapper = schema.getMapper(field);
 		Class<?> clazz = cellMapper.baseClass();
 		if (clazz == String.class) {
-			String value = (String) cellMapper.queryValue(field, this.value);
-			value = analyze(field, value, schema.analyzer());
-			Term term = new Term(field, value);
+			String analyzedValue = analyze(field, value, schema.analyzer());
+			Term term = new Term(field, analyzedValue);
 			Query query = new FuzzyQuery(term, maxEdits, prefixLength, maxExpansions, transpositions);
 			query.setBoost(boost);
 			return query;

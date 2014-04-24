@@ -127,12 +127,11 @@ public class PhraseCondition extends Condition {
 			query.setSlop(slop);
 			query.setBoost(boost);
 			int count = 0;
-			for (Object o : values) {
-				if (o != null) {
-					String value = (String) cellMapper.queryValue(field, o);
-					value = analyze(field, value, analyzer);
-					if (value != null) {
-						Term term = new Term(field, value);
+			for (String value : values) {
+				if (value != null) {
+					String analyzedValue = analyze(field, value, analyzer);
+					if (analyzedValue != null) {
+						Term term = new Term(field, analyzedValue);
 						query.add(term, count);
 					}
 				}

@@ -89,7 +89,7 @@ public class MatchCondition extends Condition {
 		if (field == null || field.trim().isEmpty()) {
 			throw new IllegalArgumentException("Field name required");
 		}
-		if (value == null) {
+		if (value == null || value instanceof String && ((String) value).trim().isEmpty()) {
 			throw new IllegalArgumentException("Field value required");
 		}
 
@@ -98,8 +98,11 @@ public class MatchCondition extends Condition {
 		Query query;
 		if (clazz == String.class) {
 			String value = (String) cellMapper.queryValue(field, this.value);
-			value = analyze(field, value, schema.analyzer());
-			Term term = new Term(field, value);
+			String analyzedValue = analyze(field, value, schema.analyzer());
+			if (value == null) {
+				throw new IllegalArgumentException("Value discarded by analyzer");
+			}
+			Term term = new Term(field, analyzedValue);
 			query = new TermQuery(term);
 		} else if (clazz == Integer.class) {
 			Integer value = (Integer) cellMapper.queryValue(field, this.value);

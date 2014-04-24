@@ -98,7 +98,6 @@ public class PrefixCondition extends Condition {
 		Class<?> clazz = cellMapper.baseClass();
 		Query query;
 		if (clazz == String.class) {
-			String value = (String) cellMapper.queryValue(field, this.value);
 			Term term = new Term(field, value);
 			query = new PrefixQuery(term);
 		} else {

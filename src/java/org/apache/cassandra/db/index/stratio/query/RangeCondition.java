@@ -157,10 +157,10 @@ public class RangeCondition extends Condition {
 			String lower = (String) cellMapper.queryValue(field, this.lower);
 			String upper = (String) cellMapper.queryValue(field, this.upper);
 			if (lower != null) {
-				lower = analyze(field, lower, cellMapper.analyzer());
+				lower = analyze(field, lower, schema.analyzer());
 			}
 			if (upper != null) {
-				upper = analyze(field, upper, cellMapper.analyzer());
+				upper = analyze(field, upper, schema.analyzer());
 			}
 			query = TermRangeQuery.newStringRange(field, lower, upper, includeLower, includeUpper);
 		} else if (clazz == Integer.class) {

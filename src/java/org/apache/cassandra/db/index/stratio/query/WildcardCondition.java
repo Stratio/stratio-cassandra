@@ -93,18 +93,14 @@ public class WildcardCondition extends Condition {
 		if (field == null || field.trim().isEmpty()) {
 			throw new IllegalArgumentException("Field name required");
 		}
-		if (value == null) {
+		if (value == null || value.trim().isEmpty()) {
 			throw new IllegalArgumentException("Field value required");
-		}
-		if (value.trim().isEmpty()) {
-			throw new IllegalArgumentException("Field value must be not empty");
 		}
 
 		CellMapper<?> cellMapper = schema.getMapper(field);
 		Class<?> clazz = cellMapper.baseClass();
 		Query query;
 		if (clazz == String.class) {
-			String value = (String) cellMapper.queryValue(field, this.value);
 			Term term = new Term(field, value);
 			query = new WildcardQuery(term);
 		} else {

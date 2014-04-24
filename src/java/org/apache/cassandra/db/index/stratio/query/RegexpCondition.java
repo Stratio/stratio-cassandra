@@ -44,7 +44,7 @@ public class RegexpCondition extends Condition {
 
 	/** The field value */
 	@JsonProperty("value")
-	private final Object value;
+	private final String value;
 
 	/**
 	 * Constructor using the field name and the value to be matched.
@@ -61,7 +61,7 @@ public class RegexpCondition extends Condition {
 	@JsonCreator
 	public RegexpCondition(@JsonProperty("boost") Float boost,
 	                       @JsonProperty("field") String field,
-	                       @JsonProperty("value") Object value) {
+	                       @JsonProperty("value") String value) {
 		super(boost);
 
 		this.field = field;
@@ -82,7 +82,7 @@ public class RegexpCondition extends Condition {
 	 * 
 	 * @return the field value.
 	 */
-	public Object getValue() {
+	public String getValue() {
 		return value;
 	}
 
@@ -95,7 +95,7 @@ public class RegexpCondition extends Condition {
 		if (field == null || field.trim().isEmpty()) {
 			throw new IllegalArgumentException("Field name required");
 		}
-		if (value == null) {
+		if (value == null || value.trim().isEmpty()) {
 			throw new IllegalArgumentException("Field value required");
 		}
 
@@ -103,8 +103,6 @@ public class RegexpCondition extends Condition {
 		Class<?> clazz = cellMapper.baseClass();
 		Query query;
 		if (clazz == String.class) {
-			String value = (String) cellMapper.queryValue(field, this.value);
-			value = analyze(field, value, schema.analyzer());
 			Term term = new Term(field, value);
 			query = new RegexpQuery(term);
 		} else {
