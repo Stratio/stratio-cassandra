@@ -367,7 +367,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         		Log.error(e, "Invalid search clause");
         		String exceptionMessage = e.getMessage();
         		if (exceptionMessage != null && !exceptionMessage.trim().isEmpty())
-        			throw new InvalidRequestException("Invalid index expression" + e.getMessage());
+        			throw new InvalidRequestException("Invalid index expression: " + e.getMessage());
         		else
         			throw new InvalidRequestException("Invalid index expression");
         	}
