@@ -95,7 +95,7 @@ public class MatchCondition extends Condition {
 		if (clazz == String.class) {
 			String value = (String) cellMapper.queryValue(field, this.value);
 			String analyzedValue = analyze(field, value, schema.analyzer());
-			if (value == null) {
+			if (analyzedValue == null) {
 				throw new IllegalArgumentException("Value discarded by analyzer");
 			}
 			Term term = new Term(field, analyzedValue);
