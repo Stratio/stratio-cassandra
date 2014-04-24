@@ -158,7 +158,9 @@ public class RowIndexService {
 
 		if (isWide) {
 			if (columnFamily.iterator().hasNext()) {
+				System.out.println(" -> INDEXING : HAS COLUMNS ");
 				for (ByteBuffer clusteringKey : clusteringKeyMapper.byteBuffers(columnFamily)) {
+					System.out.println("\tCOLUMN");
 					Row row = row(partitionKey, clusteringKey, timestamp);
 					Document document = document(row);
 					Term term = identifyingTerm(row);
@@ -166,13 +168,21 @@ public class RowIndexService {
 				}
 
 			} else if (deletionInfo != null) {
+				System.out.println(" -> INDEXING : HAS DELETION INFO ");
 				Iterator<RangeTombstone> iterator = deletionInfo.rangeIterator();
-				while (iterator.hasNext()) {
-					RangeTombstone rangeTombstone = iterator.next();
-					Filter filter = clusteringKeyMapper.filter(rangeTombstone);
-					Query partitionKeyQuery = partitionKeyMapper.query(partitionKey);
-					Query query = new FilteredQuery(partitionKeyQuery, filter);
-					rowDirectory.deleteDocuments(query);
+				if (iterator.hasNext()) {
+					while (iterator.hasNext()) {
+						System.out.println("\tCOLUMN");
+						RangeTombstone rangeTombstone = iterator.next();
+						Filter filter = clusteringKeyMapper.filter(rangeTombstone);
+						Query partitionKeyQuery = partitionKeyMapper.query(partitionKey);
+						Query query = new FilteredQuery(partitionKeyQuery, filter);
+						rowDirectory.deleteDocuments(query);
+					}
+				} else {
+					System.out.println("\tDELETING FULL ROW");
+					Term term = partitionKeyMapper.term(partitionKey);
+					rowDirectory.deleteDocuments(term);
 				}
 			}
 		} else {
