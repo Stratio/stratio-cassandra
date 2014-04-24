@@ -61,6 +61,7 @@ import org.apache.cassandra.db.filter.IDiskAtomFilter;
 import org.apache.cassandra.db.filter.NamesQueryFilter;
 import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.db.index.SecondaryIndexSearcher;
+import org.apache.cassandra.db.index.stratio.util.Log;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CollectionType;
 import org.apache.cassandra.db.marshal.CompositeType;
@@ -355,11 +356,20 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         // Perform secondary index validation
         ColumnFamilyStore cfs = Keyspace.open(keyspace()).getColumnFamilyStore(columnFamily());
         SecondaryIndexSearcher searcher = cfs.indexManager.searcher(expressions);
-        if (searcher != null) {
-        	try {
+        if (searcher != null) 
+        {
+        	try 
+        	{
         		searcher.validate(expressions);
-        	} catch (Exception e) {
-        		throw new InvalidRequestException(e.getMessage());
+        	} 
+        	catch (Exception e) 
+        	{
+        		Log.error(e, "Invalid search clause");
+        		String exceptionMessage = e.getMessage();
+        		if (exceptionMessage != null && !exceptionMessage.trim().isEmpty())
+        			throw new InvalidRequestException("Invalid index expression" + e.getMessage());
+        		else
+        			throw new InvalidRequestException("Invalid index expression");
         	}
         }
         
