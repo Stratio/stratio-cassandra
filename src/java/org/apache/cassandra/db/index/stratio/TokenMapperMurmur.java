@@ -39,6 +39,9 @@ public class TokenMapperMurmur extends TokenMapper {
 
 	private static final String FIELD_NAME = "_token_murmur";
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void addFields(Document document, DecoratedKey partitionKey) {
 		Long value = (Long) partitionKey.token.token;

@@ -47,9 +47,9 @@ public class Search {
 	 * Returns a new {@link Search} composed by the specified querying and filtering conditions.
 	 * 
 	 * @param queryCondition
-	 *            The query, maybe {@code null} meaning {@link MatchAllDocsQuery}.
+	 *            The {@link Condition} for querying, maybe {@code null} meaning no querying.
 	 * @param filterCondition
-	 *            The filter, maybe {@code null} meaning no filtering.
+	 *            The {@link Condition} for filtering, maybe {@code null} meaning no filtering.
 	 */
 	@JsonCreator
 	public Search(@JsonProperty("query") Condition queryCondition, @JsonProperty("filter") Condition filterCondition) {
@@ -59,16 +59,35 @@ public class Search {
 
 	/**
 	 * Returns {@code true} if the results must be ordered by relevance. If {@code false}, then the
-	 * results are sorted by the natural Cassandra's order.
+	 * results are sorted by the natural Cassandra's order. Results must be ordered by relevance if
+	 * the querying condition is not {code null}.
 	 * 
 	 * Relevance is used when the query condition is set, and it is not used when only the filter
 	 * condition is set.
 	 * 
 	 * @return {@code true} if the results must be ordered by relevance. If {@code false}, then the
-	 *         results are sorted by the natural Cassandra's order.
+	 *         results must be sorted by the natural Cassandra's order.
 	 */
 	public boolean usesRelevance() {
 		return queryCondition != null;
+	}
+
+	/**
+	 * Returns the {@link Condition} for querying. Maybe {@code null} meaning no querying.
+	 * 
+	 * @return The {@link Condition} for querying. Maybe {@code null} meaning no querying.
+	 */
+	public Condition queryCondition() {
+		return queryCondition;
+	}
+
+	/**
+	 * Returns the {@link Condition} for filtering. Maybe {@code null} meaning no filtering.
+	 * 
+	 * @return The {@link Condition} for filtering. Maybe {@code null} meaning no filtering.
+	 */
+	public Condition filterCondition() {
+		return filterCondition;
 	}
 
 	/**
@@ -107,12 +126,11 @@ public class Search {
 	public static Search fromJson(String json) {
 		try {
 			Search search = JsonSerializer.fromString(json, Search.class);
-			Log.debug("Parsed %s", search);
 			return search;
 		} catch (Exception e) {
 			String message = "Unparseable JSON index expression: " + e.getMessage();
 			Log.error(e, message);
-			throw new IllegalArgumentException(message);
+			throw new IllegalArgumentException(message, e);
 		}
 	}
 

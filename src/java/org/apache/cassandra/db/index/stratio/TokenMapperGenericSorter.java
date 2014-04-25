@@ -27,7 +27,7 @@ import org.apache.lucene.util.BytesRef;
 
 /**
  * 
- * {@link FieldComparator} that compares token field sorting by its Cassandra's partitioner.
+ * {@link FieldComparator} that compares {@link Token} field sorting by its Cassandra's partitioner.
  * 
  * @author Andres de la Pena <adelapena@stratio.com>
  * 
@@ -172,17 +172,17 @@ public class TokenMapperGenericSorter extends FieldComparator<BytesRef> {
 	 * Compares its two field value arguments for order. Returns a negative integer, zero, or a
 	 * positive integer as the first argument is less than, equal to, or greater than the second.
 	 * 
-	 * @param fieldValue1
+	 * @param value1
 	 *            The first field value to be compared.
-	 * @param fieldValue2
+	 * @param value2
 	 *            The second field value to be compared.
 	 * @return A negative integer, zero, or a positive integer as the first argument is less than,
 	 *         equal to, or greater than the second.
 	 */
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	private int compare(BytesRef fieldValue1, BytesRef fieldValue2) {
-		Token t1 = tokenMapperGeneric.token(fieldValue1);
-		Token t2 = tokenMapperGeneric.token(fieldValue2);
+	private int compare(BytesRef value1, BytesRef value2) {
+		Token t1 = tokenMapperGeneric.token(value1);
+		Token t2 = tokenMapperGeneric.token(value2);
 		return t1.compareTo(t2);
 	}
 }

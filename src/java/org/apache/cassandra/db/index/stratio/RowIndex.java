@@ -51,7 +51,7 @@ public class RowIndex extends PerRowSecondaryIndex {
 	private String columnName;
 	private String logName;
 
-	private RowIndexService rowIndexService;
+	private RowService rowService;
 
 	// Concurrency lock
 	private ReadWriteLock lock = new ReentrantReadWriteLock();
@@ -102,7 +102,7 @@ public class RowIndex extends PerRowSecondaryIndex {
 		logName = String.format("%s.%s.%s", keyspaceName, tableName, indexName);
 
 		// Build row mapper
-		rowIndexService = new RowIndexService(baseCfs, columnDefinition);
+		rowService = RowService.build(baseCfs, columnDefinition);
 	}
 
 	/**
@@ -118,9 +118,9 @@ public class RowIndex extends PerRowSecondaryIndex {
 		Log.debug("Indexing row %s in index %s", key, logName);
 		lock.readLock().lock();
 		try {
-			if (rowIndexService != null) {
+			if (rowService != null) {
 				long timestamp = System.currentTimeMillis();
-				rowIndexService.index(key, columnFamily, timestamp);
+				rowService.index(key, columnFamily, timestamp);
 			}
 		} catch (Exception e) { // Ignore errors
 			Log.error(e, "Ignoring error while indexing row %s", key);
@@ -139,8 +139,8 @@ public class RowIndex extends PerRowSecondaryIndex {
 		Log.debug("Removing row %s from index %s", key, logName);
 		lock.writeLock().lock();
 		try {
-			rowIndexService.delete(key);
-			rowIndexService = null;
+			rowService.delete(key);
+			rowService = null;
 		} finally {
 			lock.writeLock().unlock();
 		}
@@ -186,9 +186,9 @@ public class RowIndex extends PerRowSecondaryIndex {
 		Log.info("Removing index %s", logName);
 		lock.writeLock().lock();
 		try {
-			if (rowIndexService != null) {
-				rowIndexService.delete();
-				rowIndexService = null;
+			if (rowService != null) {
+				rowService.delete();
+				rowService = null;
 			}
 			Log.info("Removed index %s", logName);
 		} catch (Exception e) {
@@ -204,9 +204,9 @@ public class RowIndex extends PerRowSecondaryIndex {
 		Log.info("Invalidating index %s", logName);
 		lock.writeLock().lock();
 		try {
-			if (rowIndexService != null) {
-				rowIndexService.delete();
-				rowIndexService = null;
+			if (rowService != null) {
+				rowService.delete();
+				rowService = null;
 			}
 			Log.info("Invalidated index %s", logName);
 		} catch (Exception e) {
@@ -222,8 +222,8 @@ public class RowIndex extends PerRowSecondaryIndex {
 		Log.info("Truncating index %s", logName);
 		lock.writeLock().lock();
 		try {
-			if (rowIndexService != null) {
-				rowIndexService.truncate();
+			if (rowService != null) {
+				rowService.truncate();
 			}
 			Log.info("Truncated index %s", logName);
 		} catch (Exception e) {
@@ -239,7 +239,7 @@ public class RowIndex extends PerRowSecondaryIndex {
 		Log.info("Reloading index %s", logName);
 		lock.writeLock().lock();
 		try {
-			if (rowIndexService == null) {
+			if (rowService == null) {
 				setup();
 			}
 			Log.info("Reloaded index %s", logName);
@@ -256,7 +256,7 @@ public class RowIndex extends PerRowSecondaryIndex {
 		Log.info("Flushing index %s", logName);
 		lock.writeLock().lock();
 		try {
-			rowIndexService.commit();
+			rowService.commit();
 			Log.info("Flushed index %s", logName);
 		} catch (Exception e) {
 			Log.error("Flushing index %s", logName);
@@ -269,7 +269,7 @@ public class RowIndex extends PerRowSecondaryIndex {
 	@Override
 	protected SecondaryIndexSearcher createSecondaryIndexSearcher(Set<ByteBuffer> columns) {
 		Log.debug("Creating searcher for index %s", logName);
-		return new RowIndexSearcher(secondaryIndexManager, this, columns, rowIndexService);
+		return new RowIndexSearcher(secondaryIndexManager, this, columns, rowService);
 	}
 
 	@Override

@@ -23,7 +23,7 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.index.stratio.schema.Schema;
 
 /**
- * Class for building {@link RowIndexService} instances.
+ * Class for building {@link RowService} instances.
  * 
  * @author Andres de la Pena <adelapena@stratio.com>
  * 
