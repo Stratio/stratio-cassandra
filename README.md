@@ -74,15 +74,15 @@ Given a table as follows to store tweets:
 
 ```
 CREATE TABLE tweets (
-    id INTEGER PRIMARY KEY,
-    user INTEGER REFERENCES user(id),
-    body VARCHAR(140),
+    id INT PRIMARY KEY,
+    user TEXT,
+    body TEXT,
     timestamp TIMESTAMP,
-    lucene TEXT,
+    lucene TEXT
 );
 ```
 
-You can create a custom Lucene index on it with the following statement:
+We have create a column called *lucene* for linking the index queries. This column will not store data. Now you can create a custom Lucene index on it with the following statement:
 
 ```
 CREATE CUSTOM INDEX tweets_index ON tweets (lucene) 
@@ -95,7 +95,7 @@ WITH OPTIONS = {
     'max_cached_mb'      : '30',
     'schema' : '{
         default_analyzer : "org.apache.lucene.analysis.standard.StandardAnalyzer",
-        fields : {`
+        fields : {
             id        : {type : "integer"},
             user      : {type : "string"},
             body      : {type : "text",  analyzer : "org.apache.lucene.analysis.en.EnglishAnalyzer"},
@@ -130,8 +130,8 @@ If you want to refine the search to get only the tweets written only by users wh
 SELECT * FROM tweets WHERE lucene='{
     filter:{type:"boolean", must:[
 				{type:"range", field:"timestamp", lower:"2014/04/25", upper:"2014/04/1"},
-				{type:"prefix", field:"user", value:"a"},
-			],
+				{type:"prefix", field:"user", value:"a"}
+			]},
     query:{type:"phrase", field:"body", values:["big","data","gives","organizations"]}
 }' limit 100;
 ```
@@ -142,10 +142,10 @@ Finally, if you want to restrict the search to a certain token range:
 SELECT * FROM tweets WHERE lucene='{
     filter:{type:"boolean", must:[
 				{type:"range", field:"timestamp", lower:"2014/04/25", upper:"2014/04/1"},
-				{type:"prefix", field:"user", value:"a"},
-			],
+				{type:"prefix", field:"user", value:"a"}
+			]},
     query:{type:"phrase", field:"body", values:["big","data","gives","organizations"]}
-}' AND token(key) >= token(0) AND token(key) < token(10000000) limit 100;
+}' AND token(id) >= token(0) AND token(id) < token(10000000) limit 100;
 ```
 
 This last is the basis of support for Hadoop, Spark and other MapReduce frameworks.
