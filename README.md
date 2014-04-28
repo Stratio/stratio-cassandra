@@ -64,7 +64,7 @@ Getting started
 
 Given a table as follows to store tweets:
 
-```JSON
+```
 CREATE TABLE tweets (
     id INTEGER PRIMARY KEY,
     user INTEGER REFERENCES user(id),
@@ -76,7 +76,7 @@ CREATE TABLE tweets (
 
 You can create a custom Lucene index on it with the following statement:
 
-```JSON
+```
 CREATE CUSTOM INDEX tweets_index ON tweets (lucene) 
 USING 'org.apache.cassandra.db.index.stratio.RowIndex'
 WITH OPTIONS = {
@@ -101,7 +101,7 @@ This index will index all the columns in the table with the specified types, and
 
 Now you can request, for example, the 100 more relevant tweets which *body* field contains the phrase "big data gives organizations":
 
-```JSON
+```
 SELECT * FROM tweets WHERE lucene='{
 	query:{type:"phrase", field:"body", values:["big","data","gives","organizations"]}
 }' limit 100;
@@ -109,7 +109,7 @@ SELECT * FROM tweets WHERE lucene='{
 
 If you want to search into the tweets in a certain date range, then you must add to the search a filter as follows:
 
-```JSON
+```
 SELECT * FROM tweets WHERE lucene='{
     filter:{type:"range", field:"timestamp", lower:"2014/04/25", upper:"2014/04/1"},
     query:{type:"phrase", field:"body", values:["big","data","gives","organizations"]}
@@ -118,7 +118,7 @@ SELECT * FROM tweets WHERE lucene='{
 
 If you want to refine the search to get only the tweets written only by users whose name starts with "a":
 
-```JSON
+```
 SELECT * FROM tweets WHERE lucene='{
     filter:{type:"boolean", must:[
 				{type:"range", field:"timestamp", lower:"2014/04/25", upper:"2014/04/1"},
