@@ -7,7 +7,7 @@ Index [relevance queries](http://en.wikipedia.org/wiki/Relevance_(information_re
 
 Index filtered queries are a powerful help when analyzing the data stored in Cassandra with [MapReduce](http://es.wikipedia.org/wiki/MapReduce) frameworks as [Apache Hadoop](http://hadoop.apache.org/) or, even better, [Apache Spark](http://spark.apache.org/) through [Stratio Deep](https://github.com/Stratio/stratio-deep). Adding Lucene filters in the jobs input can dramatically reduce the amount of data to be processed, avoiding full scan.
 
-Any cell in the tables can be indexed, included the primary key ones both as collections. Wide rows are also supported. You can scan token/key ranges, apply additional CQL3 clauses and page on the filtered results.
+Any cell in the tables can be indexed, including those in the primary key as well as collections. Wide rows are also supported. You can scan token/key ranges, apply additional CQL3 clauses and page on the filtered results.
 
 Other information including documentation is available at [Stratio website.](http://wordpress.dev.strat.io/cassandra/extended-search-in-cassandra/)
 
@@ -46,7 +46,7 @@ Requirements
 Building and running
 ====================
 
-Stratio Cassandra is distributed as a fork of Apache Cassandra, so its building, installation, operation and maintenance is generally identical. To build and run type:
+Stratio Cassandra is distributed as a fork of Apache Cassandra, so its building, installation, operation and maintenance is overall identical. To build and run type:
 
 ```
 ant
@@ -63,14 +63,14 @@ Now you can do some tests using the Cassandra Query Language:
 bin/cqlsh
 ```
 
-The Lucene's index files will be stored in the same directories where the Cassandra ones will be. The default data directory is `/var/lib/cassandra/data`, and each index is placed next to the SStables of its indexed column family. 
+The Lucene's index files will be stored in the same directories where the Cassandra's will be. The default data directory is `/var/lib/cassandra/data`, and each index is placed next to the SSTables of its indexed column family. 
 
 For more details about Cassandra please see its [documentation](http://cassandra.apache.org/).
 
 Example
 =======
 
-We will create following table to store tweets:
+We will create the following table to store tweets:
 
 ```
 CREATE TABLE tweets (
@@ -82,7 +82,7 @@ CREATE TABLE tweets (
 );
 ```
 
-We have created a column called *lucene* for linking the index queries. This column will not store data. Now you can create a custom Lucene index on it with the following statement:
+We have created a column called *lucene* to link the index queries. This column will not store data. Now you can create a custom Lucene index on it with the following statement:
 
 ```
 CREATE CUSTOM INDEX tweets_index ON tweets (lucene) 
@@ -96,21 +96,20 @@ WITH OPTIONS = {
             body : {type : "text",  analyzer : "org.apache.lucene.analysis.en.EnglishAnalyzer"},
             time : {type : "date", pattern  : "yyyy/MM/dd"}
         }
-    }'
+    }'ç
 };
 ```
 
-This will index all the columns in the table with the specified types, and will be refreshed once per second.
+This will index all the columns in the table with the specified types, and it will be refreshed once per second.
 
-Now you can request, for example, the 100 more relevant tweets which *body* field contains the phrase "big data gives organizations":
+Now, to query the top 100 more relevant tweets where *body* field contains the phrase "big data gives organizations":
 
 ```
 SELECT * FROM tweets WHERE lucene='{
 	query : {type:"phrase", field:"body", values:["big","data","gives","organizations"]}
 }' limit 100;
 ```
-
-If you want to search into the tweets into a certain date range, then you must add to the search a filter as follows:
+To restrict the search for tweets within a certain date range, then you must add to the search a filter as follows:
 
 ```
 SELECT * FROM tweets WHERE lucene='{
@@ -118,8 +117,7 @@ SELECT * FROM tweets WHERE lucene='{
     query  : {type:"phrase", field:"body", values:["big","data","gives","organizations"]}
 }' limit 100;
 ```
-
-If you want to refine the search to get only the tweets written only by users whose name starts with "a":
+To refine the search to get only the tweets written by users whose name starts with "a":
 
 ```
 SELECT * FROM tweets WHERE lucene='{
@@ -141,7 +139,7 @@ SELECT * FROM tweets WHERE lucene='{
 }' AND token(id) >= token(0) AND token(id) < token(10000000) limit 100;
 ```
 
-This last is the basis of support for Hadoop, Spark and other MapReduce frameworks.
+This last is the basis for Hadoop, Spark and other MapReduce frameworks support.
 
 Please, refer to the comprehensive Stratio Cassandra documentation at [Stratio website](http://wordpress.dev.strat.io/cassandra/extended-search-in-cassandra/).
 
