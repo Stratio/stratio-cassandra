@@ -64,59 +64,69 @@ Getting started
 
 Given a table as follows to store tweets:
 
-`CREATE TABLE tweets (`
-`    id INTEGER PRIMARY KEY,`
-`    user INTEGER REFERENCES user(id),`
-`    body VARCHAR(140),`
-`    timestamp TIMESTAMP,`
-`    lucene TEXT,`
-`);`
+```JSON
+CREATE TABLE tweets (
+    id INTEGER PRIMARY KEY,
+    user INTEGER REFERENCES user(id),
+    body VARCHAR(140),
+    timestamp TIMESTAMP,
+    lucene TEXT,
+);
+```
 
 You can create a custom Lucene index on it with the following statement:
 
-`CREATE CUSTOM INDEX IF NOT EXISTS tweets_index `
-`ON test.users (lucene) `
-`USING 'org.apache.cassandra.db.index.stratio.RowIndex'`
-`WITH OPTIONS = {`
-`    'refresh_seconds'    : '1',`
-`    'num_cached_filters' : '128',`
-`    'ram_buffer_mb'      : '64',`
-`    'max_merge_mb'       : '5',`
-`    'max_cached_mb'      : '30',`
-`    'schema' : '{`
-`        default_analyzer : "org.apache.lucene.analysis.standard.StandardAnalyzer",`
-`        fields : {`
-`            id        : {type     : "integer"},`
-`            user      : {type     : "string"},`
-`            body      : {type     : "text",  analyzer : "org.apache.lucene.analysis.en.EnglishAnalyzer"},`
-`            timestamp : {type     : "date", pattern  : "yyyy/MM/dd"}`
-`        }`
-`    }'`
-`};`
+```JSON
+CREATE CUSTOM INDEX tweets_index ON tweets (lucene) 
+USING 'org.apache.cassandra.db.index.stratio.RowIndex'
+WITH OPTIONS = {
+    'refresh_seconds'    : '1',
+    'num_cached_filters' : '128',
+    'ram_buffer_mb'      : '64',
+    'max_merge_mb'       : '5',
+    'max_cached_mb'      : '30',
+    'schema' : '{
+        default_analyzer : "org.apache.lucene.analysis.standard.StandardAnalyzer",
+        fields : {`
+            id        : {type : "integer"},
+            user      : {type : "string"},
+            body      : {type : "text",  analyzer : "org.apache.lucene.analysis.en.EnglishAnalyzer"},
+            timestamp : {type : "date", pattern  : "yyyy/MM/dd"}
+        }
+    }'
+};
+```
 
 This index will index all the columns in the table with the specified types, and will be refreshed once per second.
 
 Now you can request, for example, the 100 more relevant tweets which *body* field contains the phrase "big data gives organizations":
 
-`SELECT * FROM tweets WHERE lucene='{query:{type:"phrase", field:"body", values:["big","data","gives","organizations"]}}' limit 100;`
+```JSON
+SELECT * FROM tweets WHERE lucene='{
+	query:{type:"phrase", field:"body", values:["big","data","gives","organizations"]}
+}' limit 100;
+```
 
 If you want to search into the tweets in a certain date range, then you must add to the search a filter as follows:
 
-`SELECT * FROM tweets WHERE lucene='{`
-`    filter:{type:"range", field:"timestamp", lower:"2014/04/25", upper:"2014/04/1"},`
-`    query:{type:"phrase", field:"body", values:["big","data","gives","organizations"]}`
-`}' limit 100;`
+```JSON
+SELECT * FROM tweets WHERE lucene='{
+    filter:{type:"range", field:"timestamp", lower:"2014/04/25", upper:"2014/04/1"},
+    query:{type:"phrase", field:"body", values:["big","data","gives","organizations"]}
+}' limit 100;
+```
 
 If you want to refine the search to get only the tweets written only by users whose name starts with "a":
 
-`SELECT * FROM tweets WHERE lucene='{`
-`    filter:{type:"boolean", must:[`
-`				{type:"range", field:"timestamp", lower:"2014/04/25", upper:"2014/04/1"},`
-`				{type:"prefix", field:"user", value:"a"},`
-`			],`
-`    query:{type:"phrase", field:"body", values:["big","data","gives","organizations"]}`
-`}' limit 100;`
-
+```JSON
+SELECT * FROM tweets WHERE lucene='{
+    filter:{type:"boolean", must:[
+				{type:"range", field:"timestamp", lower:"2014/04/25", upper:"2014/04/1"},
+				{type:"prefix", field:"user", value:"a"},
+			],
+    query:{type:"phrase", field:"body", values:["big","data","gives","organizations"]}
+}' limit 100;
+```
 
 
 
