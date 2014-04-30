@@ -225,6 +225,7 @@ public abstract class RowService {
 					rows.add(row);
 				}
 				if (rows.size() >= limit) { // Break if we have enough rows
+					Log.debug("Query time: " + (System.currentTimeMillis() - timestamp) + " ms");
 					return rows;
 				}
 			}
@@ -353,11 +354,11 @@ public abstract class RowService {
 		}
 		Filter filter = filterCache.get(dataRange);
 		if (filter == null) {
-			Log.debug(" -> Cache fails " + dataRange.keyRange());
+			Log.debug(" -> Cache fails for range " + dataRange.keyRange());
 			filter = filter(dataRange);
 			filterCache.put(dataRange, filter);
 		} else {
-			Log.debug(" -> Cache hits " + dataRange.keyRange());
+			Log.debug(" -> Cache hits for range " + dataRange.keyRange());
 		}
 		return filter;
 	}

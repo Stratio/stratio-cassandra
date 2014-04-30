@@ -82,9 +82,6 @@ public class RowDirectory {
 	                    Integer maxCachedMB,
 	                    Analyzer analyzer) {
 		try {
-			
-
-			System.out.println(" -> DIRECTORY PATH " + path);
 
 			// Get directory file
 			file = new File(path);
@@ -125,7 +122,7 @@ public class RowDirectory {
 	 *            the {@link Document} to be inserted.
 	 */
 	public void createDocument(Document document) {
-		Log.debug("Inserting document %s", document);
+		// Log.debug("Inserting document %s", document);
 		try {
 			indexWriter.addDocument(document);
 		} catch (IOException e) {
@@ -141,7 +138,7 @@ public class RowDirectory {
 	 *            the {@link Document} to be inserted.
 	 */
 	public void createDocuments(Iterable<Document> documents) {
-		Log.debug("Inserting documents %s", documents);
+		// Log.debug("Inserting documents %s", documents);
 		try {
 			indexWriter.addDocuments(documents);
 		} catch (IOException e) {
@@ -161,7 +158,7 @@ public class RowDirectory {
 	 *            The {@link Document} to be added.
 	 */
 	public void updateDocument(Term term, Document document) {
-		Log.debug("Updating document %s with term %s", document, term);
+		// Log.debug("Updating document %s with term %s", document, term);
 		try {
 			indexWriter.updateDocument(term, document);
 		} catch (IOException e) {
@@ -181,7 +178,7 @@ public class RowDirectory {
 	 *            The {@link Document}s to be added.
 	 */
 	public void updateDocuments(Term term, Iterable<Document> documents) {
-		Log.debug("Updating documents %s with term %s", documents, term);
+		// Log.debug("Updating documents %s with term %s", documents, term);
 		try {
 			indexWriter.updateDocuments(term, documents);
 		} catch (IOException e) {
@@ -197,7 +194,7 @@ public class RowDirectory {
 	 *            The {@link Term} to identify the documents to be deleted.
 	 */
 	public void deleteDocuments(Term term) {
-		Log.debug(String.format("Deleting by term %s", term));
+		// Log.debug(String.format("Deleting by term %s", term));
 		try {
 			indexWriter.deleteDocuments(term);
 		} catch (IOException e) {
@@ -213,7 +210,7 @@ public class RowDirectory {
 	 *            The {@link Query} to identify the documents to be deleted.
 	 */
 	public void deleteDocuments(Query query) {
-		Log.debug("Deleting by query %s", query);
+		// Log.debug("Deleting by query %s", query);
 		try {
 			indexWriter.deleteDocuments(query);
 		} catch (IOException e) {
@@ -304,9 +301,9 @@ public class RowDirectory {
 	 * @return The found documents, sorted according to the supplied {@link Sort} instance.
 	 */
 	public List<ScoredDocument> search(ScoreDoc after, Query query, Sort sort, Integer count, Set<String> fieldsToLoad) {
-		Log.debug("Searching with query %s ", query);
-		Log.debug("Searching with count %d", count);
-		Log.debug("Searching with sort %s", sort);
+		// Log.debug("Searching with query %s ", query);
+		// Log.debug("Searching with count %d", count);
+		// Log.debug("Searching with sort %s", sort);
 
 		// Validate
 		if (query == null) {

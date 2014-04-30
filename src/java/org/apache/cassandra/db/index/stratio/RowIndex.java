@@ -115,7 +115,7 @@ public class RowIndex extends PerRowSecondaryIndex {
 	 */
 	@Override
 	public void index(ByteBuffer key, ColumnFamily columnFamily) {
-		Log.debug("Indexing row %s in index %s", key, logName);
+		// Log.debug("Indexing row %s in index %s", key, logName);
 		lock.readLock().lock();
 		try {
 			if (rowService != null) {
@@ -268,7 +268,7 @@ public class RowIndex extends PerRowSecondaryIndex {
 
 	@Override
 	protected SecondaryIndexSearcher createSecondaryIndexSearcher(Set<ByteBuffer> columns) {
-		Log.debug("Creating searcher for index %s", logName);
+		// Log.debug("Creating searcher for index %s", logName);
 		return new RowIndexSearcher(secondaryIndexManager, this, columns, rowService);
 	}
 

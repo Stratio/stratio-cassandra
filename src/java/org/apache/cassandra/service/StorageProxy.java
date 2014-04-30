@@ -1449,8 +1449,6 @@ public class StorageProxy implements StorageProxyMBean
     throws UnavailableException, ReadTimeoutException
     {
     	
-    	logger.info(" ==> GET RANGE SLICE -> " + command);
-    	
         Tracing.trace("Determining replicas to query");
         long startTime = System.nanoTime();
 

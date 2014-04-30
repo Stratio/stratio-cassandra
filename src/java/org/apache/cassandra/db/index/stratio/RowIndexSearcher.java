@@ -71,7 +71,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
 
 	@Override
 	public List<Row> search(ExtendedFilter extendedFilter) {
-		Log.debug("Searching %s", extendedFilter);
+		// Log.debug("Searching %s", extendedFilter);
 		try {
 			long timestamp = extendedFilter.timestamp;
 			int limit = extendedFilter.maxColumns();
