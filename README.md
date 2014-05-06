@@ -96,7 +96,7 @@ WITH OPTIONS = {
             body : {type : "text",  analyzer : "org.apache.lucene.analysis.en.EnglishAnalyzer"},
             time : {type : "date", pattern  : "yyyy/MM/dd"}
         }
-    }'ç
+    }'
 };
 ```
 
