@@ -9,7 +9,7 @@ Index filtered queries are a powerful help when analyzing the data stored in Cas
 
 Any cell in the tables can be indexed, including those in the primary key as well as collections. Wide rows are also supported. You can scan token/key ranges, apply additional CQL3 clauses and page on the filtered results.
 
-Other information including documentation is available at [Stratio website.](http://wordpress.dev.strat.io/cassandra/extended-search-in-cassandra/)
+Other information including documentation is available at [Stratio website.](http://www.openstratio.org/manuals/extended-search-in-cassandra)
 
 Features
 ========
@@ -141,7 +141,7 @@ SELECT * FROM tweets WHERE lucene='{
 
 This last is the basis for Hadoop, Spark and other MapReduce frameworks support.
 
-Please, refer to the comprehensive Stratio Cassandra documentation at [Stratio website](http://wordpress.dev.strat.io/cassandra/extended-search-in-cassandra/).
+Please, refer to the comprehensive Stratio Cassandra documentation at [Stratio website](http://www.openstratio.org/manuals/extended-search-in-cassandra/).
 
 
 
