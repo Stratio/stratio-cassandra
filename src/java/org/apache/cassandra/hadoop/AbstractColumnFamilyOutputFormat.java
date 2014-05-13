@@ -72,7 +72,7 @@ public abstract class AbstractColumnFamilyOutputFormat<K, Y> extends OutputForma
      */
     public void checkOutputSpecs(JobContext context)
     {
-        checkOutputSpecs(context.getConfiguration());
+        checkOutputSpecs(HadoopCompat.getConfiguration(context));
     }
 
     protected void checkOutputSpecs(Configuration conf)

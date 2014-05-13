@@ -26,12 +26,16 @@ import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.exceptions.RequestValidationException;
 import org.apache.cassandra.exceptions.RequestExecutionException;
 import org.apache.cassandra.service.StorageProxy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Pager over a SliceFromReadCommand.
  */
 public class SliceQueryPager extends AbstractQueryPager implements SinglePartitionPager
 {
+    private static final Logger logger = LoggerFactory.getLogger(SliceQueryPager.class);
+
     private final SliceFromReadCommand command;
 
     private volatile ByteBuffer lastReturned;
@@ -73,6 +77,7 @@ public class SliceQueryPager extends AbstractQueryPager implements SinglePartiti
         if (lastReturned != null)
             filter = filter.withUpdatedStart(lastReturned, cfm.comparator);
 
+        logger.debug("Querying next page of slice query; new filter: {}", filter);
         ReadCommand pageCmd = command.withUpdatedFilter(filter);
         return localQuery
              ? Collections.singletonList(pageCmd.getRow(Keyspace.open(command.ksName)))
@@ -81,12 +86,21 @@ public class SliceQueryPager extends AbstractQueryPager implements SinglePartiti
 
     protected boolean containsPreviousLast(Row first)
     {
-        return lastReturned != null && lastReturned.equals(isReversed() ? lastName(first.cf) : firstName(first.cf));
+        if (lastReturned == null)
+            return false;
+
+        Column firstColumn = isReversed() ? lastColumn(first.cf) : firstColumn(first.cf);
+        // Note: we only return true if the column is the lastReturned *and* it is live. If it is deleted, it is ignored by the
+        // rest of the paging code (it hasn't been counted as live in particular) and we want to act as if it wasn't there.
+        return !first.cf.deletionInfo().isDeleted(firstColumn)
+            && firstColumn.isLive(timestamp())
+            && lastReturned.equals(firstColumn.name());
     }
 
     protected boolean recordLast(Row last)
     {
-        lastReturned = isReversed() ? firstName(last.cf) : lastName(last.cf);
+        Column lastColumn = isReversed() ? firstColumn(last.cf) : lastColumn(last.cf);
+        lastReturned = lastColumn.name();
         return true;
     }
 

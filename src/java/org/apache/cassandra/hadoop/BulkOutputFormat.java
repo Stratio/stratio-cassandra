@@ -32,7 +32,7 @@ public class BulkOutputFormat extends OutputFormat<ByteBuffer,List<Mutation>>
     @Override
     public void checkOutputSpecs(JobContext context)
     {
-        checkOutputSpecs(context.getConfiguration());
+        checkOutputSpecs(HadoopCompat.getConfiguration(context));
     }
 
     private void checkOutputSpecs(Configuration conf)
@@ -60,7 +60,7 @@ public class BulkOutputFormat extends OutputFormat<ByteBuffer,List<Mutation>>
     @Deprecated
     public BulkRecordWriter getRecordWriter(org.apache.hadoop.fs.FileSystem filesystem, org.apache.hadoop.mapred.JobConf job, String name, org.apache.hadoop.util.Progressable progress) throws IOException
     {
-        return new BulkRecordWriter(job, new Progressable(progress));
+        return new BulkRecordWriter(job, progress);
     }
 
     @Override

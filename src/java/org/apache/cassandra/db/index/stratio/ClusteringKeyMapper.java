@@ -66,7 +66,8 @@ public class ClusteringKeyMapper {
 	 */
 	private ClusteringKeyMapper(CFMetaData metadata) {
 		type = (CompositeType) metadata.comparator;
-		clusteringPosition = metadata.getCfDef().columns.size();
+		//clusteringPosition = metadata.getCfDef().columns.size();
+		clusteringPosition = metadata.getCfDef().clusteringColumnsCount(); 
 	}
 
 	/**

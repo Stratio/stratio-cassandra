@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Iterables;
+import org.apache.cassandra.hadoop.HadoopCompat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -104,7 +105,7 @@ public class CqlPagingRecordReader extends RecordReader<Map<String, ByteBuffer>,
     public void initialize(InputSplit split, TaskAttemptContext context) throws IOException
     {
         this.split = (ColumnFamilySplit) split;
-        Configuration conf = context.getConfiguration();
+        Configuration conf = HadoopCompat.getConfiguration(context);
         totalRowCount = (this.split.getLength() < Long.MAX_VALUE)
                       ? (int) this.split.getLength()
                       : ConfigHelper.getInputSplitSize(conf);
@@ -116,14 +117,14 @@ public class CqlPagingRecordReader extends RecordReader<Map<String, ByteBuffer>,
 
         try
         {
-            pageRowSize = Integer.parseInt(CqlConfigHelper.getInputPageRowSize(conf));
+            pageRowSize = CqlConfigHelper.getInputPageRowSize(conf).get();
         }
         catch (NumberFormatException e)
         {
             pageRowSize = DEFAULT_CQL_PAGE_LIMIT;
         }
 
-        partitioner = ConfigHelper.getInputPartitioner(context.getConfiguration());
+        partitioner = ConfigHelper.getInputPartitioner(HadoopCompat.getConfiguration(context));
 
         try
         {

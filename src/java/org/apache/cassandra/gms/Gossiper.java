@@ -252,9 +252,27 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         return tokenOwners;
     }
 
+    /**
+     * @return a list of unreachable gossip participants, including fat clients
+     */
     public Set<InetAddress> getUnreachableMembers()
     {
         return unreachableEndpoints.keySet();
+    }
+
+    /**
+     * @return a list of unreachable token owners
+     */
+    public Set<InetAddress> getUnreachableTokenOwners()
+    {
+        Set<InetAddress> tokenOwners = new HashSet<>();
+        for (InetAddress endpoint : unreachableEndpoints.keySet())
+        {
+            if (StorageService.instance.getTokenMetadata().isMember(endpoint))
+                tokenOwners.add(endpoint);
+        }
+
+        return tokenOwners;
     }
 
     public long getEndpointDowntime(InetAddress ep)
@@ -485,8 +503,10 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
             logger.info("Sleeping for " + StorageService.RING_DELAY + "ms to ensure " + endpoint + " does not change");
             Uninterruptibles.sleepUninterruptibly(StorageService.RING_DELAY, TimeUnit.MILLISECONDS);
             // make sure it did not change
-            epState = endpointStateMap.get(endpoint);
-            if (epState.getHeartBeatState().getGeneration() != generation)
+            EndpointState newState = endpointStateMap.get(endpoint);
+            if (newState == null)
+                logger.warn("Endpoint {} disappeared while trying to assassinate, continuing anyway", endpoint);
+            else if (newState.getHeartBeatState().getGeneration() != generation)
                 throw new RuntimeException("Endpoint " + endpoint + " generation changed while trying to remove it");
             epState.updateTimestamp(); // make sure we don't evict it too soon
             epState.getHeartBeatState().forceNewerGenerationUnsafe();

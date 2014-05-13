@@ -25,7 +25,6 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 import javax.management.*;
 
@@ -104,11 +103,6 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
     private volatile AbstractCompactionStrategy compactionStrategy;
 
     public final Directories directories;
-
-    /** ratio of in-memory memtable size, to serialized size */
-    volatile double liveRatio = 10.0; // reasonable default until we compute what it is based on actual data
-    /** ops count last time we computed liveRatio */
-    private final AtomicLong liveRatioComputedAt = new AtomicLong(32);
 
     public final ColumnFamilyMetrics metric;
     public volatile long sampleLatencyNanos;
@@ -412,7 +406,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
             Descriptor desc = entry.getKey();
             generations.add(desc.generation);
             if (!desc.isCompatible())
-                logger.warn(String.format("Old SSTable found: Current version %s, found file: %s.  Please run upgradesstables.", Descriptor.Version.CURRENT, desc));
+                throw new RuntimeException(String.format("Incompatible SSTable found.  Current version %s is unable to read file: %s.  Please run upgradesstables.",
+                                                          Descriptor.Version.CURRENT, desc));
         }
         Collections.sort(generations);
         int value = (generations.size() > 0) ? (generations.get(generations.size() - 1)) : 0;
@@ -651,12 +646,20 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                 continue;
             }
 
-            Descriptor newDescriptor = new Descriptor(descriptor.version,
-                                                      descriptor.directory,
-                                                      descriptor.ksname,
-                                                      descriptor.cfname,
-                                                      fileIndexGenerator.incrementAndGet(),
-                                                      false);
+            // Increment the generation until we find a filename that doesn't exist. This is needed because the new
+            // SSTables that are being loaded might already use these generation numbers.
+            Descriptor newDescriptor;
+            do
+            {
+                newDescriptor = new Descriptor(descriptor.version,
+                                               descriptor.directory,
+                                               descriptor.ksname,
+                                               descriptor.cfname,
+                                               fileIndexGenerator.incrementAndGet(),
+                                               false);
+            }
+            while (new File(newDescriptor.filenameFor(Component.DATA)).exists());
+
             logger.info("Renaming new SSTable {} to {}", descriptor, newDescriptor);
             SSTableWriter.rename(descriptor, newDescriptor, entry.getValue());
 
@@ -890,20 +893,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         mt.put(key, columnFamily, indexer);
         maybeUpdateRowCache(key);
         metric.writeLatency.addNano(System.nanoTime() - start);
-
-        // recompute liveRatio, if we have doubled the number of ops since last calculated
-        while (true)
-        {
-            long last = liveRatioComputedAt.get();
-            long operations = metric.writeLatency.latency.count();
-            if (operations < 2 * last)
-                break;
-            if (liveRatioComputedAt.compareAndSet(last, operations))
-            {
-                logger.debug("computing liveRatio of {} at {} ops", this, operations);
-                mt.updateLiveRatio();
-            }
-        }
+        mt.maybeUpdateLiveRatio();
     }
 
     /**
@@ -1448,17 +1438,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         return markCurrentViewReferenced().sstables;
     }
 
-    abstract class AbstractViewSSTableFinder
-    {
-        abstract List<SSTableReader> findSSTables(DataTracker.View view);
-        protected List<SSTableReader> sstablesForRowBounds(AbstractBounds<RowPosition> rowBounds, DataTracker.View view)
-        {
-            RowPosition stopInTree = rowBounds.right.isMinimum() ? view.intervalTree.max() : rowBounds.right;
-            return view.intervalTree.search(Interval.<RowPosition, SSTableReader>create(rowBounds.left, stopInTree));
-        }
-    }
-
-    private ViewFragment markReferenced(AbstractViewSSTableFinder finder)
+    private ViewFragment markReferenced(Function<DataTracker.View, List<SSTableReader>> filter)
     {
         List<SSTableReader> sstables;
         DataTracker.View view;
@@ -1473,7 +1453,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                 break;
             }
 
-            sstables = finder.findSSTables(view);
+            sstables = filter.apply(view);
             if (SSTableReader.acquireReferences(sstables))
                 break;
             // retry w/ new view
@@ -1488,10 +1468,10 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
      */
     public ViewFragment markReferenced(final DecoratedKey key)
     {
-        assert !key.isMinimum();
-        return markReferenced(new AbstractViewSSTableFinder()
+        assert !key.isMinimum(partitioner);
+        return markReferenced(new Function<DataTracker.View, List<SSTableReader>>()
         {
-            List<SSTableReader> findSSTables(DataTracker.View view)
+            public List<SSTableReader> apply(DataTracker.View view)
             {
                 return compactionStrategy.filterSSTablesForReads(view.intervalTree.search(key));
             }
@@ -1504,11 +1484,11 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
      */
     public ViewFragment markReferenced(final AbstractBounds<RowPosition> rowBounds)
     {
-        return markReferenced(new AbstractViewSSTableFinder()
+        return markReferenced(new Function<DataTracker.View, List<SSTableReader>>()
         {
-            List<SSTableReader> findSSTables(DataTracker.View view)
+            public List<SSTableReader> apply(DataTracker.View view)
             {
-                return compactionStrategy.filterSSTablesForReads(sstablesForRowBounds(rowBounds, view));
+                return compactionStrategy.filterSSTablesForReads(view.sstablesInBounds(rowBounds));
             }
         });
     }
@@ -1519,13 +1499,13 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
      */
     public ViewFragment markReferenced(final Collection<AbstractBounds<RowPosition>> rowBoundsCollection)
     {
-        return markReferenced(new AbstractViewSSTableFinder()
+        return markReferenced(new Function<DataTracker.View, List<SSTableReader>>()
         {
-            List<SSTableReader> findSSTables(DataTracker.View view)
+            public List<SSTableReader> apply(DataTracker.View view)
             {
                 Set<SSTableReader> sstables = Sets.newHashSet();
                 for (AbstractBounds<RowPosition> rowBounds : rowBoundsCollection)
-                    sstables.addAll(sstablesForRowBounds(rowBounds, view));
+                    sstables.addAll(view.sstablesInBounds(rowBounds));
 
                 return ImmutableList.copyOf(sstables);
             }
@@ -1534,7 +1514,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
     public List<String> getSSTablesForKey(String key)
     {
-        DecoratedKey dk = new DecoratedKey(partitioner.getToken(ByteBuffer.wrap(key.getBytes())), ByteBuffer.wrap(key.getBytes()));
+        DecoratedKey dk = partitioner.decorateKey(metadata.getKeyValidator().fromString(key));
         ViewFragment view = markReferenced(dk);
         try
         {
@@ -1589,7 +1569,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
      */
     private AbstractScanIterator getSequentialIterator(final DataRange range, long now)
     {
-        assert !(range.keyRange() instanceof Range) || !((Range)range.keyRange()).isWrapAround() || range.keyRange().right.isMinimum() : range.keyRange();
+        assert !(range.keyRange() instanceof Range) || !((Range)range.keyRange()).isWrapAround() || range.keyRange().right.isMinimum(partitioner) : range.keyRange();
 
         final ViewFragment view = markReferenced(range.keyRange());
         Tracing.trace("Executing seq scan across {} sstables for {}", view.sstables.size(), range.keyRange().getString(metadata.getKeyValidator()));
@@ -1610,7 +1590,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                     Row current = iterator.next();
                     DecoratedKey key = current.key;
 
-                    if (!range.stopKey().isMinimum() && range.stopKey().compareTo(key) < 0)
+                    if (!range.stopKey().isMinimum(partitioner) && range.stopKey().compareTo(key) < 0)
                         return endOfData();
 
                     // skipping outside of assigned range
@@ -1672,10 +1652,11 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                                              ByteBuffer columnStop,
                                              List<IndexExpression> rowFilter,
                                              int maxResults,
+                                             boolean countCQL3Rows,
                                              long now)
     {
         DataRange dataRange = new DataRange.Paging(keyRange, columnRange, columnStart, columnStop, metadata.comparator);
-        return ExtendedFilter.create(this, dataRange, rowFilter, maxResults, true, now);
+        return ExtendedFilter.create(this, dataRange, rowFilter, maxResults, countCQL3Rows, now);
     }
 
     public List<Row> getRangeSlice(AbstractBounds<RowPosition> range,
@@ -2439,5 +2420,11 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
     {
         Pair<ReplayPosition, Long> truncationRecord = SystemKeyspace.getTruncationRecords().get(metadata.cfId);
         return truncationRecord == null ? Long.MIN_VALUE : truncationRecord.right;
+    }
+
+    @VisibleForTesting
+    void resetFileIndexGenerator()
+    {
+        fileIndexGenerator.set(0);
     }
 }

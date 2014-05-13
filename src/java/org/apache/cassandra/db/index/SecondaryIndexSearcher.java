@@ -27,58 +27,63 @@ import org.apache.cassandra.thrift.IndexOperator;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
 
-public abstract class SecondaryIndexSearcher {
-	protected final SecondaryIndexManager indexManager;
-	protected final Set<ByteBuffer> columns;
-	protected final ColumnFamilyStore baseCfs;
+public abstract class SecondaryIndexSearcher
+{
+    protected final SecondaryIndexManager indexManager;
+    protected final Set<ByteBuffer> columns;
+    protected final ColumnFamilyStore baseCfs;
 
-	public SecondaryIndexSearcher(SecondaryIndexManager indexManager, Set<ByteBuffer> columns) {
-		this.indexManager = indexManager;
-		this.columns = columns;
-		this.baseCfs = indexManager.baseCfs;
-	}
+    public SecondaryIndexSearcher(SecondaryIndexManager indexManager, Set<ByteBuffer> columns)
+    {
+        this.indexManager = indexManager;
+        this.columns = columns;
+        this.baseCfs = indexManager.baseCfs;
+    }
 
-	public abstract List<Row> search(ExtendedFilter filter);
+    public abstract List<Row> search(ExtendedFilter filter);
 
-	/**
-	 * @return true this index is able to handle given clauses.
-	 */
-	public boolean isIndexing(List<IndexExpression> clause) {
-		return highestSelectivityPredicate(clause) != null;
-	}
+    /**
+     * @return true this index is able to handle given clauses.
+     */
+    public boolean isIndexing(List<IndexExpression> clause)
+    {
+        return highestSelectivityPredicate(clause) != null;
+    }
 
-	protected IndexExpression highestSelectivityPredicate(List<IndexExpression> clause) {
-		IndexExpression best = null;
-		int bestMeanCount = Integer.MAX_VALUE;
-		Map<SecondaryIndex, Integer> candidates = new HashMap<>();
+    protected IndexExpression highestSelectivityPredicate(List<IndexExpression> clause)
+    {
+        IndexExpression best = null;
+        int bestMeanCount = Integer.MAX_VALUE;
+        Map<SecondaryIndex, Integer> candidates = new HashMap<>();
 
-		for (IndexExpression expression : clause) {
-			// skip columns belonging to a different index type
-			if (!columns.contains(expression.column_name))
-				continue;
+        for (IndexExpression expression : clause)
+        {
+            // skip columns belonging to a different index type
+            if (!columns.contains(expression.column_name))
+                continue;
 
-			SecondaryIndex index = indexManager.getIndexForColumn(expression.column_name);
-			if (index == null || (expression.op != IndexOperator.EQ))
-				continue;
-			int columns = index.getIndexCfs().getMeanColumns();
-			candidates.put(index, columns);
-			if (columns < bestMeanCount) {
-				best = expression;
-				bestMeanCount = columns;
-			}
-		}
+            SecondaryIndex index = indexManager.getIndexForColumn(expression.column_name);
+            if (index == null || index.getIndexCfs() == null || expression.op != IndexOperator.EQ)
+                continue;
+            int columns = index.getIndexCfs().getMeanColumns();
+            candidates.put(index, columns);
+            if (columns < bestMeanCount)
+            {
+                best = expression;
+                bestMeanCount = columns;
+            }
+        }
 
-		if (best == null)
-			Tracing.trace("No applicable indexes found");
-		else
-			Tracing.trace("Candidate index mean cardinalities are {}. Scanning with {}.",
-			              FBUtilities.toString(candidates),
-			              indexManager.getIndexForColumn(best.column_name).getIndexName());
+        if (best == null)
+            Tracing.trace("No applicable indexes found");
+        else
+            Tracing.trace("Candidate index mean cardinalities are {}. Scanning with {}.",
+                          FBUtilities.toString(candidates), indexManager.getIndexForColumn(best.column_name).getIndexName());
 
-		return best;
-	}
-	
-	public void validate(List<IndexExpression> clause) {
+        return best;
+    }
+    
+    public void validate(List<IndexExpression> clause) {
 	}
 
 	public boolean requiresFullScan(AbstractRangeCommand command) {

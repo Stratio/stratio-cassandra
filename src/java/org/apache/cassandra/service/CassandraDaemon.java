@@ -20,6 +20,7 @@ package org.apache.cassandra.service;
 import java.io.File;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryPoolMXBean;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -35,6 +36,8 @@ import com.addthis.metrics.reporter.config.ReporterConfig;
 
 import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.Uninterruptibles;
+
+import org.apache.cassandra.io.sstable.CorruptSSTableException;
 import org.apache.log4j.PropertyConfigurator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,6 +62,7 @@ import org.apache.cassandra.metrics.StorageMetrics;
 import org.apache.cassandra.thrift.ThriftServer;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.CLibrary;
+import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Mx4jTool;
 import org.apache.cassandra.utils.Pair;
 
@@ -181,6 +185,8 @@ public class CassandraDaemon
         }
      */
         logger.info("Heap size: {}/{}", Runtime.getRuntime().totalMemory(), Runtime.getRuntime().maxMemory());
+        for(MemoryPoolMXBean pool: ManagementFactory.getMemoryPoolMXBeans())
+            logger.info("{} {}: {}", pool.getName(), pool.getType(), pool.getPeakUsage());
         logger.info("Classpath: {}", System.getProperty("java.class.path"));
         CLibrary.tryMlockall();
 
@@ -202,6 +208,13 @@ public class CassandraDaemon
                         if (e2 != e) // make sure FSError gets logged exactly once.
                             logger.error("Exception in thread " + t, e2);
                         FileUtils.handleFSError((FSError) e2);
+                    }
+
+                    if (e2 instanceof CorruptSSTableException)
+                    {
+                        if (e2 != e)
+                            logger.error("Exception in thread " + t, e2);
+                        FileUtils.handleCorruptSSTable((CorruptSSTableException) e2);
                     }
                 }
             }
@@ -260,6 +273,10 @@ public class CassandraDaemon
         // clean up debris in the rest of the keyspaces
         for (String keyspaceName : Schema.instance.getKeyspaces())
         {
+            // Skip system as we've already cleaned it
+            if (keyspaceName.equals(Keyspace.SYSTEM_KS))
+                continue;
+
             for (CFMetaData cfm : Schema.instance.getKeyspaceMetaData(keyspaceName).values())
                 ColumnFamilyStore.scrubDataDirectories(keyspaceName, cfm.cfName);
         }
@@ -369,7 +386,8 @@ public class CassandraDaemon
             }
         }
 
-        waitForGossipToSettle();
+        if (!FBUtilities.getBroadcastAddress().equals(InetAddress.getLoopbackAddress()))
+            waitForGossipToSettle();
 
         // Thift
         InetAddress rpcAddr = DatabaseDescriptor.getRpcAddress();
@@ -495,7 +513,6 @@ public class CassandraDaemon
         destroy();
     }
 
-
     private void waitForGossipToSettle()
     {
         int forceAfter = Integer.getInteger("cassandra.skip_wait_for_gossip_to_settle", -1);
@@ -539,7 +556,7 @@ public class CassandraDaemon
         if (totalPolls > GOSSIP_SETTLE_POLL_SUCCESSES_REQUIRED)
             logger.info("Gossip settled after {} extra polls; proceeding", totalPolls - GOSSIP_SETTLE_POLL_SUCCESSES_REQUIRED);
         else
-            logger.debug("Gossip settled after {} extra polls; proceeding", totalPolls - GOSSIP_SETTLE_POLL_SUCCESSES_REQUIRED);
+            logger.info("No gossip backlog; proceeding");
     }
 
     public static void stop(String[] args)

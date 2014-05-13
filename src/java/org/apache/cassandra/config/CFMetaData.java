@@ -27,6 +27,7 @@ import java.util.*;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Objects;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.MapDifference;
 import com.google.common.collect.Maps;
 import org.apache.commons.lang3.ArrayUtils;
@@ -232,7 +233,8 @@ public final class CFMetaData
     public static final CFMetaData BatchlogCf = compile("CREATE TABLE " + SystemKeyspace.BATCHLOG_CF + " ("
                                                         + "id uuid PRIMARY KEY,"
                                                         + "written_at timestamp,"
-                                                        + "data blob"
+                                                        + "data blob,"
+                                                        + "version int,"
                                                         + ") WITH COMMENT='uncommited batches' AND gc_grace_seconds=0 "
                                                         + "AND COMPACTION={'class' : 'SizeTieredCompactionStrategy', 'min_threshold' : 2}");
 
@@ -408,6 +410,7 @@ public final class CFMetaData
     private volatile List<ColumnDefinition> partitionKeyColumns;  // Always of size keyValidator.componentsCount, null padded if necessary
     private volatile List<ColumnDefinition> clusteringKeyColumns; // Of size comparator.componentsCount or comparator.componentsCount -1, null padded if necessary
     private volatile Set<ColumnDefinition> regularColumns;
+    private volatile Set<ColumnDefinition> staticColumns;
     private volatile ColumnDefinition compactValueColumn;
 
     public volatile Class<? extends AbstractCompactionStrategy> compactionStrategyClass = DEFAULT_COMPACTION_STRATEGY_CLASS;
@@ -721,6 +724,16 @@ public final class CFMetaData
         return regularColumns;
     }
 
+    public Set<ColumnDefinition> staticColumns()
+    {
+        return staticColumns;
+    }
+
+    public Iterable<ColumnDefinition> regularAndStaticColumns()
+    {
+        return Iterables.concat(staticColumns, regularColumns);
+    }
+
     public ColumnDefinition compactValueColumn()
     {
         return compactValueColumn;
@@ -840,16 +853,13 @@ public final class CFMetaData
             .toHashCode();
     }
 
-    public AbstractType<?> getValueValidator(ByteBuffer column)
+    /**
+     * Like getColumnDefinitionFromColumnName, the argument must be an internal column/cell name.
+     */
+    public AbstractType<?> getValueValidatorFromColumnName(ByteBuffer columnName)
     {
-        return getValueValidator(getColumnDefinition(column));
-    }
-
-    public AbstractType<?> getValueValidator(ColumnDefinition columnDefinition)
-    {
-        return columnDefinition == null
-               ? defaultValidator
-               : columnDefinition.getValidator();
+        ColumnDefinition def = getColumnDefinitionFromColumnName(columnName);
+        return def == null ? defaultValidator : def.getValidator();
     }
 
     /** applies implicit defaults to cf definition. useful in updates */
@@ -1199,7 +1209,7 @@ public final class CFMetaData
         {
             CompositeType composite = (CompositeType)comparator;
             ByteBuffer[] components = composite.split(columnName);
-            for (ColumnDefinition def : column_metadata.values())
+            for (ColumnDefinition def : regularAndStaticColumns())
             {
                 ByteBuffer toCompare;
                 if (def.componentIndex == null)
@@ -1220,11 +1230,18 @@ public final class CFMetaData
         }
         else
         {
-            return column_metadata.get(columnName);
+            ColumnDefinition def = column_metadata.get(columnName);
+            // It's possible that the def is a PRIMARY KEY or COMPACT_VALUE one in case a concrete cell
+            // name conflicts with a CQL column name, which can happen in 2 cases:
+            // 1) because the user inserted a cell through Thrift that conflicts with a default "alias" used
+            //    by CQL for thrift tables (see #6892).
+            // 2) for COMPACT STORAGE tables with a single utf8 clustering column, the cell name can be anything,
+            //    including a CQL column name (without this being a problem).
+            // In any case, this is fine, this just mean that columnDefinition is not the ColumnDefinition we are
+            // looking for.
+            return def != null && def.isPartOfCellName() ? def : null;
         }
     }
-
-
 
     public ColumnDefinition getColumnDefinitionForIndex(String indexName)
     {
@@ -1328,7 +1345,7 @@ public final class CFMetaData
         // Mixing counter with non counter columns is not supported (#2614)
         if (defaultValidator instanceof CounterColumnType)
         {
-            for (ColumnDefinition def : regularColumns)
+            for (ColumnDefinition def : regularAndStaticColumns())
                 if (!(def.getValidator() instanceof CounterColumnType))
                     throw new ConfigurationException("Cannot add a non counter column (" + getColumnDefinitionComparator(def).getString(def.name) + ") in a counter column family");
         }
@@ -1526,6 +1543,9 @@ public final class CFMetaData
     public void toSchema(RowMutation rm, long timestamp)
     {
         toSchemaNoColumnsNoTriggers(rm, timestamp);
+
+        for (TriggerDefinition td : triggers.values())
+            td.toSchema(rm, cfName, timestamp);
 
         for (ColumnDefinition cd : column_metadata.values())
             cd.toSchema(rm, cfName, getColumnDefinitionComparator(cd), timestamp);
@@ -1846,7 +1866,7 @@ public final class CFMetaData
         if (column_metadata.get(to) != null)
             throw new InvalidRequestException(String.format("Cannot rename column %s to %s in keyspace %s; another column of that name already exist", strFrom, strTo, cfName));
 
-        if (def.type == ColumnDefinition.Type.REGULAR)
+        if (def.isPartOfCellName())
         {
             throw new InvalidRequestException(String.format("Cannot rename non PRIMARY KEY part %s", strFrom));
         }
@@ -1890,6 +1910,7 @@ public final class CFMetaData
                      : comparator.componentsCount() - (hasCollection() ? 2 : 1);
         List<ColumnDefinition> ckCols = nullInitializedList(nbCkCols);
         Set<ColumnDefinition> regCols = new HashSet<ColumnDefinition>();
+        Set<ColumnDefinition> statCols = new HashSet<ColumnDefinition>();
         ColumnDefinition compactCol = null;
 
         for (ColumnDefinition def : column_metadata.values())
@@ -1907,6 +1928,9 @@ public final class CFMetaData
                 case REGULAR:
                     regCols.add(def);
                     break;
+                case STATIC:
+                    statCols.add(def);
+                    break;
                 case COMPACT_VALUE:
                     assert compactCol == null : "There shouldn't be more than one compact value defined: got " + compactCol + " and " + def;
                     compactCol = def;
@@ -1918,6 +1942,7 @@ public final class CFMetaData
         partitionKeyColumns = addDefaultKeyAliases(pkCols);
         clusteringKeyColumns = addDefaultColumnAliases(ckCols);
         regularColumns = regCols;
+        staticColumns = statCols;
         compactValueColumn = addDefaultValueAlias(compactCol, isDense);
     }
 
@@ -2079,6 +2104,20 @@ public final class CFMetaData
                 return false;
         }
         return true;
+    }
+
+    public boolean hasStaticColumns()
+    {
+        return !staticColumns.isEmpty();
+    }
+
+    public ColumnNameBuilder getStaticColumnNameBuilder()
+    {
+        assert comparator instanceof CompositeType && clusteringKeyColumns().size() > 0;
+        CompositeType.Builder builder = CompositeType.Builder.staticBuilder((CompositeType)comparator);
+        for (int i = 0; i < clusteringKeyColumns().size(); i++)
+            builder.add(ByteBufferUtil.EMPTY_BYTE_BUFFER);
+        return builder;
     }
 
     public void validateColumns(Iterable<Column> columns)

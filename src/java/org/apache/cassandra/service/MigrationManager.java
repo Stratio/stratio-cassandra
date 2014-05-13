@@ -91,11 +91,15 @@ public class MigrationManager
     private static void maybeScheduleSchemaPull(final UUID theirVersion, final InetAddress endpoint)
     {
         if ((Schema.instance.getVersion() != null && Schema.instance.getVersion().equals(theirVersion)) || !shouldPullSchemaFrom(endpoint))
+        {
+            logger.debug("Not pulling schema because versions match or shouldPullSchemaFrom returned false");
             return;
+        }
 
         if (Schema.emptyVersion.equals(Schema.instance.getVersion()) || runtimeMXBean.getUptime() < MIGRATION_DELAY_IN_MS)
         {
             // If we think we may be bootstrapping or have recently started, submit MigrationTask immediately
+            logger.debug("Submitting migration task for {}", endpoint);
             submitMigrationTask(endpoint);
         }
         else
@@ -109,12 +113,18 @@ public class MigrationManager
                     // grab the latest version of the schema since it may have changed again since the initial scheduling
                     EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
                     if (epState == null)
+                    {
+                        logger.debug("epState vanished for {}, not submitting migration task", endpoint);
                         return;
+                    }
                     VersionedValue value = epState.getApplicationState(ApplicationState.SCHEMA);
                     UUID currentVersion = UUID.fromString(value.value);
                     if (Schema.instance.getVersion().equals(currentVersion))
+                    {
+                        logger.debug("not submitting migration task for {} because our versions match", endpoint);
                         return;
-
+                    }
+                    logger.debug("submitting migration task for {}", endpoint);
                     submitMigrationTask(endpoint);
                 }
             };
@@ -134,16 +144,17 @@ public class MigrationManager
     private static boolean shouldPullSchemaFrom(InetAddress endpoint)
     {
         /*
-         * Don't request schema from nodes with a higher major (may have incompatible schema)
+         * Don't request schema from nodes with a differnt or unknonw major version (may have incompatible schema)
          * Don't request schema from fat clients
          */
-        return MessagingService.instance().getVersion(endpoint) <= MessagingService.current_version
-            && !Gossiper.instance.isFatClient(endpoint);
+        return MessagingService.instance().knowsVersion(endpoint)
+                && MessagingService.instance().getRawVersion(endpoint) == MessagingService.current_version
+                && !Gossiper.instance.isFatClient(endpoint);
     }
 
     public static boolean isReadyForBootstrap()
     {
-        return Schema.instance.getVersion() != null && !Schema.emptyVersion.equals(Schema.instance.getVersion());
+        return ((ThreadPoolExecutor) StageManager.getStage(Stage.MIGRATION)).getActiveCount() == 0;
     }
 
     public void notifyCreateKeyspace(KSMetaData ksm)
@@ -209,7 +220,7 @@ public class MigrationManager
             throw new AlreadyExistsException(cfm.ksName, cfm.cfName);
 
         logger.info(String.format("Create new ColumnFamily: %s", cfm));
-        announce(cfm.toSchema(FBUtilities.timestampMicros()));
+        announce(addSerializedKeyspace(cfm.toSchema(FBUtilities.timestampMicros()), cfm.ksName));
     }
 
     public static void announceKeyspaceUpdate(KSMetaData ksm) throws ConfigurationException
@@ -235,7 +246,7 @@ public class MigrationManager
         oldCfm.validateCompatility(cfm);
 
         logger.info(String.format("Update ColumnFamily '%s/%s' From %s To %s", cfm.ksName, cfm.cfName, oldCfm, cfm));
-        announce(oldCfm.toSchemaUpdate(cfm, FBUtilities.timestampMicros(), fromThrift));
+        announce(addSerializedKeyspace(oldCfm.toSchemaUpdate(cfm, FBUtilities.timestampMicros(), fromThrift), cfm.ksName));
     }
 
     public static void announceKeyspaceDrop(String ksName) throws ConfigurationException
@@ -255,7 +266,14 @@ public class MigrationManager
             throw new ConfigurationException(String.format("Cannot drop non existing column family '%s' in keyspace '%s'.", cfName, ksName));
 
         logger.info(String.format("Drop ColumnFamily '%s/%s'", oldCfm.ksName, oldCfm.cfName));
-        announce(oldCfm.dropFromSchema(FBUtilities.timestampMicros()));
+        announce(addSerializedKeyspace(oldCfm.dropFromSchema(FBUtilities.timestampMicros()), ksName));
+    }
+
+    // Include the serialized keyspace for when a target node missed the CREATE KEYSPACE migration (see #5631).
+    private static RowMutation addSerializedKeyspace(RowMutation migration, String ksName)
+    {
+        migration.add(SystemKeyspace.readSchemaRow(ksName).cf);
+        return migration;
     }
 
     /**
@@ -288,15 +306,13 @@ public class MigrationManager
 
         for (InetAddress endpoint : Gossiper.instance.getLiveMembers())
         {
-            if (endpoint.equals(FBUtilities.getBroadcastAddress()))
-                continue; // we've dealt with localhost already
-
-            // don't send schema to the nodes with the versions older than current major
-            if (MessagingService.instance().getVersion(endpoint) < MessagingService.current_version)
-                continue;
-
-            pushSchemaMutation(endpoint, schema);
+            // only push schema to nodes with known and equal versions
+            if (!endpoint.equals(FBUtilities.getBroadcastAddress()) &&
+                    MessagingService.instance().knowsVersion(endpoint) &&
+                    MessagingService.instance().getRawVersion(endpoint) == MessagingService.current_version)
+                pushSchemaMutation(endpoint, schema);
         }
+
         return f;
     }
 

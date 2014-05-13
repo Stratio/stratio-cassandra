@@ -30,6 +30,7 @@ import java.util.zip.Inflater;
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -59,6 +60,7 @@ import org.apache.cassandra.locator.DynamicEndpointSnitch;
 import org.apache.cassandra.metrics.ClientMetrics;
 import org.apache.cassandra.scheduler.IRequestScheduler;
 import org.apache.cassandra.serializers.MarshalException;
+import org.apache.cassandra.service.CASConditions;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.MigrationManager;
 import org.apache.cassandra.service.StorageProxy;
@@ -768,8 +770,7 @@ public class CassandraServer implements Cassandra.Iface
             ColumnFamily result = StorageProxy.cas(cState.getKeyspace(),
                                                    column_family,
                                                    key,
-                                                   null,
-                                                   cfExpected,
+                                                   new ThriftCASConditions(cfExpected),
                                                    cfUpdates,
                                                    ThriftConversion.fromThrift(serial_consistency_level),
                                                    ThriftConversion.fromThrift(commit_consistency_level));
@@ -1955,7 +1956,7 @@ public class CassandraServer implements Cassandra.Iface
             }
 
             ThriftClientState cState = state();
-            return org.apache.cassandra.cql3.QueryProcessor.process(queryString, ThriftConversion.fromThrift(cLevel), cState.getQueryState()).toThriftResult();
+            return cState.getCQLQueryHandler().process(queryString, cState.getQueryState(), new QueryOptions(ThriftConversion.fromThrift(cLevel), Collections.<ByteBuffer>emptyList())).toThriftResult();
         }
         catch (RequestExecutionException e)
         {
@@ -2008,7 +2009,7 @@ public class CassandraServer implements Cassandra.Iface
         try
         {
             cState.validateLogin();
-            return org.apache.cassandra.cql3.QueryProcessor.prepare(queryString, cState, true).toThriftPreparedResult();
+            return cState.getCQLQueryHandler().prepare(queryString, cState.getQueryState()).toThriftPreparedResult();
         }
         catch (RequestValidationException e)
         {
@@ -2075,7 +2076,7 @@ public class CassandraServer implements Cassandra.Iface
         try
         {
             ThriftClientState cState = state();
-            org.apache.cassandra.cql3.CQLStatement statement = org.apache.cassandra.cql3.QueryProcessor.getPrepared(itemId);
+            org.apache.cassandra.cql3.CQLStatement statement = cState.getCQLQueryHandler().getPreparedForThrift(itemId);
 
             if (statement == null)
                 throw new InvalidRequestException(String.format("Prepared query with ID %d not found" +
@@ -2084,9 +2085,9 @@ public class CassandraServer implements Cassandra.Iface
                                                                 itemId));
             logger.trace("Retrieved prepared statement #{} with {} bind markers", itemId, statement.getBoundTerms());
 
-            return org.apache.cassandra.cql3.QueryProcessor.processPrepared(statement,
-                                                                            cState.getQueryState(),
-                                                                            new QueryOptions(ThriftConversion.fromThrift(cLevel), bindVariables)).toThriftResult();
+            return cState.getCQLQueryHandler().processPrepared(statement,
+                                                               cState.getQueryState(),
+                                                               new QueryOptions(ThriftConversion.fromThrift(cLevel), bindVariables)).toThriftResult();
         }
         catch (RequestExecutionException e)
         {
@@ -2158,5 +2159,62 @@ public class CassandraServer implements Cassandra.Iface
             }
         });
     }
-    // main method moved to CassandraDaemon
+
+    private static class ThriftCASConditions implements CASConditions
+    {
+        private final ColumnFamily expected;
+
+        private ThriftCASConditions(ColumnFamily expected)
+        {
+            this.expected = expected;
+        }
+
+        public IDiskAtomFilter readFilter()
+        {
+            return expected == null || expected.isEmpty()
+                 ? new SliceQueryFilter(ByteBufferUtil.EMPTY_BYTE_BUFFER, ByteBufferUtil.EMPTY_BYTE_BUFFER, false, 1)
+                 : new NamesQueryFilter(ImmutableSortedSet.copyOf(expected.getComparator(), expected.getColumnNames()));
+        }
+
+        public boolean appliesTo(ColumnFamily current)
+        {
+            long now = System.currentTimeMillis();
+
+            if (!hasLiveColumns(expected, now))
+                return !hasLiveColumns(current, now);
+            else if (!hasLiveColumns(current, now))
+                return false;
+
+            // current has been built from expected, so we know that it can't have columns
+            // that excepted don't have. So we just check that for each columns in expected:
+            //   - if it is a tombstone, whether current has no column or a tombstone;
+            //   - otherwise, that current has a live column with the same value.
+            for (org.apache.cassandra.db.Column e : expected)
+            {
+                org.apache.cassandra.db.Column c = current.getColumn(e.name());
+                if (e.isLive(now))
+                {
+                    if (c == null || !c.isLive(now) || !c.value().equals(e.value()))
+                        return false;
+                }
+                else
+                {
+                    if (c != null && c.isLive(now))
+                        return false;
+                }
+            }
+            return true;
+        }
+
+        private static boolean hasLiveColumns(ColumnFamily cf, long now)
+        {
+            return cf != null && !cf.hasOnlyTombstones(now);
+        }
+
+        @Override
+        public String toString()
+        {
+            return expected.toString();
+        }
+    }
 }

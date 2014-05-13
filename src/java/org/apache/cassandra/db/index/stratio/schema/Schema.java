@@ -227,7 +227,8 @@ public class Schema {
 		String name = null;
 		CollectionType collectionType = null;
 
-		int clusteringPosition = metadata.getCfDef().columns.size();
+		//int clusteringPosition = metadata.getCfDef().columns.size();
+		int clusteringPosition = metadata.getCfDef().clusteringColumnsCount(); 
 		CompositeType nameType = (CompositeType) metadata.comparator;
 
 		while (columnIterator.hasNext()) {

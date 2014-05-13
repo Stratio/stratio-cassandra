@@ -15,24 +15,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.cassandra.cql3.hooks;
+package org.apache.cassandra.service;
 
-import org.apache.cassandra.cql3.CQLStatement;
-import org.apache.cassandra.exceptions.RequestValidationException;
+import org.apache.cassandra.db.ColumnFamily;
+import org.apache.cassandra.db.filter.IDiskAtomFilter;
+import org.apache.cassandra.exceptions.InvalidRequestException;
 
 /**
- * Run directly after a CQL Statement is prepared in
- * {@link org.apache.cassandra.cql3.QueryProcessor}.
+ * Abstract the conditions to be fulfilled by a CAS operation.
  */
-public interface PostPreparationHook
+public interface CASConditions
 {
     /**
-     * Called in QueryProcessor, once a CQL statement has been prepared.
-     *
-     * @param statement the statement to perform additional processing on
-     * @param context preparation context containing additional info
-     *                about the operation and statement
-     * @throws RequestValidationException
+     * The filter to use to fetch the value to compare for the CAS.
      */
-    void processStatement(CQLStatement statement, PreparationContext context) throws RequestValidationException;
+    public IDiskAtomFilter readFilter();
+
+    /**
+     * Returns whether the provided CF, that represents the values fetched using the
+     * readFilter(), match the CAS conditions this object stands for.
+     */
+    public boolean appliesTo(ColumnFamily current) throws InvalidRequestException;
 }
