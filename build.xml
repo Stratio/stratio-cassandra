@@ -1165,7 +1165,7 @@
     </testmacro>
   </target>
   
-  <target name="test-index" depends="build-test" description="Execute unit tests" >
+  <target name="test-index" depends="build-test-index" description="Execute unit tests" >
     <testmacroindex suitename="unit" inputdir="${test.unit.src}" exclude="**/pig/*.java" timeout="${test.timeout}">
       <jvmarg value="-Dlegacy-sstable-root=${test.data}/legacy-sstables"/>
       <jvmarg value="-Dcorrupt-sstable-root=${test.data}/corrupt-sstables"/>
