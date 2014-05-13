@@ -1,18 +1,18 @@
 /*
-* Copyright 2014, Stratio.
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-* http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Copyright 2014, Stratio.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.cassandra.db.index.stratio;
 
 import java.io.File;
@@ -37,7 +37,6 @@ public class RowIndexConfig {
 
 	private static final String FILTER_CACHE_SIZE_OPTION = "num_cached_filters";
 
-	private static final String PATH_OPTION = "path";
 	private static final String DEFAULT_PATH_PREFIX = "lucene_idx";
 
 	private static final String RAM_BUFFER_MB_OPTION = "ram_buffer_mb";
@@ -158,22 +157,16 @@ public class RowIndexConfig {
 		}
 
 		// Get Lucene's directory path
-		String directoryOption = options.get(PATH_OPTION);
-		if (directoryOption == null) {
-			String[] dataFileLocations = DatabaseDescriptor.getAllDataFileLocations();
-			StringBuilder directoryPathBuilder = new StringBuilder();
-			directoryPathBuilder.append(dataFileLocations[0]);
-			directoryPathBuilder.append(File.separatorChar);
-			directoryPathBuilder.append(metadata.ksName);
-			directoryPathBuilder.append(File.separatorChar);
-			directoryPathBuilder.append(metadata.cfName);
-			directoryPathBuilder.append(File.separatorChar);
-			directoryPathBuilder.append(DEFAULT_PATH_PREFIX);
-			path = directoryPathBuilder.toString();
-			System.out.println(" -> CONFIG PATH " + path);
-		} else {
-			path = directoryOption;
-		}
+		String[] dataFileLocations = DatabaseDescriptor.getAllDataFileLocations();
+		StringBuilder directoryPathBuilder = new StringBuilder();
+		directoryPathBuilder.append(dataFileLocations[0]);
+		directoryPathBuilder.append(File.separatorChar);
+		directoryPathBuilder.append(metadata.ksName);
+		directoryPathBuilder.append(File.separatorChar);
+		directoryPathBuilder.append(metadata.cfName);
+		directoryPathBuilder.append(File.separatorChar);
+		directoryPathBuilder.append(DEFAULT_PATH_PREFIX);
+		path = directoryPathBuilder.toString();
 	}
 
 	public Schema getSchema() {
