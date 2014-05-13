@@ -17,24 +17,26 @@ package org.apache.cassandra.db.index.stratio;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
 import org.apache.cassandra.db.index.stratio.util.Log;
 import org.apache.cassandra.io.util.FileUtils;
+import org.apache.cassandra.utils.MurmurHash;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.index.TrackingIndexWriter;
-import org.apache.lucene.search.ControlledRealTimeReopenThread;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
@@ -50,13 +52,13 @@ import org.apache.lucene.util.Version;
  */
 public class RowDirectory {
 
-	private File file;
-	private Directory directory;
 	private Analyzer analyzer;
-	private IndexWriter indexWriter;
-	private TrackingIndexWriter trackingIndexWriter;
-	private SearcherManager searcherManager;
-	private ControlledRealTimeReopenThread<IndexSearcher> indexSearcherReopenThread;
+
+	private final File[] files;
+	private final Directory[] shards;
+	private final IndexWriter[] writers;
+
+	private final int numShards;
 
 	/**
 	 * Builds a new {@code RowDirectory} using the specified directory path and analyzer.
@@ -73,41 +75,36 @@ public class RowDirectory {
 	 *            NRTCachingDirectory max merge size in MB.
 	 * @param maxCachedMB
 	 *            NRTCachingDirectory max cached MB.
+	 * @param numShards
 	 * @param analyzer
 	 */
-	public RowDirectory(String path,
-	                    Double refreshSeconds,
-	                    Integer ramBufferMB,
-	                    Integer maxMergeMB,
-	                    Integer maxCachedMB,
-	                    Analyzer analyzer) {
+	public RowDirectory(String path, Double refreshSeconds, Integer ramBufferMB, Integer maxMergeMB,
+	        Integer maxCachedMB, Integer numShards, Analyzer analyzer) {
 		try {
-
-			// Get directory file
-			file = new File(path);
-
-			// Open or create directory
-			FSDirectory fsDirectory = FSDirectory.open(file);
-			directory = new NRTCachingDirectory(fsDirectory, maxMergeMB, maxCachedMB);
 
 			// Set analyzer
 			this.analyzer = analyzer;
+			this.numShards = numShards;
 
-			// Setup index writer
-			IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_46, analyzer);
-			config.setRAMBufferSizeMB(ramBufferMB);
-			config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
-			config.setUseCompoundFile(false);
-			indexWriter = new IndexWriter(directory, config);
+			shards = new Directory[numShards];
+			writers = new IndexWriter[numShards];
+			files = new File[numShards];
+			for (int i = 0; i < numShards; i++) {
 
-			// Setup NRT search
-			trackingIndexWriter = new TrackingIndexWriter(indexWriter);
-			searcherManager = new SearcherManager(indexWriter, true, null);
-			indexSearcherReopenThread = new ControlledRealTimeReopenThread<>(trackingIndexWriter,
-			                                                                 searcherManager,
-			                                                                 refreshSeconds,
-			                                                                 refreshSeconds);
-			indexSearcherReopenThread.start(); // Start the refresher thread
+				File file = new File(path + File.separatorChar + i);
+				files[i] = file;
+
+				FSDirectory fsDirectory = FSDirectory.open(file);
+				Directory directory = new NRTCachingDirectory(fsDirectory, maxMergeMB, maxCachedMB);
+				shards[i] = directory;
+
+				IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_46, analyzer);
+				config.setRAMBufferSizeMB(ramBufferMB);
+				config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
+				config.setUseCompoundFile(false);
+
+				writers[i] = new IndexWriter(directory, config);
+			}
 
 		} catch (IOException e) {
 			Log.error(e, "Error initiating index");
@@ -115,36 +112,27 @@ public class RowDirectory {
 		}
 	}
 
-	/**
-	 * Inserts the specified {@link Document}.
-	 * 
-	 * @param document
-	 *            the {@link Document} to be inserted.
-	 */
-	public void createDocument(Document document) {
-		// Log.debug("Inserting document %s", document);
-		try {
-			indexWriter.addDocument(document);
-		} catch (IOException e) {
-			Log.error(e, "Error creating document");
-			throw new RuntimeException(e);
+	private IndexSearcher searcher() throws IOException {
+		IndexReader[] readers = new IndexReader[numShards];
+		for (int i = 0; i < numShards; i++) {
+			Directory shard = shards[i];
+			readers[i] = DirectoryReader.open(shard);
 		}
+		MultiReader multiReader = new MultiReader(readers);
+		return new IndexSearcher(multiReader);
 	}
 
-	/**
-	 * Inserts the specified {@link Document}s.
-	 * 
-	 * @param document
-	 *            the {@link Document} to be inserted.
-	 */
-	public void createDocuments(Iterable<Document> documents) {
-		// Log.debug("Inserting documents %s", documents);
-		try {
-			indexWriter.addDocuments(documents);
-		} catch (IOException e) {
-			Log.error(e, "Error creating documents");
-			throw new RuntimeException(e);
-		}
+	private long hash(Term term) {
+		ByteBuffer bytes = ByteBuffer.wrap(term.bytes().bytes);
+		long[] hash = new long[2];
+		MurmurHash.hash3_x64_128(bytes, bytes.position(), bytes.remaining(), 0, hash);
+		return hash[0];
+	}
+
+	private IndexWriter writer(Term term) {
+		long hash = hash(term);
+		int pos = (int) (Math.abs(hash) % numShards);
+		return writers[pos];
 	}
 
 	/**
@@ -160,7 +148,7 @@ public class RowDirectory {
 	public void updateDocument(Term term, Document document) {
 		// Log.debug("Updating document %s with term %s", document, term);
 		try {
-			indexWriter.updateDocument(term, document);
+			writer(term).updateDocument(term, document);
 		} catch (IOException e) {
 			Log.error(e, "Error updating document");
 			throw new RuntimeException(e);
@@ -180,7 +168,7 @@ public class RowDirectory {
 	public void updateDocuments(Term term, Iterable<Document> documents) {
 		// Log.debug("Updating documents %s with term %s", documents, term);
 		try {
-			indexWriter.updateDocuments(term, documents);
+			writer(term).updateDocuments(term, documents);
 		} catch (IOException e) {
 			Log.error(e, "Error updating documents");
 			throw new RuntimeException(e);
@@ -196,7 +184,7 @@ public class RowDirectory {
 	public void deleteDocuments(Term term) {
 		// Log.debug(String.format("Deleting by term %s", term));
 		try {
-			indexWriter.deleteDocuments(term);
+			writer(term).deleteDocuments(term);
 		} catch (IOException e) {
 			Log.error(e, "Error deleting documents by term");
 			throw new RuntimeException(e);
@@ -212,7 +200,9 @@ public class RowDirectory {
 	public void deleteDocuments(Query query) {
 		// Log.debug("Deleting by query %s", query);
 		try {
-			indexWriter.deleteDocuments(query);
+			for (IndexWriter writer : writers) {
+				writer.deleteDocuments(query);
+			}
 		} catch (IOException e) {
 			Log.error(e, "Error deleting documents by query");
 			throw new RuntimeException(e);
@@ -225,7 +215,9 @@ public class RowDirectory {
 	public void deleteAll() {
 		Log.info("Deleting all");
 		try {
-			indexWriter.deleteAll();
+			for (IndexWriter writer : writers) {
+				writer.deleteAll();
+			}
 		} catch (IOException e) {
 			Log.error(e, "Error deleting all");
 			throw new RuntimeException(e);
@@ -238,7 +230,9 @@ public class RowDirectory {
 	public void commit() {
 		Log.info("Committing");
 		try {
-			indexWriter.commit();
+			for (IndexWriter writer : writers) {
+				writer.commit();
+			}
 		} catch (IOException e) {
 			Log.error(e, "Error committing");
 			throw new RuntimeException(e);
@@ -251,10 +245,12 @@ public class RowDirectory {
 	 */
 	public void close() throws IOException {
 		Log.info("Closing");
-		indexSearcherReopenThread.interrupt();
-		searcherManager.close();
-		indexWriter.close();
-		directory.close();
+		for (IndexWriter writer : writers) {
+			writer.close();
+		}
+		for (Directory shard : shards) {
+			shard.close();
+		}
 		analyzer.close();
 	}
 
@@ -267,21 +263,23 @@ public class RowDirectory {
 		Log.info("Removing");
 		try {
 			close();
-			FileUtils.deleteRecursive(file);
+			for (File file : files) {
+				FileUtils.deleteRecursive(file);
+			}
 		} catch (IOException e) {
 			Log.error(e, "Error removing");
 			throw new RuntimeException(e);
 		}
 	}
 
-	/**
-	 * Returns the total size of all index files currently cached in memory.
-	 * 
-	 * @return The total size of all index files currently cached in memory.
-	 */
-	public long getRAMSizeInBytes() {
-		return indexWriter == null ? 0 : indexWriter.ramSizeInBytes();
-	}
+	// /**
+	// * Returns the total size of all index files currently cached in memory.
+	// *
+	// * @return The total size of all index files currently cached in memory.
+	// */
+	// public long getRAMSizeInBytes() {
+	// return indexWriter == null ? 0 : indexWriter.ramSizeInBytes();
+	// }
 
 	/**
 	 * Finds the top {@code count} hits for {@code query}, applying {@code filter} if non-null, and
@@ -317,39 +315,36 @@ public class RowDirectory {
 		}
 
 		try {
-			IndexSearcher indexSearcher = searcherManager.acquire();
-			try {
+			IndexSearcher indexSearcher = searcher();
 
-				// Search
-				TopDocs topDocs;
-				if (after == null) {
-					if (sort == null) {
-						topDocs = indexSearcher.search(query, count);
-					} else {
-						topDocs = indexSearcher.search(query, count, sort);
-					}
+			// Search
+			TopDocs topDocs;
+			if (after == null) {
+				if (sort == null) {
+					topDocs = indexSearcher.search(query, count);
 				} else {
-					if (sort == null) {
-						topDocs = indexSearcher.searchAfter(after, query, count);
-					} else {
-						topDocs = indexSearcher.searchAfter(after, query, count, sort);
-					}
+					topDocs = indexSearcher.search(query, count, sort);
 				}
-				ScoreDoc[] scoreDocs = topDocs.scoreDocs;
-
-				// Collect the documents from query result
-				List<ScoredDocument> scoredDocuments = new ArrayList<>(scoreDocs.length);
-				for (ScoreDoc scoreDoc : scoreDocs) {
-					Document document = indexSearcher.doc(scoreDoc.doc, fieldsToLoad);
-					ScoredDocument scoredDocument = new ScoredDocument(scoreDoc, document);
-					scoredDocuments.add(scoredDocument);
-					// Log.debug("Found %s", scoredDocument);
+			} else {
+				if (sort == null) {
+					topDocs = indexSearcher.searchAfter(after, query, count);
+				} else {
+					topDocs = indexSearcher.searchAfter(after, query, count, sort);
 				}
-
-				return scoredDocuments;
-			} finally {
-				searcherManager.release(indexSearcher);
 			}
+			ScoreDoc[] scoreDocs = topDocs.scoreDocs;
+
+			// Collect the documents from query result
+			List<ScoredDocument> scoredDocuments = new ArrayList<>(scoreDocs.length);
+			for (ScoreDoc scoreDoc : scoreDocs) {
+				Document document = indexSearcher.doc(scoreDoc.doc, fieldsToLoad);
+				ScoredDocument scoredDocument = new ScoredDocument(scoreDoc, document);
+				scoredDocuments.add(scoredDocument);
+				// Log.debug("Found %s", scoredDocument);
+			}
+			indexSearcher.getIndexReader().close();
+
+			return scoredDocuments;
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}

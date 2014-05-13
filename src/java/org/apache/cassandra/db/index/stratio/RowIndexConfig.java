@@ -48,6 +48,9 @@ public class RowIndexConfig {
 	private static final String MAX_CACHED_MB_OPTION = "max_cached_mb";
 	private static final int DEFAULT_MAX_CACHED_MB = 30;
 
+	private static final String SHARDS_OPTION = "shards";
+	private static final int DEFAULT_SHARDS = 4;
+
 	private final Schema schema;
 	private final double refreshSeconds;
 	private final FilterCache filterCache;
@@ -55,6 +58,7 @@ public class RowIndexConfig {
 	private final int ramBufferMB;
 	private final int maxMergeMB;
 	private final int maxCachedMB;
+	private final int shards;
 
 	public RowIndexConfig(CFMetaData metadata, String indexName, Map<String, String> options) {
 
@@ -167,6 +171,23 @@ public class RowIndexConfig {
 		directoryPathBuilder.append(File.separatorChar);
 		directoryPathBuilder.append(DEFAULT_PATH_PREFIX);
 		path = directoryPathBuilder.toString();
+
+		// Setup write buffer size
+		String shardsOption = options.get(SHARDS_OPTION);
+		if (ramBufferSizeOption != null) {
+			try {
+				shards = Integer.parseInt(shardsOption);
+			} catch (NumberFormatException e) {
+				String msg = String.format("'%s' must be a strictly positive integer", SHARDS_OPTION);
+				throw new RuntimeException(msg);
+			}
+			if (shards <= 0) {
+				String msg = String.format("'%s' must be strictly positive", SHARDS_OPTION);
+				throw new RuntimeException(msg);
+			}
+		} else {
+			shards = DEFAULT_SHARDS;
+		}
 	}
 
 	public Schema getSchema() {
@@ -195,6 +216,10 @@ public class RowIndexConfig {
 
 	public int getMaxCachedMB() {
 		return maxCachedMB;
+	}
+
+	public int getNumShards() {
+		return shards;
 	}
 
 }

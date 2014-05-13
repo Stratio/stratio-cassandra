@@ -103,6 +103,7 @@ public abstract class RowService {
 		                                config.getRamBufferMB(),
 		                                config.getMaxMergeMB(),
 		                                config.getMaxCachedMB(),
+		                                config.getNumShards(),
 		                                schema.analyzer());
 	}
 
@@ -267,18 +268,18 @@ public abstract class RowService {
 		AbstractType<?> validator = def.getValidator();
 		int comparison = validator.compare(actualValue, expectedValue);
 		switch (expression.op) {
-			case EQ:
-				return comparison == 0;
-			case GTE:
-				return comparison >= 0;
-			case GT:
-				return comparison > 0;
-			case LTE:
-				return comparison <= 0;
-			case LT:
-				return comparison < 0;
-			default:
-				throw new IllegalStateException();
+		case EQ:
+			return comparison == 0;
+		case GTE:
+			return comparison >= 0;
+		case GT:
+			return comparison > 0;
+		case LTE:
+			return comparison <= 0;
+		case LT:
+			return comparison < 0;
+		default:
+			throw new IllegalStateException();
 		}
 	}
 
@@ -398,16 +399,16 @@ public abstract class RowService {
 		if (!search.usesRelevance()) {
 			return rows.size() > count ? rows.subList(0, count) : rows;
 		}
-		
+
 		// Get limit and initialize result
 		int limit = Math.min(count, rows.size());
 		List<Row> result = new ArrayList<>(limit);
-		
+
 		// We only use the query condition because it is the only
 		// restriction affecting the relevance score.
 		Condition queryCondition = search.queryCondition();
 		Query query = queryCondition.query(schema);
-		
+
 		try {
 
 			// Setup RAM directory for index and query again partial results.
@@ -430,7 +431,7 @@ public abstract class RowService {
 			indexWriter.commit();
 			indexWriter.close();
 
-			// Search in partial results. 
+			// Search in partial results.
 			IndexReader indexReader = DirectoryReader.open(directory);
 			IndexSearcher indexSearcher = new IndexSearcher(indexReader);
 			TopDocs topdocs = indexSearcher.search(query, limit);
@@ -441,7 +442,7 @@ public abstract class RowService {
 				result.add(row);
 			}
 			indexReader.close();
-			
+
 			// Close RAM directory
 			directory.close();
 
