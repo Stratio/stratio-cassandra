@@ -60,6 +60,7 @@
     <property name="test.long.src" value="${test.dir}/long"/>
     <property name="test.pig.src" value="${test.dir}/pig"/>
     <property name="dist.dir" value="${build.dir}/dist"/>
+	<property name="test.index.src" value="${test.dir}/unit/org/apache/cassandra/db/index/stratio"/>
 	
 	<property name="source.version" value="1.7"/>
 	<property name="target.version" value="1.7"/>
@@ -1008,6 +1009,26 @@
       <fileset dir="${test.resources}"/>
     </copy>
   </target>
+  
+  <target name="build-test-index" depends="build" description="Compile test classes">
+    <javac
+     debug="true"
+     debuglevel="${debuglevel}"
+     destdir="${test.classes}"
+     includeantruntime="false"
+     source="${source.version}" 
+     target="${target.version}">
+      <classpath>
+        <path refid="cassandra.classpath"/>
+      </classpath>
+      <src path="${test.unit.src}"/>
+    </javac>
+
+    <!-- Non-java resources needed by the test suite -->
+    <copy todir="${test.classes}">
+      <fileset dir="${test.resources}"/>
+    </copy>
+  </target>
 
   <macrodef name="testmacro">
     <attribute name="suitename" />
@@ -1016,6 +1037,55 @@
     <attribute name="forkmode" default="perTest"/>
     <element name="optjvmargs" implicit="true" optional="true" />
     <attribute name="filter" default="**/${test.name}.java"/>
+    <attribute name="exclude" default="" />
+    <sequential>
+      <echo message="running @{suitename} tests"/>
+      <mkdir dir="${build.test.dir}/cassandra"/>
+      <mkdir dir="${build.test.dir}/output"/>
+      <junit fork="on" forkmode="@{forkmode}" failureproperty="testfailed" maxmemory="1024m" timeout="@{timeout}">
+        <sysproperty key="net.sourceforge.cobertura.datafile" file="${cobertura.datafile}"/>
+        <formatter type="xml" usefile="true"/>
+        <formatter type="brief" usefile="false"/>
+        <jvmarg value="-Dstorage-config=${test.conf}"/>
+        <jvmarg value="-Dlog4j.configuration=log4j-junit.properties" />
+        <jvmarg value="-Djava.awt.headless=true"/>
+        <jvmarg value="-javaagent:${basedir}/lib/jamm-0.2.5.jar" />
+        <jvmarg value="-ea"/>
+        <jvmarg value="-Xss256k"/>
+        <optjvmargs/>
+        <classpath>
+          <path refid="cassandra.classpath" />
+          <pathelement location="${test.classes}"/>
+          <path refid="cobertura.classpath"/>
+          <pathelement location="${test.conf}"/>
+          <fileset dir="${test.lib}">
+            <include name="**/*.jar" />
+          </fileset>
+        </classpath>
+        <batchtest todir="${build.test.dir}/output">
+            <fileset dir="@{inputdir}" includes="@{filter}" excludes="@{exclude}"/>
+        </batchtest>
+      </junit>
+      <fail message="Some @{suitename} test(s) failed.">
+        <condition>
+            <and>
+            <isset property="testfailed"/>
+            <not>
+              <isset property="ant.test.failure.ignore"/>
+            </not>
+          </and>
+        </condition>
+      </fail>
+    </sequential>
+  </macrodef>
+  
+  <macrodef name="testmacroindex">
+    <attribute name="suitename" />
+    <attribute name="inputdir" />
+    <attribute name="timeout" />
+    <attribute name="forkmode" default="perTest"/>
+    <element name="optjvmargs" implicit="true" optional="true" />
+    <attribute name="filter" default="**/stratio/**/${test.name}.java"/>
     <attribute name="exclude" default="" />
     <sequential>
       <echo message="running @{suitename} tests"/>
@@ -1093,6 +1163,16 @@
       <jvmarg value="-Dcassandra.ring_delay_ms=1000"/>
       <jvmarg value="-Dcassandra.tolerate_sstable_size=true"/>
     </testmacro>
+  </target>
+  
+  <target name="test-index" depends="build-test" description="Execute unit tests" >
+    <testmacroindex suitename="unit" inputdir="${test.unit.src}" exclude="**/pig/*.java" timeout="${test.timeout}">
+      <jvmarg value="-Dlegacy-sstable-root=${test.data}/legacy-sstables"/>
+      <jvmarg value="-Dcorrupt-sstable-root=${test.data}/corrupt-sstables"/>
+      <jvmarg value="-Dmigration-sstable-root=${test.data}/migration-sstables"/>
+      <jvmarg value="-Dcassandra.ring_delay_ms=1000"/>
+      <jvmarg value="-Dcassandra.tolerate_sstable_size=true"/>
+    </testmacroindex>
   </target>
 
   <target name="testsome" depends="build-test" description="Execute specific unit tests" >
