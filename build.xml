@@ -25,7 +25,7 @@
     <property name="debuglevel" value="source,lines,vars"/>
 
     <!-- default version and SCM information -->
-    <property name="base.version" value="2.0.53"/>
+    <property name="base.version" value="2.0.71"/>
     <property name="scm.connection" value="scm:git://git.apache.org/cassandra.git"/>
     <property name="scm.developerConnection" value="scm:git://git.apache.org/cassandra.git"/>
     <property name="scm.url" value="http://git-wip-us.apache.org/repos/asf?p=cassandra.git;a=tree"/>
@@ -55,6 +55,7 @@
     <property name="test.conf" value="${test.dir}/conf"/>
     <property name="test.data" value="${test.dir}/data"/>
     <property name="test.name" value="*Test"/>
+    <property name="test.methods" value=""/>
     <property name="test.unit.src" value="${test.dir}/unit"/>
     <property name="test.long.src" value="${test.dir}/long"/>
     <property name="test.pig.src" value="${test.dir}/pig"/>
@@ -91,7 +92,7 @@
     <property name="test.long.timeout" value="600000" />
 
     <!-- http://cobertura.sourceforge.net/ -->
-    <property name="cobertura.version" value="1.9.4.1"/>
+    <property name="cobertura.version" value="2.0.3"/>
     <property name="cobertura.build.dir" value="${build.dir}/cobertura"/>
     <property name="cobertura.report.dir" value="${cobertura.build.dir}/report"/>
     <property name="cobertura.classes.dir" value="${cobertura.build.dir}/classes"/>
@@ -228,6 +229,8 @@
             classpath="${build.lib}/antlr-3.2.jar"
             fork="true"
             failonerror="true">
+         <arg value="-Xconversiontimeout" />
+         <arg value="10000" />
          <arg value="${build.src.java}/org/apache/cassandra/cql3/Cql.g" />
          <arg value="-fo" />
          <arg value="${build.src.gen-java}/org/apache/cassandra/cql3/" />
@@ -379,6 +382,8 @@
           <dependency groupId="edu.stanford.ppl" artifactId="snaptree" version="0.1" />
           <dependency groupId="org.mindrot" artifactId="jbcrypt" version="0.3m" />
           <dependency groupId="io.netty" artifactId="netty" version="3.6.6.Final" />
+          <dependency groupId="com.datastax.cassandra" artifactId="cassandra-driver-core" version="2.0.1" />
+          <dependency groupId="net.sf.supercsv" artifactId="super-csv" version="2.1.0" />
         </dependencyManagement>
         <developer id="alakshman" name="Avinash Lakshman"/>
         <developer id="antelder" name="Anthony Elder"/>
@@ -408,7 +413,7 @@
         <dependency groupId="org.apache.hadoop" artifactId="hadoop-core"/>
       	<dependency groupId="org.apache.hadoop" artifactId="hadoop-minicluster"/>
         <dependency groupId="org.apache.pig" artifactId="pig"/>
-
+        <dependency groupId="com.datastax.cassandra" artifactId="cassandra-driver-core"/>
         <dependency groupId="net.java.dev.jna" artifactId="jna"/>
       </artifact:pom>
 
@@ -458,6 +463,7 @@
         <dependency groupId="com.yammer.metrics" artifactId="metrics-core"/>
         <dependency groupId="com.addthis.metrics" artifactId="reporter-config"/>
         <dependency groupId="com.thinkaurelius.thrift" artifactId="thrift-server" version="0.3.3"/>
+        <dependency groupId="net.sf.supercsv" artifactId="super-csv" version="2.1.0" />
 
         <dependency groupId="log4j" artifactId="log4j"/>
         <!-- cassandra has a hard dependency on log4j, so force slf4j's log4j provider at runtime -->
@@ -470,6 +476,7 @@
         <dependency groupId="org.apache.hadoop" artifactId="hadoop-core" optional="true"/>
         <dependency groupId="org.apache.hadoop" artifactId="hadoop-minicluster" optional="true"/>
         <dependency groupId="org.apache.pig" artifactId="pig" optional="true"/>
+      	<dependency groupId="com.datastax.cassandra" artifactId="cassandra-driver-core" optional="true"/>
 
         <!-- don't need jna to run, but nice to have -->
         <dependency groupId="net.java.dev.jna" artifactId="jna" optional="true"/>
@@ -714,8 +721,8 @@
       <jar jarfile="${build.dir}/${ant.project.name}-thrift-${version}.jar"
            basedir="${build.classes.thrift}">
         <fileset dir="${build.classes.main}">
-          <include name="org/apache/cassandra/thrift/ITransportFactory.class" />
-          <include name="org/apache/cassandra/thrift/TFramedTransportFactory.class" />
+          <include name="org/apache/cassandra/thrift/ITransportFactory*.class" />
+          <include name="org/apache/cassandra/thrift/TFramedTransportFactory*.class" />
         </fileset>
         <manifest>
           <attribute name="Implementation-Title" value="Cassandra"/>
@@ -725,8 +732,11 @@
       </jar>
 
       <!-- Main Jar -->
-      <jar jarfile="${build.dir}/${final.name}.jar"
-           basedir="${build.classes.main}">
+      <jar jarfile="${build.dir}/${final.name}.jar">
+        <fileset dir="${build.classes.main}">
+          <exclude name="org/apache/cassandra/thrift/ITransportFactory*.class" />
+          <exclude name="org/apache/cassandra/thrift/TFramedTransportFactory*.class" />
+        </fileset>
         <manifest>
         <!-- <section name="org/apache/cassandra/infrastructure"> -->
           <attribute name="Implementation-Title" value="Cassandra"/>
@@ -1084,6 +1094,17 @@
       <jvmarg value="-Dcassandra.tolerate_sstable_size=true"/>
     </testmacro>
   </target>
+
+  <target name="testsome" depends="build-test" description="Execute specific unit tests" >
+    <testmacro suitename="unit" inputdir="${test.unit.src}" exclude="**/pig/*.java" timeout="${test.timeout}">
+      <test name="${test.name}" methods="${test.methods}"/>
+      <jvmarg value="-Dlegacy-sstable-root=${test.data}/legacy-sstables"/>
+      <jvmarg value="-Dcorrupt-sstable-root=${test.data}/corrupt-sstables"/>
+      <jvmarg value="-Dmigration-sstable-root=${test.data}/migration-sstables"/>
+      <jvmarg value="-Dcassandra.ring_delay_ms=1000"/>
+      <jvmarg value="-Dcassandra.tolerate_sstable_size=true"/>
+    </testmacro>
+  </target>
     
   <target name="test-compression" depends="build-test" description="Execute unit tests with sstable compression enabled">
       <testmacro suitename="unit" inputdir="${test.unit.src}" exclude="**/pig/*.java" timeout="${test.timeout}">
@@ -1144,6 +1165,7 @@
   <target name="cobertura-instrument" depends="build,build-test">
     <taskdef resource="tasks.properties">
       <classpath refid="cobertura.classpath"/>
+      <classpath refid="cassandra.classpath"/>
     </taskdef>
 
     <delete file="${cobertura.datafile}"/>

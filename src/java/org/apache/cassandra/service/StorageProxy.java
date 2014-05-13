@@ -41,11 +41,8 @@ import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.cql3.ColumnNameBuilder;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.Keyspace;
-import org.apache.cassandra.db.filter.NamesQueryFilter;
-import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.db.marshal.UUIDType;
 import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.dht.Bounds;
@@ -57,6 +54,7 @@ import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.locator.AbstractReplicationStrategy;
 import org.apache.cassandra.locator.IEndpointSnitch;
+import org.apache.cassandra.locator.LocalStrategy;
 import org.apache.cassandra.locator.TokenMetadata;
 import org.apache.cassandra.metrics.ClientRequestMetrics;
 import org.apache.cassandra.metrics.ReadRepairMetrics;
@@ -157,7 +155,7 @@ public class StorageProxy implements StorageProxyMBean
 
     /**
      * Apply @param updates if and only if the current values in the row for @param key
-     * match the ones given by @param expected.  The algorithm is "raw" Paxos: that is, Paxos
+     * match the provided @param conditions.  The algorithm is "raw" Paxos: that is, Paxos
      * minus leader election -- any node in the cluster may propose changes for any row,
      * which (that is, the row) is the unit of values being proposed, not single columns.
      *
@@ -189,23 +187,18 @@ public class StorageProxy implements StorageProxyMBean
      * @param keyspaceName the keyspace for the CAS
      * @param cfName the column family for the CAS
      * @param key the row key for the row to CAS
-     * @param prefix a column name prefix that selects the CQL3 row to check if {@code expected} is null. If {@code expected}
-     * is not null, this is ignored. If {@code expected} is null and this is null, the full row existing is checked (by querying
-     * the first live column of the row).
-     * @param expected the expected column values. This can be null to check for existence (see {@code prefix}).
-     * @param updates the value to insert if {@code expected matches the current values}.
+     * @param conditions the conditions for the CAS to apply.
+     * @param updates the value to insert if {@code condtions} matches the current values.
      * @param consistencyForPaxos the consistency for the paxos prepare and propose round. This can only be either SERIAL or LOCAL_SERIAL.
      * @param consistencyForCommit the consistency for write done during the commit phase. This can be anything, except SERIAL or LOCAL_SERIAL.
      *
-     * @return null if the operation succeeds in updating the row, or the current values for the columns contained in
-     * expected (since, if the CAS doesn't succeed, it means the current value do not match the one in expected). If
-     * expected == null and the CAS is unsuccessfull, the first live column of the CF is returned.
+     * @return null if the operation succeeds in updating the row, or the current values corresponding to conditions.
+     * (since, if the CAS doesn't succeed, it means the current value do not match the conditions).
      */
     public static ColumnFamily cas(String keyspaceName,
                                    String cfName,
                                    ByteBuffer key,
-                                   ColumnNameBuilder prefix,
-                                   ColumnFamily expected,
+                                   CASConditions conditions,
                                    ColumnFamily updates,
                                    ConsistencyLevel consistencyForPaxos,
                                    ConsistencyLevel consistencyForCommit)
@@ -227,36 +220,34 @@ public class StorageProxy implements StorageProxyMBean
 
             UUID ballot = beginAndRepairPaxos(start, key, metadata, liveEndpoints, requiredParticipants, consistencyForPaxos);
 
-            // read the current value and compare with expected
+            // read the current values and check they validate the conditions
             Tracing.trace("Reading existing values for CAS precondition");
             long timestamp = System.currentTimeMillis();
-            ReadCommand readCommand;
-            if (expected == null || expected.isEmpty())
-            {
-                SliceQueryFilter filter = prefix == null
-                                        ? new SliceQueryFilter(ByteBufferUtil.EMPTY_BYTE_BUFFER, ByteBufferUtil.EMPTY_BYTE_BUFFER, false, 1)
-                                        : new SliceQueryFilter(prefix.build(), prefix.buildAsEndOfRange(), false, 1, prefix.componentCount());
-                readCommand = new SliceFromReadCommand(keyspaceName, key, cfName, timestamp, filter);
-            }
-            else
-            {
-                assert !expected.isEmpty();
-                readCommand = new SliceByNamesReadCommand(keyspaceName, key, cfName, timestamp, new NamesQueryFilter(ImmutableSortedSet.copyOf(metadata.comparator, expected.getColumnNames())));
-            }
+            ReadCommand readCommand = ReadCommand.create(keyspaceName, key, cfName, timestamp, conditions.readFilter());
             List<Row> rows = read(Arrays.asList(readCommand), consistencyForPaxos == ConsistencyLevel.LOCAL_SERIAL? ConsistencyLevel.LOCAL_QUORUM : ConsistencyLevel.QUORUM);
             ColumnFamily current = rows.get(0).cf;
-            if (!casApplies(expected, current))
+            if (!conditions.appliesTo(current))
             {
-                Tracing.trace("CAS precondition {} does not match current values {}", expected, current);
+                Tracing.trace("CAS precondition {} does not match current values {}", conditions, current);
                 // We should not return null as this means success
                 return current == null ? EmptyColumns.factory.create(metadata) : current;
             }
 
             // finish the paxos round w/ the desired updates
             // TODO turn null updates into delete?
+
+            // Apply triggers to cas updates. A consideration here is that
+            // triggers emit RowMutations, and so a given trigger implementation
+            // may generate mutations for partitions other than the one this
+            // paxos round is scoped for. In this case, TriggerExecutor will
+            // validate that the generated mutations are targetted at the same
+            // partition as the initial updates and reject (via an
+            // InvalidRequestException) any which aren't.
+            updates = TriggerExecutor.instance.execute(key, updates);
+
             Commit proposal = Commit.newProposal(key, ballot, updates);
             Tracing.trace("CAS precondition is met; proposing client-requested updates for {}", ballot);
-            if (proposePaxos(proposal, liveEndpoints, requiredParticipants, true))
+            if (proposePaxos(proposal, liveEndpoints, requiredParticipants, true, consistencyForPaxos))
             {
                 if (consistencyForCommit == ConsistencyLevel.ANY)
                     sendCommit(proposal, liveEndpoints);
@@ -272,41 +263,6 @@ public class StorageProxy implements StorageProxyMBean
         }
 
         throw new WriteTimeoutException(WriteType.CAS, consistencyForPaxos, 0, consistencyForPaxos.blockFor(Keyspace.open(keyspaceName)));
-    }
-
-    private static boolean hasLiveColumns(ColumnFamily cf, long now)
-    {
-        return cf != null && !cf.hasOnlyTombstones(now);
-    }
-
-    private static boolean casApplies(ColumnFamily expected, ColumnFamily current)
-    {
-        long now = System.currentTimeMillis();
-
-        if (!hasLiveColumns(expected, now))
-            return !hasLiveColumns(current, now);
-        else if (!hasLiveColumns(current, now))
-            return false;
-
-        // current has been built from expected, so we know that it can't have columns
-        // that excepted don't have. So we just check that for each columns in expected:
-        //   - if it is a tombstone, whether current has no column or a tombstone;
-        //   - otherwise, that current has a live column with the same value.
-        for (Column e : expected)
-        {
-            Column c = current.getColumn(e.name());
-            if (e.isLive(now))
-            {
-                if (!(c != null && c.isLive(now) && c.value().equals(e.value())))
-                    return false;
-            }
-            else
-            {
-                if (c != null && c.isLive(now))
-                    return false;
-            }
-        }
-        return true;
     }
 
     private static Predicate<InetAddress> sameDCPredicateFor(final String dc)
@@ -363,7 +319,7 @@ public class StorageProxy implements StorageProxyMBean
             // prepare
             Tracing.trace("Preparing {}", ballot);
             Commit toPrepare = Commit.newPrepare(key, metadata, ballot);
-            summary = preparePaxos(toPrepare, liveEndpoints, requiredParticipants);
+            summary = preparePaxos(toPrepare, liveEndpoints, requiredParticipants, consistencyForPaxos);
             if (!summary.promised)
             {
                 Tracing.trace("Some replicas have already promised a higher ballot than ours; aborting");
@@ -381,7 +337,7 @@ public class StorageProxy implements StorageProxyMBean
             {
                 Tracing.trace("Finishing incomplete paxos round {}", inProgress);
                 Commit refreshedInProgress = Commit.newProposal(inProgress.key, ballot, inProgress.update);
-                if (proposePaxos(refreshedInProgress, liveEndpoints, requiredParticipants, false))
+                if (proposePaxos(refreshedInProgress, liveEndpoints, requiredParticipants, false, consistencyForPaxos))
                 {
                     commitPaxos(refreshedInProgress, ConsistencyLevel.QUORUM);
                 }
@@ -426,10 +382,10 @@ public class StorageProxy implements StorageProxyMBean
             MessagingService.instance().sendOneWay(message, target);
     }
 
-    private static PrepareCallback preparePaxos(Commit toPrepare, List<InetAddress> endpoints, int requiredParticipants)
+    private static PrepareCallback preparePaxos(Commit toPrepare, List<InetAddress> endpoints, int requiredParticipants, ConsistencyLevel consistencyForPaxos)
     throws WriteTimeoutException
     {
-        PrepareCallback callback = new PrepareCallback(toPrepare.key, toPrepare.update.metadata(), requiredParticipants);
+        PrepareCallback callback = new PrepareCallback(toPrepare.key, toPrepare.update.metadata(), requiredParticipants, consistencyForPaxos);
         MessageOut<Commit> message = new MessageOut<Commit>(MessagingService.Verb.PAXOS_PREPARE, toPrepare, Commit.serializer);
         for (InetAddress target : endpoints)
             MessagingService.instance().sendRR(message, target, callback);
@@ -437,10 +393,10 @@ public class StorageProxy implements StorageProxyMBean
         return callback;
     }
 
-    private static boolean proposePaxos(Commit proposal, List<InetAddress> endpoints, int requiredParticipants, boolean timeoutIfPartial)
+    private static boolean proposePaxos(Commit proposal, List<InetAddress> endpoints, int requiredParticipants, boolean timeoutIfPartial, ConsistencyLevel consistencyLevel)
     throws WriteTimeoutException
     {
-        ProposeCallback callback = new ProposeCallback(endpoints.size(), requiredParticipants, !timeoutIfPartial);
+        ProposeCallback callback = new ProposeCallback(endpoints.size(), requiredParticipants, !timeoutIfPartial, consistencyLevel);
         MessageOut<Commit> message = new MessageOut<Commit>(MessagingService.Verb.PAXOS_PROPOSE, proposal, Commit.serializer);
         for (InetAddress target : endpoints)
             MessagingService.instance().sendRR(message, target, callback);
@@ -451,7 +407,7 @@ public class StorageProxy implements StorageProxyMBean
             return true;
 
         if (timeoutIfPartial && !callback.isFullyRefused())
-            throw new WriteTimeoutException(WriteType.CAS, ConsistencyLevel.SERIAL, callback.getAcceptCount(), requiredParticipants);
+            throw new WriteTimeoutException(WriteType.CAS, consistencyLevel, callback.getAcceptCount(), requiredParticipants);
 
         return false;
     }
@@ -563,13 +519,13 @@ public class StorageProxy implements StorageProxyMBean
         }
     }
 
-    public static void mutateWithTriggers(Collection<? extends IMutation> mutations, ConsistencyLevel consistencyLevel, boolean mutateAtomically) throws WriteTimeoutException, UnavailableException,
-            OverloadedException, InvalidRequestException
+    public static void mutateWithTriggers(Collection<? extends IMutation> mutations, ConsistencyLevel consistencyLevel, boolean mutateAtomically)
+    throws WriteTimeoutException, UnavailableException, OverloadedException, InvalidRequestException
     {
         Collection<RowMutation> tmutations = TriggerExecutor.instance.execute(mutations);
         if (mutateAtomically || tmutations != null)
         {
-            Collection<RowMutation> allMutations = (Collection<RowMutation>) mutations;
+            Collection<RowMutation> allMutations = new ArrayList<>((Collection<RowMutation>) mutations);
             if (tmutations != null)
                 allMutations.addAll(tmutations);
             StorageProxy.mutateAtomically(allMutations, consistencyLevel);
@@ -1458,8 +1414,16 @@ public class StorageProxy implements StorageProxyMBean
         try
         {
             int cql3RowCount = 0;
-            rows = new ArrayList<Row>();
-            List<AbstractBounds<RowPosition>> ranges = getRestrictedRanges(command.keyRange);
+            rows = new ArrayList<>();
+
+            // when dealing with LocalStrategy keyspaces, we can skip the range splitting and merging (which can be
+            // expensive in clusters with vnodes)
+            List<? extends AbstractBounds<RowPosition>> ranges;
+            if (keyspace.getReplicationStrategy() instanceof LocalStrategy)
+                ranges = command.keyRange.unwrap();
+            else
+                ranges = getRestrictedRanges(command.keyRange);
+
             int i = 0;
             AbstractBounds<RowPosition> nextRange = null;
             List<InetAddress> nextEndpoints = null;
@@ -1519,7 +1483,8 @@ public class StorageProxy implements StorageProxyMBean
 
                 // collect replies and resolve according to consistency level
                 RangeSliceResponseResolver resolver = new RangeSliceResponseResolver(nodeCmd.keyspace, command.timestamp);
-                ReadCallback<RangeSliceReply, Iterable<Row>> handler = new ReadCallback(resolver, consistency_level, nodeCmd, filteredEndpoints);
+                List<InetAddress> minimalEndpoints = filteredEndpoints.subList(0, Math.min(filteredEndpoints.size(), consistency_level.blockFor(keyspace)));
+                ReadCallback<RangeSliceReply, Iterable<Row>> handler = new ReadCallback<>(resolver, consistency_level, nodeCmd, minimalEndpoints);
                 handler.assureSufficientLiveNodes();
                 resolver.setSources(filteredEndpoints);
                 if (filteredEndpoints.size() == 1
@@ -1805,9 +1770,19 @@ public class StorageProxy implements StorageProxyMBean
         return DatabaseDescriptor.hintedHandoffEnabled();
     }
 
+    public Set<String> getHintedHandoffEnabledByDC()
+    {
+        return DatabaseDescriptor.hintedHandoffEnabledByDC();
+    }
+
     public void setHintedHandoffEnabled(boolean b)
     {
         DatabaseDescriptor.setHintedHandoffEnabled(b);
+    }
+
+    public void setHintedHandoffEnabledByDCList(String dcNames)
+    {
+        DatabaseDescriptor.setHintedHandoffEnabled(dcNames);
     }
 
     public int getMaxHintWindow()
@@ -1822,7 +1797,17 @@ public class StorageProxy implements StorageProxyMBean
 
     public static boolean shouldHint(InetAddress ep)
     {
-        if (!DatabaseDescriptor.hintedHandoffEnabled())
+        if (DatabaseDescriptor.shouldHintByDC())
+        {
+            final String dc = DatabaseDescriptor.getEndpointSnitch().getDatacenter(ep);
+            // Disable DC specific hints
+            if(!DatabaseDescriptor.hintedHandoffEnabled(dc))
+            {
+                HintedHandOffManager.instance.metrics.incrPastWindow(ep);
+                return false;
+            }
+        }
+        else if (!DatabaseDescriptor.hintedHandoffEnabled())
         {
             HintedHandOffManager.instance.metrics.incrPastWindow(ep);
             return false;
@@ -1849,7 +1834,7 @@ public class StorageProxy implements StorageProxyMBean
     public static void truncateBlocking(String keyspace, String cfname) throws UnavailableException, TimeoutException, IOException
     {
         logger.debug("Starting a blocking truncate operation on keyspace {}, CF {}", keyspace, cfname);
-        if (isAnyHostDown())
+        if (isAnyStorageHostDown())
         {
             logger.info("Cannot perform truncate, some hosts are down");
             // Since the truncate operation is so aggressive and is typically only
@@ -1887,11 +1872,11 @@ public class StorageProxy implements StorageProxyMBean
      * Asks the gossiper if there are any nodes that are currently down.
      * @return true if the gossiper thinks all nodes are up.
      */
-    private static boolean isAnyHostDown()
+    private static boolean isAnyStorageHostDown()
     {
-        return !Gossiper.instance.getUnreachableMembers().isEmpty();
+        return !Gossiper.instance.getUnreachableTokenOwners().isEmpty();
     }
-
+    
     public interface WritePerformer
     {
         public void apply(IMutation mutation, Iterable<InetAddress> targets, AbstractWriteResponseHandler responseHandler, String localDataCenter, ConsistencyLevel consistency_level) throws OverloadedException;

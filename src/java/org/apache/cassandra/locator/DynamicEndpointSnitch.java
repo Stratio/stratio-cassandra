@@ -49,7 +49,6 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
     private boolean registered = false;
 
     private final ConcurrentHashMap<InetAddress, Double> scores = new ConcurrentHashMap<InetAddress, Double>();
-    private final ConcurrentHashMap<InetAddress, Long> lastReceived = new ConcurrentHashMap<InetAddress, Long>();
     private final ConcurrentHashMap<InetAddress, ExponentiallyDecayingSample> samples = new ConcurrentHashMap<InetAddress, ExponentiallyDecayingSample>();
 
     public final IEndpointSnitch subsnitch;
@@ -157,16 +156,27 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
     {
         if (addresses.size() < 2)
             return;
+
         subsnitch.sortByProximity(address, addresses);
-        Double first = scores.get(addresses.get(0));
-        if (first == null)
-            return;
-        for (InetAddress addr : addresses)
+        ArrayList<Double> subsnitchOrderedScores = new ArrayList<>(addresses.size());
+        for (InetAddress inet : addresses)
         {
-            Double next = scores.get(addr);
-            if (next == null)
+            Double score = scores.get(inet);
+            if (score == null)
                 return;
-            if ((first - next) / first > BADNESS_THRESHOLD)
+            subsnitchOrderedScores.add(score);
+        }
+
+        // Sort the scores and then compare them (positionally) to the scores in the subsnitch order.
+        // If any of the subsnitch-ordered scores exceed the optimal/sorted score by BADNESS_THRESHOLD, use
+        // the score-sorted ordering instead of the subsnitch ordering.
+        ArrayList<Double> sortedScores = new ArrayList<>(subsnitchOrderedScores);
+        Collections.sort(sortedScores);
+
+        Iterator<Double> sortedScoreIterator = sortedScores.iterator();
+        for (Double subsnitchScore : subsnitchOrderedScores)
+        {
+            if (subsnitchScore > (sortedScoreIterator.next() * (1.0 + BADNESS_THRESHOLD)))
             {
                 sortByProximityWithScore(address, addresses);
                 return;
@@ -201,8 +211,6 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
 
     public void receiveTiming(InetAddress host, long latency) // this is cheap
     {
-        lastReceived.put(host, System.nanoTime());
-
         ExponentiallyDecayingSample sample = samples.get(host);
         if (sample == null)
         {

@@ -1,6 +1,6 @@
 <link rel="StyleSheet" href="CQL.css" type="text/css" media="screen">
 
-h1. Cassandra Query Language (CQL) v3.1.4
+h1. Cassandra Query Language (CQL) v3.1.5
 
 
  <span id="tableOfContents">
@@ -219,11 +219,8 @@ bc(syntax)..
                           '(' <definition> ( ',' <definition> )* ')'
                           ( WITH <option> ( AND <option>)* )?
 
-<column-definition> ::= <identifier> <type> ( PRIMARY KEY )?
+<column-definition> ::= <identifier> <type> ( STATIC )? ( PRIMARY KEY )?
                       | PRIMARY KEY '(' <partition-key> ( ',' <identifier> )* ')'
-
-<partition-key> ::= <partition-key>
-                  | '(' <partition-key> ( ',' <identifier> )* ')'
 
 <partition-key> ::= <identifier>
                   | '(' <identifier> (',' <identifier> )* ')'
@@ -282,19 +279,41 @@ CREATE TABLE t (
     PRIMARY KEY (k)
 )
 
-Moreover, a table must define at least one column that is not part of the PRIMARY KEY as a row exists in Cassandra only if it contains at least one value for one such column.
-
 h4(#createTablepartitionClustering). Partition key and clustering columns
 
 In CQL, the order in which columns are defined for the @PRIMARY KEY@ matters. The first column of the key is called the __partition key__. It has the property that all the rows sharing the same partition key (even across table in fact) are stored on the same physical node. Also, insertion/update/deletion on rows sharing the same partition key for a given table are performed __atomically__ and in __isolation__. Note that it is possible to have a composite partition key, i.e. a partition key formed of multiple columns, using an extra set of parentheses to define which columns forms the partition key.
 
 The remaining columns of the @PRIMARY KEY@ definition, if any, are called __clustering columns. On a given physical node, rows for a given partition key are stored in the order induced by the clustering columns, making the retrieval of rows in that clustering order particularly efficient (see <a href="#selectStmt"><tt>SELECT</tt></a>).
 
+h4(#createTableStatic). @STATIC@ columns
+
+Some columns can be declared as @STATIC@ in a table definition. A column that is static will be "shared" by all the rows belonging to the same partition (having the same partition key). For instance, in:
+
+bc(sample). 
+CREATE TABLE test (
+    pk int,
+    t int,
+    v text,
+    s text static,
+    PRIMARY KEY (pk, t)
+);
+INSERT INTO test(pk, t, v, s) VALUES (0, 0, 'val0', 'static0');
+INSERT INTO test(pk, t, v, s) VALUES (0, 1, 'val1', 'static1');
+SELECT * FROM test WHERE pk=0 AND t=0;
+
+the last query will return @'static1'@ as value for @s@, since @s@ is static and thus the 2nd insertion modified this "shared" value. Note however that static columns are only static within a given partition, and if in the example above both rows where from different partitions (i.e. if they had different value for @pk@), then the 2nd insertion would not have modified the value of @s@ for the first row.
+
+A few restrictions applies to when static columns are allowed:
+* tables with the @COMPACT STORAGE@ option (see below) cannot have them
+* a table without clustering columns cannot have static columns (in a table without clustering columns, every partition has only one row, and so every column is inherently static).
+* only non @PRIMARY KEY@ columns can be static
+
+
 h4(#createTableOptions). @<option>@
 
 The @CREATE TABLE@ statement supports a number of options that controls the configuration of a new table. These options can be specified after the @WITH@ keyword.
 
-The first of these option is @COMPACT STORAGE@. This option is mainly targeted towards backward compatibility for definitions created before CQL3 (see "www.datastax.com/dev/blog/thrift-to-cql3":http://www.datastax.com/dev/blog/thrift-to-cql3 for more details).  The option also provides a slightly more compact layout of data on disk but at the price of diminished flexibility and extensibility for the table.  Most notably, @COMPACT STORAGE@ tables cannot have collections and a @COMPACT STORAGE@ table with at least one clustering column supports exactly one (as in not 0 nor more than 1) column not part of the @PRIMARY KEY@ definition (which imply in particular that you cannot add nor remove columns after creation). For those reasons, @COMPACT STORAGE@ is not recommended outside of the backward compatibility reason evoked above.
+The first of these option is @COMPACT STORAGE@. This option is mainly targeted towards backward compatibility for definitions created before CQL3 (see "www.datastax.com/dev/blog/thrift-to-cql3":http://www.datastax.com/dev/blog/thrift-to-cql3 for more details).  The option also provides a slightly more compact layout of data on disk but at the price of diminished flexibility and extensibility for the table.  Most notably, @COMPACT STORAGE@ tables cannot have collections nor static columns and a @COMPACT STORAGE@ table with at least one clustering column supports exactly one (as in not 0 nor more than 1) column not part of the @PRIMARY KEY@ definition (which imply in particular that you cannot add nor remove columns after creation). For those reasons, @COMPACT STORAGE@ is not recommended outside of the backward compatibility reason evoked above.
 
 Another option is @CLUSTERING ORDER@. It allows to define the ordering of rows on disk. It takes the list of the clustering column names with, for each of them, the on-disk order (Ascending or descending). Note that this option affects "what @ORDER BY@ are allowed during @SELECT@":#selectOrderBy.
 
@@ -330,7 +349,7 @@ The @compaction@ property must at least define the @'class'@ sub-option, that de
 For the @compression@ property, the following default sub-options are available:
 
 |_. option              |_. default        |_. description |
-| @sstable_compression@ | SnappyCompressor | The compression algorithm to use. Default compressor are: SnappyCompressor and DeflateCompressor. Use an empty string (@''@) to disable compression. Custom compressor can be provided by specifying the full class name as a "string constant":#constants.|
+| @sstable_compression@ | LZ4Compressor    | The compression algorithm to use. Default compressor are: LZ4Compressor, SnappyCompressor and DeflateCompressor. Use an empty string (@''@) to disable compression. Custom compressor can be provided by specifying the full class name as a "string constant":#constants.|
 | @chunk_length_kb@     | 64KB             | On disk SSTables are compressed by block (to allow random reads). This defines the size (in KB) of said block. Bigger values may improve the compression rate, but increases the minimum size of data to be read from disk for a read |
 | @crc_check_chance@    | 1.0              | When compression is enabled, each compressed block includes a checksum of that block for the purpose of detecting disk bitrot and avoiding the propagation of corruption to other replica. This option defines the probability with which those checksums are checked during read. By default they are always checked. Set to 0 to disable checksum checking and to 0.5 for instance to check them every other read|
 
@@ -459,7 +478,7 @@ INSERT INTO NerdMovies (movie, director, main_actor, year)
                 VALUES ('Serenity', 'Joss Whedon', 'Nathan Fillion', 2005)
 USING TTL 86400;
 
-The @INSERT@ statement writes one or more columns for a given row in a table. Note that since a row is identified by its @PRIMARY KEY@, the columns that compose it must be specified. Also, since a row only exists when it contains one value for a column not part of the @PRIMARY KEY@, one such value must be specified too.
+The @INSERT@ statement writes one or more columns for a given row in a table. Note that since a row is identified by its @PRIMARY KEY@, at least the columns composing it must be specified.
 
 Note that unlike in SQL, @INSERT@ does not check the prior existence of the row by default: the row is created if none existed before, and updated otherwise. Furthermore, there is no mean to know which of creation or update happened.
 
@@ -521,7 +540,7 @@ h4(#updateOptions). @<options>@
 
 The @UPDATE@ and @INSERT@ statements allows to specify the following options for the insertion:
 * @TIMESTAMP@: sets the timestamp for the operation. If not specified, the current time of the insertion (in microseconds) is used. This is usually a suitable default.
-* @TTL@: allows to specify an optional Time To Live (in seconds) for the inserted values. If set, the inserted values are automatically removed from the database after the specified time. Note that the TTL concerns the inserted values, not the column themselves. This means that any subsequent update of the column will also reset the TTL (to whatever TTL is specified in that update). By default, values never expire.
+* @TTL@: allows to specify an optional Time To Live (in seconds) for the inserted values. If set, the inserted values are automatically removed from the database after the specified time. Note that the TTL concerns the inserted values, not the column themselves. This means that any subsequent update of the column will also reset the TTL (to whatever TTL is specified in that update). By default, values never expire. A TTL of 0 or a negative one is equivalent to no TTL.
 
 
 h3(#deleteStmt). DELETE
@@ -562,7 +581,7 @@ h3(#batchStmt). BATCH
 __Syntax:__
 
 bc(syntax).. 
-<batch-stmt> ::= BEGIN BATCH
+<batch-stmt> ::= BEGIN ( UNLOGGED | COUNTER ) BATCH
                  ( USING <option> ( AND <option> )* )?
                     <modification-stmt> ( ';' <modification-stmt> )*
                  APPLY BATCH
@@ -583,10 +602,21 @@ BEGIN BATCH
   DELETE name FROM users WHERE userid = 'user1';
 APPLY BATCH;
 
-The @BATCH@ statement group multiple modification statements (insertions/updates and deletions) into a single statement. It mainly serves two purposes:
-# it saves network round-trips between the client and the server (and sometimes between the server coordinator and the replicas) when batching multiple updates.
-# all updates in a @BATCH@ belonging to a given partition key are performed atomically and in isolation
+The @BATCH@ statement group multiple modification statements (insertions/updates and deletions) into a single statement. It serves several purposes:
+# It saves network round-trips between the client and the server (and sometimes between the server coordinator and the replicas) when batching multiple updates.
+# All updates in a @BATCH@ belonging to a given partition key are performed in isolation.
+# By default, all operations in the batch are performed atomically.  See the notes on "@UNLOGGED@":#unloggedBatch for more details.
 Note however that the @BATCH@ statement only allows @UPDATE@, @INSERT@ and @DELETE@ statements and is _not_ a full analogue for SQL transactions.
+
+h4(#unloggedBatch). @UNLOGGED@
+
+By default, Cassandra uses a batch log to ensure all operations in a batch are applied atomically. (Note that the operations are still only isolated within a single partition.)
+
+There is a performance penalty for batch atomicity when a batch spans multiple partitions. If you do not want to incur this penalty, you can tell Cassandra to skip the batchlog with the @UNLOGGED@ option. If the @UNLOGGED@ option is used, operations are only atomic within a single partition.
+
+h4(#counterBatch). @COUNTER@
+
+Use the @COUNTER@ option for batched counter updates.  Unlike other updates in Cassandra, counter updates are not idempotent.
 
 h4(#batchOptions). @<option>@
 
@@ -621,10 +651,12 @@ bc(syntax)..
 
 <where-clause> ::= <relation> ( AND <relation> )*
 
-<relation> ::= <identifier> ('=' | '<' | '>' | '<=' | '>=') <term>
+<relation> ::= <identifier> <op> <term>
+             | '(' <identifier> (',' <identifier>)* ')' <op> '(' <term> (',' <term>)* ')'
              | <identifier> IN '(' ( <term> ( ',' <term>)* )? ')'
-             | TOKEN '(' <identifier> ( ',' <identifer>)* ')' ('=' | '<' | '>' | '<=' | '>=') <term>
+             | TOKEN '(' <identifier> ( ',' <identifer>)* ')' <op> <term>
 
+<op> ::= '=' | '<' | '>' | '<=' | '>='
 <order-by> ::= <ordering> ( ',' <odering> )*
 <ordering> ::= <identifer> ( ASC | DESC )?
 p. 
@@ -678,7 +710,7 @@ CREATE TABLE posts (
 The following query is allowed:
 
 bc(sample). 
-SELECT entry_title, content FROM posts WHERE userid='john doe' AND blog_title='John's Blog' AND posted_at >= '2012-01-01' AND posted_at < '2012-01-31'
+SELECT entry_title, content FROM posts WHERE userid='john doe' AND blog_title='John''s Blog' AND posted_at >= '2012-01-01' AND posted_at < '2012-01-31'
 
 But the following one is not, as it does not select a contiguous set of rows (and we suppose no secondary indexes are set):
 
@@ -692,6 +724,16 @@ bc(sample).
 SELECT * FROM posts WHERE token(userid) > token('tom') AND token(userid) < token('bob')
 
 Moreover, the @IN@ relation is only allowed on the last column of the partition key and on the last column of the full primary key.
+
+It is also possible to "group" @CLUSTERING COLUMNS@ together in a relation, for instance:
+
+bc(sample). 
+SELECT * FROM posts WHERE userid='john doe' AND (blog_title, posted_at) > ('John''s Blog', '2012-01-01')
+
+will request all rows that sorts after the one having "John's Blog" as @blog_tile@ and '2012-01-01' for @posted_at@ in the clustering order. In particular, rows having a @post_at <= '2012-01-01'@ will be returned as long as their @blog_title > 'John''s Blog'@, which wouldn't be the case for:
+
+bc(sample). 
+SELECT * FROM posts WHERE userid='john doe' AND blog_title > 'John''s Blog' AND posted_at > '2012-01-01'
 
 h4(#selectOrderBy). @<order-by>@
 
@@ -976,6 +1018,10 @@ CREATE TABLE users (
 
 then the @token@ function will take a single argument of type @text@ (in that case, the partition key is @userid@ (there is no clustering columns so the partition key is the same than the primary key)), and the return type will be @bigint@.
 
+h3(#uuidFun). Uuid
+
+The @uuid@ function takes no parameters and generates a random type 4 uuid suitable for use in INSERT or SET statements.
+
 h3(#timeuuidFun). Timeuuid functions
 
 h4. @now@
@@ -1102,6 +1148,11 @@ CQL distinguishes between _reserved_ and _non-reserved_ keywords. Reserved keywo
 h2(#changes). Changes
 
 The following describes the addition/changes brought for each version of CQL.
+
+h3. 3.1.5
+
+* It is now possible to group clustering columns in a relatiion, see "SELECT Where clauses":#selectWhere.
+* Added support for @STATIC@ columns, see "static in CREATE TABLE":#createTableStatic.
 
 h3. 3.1.4
 

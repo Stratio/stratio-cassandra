@@ -30,14 +30,15 @@ import java.util.concurrent.ExecutionException;
 import javax.management.openmbean.TabularData;
 
 import com.google.common.base.Joiner;
+import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Maps;
+
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.commons.cli.*;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
-
 import org.apache.cassandra.concurrent.JMXEnabledThreadPoolExecutorMBean;
 import org.apache.cassandra.db.ColumnFamilyStoreMBean;
 import org.apache.cassandra.db.Keyspace;
@@ -67,6 +68,7 @@ public class NodeCmd
     private static final Pair<String, String> PRIMARY_RANGE_OPT = Pair.create("pr", "partitioner-range");
     private static final Pair<String, String> PARALLEL_REPAIR_OPT = Pair.create("par", "parallel");
     private static final Pair<String, String> LOCAL_DC_REPAIR_OPT = Pair.create("local", "in-local-dc");
+    private static final Pair<String, String> HOST_REPAIR_OPT = Pair.create("hosts", "in-host");
     private static final Pair<String, String> DC_REPAIR_OPT = Pair.create("dc", "in-dc");
     private static final Pair<String, String> START_TOKEN_OPT = Pair.create("st", "start-token");
     private static final Pair<String, String> END_TOKEN_OPT = Pair.create("et", "end-token");
@@ -75,7 +77,7 @@ public class NodeCmd
     private static final Pair<String, String> CFSTATS_IGNORE_OPT = Pair.create("i", "ignore");
     private static final Pair<String, String> RESOLVE_IP = Pair.create("r", "resolve-ip");
     private static final Pair<String, String> SCRUB_SKIP_CORRUPTED_OPT = Pair.create("s", "skip-corrupted");
-
+    private static final Pair<String, String> COMPACT_OPT = Pair.create("c", "compact");
 
     private static final String DEFAULT_HOST = "127.0.0.1";
     private static final int DEFAULT_PORT = 7199;
@@ -97,6 +99,7 @@ public class NodeCmd
         options.addOption(PARALLEL_REPAIR_OPT, false, "repair nodes in parallel.");
         options.addOption(LOCAL_DC_REPAIR_OPT, false, "only repair against nodes in the same datacenter");
         options.addOption(DC_REPAIR_OPT, true, "only repair against nodes in the specified datacenters (comma separated)");
+        options.addOption(HOST_REPAIR_OPT, true, "only repair against specified nodes (comma separated)");
         options.addOption(START_TOKEN_OPT, true, "token at which repair range starts");
         options.addOption(END_TOKEN_OPT, true, "token at which repair range ends");
         options.addOption(UPGRADE_ALL_SSTABLE_OPT, false, "includes sstables that are already on the most recent version during upgradesstables");
@@ -104,6 +107,7 @@ public class NodeCmd
         options.addOption(CFSTATS_IGNORE_OPT, false, "ignore the supplied list of keyspace.columnfamiles in statistics");
         options.addOption(RESOLVE_IP, false, "show node domain names instead of IPs");
         options.addOption(SCRUB_SKIP_CORRUPTED_OPT, false, "when scrubbing counter tables, skip corrupted rows");
+        options.addOption(COMPACT_OPT, false, "print histograms in a more compact format");
     }
 
     public NodeCmd(NodeProbe probe)
@@ -168,6 +172,7 @@ public class NodeCmd
         STATUSTHRIFT,
         STOP,
         STOPDAEMON,
+        TAKETOKEN,
         TPSTATS,
         TRUNCATEHINTS,
         UPGRADESSTABLES,
@@ -275,16 +280,7 @@ public class NodeCmd
         try
         {
             outs.println();
-            Map<String, Map<InetAddress, Float>> perDcOwnerships = Maps.newLinkedHashMap();
-            // get the different datasets and map to tokens
-            for (Map.Entry<InetAddress, Float> ownership : ownerships.entrySet())
-            {
-                String dc = probe.getEndpointSnitchInfoProxy().getDatacenter(ownership.getKey().getHostAddress());
-                if (!perDcOwnerships.containsKey(dc))
-                    perDcOwnerships.put(dc, new LinkedHashMap<InetAddress, Float>());
-                perDcOwnerships.get(dc).put(ownership.getKey(), ownership.getValue());
-            }
-            for (Map.Entry<String, Map<InetAddress, Float>> entry : perDcOwnerships.entrySet())
+            for (Entry<String, SetHostStat> entry : getOwnershipByDc(false, tokensToEndpoints, ownerships).entrySet())
                 printDc(outs, format, entry.getKey(), endpointsToTokens, keyspaceSelected, entry.getValue());
         }
         catch (UnknownHostException e)
@@ -300,7 +296,7 @@ public class NodeCmd
     }
 
     private void printDc(PrintStream outs, String format, String dc, LinkedHashMultimap<String, String> endpointsToTokens,
-            boolean keyspaceSelected, Map<InetAddress, Float> filteredOwnerships)
+                         boolean keyspaceSelected, SetHostStat hoststats)
     {
         Collection<String> liveNodes = probe.getLiveNodes();
         Collection<String> deadNodes = probe.getUnreachableNodes();
@@ -316,56 +312,52 @@ public class NodeCmd
         List<String> tokens = new ArrayList<String>();
         String lastToken = "";
 
-        for (Map.Entry<InetAddress, Float> entry : filteredOwnerships.entrySet())
+        for (HostStat stat : hoststats)
         {
-            tokens.addAll(endpointsToTokens.get(entry.getKey().getHostAddress()));
+            tokens.addAll(endpointsToTokens.get(stat.endpoint.getHostAddress()));
             lastToken = tokens.get(tokens.size() - 1);
         }
 
-
         outs.printf(format, "Address", "Rack", "Status", "State", "Load", "Owns", "Token");
 
-        if (filteredOwnerships.size() > 1)
+        if (hoststats.size() > 1)
             outs.printf(format, "", "", "", "", "", "", lastToken);
         else
             outs.println();
 
-        for (Map.Entry<InetAddress, Float> entry : filteredOwnerships.entrySet())
+        for (HostStat stat : hoststats)
         {
-            String endpoint = entry.getKey().getHostAddress();
-            for (String token : endpointsToTokens.get(endpoint))
+            String endpoint = stat.endpoint.getHostAddress();
+            String rack;
+            try
             {
-                String rack;
-                try
-                {
-                    rack = probe.getEndpointSnitchInfoProxy().getRack(endpoint);
-                }
-                catch (UnknownHostException e)
-                {
-                    rack = "Unknown";
-                }
-
-                String status = liveNodes.contains(endpoint)
-                        ? "Up"
-                        : deadNodes.contains(endpoint)
-                                ? "Down"
-                                : "?";
-
-                String state = "Normal";
-
-                if (joiningNodes.contains(endpoint))
-                    state = "Joining";
-                else if (leavingNodes.contains(endpoint))
-                    state = "Leaving";
-                else if (movingNodes.contains(endpoint))
-                    state = "Moving";
-
-                String load = loadMap.containsKey(endpoint)
-                        ? loadMap.get(endpoint)
-                        : "?";
-                String owns = new DecimalFormat("##0.00%").format(entry.getValue());
-                outs.printf(format, endpoint, rack, status, state, load, owns, token);
+                rack = probe.getEndpointSnitchInfoProxy().getRack(endpoint);
             }
+            catch (UnknownHostException e)
+            {
+                rack = "Unknown";
+            }
+
+            String status = liveNodes.contains(endpoint)
+                    ? "Up"
+                    : deadNodes.contains(endpoint)
+                            ? "Down"
+                            : "?";
+
+            String state = "Normal";
+
+            if (joiningNodes.contains(endpoint))
+                state = "Joining";
+            else if (leavingNodes.contains(endpoint))
+                state = "Leaving";
+            else if (movingNodes.contains(endpoint))
+                state = "Moving";
+
+            String load = loadMap.containsKey(endpoint)
+                    ? loadMap.get(endpoint)
+                    : "?";
+            String owns = stat.owns != null ? new DecimalFormat("##0.00%").format(stat.owns) : "?";
+            outs.printf(format, endpoint, rack, status, state, load, owns, stat.token);
         }
         outs.println();
     }
@@ -402,63 +394,6 @@ public class NodeCmd
             outs.println("|/ State=Normal/Leaving/Joining/Moving");
         }
 
-        class SetHostStat implements Iterable<HostStat> {
-            final List<HostStat> hostStats = new ArrayList<HostStat>();
-
-            public SetHostStat() {}
-
-            public SetHostStat(Map<InetAddress, Float> ownerships) {
-                for (Map.Entry<InetAddress, Float> entry : ownerships.entrySet()) {
-                    hostStats.add(new HostStat(entry));
-                }
-            }
-
-            @Override
-            public Iterator<HostStat> iterator() {
-                return hostStats.iterator();
-            }
-
-            public void add(HostStat entry) {
-                hostStats.add(entry);
-            }
-        }
-
-        class HostStat {
-            public final String ip;
-            public final String dns;
-            public final Float owns;
-
-            public HostStat(Map.Entry<InetAddress, Float> ownership) {
-                this.ip = ownership.getKey().getHostAddress();
-                this.dns = ownership.getKey().getHostName();
-                this.owns = ownership.getValue();
-            }
-
-            public String ipOrDns() {
-                if (resolveIp) {
-                    return dns;
-                }
-                return ip;
-            }
-        }
-
-        private Map<String, SetHostStat> getOwnershipByDc(SetHostStat ownerships)
-        throws UnknownHostException
-        {
-            Map<String, SetHostStat> ownershipByDc = Maps.newLinkedHashMap();
-            EndpointSnitchInfoMBean epSnitchInfo = probe.getEndpointSnitchInfoProxy();
-
-            for (HostStat ownership : ownerships)
-            {
-                String dc = epSnitchInfo.getDatacenter(ownership.ip);
-                if (!ownershipByDc.containsKey(dc))
-                    ownershipByDc.put(dc, new SetHostStat());
-                ownershipByDc.get(dc).add(ownership);
-            }
-
-            return ownershipByDc;
-        }
-
         private String getFormat(boolean hasEffectiveOwns, boolean isTokenPerNode)
         {
             if (format == null)
@@ -481,12 +416,10 @@ public class NodeCmd
             return format;
         }
 
-        private void printNode(HostStat hostStat,
-                boolean hasEffectiveOwns, boolean isTokenPerNode) throws UnknownHostException
+        private void printNode(String endpoint, Float owns, List<HostStat> tokens, boolean hasEffectiveOwns, boolean isTokenPerNode) throws UnknownHostException
         {
             String status, state, load, strOwns, hostID, rack, fmt;
             fmt = getFormat(hasEffectiveOwns, isTokenPerNode);
-            String endpoint = hostStat.ip;
             if      (liveNodes.contains(endpoint))        status = "U";
             else if (unreachableNodes.contains(endpoint)) status = "D";
             else                                          status = "?";
@@ -496,18 +429,18 @@ public class NodeCmd
             else                                          state = "N";
 
             load = loadMap.containsKey(endpoint) ? loadMap.get(endpoint) : "?";
-            strOwns = new DecimalFormat("##0.0%").format(hostStat.owns);
+            strOwns = owns != null ? new DecimalFormat("##0.0%").format(owns) : "?";
             hostID = hostIDMap.get(endpoint);
             rack = epSnitchInfo.getRack(endpoint);
 
+            String endpointDns = tokens.get(0).ipOrDns();
             if (isTokenPerNode)
             {
-                outs.printf(fmt, status, state, hostStat.ipOrDns(), load, strOwns, hostID, probe.getTokens(endpoint).get(0), rack);
+                outs.printf(fmt, status, state, endpointDns, load, strOwns, hostID, tokens.get(0).token, rack);
             }
             else
             {
-                int tokens = probe.getTokens(endpoint).size();
-                outs.printf(fmt, status, state, hostStat.ipOrDns(), load, tokens, strOwns, hostID, rack);
+                outs.printf(fmt, status, state, endpointDns, load, tokens.size(), strOwns, hostID, rack);
             }
         }
 
@@ -534,24 +467,25 @@ public class NodeCmd
 
         void print() throws UnknownHostException
         {
-            SetHostStat ownerships;
+            Map<InetAddress, Float> ownerships;
             boolean hasEffectiveOwns = false, isTokenPerNode = true;
 
             try
             {
-                ownerships = new SetHostStat(probe.effectiveOwnership(kSpace));
+                ownerships = probe.effectiveOwnership(kSpace);
                 hasEffectiveOwns = true;
             }
             catch (IllegalStateException e)
             {
-                ownerships = new SetHostStat(probe.getOwnership());
+                ownerships = probe.getOwnership();
+                outs.printf("Note: Ownership information does not include topology; for complete information, specify a keyspace%n");
             }
 
             // More tokens then nodes (aka vnodes)?
-            if (new HashSet<String>(tokensToEndpoints.values()).size() < tokensToEndpoints.keySet().size())
+            if (tokensToEndpoints.values().size() < tokensToEndpoints.keySet().size())
                 isTokenPerNode = false;
 
-            Map<String, SetHostStat> dcs = getOwnershipByDc(ownerships);
+            Map<String, SetHostStat> dcs = getOwnershipByDc(resolveIp, tokensToEndpoints, ownerships);
 
             findMaxAddressLength(dcs);
 
@@ -566,10 +500,81 @@ public class NodeCmd
                 printStatusLegend();
                 printNodesHeader(hasEffectiveOwns, isTokenPerNode);
 
+                ArrayListMultimap<InetAddress, HostStat> hostToTokens = ArrayListMultimap.create();
+                for (HostStat stat : dc.getValue())
+                    hostToTokens.put(stat.endpoint, stat);
+
                 // Nodes
-                for (HostStat entry : dc.getValue())
-                    printNode(entry, hasEffectiveOwns, isTokenPerNode);
+                for (InetAddress endpoint : hostToTokens.keySet())
+                {
+                    Float owns = ownerships.get(endpoint);
+                    List<HostStat> tokens = hostToTokens.get(endpoint);
+                    printNode(endpoint.getHostAddress(), owns, tokens, hasEffectiveOwns, isTokenPerNode);
+                }
             }
+        }
+    }
+
+    private Map<String, SetHostStat> getOwnershipByDc(boolean resolveIp, Map<String, String> tokenToEndpoint, 
+                                                      Map<InetAddress, Float> ownerships) throws UnknownHostException
+    {
+        Map<String, SetHostStat> ownershipByDc = Maps.newLinkedHashMap();
+        EndpointSnitchInfoMBean epSnitchInfo = probe.getEndpointSnitchInfoProxy();
+
+        for (Entry<String, String> tokenAndEndPoint : tokenToEndpoint.entrySet())
+        {
+            String dc = epSnitchInfo.getDatacenter(tokenAndEndPoint.getValue());
+            if (!ownershipByDc.containsKey(dc))
+                ownershipByDc.put(dc, new SetHostStat(resolveIp));
+            ownershipByDc.get(dc).add(tokenAndEndPoint.getKey(), tokenAndEndPoint.getValue(), ownerships);
+        }
+
+        return ownershipByDc;
+    }
+
+    static class SetHostStat implements Iterable<HostStat> {
+        final List<HostStat> hostStats = new ArrayList<HostStat>();
+        final boolean resolveIp;
+
+        public SetHostStat(boolean resolveIp)
+        {
+            this.resolveIp = resolveIp;
+        }
+
+        public int size()
+        {
+            return hostStats.size();
+        }
+
+        @Override
+        public Iterator<HostStat> iterator() {
+            return hostStats.iterator();
+        }
+
+        public void add(String token, String host, Map<InetAddress, Float> ownerships) throws UnknownHostException {
+            InetAddress endpoint = InetAddress.getByName(host);
+            Float owns = ownerships.get(endpoint);
+            hostStats.add(new HostStat(token, endpoint, resolveIp, owns));
+        }
+    }
+
+    static class HostStat {
+        public final InetAddress endpoint;
+        public final boolean resolveIp;
+        public final Float owns;
+        public final String token;
+
+        public HostStat(String token, InetAddress endpoint, boolean resolveIp, Float owns) 
+        {
+            this.token = token;
+            this.endpoint = endpoint;
+            this.resolveIp = resolveIp;
+            this.owns = owns;
+        }
+
+        public String ipOrDns()
+        {
+            return (resolveIp) ? endpoint.getHostName() : endpoint.getHostAddress();
         }
     }
 
@@ -956,7 +961,47 @@ public class NodeCmd
         outs.println("RemovalStatus: " + probe.getRemovalStatus());
     }
 
-    private void printCfHistograms(String keySpace, String columnFamily, PrintStream output)
+    /**
+     * Returns a pair of the min and max indexes we actually have histogram data for.
+     * If there's no data, -1 will be returned for the min and max.
+     */
+    private Pair<Integer, Integer> getDataBounds(long[] data)
+    {
+        int lowestIndex = -1;
+        int highestIndex = -1;
+        for (int i = 0; i < data.length; i++)
+        {
+            if (data[i] > 0)
+            {
+                highestIndex = i;
+                if (lowestIndex == -1)
+                    lowestIndex = i;
+            }
+        }
+        return Pair.create(lowestIndex, highestIndex);
+    }
+
+    private void printHistogram(long[] data, long[] offsets, String unit, PrintStream output)
+    {
+        Pair<Integer, Integer> bounds = getDataBounds(data);
+        if (bounds.left == -1)
+        {
+            output.println("No Data");
+        }
+        else
+        {
+            long maxValue = -1;
+            for (int i = bounds.left; i <= bounds.right; i++)
+                maxValue = Math.max(maxValue, offsets[i]);
+
+            String format = "%" + new Long(maxValue).toString().length() + "d %s: %d";
+            for (int i = bounds.left; i <= bounds.right; i++)
+                output.println(String.format(format, offsets[i], unit, data[i]));
+        }
+        output.println("");
+    }
+
+    private void printCfHistograms(String keySpace, String columnFamily, PrintStream output, boolean compactFormat)
     {
         ColumnFamilyStoreMBean store = this.probe.getCfsProxy(keySpace, columnFamily);
 
@@ -970,25 +1015,46 @@ public class NodeCmd
         long[] ecch = store.getEstimatedColumnCountHistogram();
 
         output.println(String.format("%s/%s histograms", keySpace, columnFamily));
+        output.println("");
 
-        output.println(String.format("%-10s%10s%18s%18s%18s%18s",
-                                     "Offset", "SSTables", "Write Latency", "Read Latency", "Partition Size", "Cell Count"));
-        output.println(String.format("%-10s%10s%18s%18s%18s%18s",
-                                     "", "", "(micros)", "(micros)", "(bytes)", ""));
-
-        for (int i = 0; i < offsets.length; i++)
+        if (compactFormat)
         {
-            output.println(String.format("%-10d%10s%18s%18s%18s%18s",
-                                         offsets[i],
-                                         (i < sprh.length ? sprh[i] : "0"),
-                                         (i < rwlh.length ? rwlh[i] : "0"),
-                                         (i < rrlh.length ? rrlh[i] : "0"),
-                                         (i < ersh.length ? ersh[i] : "0"),
-                                         (i < ecch.length ? ecch[i] : "0")));
+            output.println(String.format("%-10s%10s%18s%18s%18s%18s",
+                    "Offset", "SSTables", "Write Latency", "Read Latency", "Partition Size", "Cell Count"));
+            output.println(String.format("%-10s%10s%18s%18s%18s%18s",
+                    "", "", "(micros)", "(micros)", "(bytes)", ""));
+
+            for (int i = 0; i < offsets.length; i++)
+            {
+                output.println(String.format("%-10d%10s%18s%18s%18s%18s",
+                        offsets[i],
+                        (i < sprh.length ? sprh[i] : "0"),
+                        (i < rwlh.length ? rwlh[i] : "0"),
+                        (i < rrlh.length ? rrlh[i] : "0"),
+                        (i < ersh.length ? ersh[i] : "0"),
+                        (i < ecch.length ? ecch[i] : "0")));
+            }
+        }
+        else
+        {
+            output.println("SSTables per Read");
+            printHistogram(sprh, offsets, "sstables", output);
+
+            output.println("Write Latency (microseconds)");
+            printHistogram(rwlh, offsets, "us", output);
+
+            output.println("Read Latency (microseconds)");
+            printHistogram(rrlh, offsets, "us", output);
+
+            output.println("Partition Size (bytes)");
+            printHistogram(ersh, offsets, "bytes", output);
+
+            output.println("Cell Count per Partition");
+            printHistogram(ecch, offsets, "cells", output);
         }
     }
 
-    private void printProxyHistograms(PrintStream output)
+    private void printProxyHistograms(PrintStream output, boolean compactFormat)
     {
         StorageProxyMBean sp = this.probe.getSpProxy();
         long[] offsets = new EstimatedHistogram().getBucketOffsets();
@@ -997,15 +1063,31 @@ public class NodeCmd
         long[] rrnglh = sp.getRecentRangeLatencyHistogramMicros();
 
         output.println("proxy histograms");
-        output.println(String.format("%-10s%18s%18s%18s",
-                                    "Offset", "Read Latency", "Write Latency", "Range Latency"));
-        for (int i = 0; i < offsets.length; i++)
+        output.println("");
+
+        if (compactFormat)
         {
-            output.println(String.format("%-10d%18s%18s%18s",
-                                        offsets[i],
-                                        (i < rrlh.length ? rrlh[i] : "0"),
-                                        (i < rwlh.length ? rwlh[i] : "0"),
-                                        (i < rrnglh.length ? rrnglh[i] : "0")));
+            output.println(String.format("%-10s%18s%18s%18s",
+                    "Offset", "Read Latency", "Write Latency", "Range Latency"));
+            for (int i = 0; i < offsets.length; i++)
+            {
+                output.println(String.format("%-10d%18s%18s%18s",
+                        offsets[i],
+                        (i < rrlh.length ? rrlh[i] : "0"),
+                        (i < rwlh.length ? rwlh[i] : "0"),
+                        (i < rrnglh.length ? rrnglh[i] : "0")));
+            }
+        }
+        else
+        {
+            output.println("Read Latency (microseconds)");
+            printHistogram(rrlh, offsets, "us", output);
+
+            output.println("Write Latency (microseconds)");
+            printHistogram(rwlh, offsets, "us", output);
+
+            output.println("Range Latency (microseconds)");
+            printHistogram(rrnglh, offsets, "us", output);
         }
     }
 
@@ -1150,7 +1232,10 @@ public class NodeCmd
                 case DISABLEGOSSIP   : probe.stopGossiping(); break;
                 case ENABLEGOSSIP    : probe.startGossiping(); break;
                 case DISABLEHANDOFF  : probe.disableHintedHandoff(); break;
-                case ENABLEHANDOFF   : probe.enableHintedHandoff(); break;
+                case ENABLEHANDOFF   :
+                    if (arguments.length > 0) { probe.enableHintedHandoff(arguments[0]); }
+                    else                      { probe.enableHintedHandoff(); }
+                    break;
                 case PAUSEHANDOFF    : probe.pauseHintsDelivery(); break;
                 case RESUMEHANDOFF   : probe.resumeHintsDelivery(); break;
                 case DISABLETHRIFT   : probe.stopThriftServer(); break;
@@ -1237,6 +1322,11 @@ public class NodeCmd
                     probe.setTraceProbability(Double.parseDouble(arguments[0]));
                     break;
 
+                case TAKETOKEN:
+                    if (arguments.length < 1) { badUse("Must supply at least one token to take"); }
+                    probe.takeTokens(arguments);
+                    break;
+
                 case REBUILD :
                     if (arguments.length > 1) { badUse("Too many arguments."); }
                     probe.rebuild(arguments.length == 1 ? arguments[0] : null);
@@ -1280,7 +1370,7 @@ public class NodeCmd
 
                 case CFHISTOGRAMS :
                     if (arguments.length != 2) { badUse("cfhistograms requires ks and cf args"); }
-                    nodeCmd.printCfHistograms(arguments[0], arguments[1], System.out);
+                    nodeCmd.printCfHistograms(arguments[0], arguments[1], System.out, cmd.hasOption(COMPACT_OPT.left));
                     break;
 
                 case SETCACHECAPACITY :
@@ -1309,7 +1399,7 @@ public class NodeCmd
 
                 case PROXYHISTOGRAMS :
                     if (arguments.length != 0) { badUse("proxyhistograms does not take arguments"); }
-                    nodeCmd.printProxyHistograms(System.out);
+                    nodeCmd.printProxyHistograms(System.out, cmd.hasOption(COMPACT_OPT.left));
                     break;
 
                 case GETSSTABLES:
@@ -1539,16 +1629,21 @@ public class NodeCmd
                     boolean sequential = !cmd.hasOption(PARALLEL_REPAIR_OPT.left);
                     boolean localDC = cmd.hasOption(LOCAL_DC_REPAIR_OPT.left);
                     boolean specificDC = cmd.hasOption(DC_REPAIR_OPT.left);
+                    boolean specificHosts = cmd.hasOption(HOST_REPAIR_OPT.left);
                     boolean primaryRange = cmd.hasOption(PRIMARY_RANGE_OPT.left);
                     Collection<String> dataCenters = null;
+                    Collection<String> hosts = null;
+
                     if (specificDC)
                         dataCenters = Arrays.asList(cmd.getOptionValue(DC_REPAIR_OPT.left).split(","));
                     else if (localDC)
                         dataCenters = Arrays.asList(probe.getDataCenter());
+                    else if(specificHosts)
+                        hosts  = Arrays.asList(cmd.getOptionValue(HOST_REPAIR_OPT.left).split(","));
                     if (cmd.hasOption(START_TOKEN_OPT.left) || cmd.hasOption(END_TOKEN_OPT.left))
-                        probe.forceRepairRangeAsync(System.out, keyspace, sequential, dataCenters, cmd.getOptionValue(START_TOKEN_OPT.left), cmd.getOptionValue(END_TOKEN_OPT.left), columnFamilies);
+                        probe.forceRepairRangeAsync(System.out, keyspace, sequential, dataCenters, hosts, cmd.getOptionValue(START_TOKEN_OPT.left), cmd.getOptionValue(END_TOKEN_OPT.left), columnFamilies);
                     else
-                        probe.forceRepairAsync(System.out, keyspace, sequential, dataCenters, primaryRange, columnFamilies);
+                        probe.forceRepairAsync(System.out, keyspace, sequential, dataCenters, hosts, primaryRange, columnFamilies);
                     break;
                 case FLUSH   :
                     try { probe.forceKeyspaceFlush(keyspace, columnFamilies); }

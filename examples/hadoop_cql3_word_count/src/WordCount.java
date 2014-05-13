@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.hadoop.cql3.CqlPagingInputFormat;
+import org.apache.cassandra.hadoop.cql3.CqlInputFormat;
 import org.apache.cassandra.hadoop.ConfigHelper;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.hadoop.conf.Configuration;
@@ -37,35 +38,31 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.Mapper.Context;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
-
+import com.datastax.driver.core.Row;
 import java.nio.charset.CharacterCodingException;
 
 /**
  * This counts the occurrences of words in ColumnFamily
- *   cql3_worldcount ( user_id text,
- *                   category_id text,
- *                   sub_category_id text,
- *                   title  text,
- *                   body  text,
- *                   PRIMARY KEY (user_id, category_id, sub_category_id))
+ *   cql3_worldcount ( id uuid,
+ *                   line  text,
+ *                   PRIMARY KEY (id))
  *
  * For each word, we output the total number of occurrences across all body texts.
  *
  * When outputting to Cassandra, we write the word counts to column family
- *  output_words ( row_id1 text,
- *                 row_id2 text,
- *                 word text,
+ *  output_words ( word text,
  *                 count_num text,
- *                 PRIMARY KEY ((row_id1, row_id2), word))
+ *                 PRIMARY KEY (word))
  * as a {word, count} to columns: word, count_num with a row key of "word sum"
  */
 public class WordCount extends Configured implements Tool
 {
     private static final Logger logger = LoggerFactory.getLogger(WordCount.class);
-
+    static final String INPUT_MAPPER_VAR = "input_mapper";
     static final String KEYSPACE = "cql3_worldcount";
     static final String COLUMN_FAMILY = "inputs";
 
@@ -73,7 +70,6 @@ public class WordCount extends Configured implements Tool
     static final String OUTPUT_COLUMN_FAMILY = "output_words";
 
     private static final String OUTPUT_PATH_PREFIX = "/tmp/word_count";
-
     private static final String PRIMARY_KEY = "row_key";
 
     public static void main(String[] args) throws Exception
@@ -98,13 +94,10 @@ public class WordCount extends Configured implements Tool
         {
             for (Entry<String, ByteBuffer> column : columns.entrySet())
             {
-                if (!"body".equalsIgnoreCase(column.getKey()))
+                if (!"line".equalsIgnoreCase(column.getKey()))
                     continue;
 
                 String value = ByteBufferUtil.string(column.getValue());
-
-                logger.debug("read {}:{}={} from {}",
-                             new Object[] {toString(keys), column.getKey(), value, context.getInputSplit()});
 
                 StringTokenizer itr = new StringTokenizer(value);
                 while (itr.hasMoreTokens())
@@ -114,20 +107,29 @@ public class WordCount extends Configured implements Tool
                 }
             }
         }
+    }
 
-        private String toString(Map<String, ByteBuffer> keys)
+    public static class NativeTokenizerMapper extends Mapper<Long, Row, Text, IntWritable>
+    {
+        private final static IntWritable one = new IntWritable(1);
+        private Text word = new Text();
+        private ByteBuffer sourceColumn;
+
+        protected void setup(org.apache.hadoop.mapreduce.Mapper.Context context)
+        throws IOException, InterruptedException
         {
-            String result = "";
-            try
+        }
+
+        public void map(Long key, Row row, Context context) throws IOException, InterruptedException
+        {
+            String value = row.getString("line");
+            logger.debug("read {}:{}={} from {}", new Object[] {key, "line", value, context.getInputSplit()});
+            StringTokenizer itr = new StringTokenizer(value);
+            while (itr.hasMoreTokens())
             {
-                for (ByteBuffer key : keys.values())
-                    result = result + ByteBufferUtil.string(key) + ":";
+                word.set(itr.nextToken());
+                context.write(word, one);
             }
-            catch (CharacterCodingException e)
-            {
-                logger.error("Failed to print keys", e);
-            }
-            return result;
         }
     }
 
@@ -150,9 +152,6 @@ public class WordCount extends Configured implements Tool
         throws IOException, InterruptedException
         {
             keys = new LinkedHashMap<String, ByteBuffer>();
-            String[] partitionKeys = context.getConfiguration().get(PRIMARY_KEY).split(",");
-            keys.put("row_id1", ByteBufferUtil.bytes(partitionKeys[0]));
-            keys.put("row_id2", ByteBufferUtil.bytes(partitionKeys[1]));
         }
 
         public void reduce(Text word, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException
@@ -160,13 +159,13 @@ public class WordCount extends Configured implements Tool
             int sum = 0;
             for (IntWritable val : values)
                 sum += val.get();
+            keys.put("word", ByteBufferUtil.bytes(word.toString()));
             context.write(keys, getBindVariables(word, sum));
         }
 
         private List<ByteBuffer> getBindVariables(Text word, int sum)
         {
             List<ByteBuffer> variables = new ArrayList<ByteBuffer>();
-            keys.put("word", ByteBufferUtil.bytes(word.toString()));
             variables.add(ByteBufferUtil.bytes(String.valueOf(sum)));         
             return variables;
         }
@@ -175,17 +174,41 @@ public class WordCount extends Configured implements Tool
     public int run(String[] args) throws Exception
     {
         String outputReducerType = "filesystem";
-        if (args != null && args[0].startsWith(OUTPUT_REDUCER_VAR))
+        String inputMapperType = "native";
+        String outputReducer = null;
+        String inputMapper = null;
+
+        if (args != null)
         {
-            String[] s = args[0].split("=");
+            if(args[0].startsWith(OUTPUT_REDUCER_VAR))
+                outputReducer = args[0];
+            if(args[0].startsWith(INPUT_MAPPER_VAR))
+                inputMapper = args[0];
+            
+            if (args.length == 2)
+            {
+                if(args[1].startsWith(OUTPUT_REDUCER_VAR))
+                    outputReducer = args[1];
+                if(args[1].startsWith(INPUT_MAPPER_VAR))
+                    inputMapper = args[1]; 
+            }
+        }
+
+        if (outputReducer != null)
+        {
+            String[] s = outputReducer.split("=");
             if (s != null && s.length == 2)
                 outputReducerType = s[1];
         }
         logger.info("output reducer type: " + outputReducerType);
-
+        if (inputMapper != null)
+        {
+            String[] s = inputMapper.split("=");
+            if (s != null && s.length == 2)
+                inputMapperType = s[1];
+        }
         Job job = new Job(getConf(), "wordcount");
         job.setJarByClass(WordCount.class);
-        job.setMapperClass(TokenizerMapper.class);
 
         if (outputReducerType.equalsIgnoreCase("filesystem"))
         {
@@ -215,16 +238,24 @@ public class WordCount extends Configured implements Tool
             ConfigHelper.setOutputPartitioner(job.getConfiguration(), "Murmur3Partitioner");
         }
 
-        job.setInputFormatClass(CqlPagingInputFormat.class);
+        if (inputMapperType.equalsIgnoreCase("native"))
+        {
+            job.setMapperClass(NativeTokenizerMapper.class);
+            job.setInputFormatClass(CqlInputFormat.class);
+            CqlConfigHelper.setInputCql(job.getConfiguration(), "select * from " + COLUMN_FAMILY + " where token(id) > ? and token(id) <= ? allow filtering");
+        }
+        else
+        {
+            job.setMapperClass(TokenizerMapper.class);
+            job.setInputFormatClass(CqlPagingInputFormat.class);
+            ConfigHelper.setInputRpcPort(job.getConfiguration(), "9160");
+        }
 
-        ConfigHelper.setInputRpcPort(job.getConfiguration(), "9160");
         ConfigHelper.setInputInitialAddress(job.getConfiguration(), "localhost");
         ConfigHelper.setInputColumnFamily(job.getConfiguration(), KEYSPACE, COLUMN_FAMILY);
         ConfigHelper.setInputPartitioner(job.getConfiguration(), "Murmur3Partitioner");
 
         CqlConfigHelper.setInputCQLPageRowSize(job.getConfiguration(), "3");
-        //this is the user defined filter clauses, you can comment it out if you want count all titles
-        CqlConfigHelper.setInputWhereClauses(job.getConfiguration(), "title='A'");
         job.waitForCompletion(true);
         return 0;
     }

@@ -64,7 +64,8 @@ public class ColumnDefinition
         PARTITION_KEY,
         CLUSTERING_KEY,
         REGULAR,
-        COMPACT_VALUE
+        COMPACT_VALUE,
+        STATIC
     }
 
     public final ByteBuffer name;
@@ -94,6 +95,11 @@ public class ColumnDefinition
     public static ColumnDefinition regularDef(ByteBuffer name, AbstractType<?> validator, Integer componentIndex)
     {
         return new ColumnDefinition(name, validator, componentIndex, Type.REGULAR);
+    }
+
+    public static ColumnDefinition staticDef(ByteBuffer name, AbstractType<?> validator, Integer componentIndex)
+    {
+        return new ColumnDefinition(name, validator, componentIndex, Type.STATIC);
     }
 
     public static ColumnDefinition compactValueDef(ByteBuffer name, AbstractType<?> validator)
@@ -174,6 +180,7 @@ public class ColumnDefinition
 
     public boolean isThriftCompatible()
     {
+        // componentIndex == null should always imply isStatic in practice, but there is no harm in being too careful here.
         return type == ColumnDefinition.Type.REGULAR && componentIndex == null;
     }
 
@@ -184,6 +191,15 @@ public class ColumnDefinition
             if (def.type == ColumnDefinition.Type.REGULAR)
                 thriftDefs.add(def.toThrift());
         return thriftDefs;
+    }
+
+    /**
+     * Whether the name of this definition is serialized in the cell nane, i.e. whether
+     * it's not just a non-stored CQL metadata.
+     */
+    public boolean isPartOfCellName()
+    {
+        return type == Type.REGULAR || type == Type.STATIC;
     }
 
     public ColumnDef toThrift()

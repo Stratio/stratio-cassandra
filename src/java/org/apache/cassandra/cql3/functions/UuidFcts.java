@@ -15,10 +15,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.cassandra.net;
+package org.apache.cassandra.cql3.functions;
 
-public class HeaderTypes
+import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.UUID;
+
+import org.apache.cassandra.db.marshal.UUIDType;
+import org.apache.cassandra.serializers.UUIDSerializer;
+
+public abstract class UuidFcts
 {
-    public final static String TASK_PROFILE_CHAIN = "TASK_PROFILE_CHAIN";
-    public static final String TASK_ID = "TASK_ID";
+    public static final Function uuidFct = new AbstractFunction("uuid", UUIDType.instance)
+    {
+        public ByteBuffer execute(List<ByteBuffer> parameters)
+        {
+            return UUIDSerializer.instance.serialize(UUID.randomUUID());
+        }
+
+        @Override
+        public boolean isPure()
+        {
+            return false;
+        }
+    };
 }

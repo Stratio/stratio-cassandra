@@ -167,6 +167,11 @@ public abstract class AbstractCompactionStrategy
      */
     public abstract AbstractCompactionTask getUserDefinedTask(Collection<SSTableReader> sstables, final int gcBefore);
 
+    public AbstractCompactionTask getCompactionTask(Collection<SSTableReader> sstables, final int gcBefore, long maxSSTableBytes)
+    {
+        return new CompactionTask(cfs, sstables, gcBefore);
+    }
+
     /**
      * @return the number of background tasks estimated to still be needed for this columnfamilystore
      */
@@ -198,6 +203,16 @@ public abstract class AbstractCompactionStrategy
     public boolean isAffectedByMeteredFlusher()
     {
         return true;
+    }
+
+    /**
+     * If not affected by MeteredFlusher (and handling flushing on its own), override to tell MF how much
+     * space to reserve for this CF, i.e., how much space to subtract from `memtable_total_space_in_mb` when deciding
+     * if other memtables should be flushed or not.
+     */
+    public long getMemtableReservedSize()
+    {
+        return 0;
     }
 
     /**
