@@ -1009,26 +1009,6 @@
       <fileset dir="${test.resources}"/>
     </copy>
   </target>
-  
-  <target name="build-test-index" depends="build" description="Compile test classes">
-    <javac
-     debug="true"
-     debuglevel="${debuglevel}"
-     destdir="${test.classes}"
-     includeantruntime="false"
-     source="${source.version}" 
-     target="${target.version}">
-      <classpath>
-        <path refid="cassandra.classpath"/>
-      </classpath>
-      <src path="${test.index.src}"/>
-    </javac>
-
-    <!-- Non-java resources needed by the test suite -->
-    <copy todir="${test.classes}">
-      <fileset dir="${test.resources}"/>
-    </copy>
-  </target>
 
   <macrodef name="testmacro">
     <attribute name="suitename" />
@@ -1165,8 +1145,8 @@
     </testmacro>
   </target>
   
-  <target name="test-index" depends="build-test-index" description="Execute unit tests" >
-    <testmacroindex suitename="unit" inputdir="${test.index.src}" exclude="**/pig/*.java" timeout="${test.timeout}">
+  <target name="test-index" depends="build-test" description="Execute unit tests" >
+    <testmacroindex suitename="unit" inputdir="${test.unit.src}" exclude="**/pig/*.java" timeout="${test.timeout}">
       <jvmarg value="-Dlegacy-sstable-root=${test.data}/legacy-sstables"/>
       <jvmarg value="-Dcorrupt-sstable-root=${test.data}/corrupt-sstables"/>
       <jvmarg value="-Dmigration-sstable-root=${test.data}/migration-sstables"/>
