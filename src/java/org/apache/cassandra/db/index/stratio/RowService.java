@@ -34,7 +34,7 @@ import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.TreeMapBackedSortedColumns;
 import org.apache.cassandra.db.filter.QueryFilter;
-import org.apache.cassandra.db.index.stratio.RowDirectory.ScoredDocument;
+import org.apache.cassandra.db.index.stratio.LuceneIndex.ScoredDocument;
 import org.apache.cassandra.db.index.stratio.query.Condition;
 import org.apache.cassandra.db.index.stratio.query.Search;
 import org.apache.cassandra.db.index.stratio.schema.Cell;
@@ -74,7 +74,7 @@ public abstract class RowService {
 	protected final ColumnFamilyStore baseCfs;
 	protected final CFMetaData metadata;
 	protected final Schema schema;
-	protected final RowDirectory rowDirectory;
+	protected final LuceneIndex rowDirectory;
 	protected final FilterCache filterCache;
 
 	/**
@@ -98,12 +98,12 @@ public abstract class RowService {
 
 		schema = config.getSchema();
 
-		rowDirectory = new RowDirectory(config.getPath(),
-		                                config.getRefreshSeconds(),
-		                                config.getRamBufferMB(),
-		                                config.getMaxMergeMB(),
-		                                config.getMaxCachedMB(),
-		                                schema.analyzer());
+		rowDirectory = new LuceneIndex(config.getPath(),
+		                               config.getRefreshSeconds(),
+		                               config.getRamBufferMB(),
+		                               config.getMaxMergeMB(),
+		                               config.getMaxCachedMB(),
+		                               schema.analyzer());
 	}
 
 	public static RowService build(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) {
@@ -167,7 +167,7 @@ public abstract class RowService {
 	 * Deletes all the {@link Document}s.
 	 */
 	public final void truncate() {
-		rowDirectory.deleteAll();
+		rowDirectory.truncate();
 	}
 
 	/**
@@ -176,7 +176,7 @@ public abstract class RowService {
 	 * @return
 	 */
 	public final void delete() {
-		rowDirectory.removeIndex();
+		rowDirectory.drop();
 	}
 
 	/**
@@ -201,8 +201,8 @@ public abstract class RowService {
 	                              long timestamp) {
 
 		// Setup search arguments
-		Filter rangefilter = cachedFilter(dataRange);
-		Query query = search.query(schema, rangefilter);
+		Filter filter = cachedFilter(dataRange);
+		Query query = search.query(schema);
 		Sort sort = search.usesRelevance() ? null : sort();
 
 		// Setup search pagination
@@ -214,7 +214,7 @@ public abstract class RowService {
 		do {
 
 			// Search in Lucene
-			scoredDocuments = rowDirectory.search(lastDoc, query, sort, PAGE_SIZE, fieldsToLoad());
+			scoredDocuments = rowDirectory.search(lastDoc, query, filter, sort, PAGE_SIZE, fieldsToLoad());
 
 			// Collect rows from Cassandra
 			for (ScoredDocument sd : scoredDocuments) {
@@ -267,18 +267,18 @@ public abstract class RowService {
 		AbstractType<?> validator = def.getValidator();
 		int comparison = validator.compare(actualValue, expectedValue);
 		switch (expression.op) {
-			case EQ:
-				return comparison == 0;
-			case GTE:
-				return comparison >= 0;
-			case GT:
-				return comparison > 0;
-			case LTE:
-				return comparison <= 0;
-			case LT:
-				return comparison < 0;
-			default:
-				throw new IllegalStateException();
+		case EQ:
+			return comparison == 0;
+		case GTE:
+			return comparison >= 0;
+		case GT:
+			return comparison > 0;
+		case LTE:
+			return comparison <= 0;
+		case LT:
+			return comparison < 0;
+		default:
+			throw new IllegalStateException();
 		}
 	}
 
@@ -398,16 +398,16 @@ public abstract class RowService {
 		if (!search.usesRelevance()) {
 			return rows.size() > count ? rows.subList(0, count) : rows;
 		}
-		
+
 		// Get limit and initialize result
 		int limit = Math.min(count, rows.size());
 		List<Row> result = new ArrayList<>(limit);
-		
+
 		// We only use the query condition because it is the only
 		// restriction affecting the relevance score.
 		Condition queryCondition = search.queryCondition();
 		Query query = queryCondition.query(schema);
-		
+
 		try {
 
 			// Setup RAM directory for index and query again partial results.
@@ -430,7 +430,7 @@ public abstract class RowService {
 			indexWriter.commit();
 			indexWriter.close();
 
-			// Search in partial results. 
+			// Search in partial results.
 			IndexReader indexReader = DirectoryReader.open(directory);
 			IndexSearcher indexSearcher = new IndexSearcher(indexReader);
 			TopDocs topdocs = indexSearcher.search(query, limit);
@@ -441,7 +441,7 @@ public abstract class RowService {
 				result.add(row);
 			}
 			indexReader.close();
-			
+
 			// Close RAM directory
 			directory.close();
 

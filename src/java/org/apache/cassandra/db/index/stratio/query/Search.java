@@ -18,7 +18,7 @@ package org.apache.cassandra.db.index.stratio.query;
 import org.apache.cassandra.db.index.stratio.schema.Schema;
 import org.apache.cassandra.db.index.stratio.util.JsonSerializer;
 import org.apache.cassandra.db.index.stratio.util.Log;
-import org.apache.lucene.queries.ChainedFilter;
+import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.FilteredQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
@@ -97,21 +97,18 @@ public class Search {
 	 * 
 	 * @param schema
 	 *            The {@link Schema} to be used.
-	 * @param extraFilter
-	 *            An extra {@link Filter} to be added to the search.
 	 * @return The Lucene's {@link Query} representation of this search.
 	 */
-	public Query query(Schema schema, Filter extraFilter) {
-		Query query = queryCondition == null ? new MatchAllDocsQuery() : queryCondition.query(schema);
-		if (filterCondition == null && extraFilter == null) {
+	public Query query(Schema schema) {
+		Query query = queryCondition == null ? null : queryCondition.query(schema);
+		Filter filter = filterCondition == null ? null : filterCondition.filter(schema);
+		if (query == null && filter == null) {
+			return new MatchAllDocsQuery();
+		} else if (query != null && filter == null) {
 			return query;
-		} else if (filterCondition == null && extraFilter != null) {
-			return new FilteredQuery(query, extraFilter);
-		} else if (filterCondition != null && extraFilter == null) {
-			return new FilteredQuery(query, filterCondition.filter(schema));
+		} else if (query == null && filter != null) {
+			return new ConstantScoreQuery(filter);
 		} else {
-			Filter[] filters = new Filter[] { extraFilter, filterCondition.filter(schema) };
-			Filter filter = new ChainedFilter(filters, ChainedFilter.AND);
 			return new FilteredQuery(query, filter);
 		}
 	}

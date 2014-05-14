@@ -48,7 +48,7 @@ import org.apache.lucene.util.Version;
  * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
-public class RowDirectory {
+public class LuceneIndex {
 
 	private File file;
 	private Directory directory;
@@ -75,12 +75,8 @@ public class RowDirectory {
 	 *            NRTCachingDirectory max cached MB.
 	 * @param analyzer
 	 */
-	public RowDirectory(String path,
-	                    Double refreshSeconds,
-	                    Integer ramBufferMB,
-	                    Integer maxMergeMB,
-	                    Integer maxCachedMB,
-	                    Analyzer analyzer) {
+	public LuceneIndex(String path, Double refreshSeconds, Integer ramBufferMB, Integer maxMergeMB,
+	        Integer maxCachedMB, Analyzer analyzer) {
 		try {
 
 			// Get directory file
@@ -116,38 +112,6 @@ public class RowDirectory {
 	}
 
 	/**
-	 * Inserts the specified {@link Document}.
-	 * 
-	 * @param document
-	 *            the {@link Document} to be inserted.
-	 */
-	public void createDocument(Document document) {
-		// Log.debug("Inserting document %s", document);
-		try {
-			indexWriter.addDocument(document);
-		} catch (IOException e) {
-			Log.error(e, "Error creating document");
-			throw new RuntimeException(e);
-		}
-	}
-
-	/**
-	 * Inserts the specified {@link Document}s.
-	 * 
-	 * @param document
-	 *            the {@link Document} to be inserted.
-	 */
-	public void createDocuments(Iterable<Document> documents) {
-		// Log.debug("Inserting documents %s", documents);
-		try {
-			indexWriter.addDocuments(documents);
-		} catch (IOException e) {
-			Log.error(e, "Error creating documents");
-			throw new RuntimeException(e);
-		}
-	}
-
-	/**
 	 * Updates the specified {@link Document} by first deleting the documents containing
 	 * {@code Term} and then adding the new document. The delete and then add are atomic as seen by
 	 * a reader on the same index (flush may happen only after the add).
@@ -157,7 +121,7 @@ public class RowDirectory {
 	 * @param document
 	 *            The {@link Document} to be added.
 	 */
-	public void updateDocument(Term term, Document document) {
+	public void upsert(Term term, Document document) {
 		// Log.debug("Updating document %s with term %s", document, term);
 		try {
 			indexWriter.updateDocument(term, document);
@@ -177,7 +141,7 @@ public class RowDirectory {
 	 * @param documents
 	 *            The {@link Document}s to be added.
 	 */
-	public void updateDocuments(Term term, Iterable<Document> documents) {
+	public void upsert(Term term, Iterable<Document> documents) {
 		// Log.debug("Updating documents %s with term %s", documents, term);
 		try {
 			indexWriter.updateDocuments(term, documents);
@@ -193,7 +157,7 @@ public class RowDirectory {
 	 * @param term
 	 *            The {@link Term} to identify the documents to be deleted.
 	 */
-	public void deleteDocuments(Term term) {
+	public void delete(Term term) {
 		// Log.debug(String.format("Deleting by term %s", term));
 		try {
 			indexWriter.deleteDocuments(term);
@@ -209,7 +173,7 @@ public class RowDirectory {
 	 * @param query
 	 *            The {@link Query} to identify the documents to be deleted.
 	 */
-	public void deleteDocuments(Query query) {
+	public void delete(Query query) {
 		// Log.debug("Deleting by query %s", query);
 		try {
 			indexWriter.deleteDocuments(query);
@@ -222,7 +186,7 @@ public class RowDirectory {
 	/**
 	 * Deletes all the {@link Document}s.
 	 */
-	public void deleteAll() {
+	public void truncate() {
 		Log.info("Deleting all");
 		try {
 			indexWriter.deleteAll();
@@ -263,7 +227,7 @@ public class RowDirectory {
 	 * 
 	 * @return
 	 */
-	public void removeIndex() {
+	public void drop() {
 		Log.info("Removing");
 		try {
 			close();
@@ -300,7 +264,12 @@ public class RowDirectory {
 	 *            The name of the fields to be loaded.
 	 * @return The found documents, sorted according to the supplied {@link Sort} instance.
 	 */
-	public List<ScoredDocument> search(ScoreDoc after, Query query, Sort sort, Integer count, Set<String> fieldsToLoad) {
+	public List<ScoredDocument> search(ScoreDoc after,
+	                                   Query query,
+	                                   Filter filter,
+	                                   Sort sort,
+	                                   Integer count,
+	                                   Set<String> fieldsToLoad) {
 		// Log.debug("Searching with query %s ", query);
 		// Log.debug("Searching with count %d", count);
 		// Log.debug("Searching with sort %s", sort);
@@ -321,20 +290,7 @@ public class RowDirectory {
 			try {
 
 				// Search
-				TopDocs topDocs;
-				if (after == null) {
-					if (sort == null) {
-						topDocs = indexSearcher.search(query, count);
-					} else {
-						topDocs = indexSearcher.search(query, count, sort);
-					}
-				} else {
-					if (sort == null) {
-						topDocs = indexSearcher.searchAfter(after, query, count);
-					} else {
-						topDocs = indexSearcher.searchAfter(after, query, count, sort);
-					}
-				}
+				TopDocs topDocs = topDocs(indexSearcher, after, query, filter, sort, count);
 				ScoreDoc[] scoreDocs = topDocs.scoreDocs;
 
 				// Collect the documents from query result
@@ -352,6 +308,43 @@ public class RowDirectory {
 			}
 		} catch (IOException e) {
 			throw new RuntimeException(e);
+		}
+	}
+
+	private TopDocs topDocs(IndexSearcher indexSearcher,
+	                        ScoreDoc after,
+	                        Query query,
+	                        Filter filter,
+	                        Sort sort,
+	                        Integer count) throws IOException {
+		if (filter == null) {
+			if (after == null) {
+				if (sort == null) {
+					return indexSearcher.search(query, count);
+				} else {
+					return indexSearcher.search(query, count, sort);
+				}
+			} else {
+				if (sort == null) {
+					return indexSearcher.searchAfter(after, query, count);
+				} else {
+					return indexSearcher.searchAfter(after, query, count, sort);
+				}
+			}
+		} else {
+			if (after == null) {
+				if (sort == null) {
+					return indexSearcher.search(query, filter, count);
+				} else {
+					return indexSearcher.search(query, filter, count, sort);
+				}
+			} else {
+				if (sort == null) {
+					return indexSearcher.searchAfter(after, query, filter, count);
+				} else {
+					return indexSearcher.searchAfter(after, query, filter, count, sort);
+				}
+			}
 		}
 	}
 

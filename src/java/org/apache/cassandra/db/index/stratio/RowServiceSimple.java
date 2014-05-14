@@ -86,10 +86,10 @@ public class RowServiceSimple extends RowService {
 		if (row.cf.iterator().hasNext()) {
 			Document document = document(row);
 			Term term = identifyingTerm(row);
-			rowDirectory.updateDocument(term, document);
+			rowDirectory.upsert(term, document);
 		} else if (deletionInfo != null) {
 			Term term = partitionKeyMapper.term(partitionKey);
-			rowDirectory.deleteDocuments(term);
+			rowDirectory.delete(term);
 		}
 	}
 
@@ -113,7 +113,7 @@ public class RowServiceSimple extends RowService {
 	@Override
 	public void delete(DecoratedKey partitionKey) {
 		Term term = partitionKeyMapper.term(partitionKey);
-		rowDirectory.deleteDocuments(term);
+		rowDirectory.delete(term);
 	}
 
 	/**

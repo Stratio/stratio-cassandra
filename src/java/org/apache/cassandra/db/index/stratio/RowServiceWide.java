@@ -103,7 +103,7 @@ public class RowServiceWide extends RowService {
 				Row row = row(partitionKey, clusteringKey, timestamp);
 				Document document = document(row);
 				Term term = identifyingTerm(row);
-				rowDirectory.updateDocument(term, document);
+				rowDirectory.upsert(term, document);
 			}
 		} else if (deletionInfo != null) {
 			Iterator<RangeTombstone> iterator = deletionInfo.rangeIterator();
@@ -113,11 +113,11 @@ public class RowServiceWide extends RowService {
 					Filter filter = clusteringKeyMapper.filter(rangeTombstone);
 					Query partitionKeyQuery = partitionKeyMapper.query(partitionKey);
 					Query query = new FilteredQuery(partitionKeyQuery, filter);
-					rowDirectory.deleteDocuments(query);
+					rowDirectory.delete(query);
 				}
 			} else {
 				Term term = partitionKeyMapper.term(partitionKey);
-				rowDirectory.deleteDocuments(term);
+				rowDirectory.delete(term);
 			}
 		}
 	}
@@ -149,7 +149,7 @@ public class RowServiceWide extends RowService {
 	@Override
 	public void delete(DecoratedKey partitionKey) {
 		Term term = partitionKeyMapper.term(partitionKey);
-		rowDirectory.deleteDocuments(term);
+		rowDirectory.delete(term);
 	}
 
 	/**
