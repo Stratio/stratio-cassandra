@@ -16,6 +16,8 @@
 package org.apache.cassandra.db.index.stratio.schema;
 
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import org.apache.lucene.analysis.Analyzer;
@@ -26,6 +28,7 @@ import org.junit.Test;
 public class CellMapperDateTest {
 
 	private static final String PATTERN = "yyyy-MM-dd";
+	private static final SimpleDateFormat sdf = new SimpleDateFormat(PATTERN);
 
 	@Test()
 	public void testValueNull() {
@@ -103,39 +106,37 @@ public class CellMapperDateTest {
 	}
 
 	@Test
-	public void testValueStringWithPattern() {
+	public void testValueStringWithPattern() throws ParseException {
 		CellMapperDate mapper = new CellMapperDate(PATTERN);
-		Long parsed = mapper.indexValue("test", "2014-03-19");
-		Assert.assertEquals(Long.valueOf(1395183600000L), parsed);
+		long parsed = mapper.indexValue("test", "2014-03-19");
+		Assert.assertEquals(sdf.parse("2014-03-19").getTime(), parsed);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValueStringWithPatternInvalid() {
 		CellMapperDate mapper = new CellMapperDate(PATTERN);
-		Long parsed = mapper.indexValue("test", "2014/03/19");
-		Assert.assertEquals(Long.valueOf(1395183600000L), parsed);
+		mapper.indexValue("test", "2014/03/19");
 	}
 
 	@Test
-	public void testValueStringWithoutPattern() {
+	public void testValueStringWithoutPattern() throws ParseException {
 		CellMapperDate mapper = new CellMapperDate(null);
-		Long parsed = mapper.indexValue("test", "2014/03/19 00:00:00.000");
-		Assert.assertEquals(Long.valueOf(1395183600000L), parsed);
+		long parsed = mapper.indexValue("test", "2014/03/19 00:00:00.000");
+		Assert.assertEquals(sdf.parse("2014-03-19").getTime(), parsed);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
-	public void testValueStringWithoutPatternInvalid() {
+	public void testValueStringWithoutPatternInvalid() throws ParseException {
 		CellMapperDate mapper = new CellMapperDate(null);
-		Long parsed = mapper.indexValue("test", "2014-03-19");
-		Assert.assertEquals(Long.valueOf(1395183600000L), parsed);
+		mapper.indexValue("test", "2014-03-19");
 	}
 
 	@Test
-	public void testField() {
+	public void testField() throws ParseException {
 		CellMapperDate mapper = new CellMapperDate(PATTERN);
 		Field field = mapper.field("name", "2014-03-19");
 		Assert.assertNotNull(field);
-		Assert.assertEquals(Long.valueOf(1395183600000L), field.numericValue());
+		Assert.assertEquals(sdf.parse("2014-03-19").getTime(), field.numericValue().longValue());
 		Assert.assertEquals("name", field.name());
 		Assert.assertEquals(false, field.fieldType().stored());
 	}
@@ -156,7 +157,7 @@ public class CellMapperDateTest {
 		Assert.assertEquals(CellMapperDate.class, cellMapper.getClass());
 	}
 
-	@Test(expected=IllegalArgumentException.class)
+	@Test(expected = IllegalArgumentException.class)
 	public void testParseJSONEmpty() throws IOException {
 		String json = "{fields:{}}";
 		Schema schema = Schema.fromJson(json);
