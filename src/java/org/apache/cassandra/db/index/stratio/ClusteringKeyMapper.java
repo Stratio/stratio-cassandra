@@ -27,8 +27,11 @@ import org.apache.cassandra.db.Column;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.RangeTombstone;
+import org.apache.cassandra.db.filter.IDiskAtomFilter;
+import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.db.index.stratio.util.ByteBufferUtils;
 import org.apache.cassandra.db.marshal.CompositeType;
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -66,8 +69,8 @@ public class ClusteringKeyMapper {
 	 */
 	private ClusteringKeyMapper(CFMetaData metadata) {
 		type = (CompositeType) metadata.comparator;
-		//clusteringPosition = metadata.getCfDef().columns.size();
-		clusteringPosition = metadata.getCfDef().clusteringColumnsCount(); 
+		// clusteringPosition = metadata.getCfDef().columns.size();
+		clusteringPosition = metadata.getCfDef().clusteringColumnsCount();
 	}
 
 	/**
@@ -220,6 +223,19 @@ public class ClusteringKeyMapper {
 		return ByteBufferUtils.fromString(string);
 	}
 
+	private boolean needsFilter(DataRange dataRange) {
+		if (dataRange.columnFilter(ByteBufferUtil.EMPTY_BYTE_BUFFER) != null) {
+			IDiskAtomFilter filter = dataRange.columnFilter(ByteBufferUtil.EMPTY_BYTE_BUFFER);
+			if (filter != null) {
+				SliceQueryFilter sqf = (SliceQueryFilter) dataRange.columnFilter(ByteBufferUtil.EMPTY_BYTE_BUFFER);
+				if (sqf.start().remaining() > 0 || sqf.finish().remaining() > 0) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
 	/**
 	 * Returns a Lucene's {@link Filter} for filtering documents/rows according to the column name
 	 * range specified in {@code dataRange}.
@@ -230,6 +246,10 @@ public class ClusteringKeyMapper {
 	 *         range specified in {@code dataRage}.
 	 */
 	public Filter filter(DataRange dataRange) {
+		return needsFilter(dataRange) ? newFilter(dataRange) : null;
+	}
+
+	protected Filter newFilter(DataRange dataRange) {
 		return new ClusteringKeyMapperDataRangeFilter(this, dataRange);
 	}
 
@@ -256,7 +276,8 @@ public class ClusteringKeyMapper {
 	public SortField[] sortFields() {
 		return new SortField[] { new SortField(FIELD_NAME, new FieldComparatorSource() {
 			@Override
-			public FieldComparator<?> newComparator(String field, int hits, int sort, boolean reversed) throws IOException {
+			public	FieldComparator<?>
+			        newComparator(String field, int hits, int sort, boolean reversed) throws IOException {
 				return new ClusteringKeyMapperSorter(ClusteringKeyMapper.this, hits, field);
 			}
 		}) };

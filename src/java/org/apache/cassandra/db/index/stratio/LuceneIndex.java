@@ -270,9 +270,10 @@ public class LuceneIndex {
 	                                   Sort sort,
 	                                   Integer count,
 	                                   Set<String> fieldsToLoad) {
-		// Log.debug("Searching with query %s ", query);
-		// Log.debug("Searching with count %d", count);
-		// Log.debug("Searching with sort %s", sort);
+		Log.debug("Searching with query %s ", query);
+		Log.debug("Searching with filter %s ", filter);
+		Log.debug("Searching with count %d", count);
+		Log.debug("Searching with sort %s", sort);
 
 		// Validate
 		if (query == null) {

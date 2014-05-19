@@ -74,7 +74,7 @@ public class RowServiceWide extends RowService {
 		super(baseCfs, columnDefinition);
 
 		partitionKeyMapper = PartitionKeyMapper.instance(metadata);
-		tokenMapper = TokenMapper.instance();
+		tokenMapper = TokenMapper.instance(baseCfs);
 		clusteringKeyMapper = ClusteringKeyMapper.instance(metadata);
 		fullKeyMapper = FullKeyMapper.instance(metadata);
 
@@ -200,7 +200,16 @@ public class RowServiceWide extends RowService {
 	protected Filter filter(DataRange dataRange) {
 		Filter tokenFilter = tokenMapper.filter(dataRange);
 		Filter clusteringKeyFilter = clusteringKeyMapper.filter(dataRange);
-		return new ChainedFilter(new Filter[] { tokenFilter, clusteringKeyFilter }, ChainedFilter.AND);
+		if (tokenFilter == null && clusteringKeyFilter == null) {
+			return null;
+		} else if (tokenFilter != null && clusteringKeyFilter == null) {
+			return tokenFilter;
+		} else if (tokenFilter == null && clusteringKeyFilter != null) {
+			return clusteringKeyFilter;
+		} else {
+			Filter[] filters = new Filter[] { tokenFilter, clusteringKeyFilter };
+			return new ChainedFilter(filters, ChainedFilter.AND);
+		}
 	}
 
 	/**

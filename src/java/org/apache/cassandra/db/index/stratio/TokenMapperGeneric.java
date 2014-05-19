@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.index.stratio.util.ByteBufferUtils;
@@ -53,7 +54,8 @@ public class TokenMapperGeneric extends TokenMapper {
 	/**
 	 * Returns a new {@link TokenMapperGeneric}.
 	 */
-	public TokenMapperGeneric() {
+	public TokenMapperGeneric(ColumnFamilyStore baseCfs) {
+		super(baseCfs);
 		factory = DatabaseDescriptor.getPartitioner().getTokenFactory();
 	}
 
@@ -73,7 +75,7 @@ public class TokenMapperGeneric extends TokenMapper {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Filter filter(DataRange dataRange) {
+	public Filter newFilter(DataRange dataRange) {
 		return new TokenMapperGenericDataRangeFilter(this, dataRange);
 	}
 

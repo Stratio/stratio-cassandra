@@ -201,7 +201,7 @@ public abstract class RowService {
 	                              long timestamp) {
 
 		// Setup search arguments
-		Filter filter = cachedFilter(dataRange);
+		Filter filter = filter(dataRange);
 		Query query = search.query(schema);
 		Sort sort = search.usesRelevance() ? null : sort();
 
@@ -356,7 +356,9 @@ public abstract class RowService {
 		if (filter == null) {
 			Log.debug(" -> Cache fails for range " + dataRange.keyRange());
 			filter = filter(dataRange);
-			filterCache.put(dataRange, filter);
+			if (filter != null) {
+				filterCache.put(dataRange, filter);
+			}
 		} else {
 			Log.debug(" -> Cache hits for range " + dataRange.keyRange());
 		}

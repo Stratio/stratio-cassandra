@@ -64,7 +64,7 @@ public class RowServiceSimple extends RowService {
 	public RowServiceSimple(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) {
 		super(baseCfs, columnDefinition);
 		partitionKeyMapper = PartitionKeyMapper.instance(metadata);
-		tokenMapper = TokenMapper.instance();
+		tokenMapper = TokenMapper.instance(baseCfs);
 	}
 
 	/**
