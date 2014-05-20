@@ -201,7 +201,7 @@ public abstract class RowService {
 	                              long timestamp) {
 
 		// Setup search arguments
-		Filter filter = filter(dataRange);
+		Filter filter = cachedFilter(dataRange);
 		Query query = search.query(schema);
 		Sort sort = search.usesRelevance() ? null : sort();
 
