@@ -192,7 +192,7 @@ public class RowIndex extends PerRowSecondaryIndex {
 			}
 			Log.info("Removed index %s", logName);
 		} catch (Exception e) {
-			Log.error("Removing index %s", logName);
+			Log.error(e, "Removing index %s", logName);
 			throw new RuntimeException(e);
 		} finally {
 			lock.writeLock().unlock();
@@ -210,7 +210,7 @@ public class RowIndex extends PerRowSecondaryIndex {
 			}
 			Log.info("Invalidated index %s", logName);
 		} catch (Exception e) {
-			Log.error("Invalidating index %s", logName);
+			Log.error(e, "Invalidating index %s", logName);
 			throw new RuntimeException(e);
 		} finally {
 			lock.writeLock().unlock();
@@ -227,7 +227,7 @@ public class RowIndex extends PerRowSecondaryIndex {
 			}
 			Log.info("Truncated index %s", logName);
 		} catch (Exception e) {
-			Log.error("Truncating index %s", logName);
+			Log.error(e, "Truncating index %s", logName);
 			throw new RuntimeException(e);
 		} finally {
 			lock.writeLock().unlock();
@@ -237,18 +237,18 @@ public class RowIndex extends PerRowSecondaryIndex {
 	@Override
 	public void reload() {
 		Log.info("Reloading index %s", logName);
-		lock.writeLock().lock();
-		try {
-			if (rowService == null) {
-				setup();
-			}
-			Log.info("Reloaded index %s", logName);
-		} catch (Exception e) {
-			Log.error("Reloading index %s", logName);
-			throw new RuntimeException(e);
-		} finally {
-			lock.writeLock().unlock();
-		}
+//		lock.writeLock().lock();
+//		try {
+//			if (rowService == null && !columnDefs.isEmpty()) {
+//				setup();
+//			}
+//			Log.info("Reloaded index %s", logName);
+//		} catch (Exception e) {
+//			Log.error(e, "Reloading index %s", logName);
+//			throw new RuntimeException(e);
+//		} finally {
+//			lock.writeLock().unlock();
+//		}
 	}
 
 	@Override
@@ -259,7 +259,7 @@ public class RowIndex extends PerRowSecondaryIndex {
 			rowService.commit();
 			Log.info("Flushed index %s", logName);
 		} catch (Exception e) {
-			Log.error("Flushing index %s", logName);
+			Log.error(e, "Flushing index %s", logName);
 			throw new RuntimeException(e);
 		} finally {
 			lock.writeLock().unlock();

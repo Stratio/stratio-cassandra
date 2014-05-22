@@ -41,6 +41,7 @@ import org.apache.cassandra.db.index.stratio.schema.Cell;
 import org.apache.cassandra.db.index.stratio.schema.Cells;
 import org.apache.cassandra.db.index.stratio.schema.Schema;
 import org.apache.cassandra.db.index.stratio.util.Log;
+import org.apache.cassandra.db.index.stratio.util.TaskQueue;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.thrift.IndexExpression;
@@ -77,6 +78,8 @@ public abstract class RowService {
 	protected final LuceneIndex rowDirectory;
 	protected final FilterCache filterCache;
 
+	TaskQueue indexQueue;
+
 	/**
 	 * Returns a new {@code RowService}.
 	 * 
@@ -104,6 +107,10 @@ public abstract class RowService {
 		                               config.getMaxMergeMB(),
 		                               config.getMaxCachedMB(),
 		                               schema.analyzer());
+
+		int poolSize = 4;
+		int queueSize = 100; // recommended - twice the size of the poolSize
+		indexQueue = new TaskQueue(poolSize, queueSize);
 	}
 
 	public static RowService build(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) {
@@ -131,6 +138,19 @@ public abstract class RowService {
 	 */
 	protected abstract Set<String> fieldsToLoad();
 
+	protected void index(final ByteBuffer key, final ColumnFamily columnFamily, final long timestamp) {
+		indexQueue.submitAsynchronous(key, new Runnable() {
+			@Override
+			public void run() {
+				try {
+					indexInner(key, columnFamily, timestamp);
+				} catch (Exception e) {
+					Log.error(e, "Error while running indexing task");
+				}
+			}
+		});
+	}
+
 	/**
 	 * Puts in the Lucene index the Cassandra's the row identified by the specified partition key
 	 * and the clustering keys contained in the specified {@link ColumnFamily}.
@@ -142,7 +162,7 @@ public abstract class RowService {
 	 * @param timestamp
 	 *            The operation time stamp.
 	 */
-	protected abstract void index(ByteBuffer key, ColumnFamily columnFamily, long timestamp);
+	protected abstract void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp);
 
 	/**
 	 * Returns the {@link Document} represented by the specified {@link Row}. It's assumed that the
@@ -183,7 +203,12 @@ public abstract class RowService {
 	 * Commits the pending changes.
 	 */
 	public final void commit() {
-		rowDirectory.commit();
+		indexQueue.submitSynchronous(new Runnable() {
+			@Override
+			public void run() {
+				rowDirectory.commit();
+			}
+		});
 	}
 
 	/**

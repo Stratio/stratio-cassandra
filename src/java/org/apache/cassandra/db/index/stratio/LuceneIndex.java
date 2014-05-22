@@ -75,8 +75,12 @@ public class LuceneIndex {
 	 *            NRTCachingDirectory max cached MB.
 	 * @param analyzer
 	 */
-	public LuceneIndex(String path, Double refreshSeconds, Integer ramBufferMB, Integer maxMergeMB,
-	        Integer maxCachedMB, Analyzer analyzer) {
+	public LuceneIndex(String path,
+	                   Double refreshSeconds,
+	                   Integer ramBufferMB,
+	                   Integer maxMergeMB,
+	                   Integer maxCachedMB,
+	                   Analyzer analyzer) {
 		try {
 
 			// Get directory file

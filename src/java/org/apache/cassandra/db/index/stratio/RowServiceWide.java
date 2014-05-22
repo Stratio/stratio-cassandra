@@ -93,7 +93,7 @@ public class RowServiceWide extends RowService {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public void index(ByteBuffer key, ColumnFamily columnFamily, long timestamp) {
+	public void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp) {
 
 		DeletionInfo deletionInfo = columnFamily.deletionInfo();
 		DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(key);
