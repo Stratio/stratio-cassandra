@@ -97,7 +97,7 @@ public class LuceneIndex {
 			IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_46, analyzer);
 			config.setRAMBufferSizeMB(ramBufferMB);
 			config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
-			config.setUseCompoundFile(false);
+			config.setUseCompoundFile(true);
 			indexWriter = new IndexWriter(directory, config);
 
 			// Setup NRT search
