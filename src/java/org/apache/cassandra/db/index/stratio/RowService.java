@@ -108,9 +108,7 @@ public abstract class RowService {
 		                               config.getMaxCachedMB(),
 		                               schema.analyzer());
 
-		int poolSize = 4;
-		int queueSize = 100; // recommended - twice the size of the poolSize
-		indexQueue = new TaskQueue(poolSize, queueSize);
+		indexQueue = new TaskQueue(config.getIndexingThreads(), config.getIndexingQueuesSize());
 	}
 
 	public static RowService build(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) {
@@ -182,11 +180,9 @@ public abstract class RowService {
 	 *            The partition key identifying the partition to be deleted.
 	 */
 	public void delete(final DecoratedKey partitionKey) {
-		Log.debug("DELETING SUBMISSION");
 		indexQueue.submitAsynchronous(partitionKey, new Runnable() {
 			@Override
 			public void run() {
-				Log.debug("DELETING RUN");
 				try {
 					deleteInner(partitionKey);
 				} catch (Exception e) {
@@ -224,11 +220,9 @@ public abstract class RowService {
 	 * Commits the pending changes.
 	 */
 	public final void commit() {
-		Log.debug("COMMIT SUBMISSION");
 		indexQueue.submitSynchronous(new Runnable() {
 			@Override
 			public void run() {
-				Log.debug("COMMIT RUN");
 				rowDirectory.commit();
 			}
 		});

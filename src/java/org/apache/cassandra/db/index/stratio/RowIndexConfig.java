@@ -48,6 +48,12 @@ public class RowIndexConfig {
 	private static final String MAX_CACHED_MB_OPTION = "max_cached_mb";
 	private static final int DEFAULT_MAX_CACHED_MB = 30;
 
+	private static final String INDEXING_THREADS_OPTION = "indexing_threads";
+	private static final int DEFAULT_INDEXING_THREADS = Runtime.getRuntime().availableProcessors();
+
+	private static final String INDEXING_QUEUES_SIZE_OPTION = "indexing_queues_size";
+	private static final int DEFAULT_INDEXING_QUEUES_SIZE = 50;
+
 	private final Schema schema;
 	private final double refreshSeconds;
 	private final FilterCache filterCache;
@@ -55,6 +61,8 @@ public class RowIndexConfig {
 	private final int ramBufferMB;
 	private final int maxMergeMB;
 	private final int maxCachedMB;
+	private final int indexingThreads;
+	private final int indexingQueuesSize;
 
 	public RowIndexConfig(CFMetaData metadata, String indexName, Map<String, String> options) {
 
@@ -130,15 +138,49 @@ public class RowIndexConfig {
 			try {
 				maxCachedMB = Integer.parseInt(maxCachedMBOption);
 			} catch (NumberFormatException e) {
-				String msg = String.format("'%s'  must be a strictly positive integer", DEFAULT_MAX_CACHED_MB);
+				String msg = String.format("'%s'  must be a strictly positive integer", MAX_CACHED_MB_OPTION);
 				throw new RuntimeException(msg);
 			}
 			if (maxCachedMB <= 0) {
-				String msg = String.format("'%s'  must be strictly positive", DEFAULT_MAX_CACHED_MB);
+				String msg = String.format("'%s'  must be strictly positive", MAX_CACHED_MB_OPTION);
 				throw new RuntimeException(msg);
 			}
 		} else {
 			maxCachedMB = DEFAULT_MAX_CACHED_MB;
+		}
+
+		// Setup queues in index pool
+		String indexPoolNumQueuesOption = options.get(INDEXING_THREADS_OPTION);
+		if (indexPoolNumQueuesOption != null) {
+			try {
+				indexingThreads = Integer.parseInt(indexPoolNumQueuesOption);
+			} catch (NumberFormatException e) {
+				String msg = String.format("'%s'  must be a strictly positive integer", INDEXING_THREADS_OPTION);
+				throw new RuntimeException(msg);
+			}
+			if (indexingThreads <= 0) {
+				String msg = String.format("'%s'  must be strictly positive", INDEXING_THREADS_OPTION);
+				throw new RuntimeException(msg);
+			}
+		} else {
+			indexingThreads = DEFAULT_INDEXING_THREADS;
+		}
+
+		// Setup queues in index pool
+		String indexPoolQueuesSizeOption = options.get(INDEXING_QUEUES_SIZE_OPTION);
+		if (indexPoolQueuesSizeOption != null) {
+			try {
+				indexingQueuesSize = Integer.parseInt(indexPoolQueuesSizeOption);
+			} catch (NumberFormatException e) {
+				String msg = String.format("'%s'  must be a strictly positive integer", INDEXING_QUEUES_SIZE_OPTION);
+				throw new RuntimeException(msg);
+			}
+			if (indexingQueuesSize <= 0) {
+				String msg = String.format("'%s'  must be strictly positive", INDEXING_QUEUES_SIZE_OPTION);
+				throw new RuntimeException(msg);
+			}
+		} else {
+			indexingQueuesSize = DEFAULT_INDEXING_QUEUES_SIZE;
 		}
 
 		// Get columns mapping schema
@@ -195,6 +237,14 @@ public class RowIndexConfig {
 
 	public int getMaxCachedMB() {
 		return maxCachedMB;
+	}
+
+	public int getIndexingThreads() {
+		return indexingThreads;
+	}
+
+	public int getIndexingQueuesSize() {
+		return indexingQueuesSize;
 	}
 
 }

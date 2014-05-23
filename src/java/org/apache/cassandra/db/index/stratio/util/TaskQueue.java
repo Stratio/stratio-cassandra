@@ -44,6 +44,7 @@ public class TaskQueue {
 	 *            The max number of tasks in each thread queue before blocking.
 	 */
 	public TaskQueue(int numThreads, int queuesSize) {
+
 		pools = new NotifyingBlockingThreadPoolExecutor[numThreads];
 		for (int i = 0; i < numThreads; i++) {
 			pools[i] = new NotifyingBlockingThreadPoolExecutor(1,
