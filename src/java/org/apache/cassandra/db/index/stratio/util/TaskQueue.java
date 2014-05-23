@@ -15,6 +15,8 @@
  */
 package org.apache.cassandra.db.index.stratio.util;
 
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -51,6 +53,12 @@ public class TaskQueue {
 			                                                   0,
 			                                                   TimeUnit.NANOSECONDS,
 			                                                   null);
+			pools[i].submit(new Runnable() {
+				@Override
+				public void run() {
+					Log.debug("Task queue starts");
+				}
+			});
 		}
 	}
 
@@ -66,16 +74,46 @@ public class TaskQueue {
 	 * @param task
 	 *            A task to be queued for asynchronous execution.
 	 */
-	public void submitAsynchronous(Object id, Runnable task) {
+	public Future<?> submitAsynchronous(Object id, Runnable task) {
 		lock.readLock().lock();
 		try {
 			int i = Math.abs((int) (id.hashCode() % pools.length));
-			pools[i].submit(task);
+			return pools[i].submit(task);
 		} catch (Exception e) {
 			Log.error(e, "Task queue submission failed");
 			throw new RuntimeException(e);
 		} finally {
 			lock.readLock().unlock();
+		}
+	}
+
+	private void awaitInner() throws ExecutionException, InterruptedException {
+		Future<?>[] futures = new Future<?>[pools.length];
+		for (int i = 0; i < pools.length; i++) {
+			Future<?> future = pools[i].submit(new Runnable() {
+				@Override
+				public void run() {
+				}
+			});
+			futures[i] = future;
+		}
+		for (Future<?> future : futures) {
+			future.get();
+		}
+	}
+
+	public void await() {
+		lock.writeLock().lock();
+		try {
+			awaitInner();
+		} catch (InterruptedException e) {
+			Log.error(e, "Await interrupted");
+			throw new RuntimeException(e);
+		} catch (ExecutionException e) {
+			Log.error(e, "Await failed");
+			throw new RuntimeException(e);
+		} finally {
+			lock.writeLock().unlock();
 		}
 	}
 
@@ -89,9 +127,7 @@ public class TaskQueue {
 	public void submitSynchronous(Runnable task) {
 		lock.writeLock().lock();
 		try {
-			for (NotifyingBlockingThreadPoolExecutor executor : pools) {
-				executor.await();
-			}
+			awaitInner();
 			task.run();
 		} catch (InterruptedException e) {
 			Log.error(e, "Task queue isolated submission interrupted");

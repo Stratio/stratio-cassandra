@@ -181,7 +181,28 @@ public abstract class RowService {
 	 * @param partitionKey
 	 *            The partition key identifying the partition to be deleted.
 	 */
-	protected abstract void delete(DecoratedKey partitionKey);
+	public void delete(final DecoratedKey partitionKey) {
+		Log.debug("DELETING SUBMISSION");
+		indexQueue.submitAsynchronous(partitionKey, new Runnable() {
+			@Override
+			public void run() {
+				Log.debug("DELETING RUN");
+				try {
+					deleteInner(partitionKey);
+				} catch (Exception e) {
+					Log.error(e, "Error while running deleting task");
+				}
+			}
+		});
+	}
+
+	/**
+	 * Deletes the partition identified by the specified partition key.
+	 * 
+	 * @param partitionKey
+	 *            The partition key identifying the partition to be deleted.
+	 */
+	protected abstract void deleteInner(DecoratedKey partitionKey);
 
 	/**
 	 * Deletes all the {@link Document}s.
@@ -203,9 +224,11 @@ public abstract class RowService {
 	 * Commits the pending changes.
 	 */
 	public final void commit() {
+		Log.debug("COMMIT SUBMISSION");
 		indexQueue.submitSynchronous(new Runnable() {
 			@Override
 			public void run() {
+				Log.debug("COMMIT RUN");
 				rowDirectory.commit();
 			}
 		});

@@ -147,7 +147,7 @@ public class RowServiceWide extends RowService {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public void delete(DecoratedKey partitionKey) {
+	public void deleteInner(DecoratedKey partitionKey) {
 		Term term = partitionKeyMapper.term(partitionKey);
 		rowDirectory.delete(term);
 	}
