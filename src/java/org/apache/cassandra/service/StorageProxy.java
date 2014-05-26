@@ -1452,11 +1452,11 @@ public class StorageProxy implements StorageProxyMBean {
 		List<Row> rows;
 		// now scan until we have enough results
 		try {
-			
+
 			if (command.requiresFullScan()) {
 				return getRangeSliceFullScan(command, consistency_level);
 			}
-			
+
 			int cql3RowCount = 0;
 			rows = new ArrayList<>();
 
@@ -1601,7 +1601,7 @@ public class StorageProxy implements StorageProxyMBean {
 			Keyspace.open(command.keyspace).getColumnFamilyStore(command.columnFamily).metric.coordinatorScanLatency.update(latency,
 			                                                                                                                TimeUnit.NANOSECONDS);
 		}
-		return command.combine(rows);
+		return command.trim(rows);
 	}
 
 	public static List<Row>
@@ -1647,11 +1647,11 @@ public class StorageProxy implements StorageProxyMBean {
 
 				/*
 				 * If the current range right is the min token, we should stop merging because
-				 * CFS.getRangeSlice don't know how to deal with a wrapping range. Note: it
-				 * would be slightly more efficient to have CFS.getRangeSlice on the destination
-				 * nodes unwraps the range if necessary and deal with it. However, we can't
-				 * start sending wrapped range without breaking wire compatibility, so It's
-				 * likely easier not to bother;
+				 * CFS.getRangeSlice don't know how to deal with a wrapping range. Note: it would be
+				 * slightly more efficient to have CFS.getRangeSlice on the destination nodes
+				 * unwraps the range if necessary and deal with it. However, we can't start sending
+				 * wrapped range without breaking wire compatibility, so It's likely easier not to
+				 * bother;
 				 */
 				if (range.right.isMinimum())
 					break;
@@ -1680,8 +1680,7 @@ public class StorageProxy implements StorageProxyMBean {
 			AbstractRangeCommand nodeCmd = command.forSubRange(range);
 
 			// collect replies and resolve according to consistency level
-			RangeSliceResponseResolver resolver = new RangeSliceResponseResolver(nodeCmd.keyspace,
-			                                                                     command.timestamp);
+			RangeSliceResponseResolver resolver = new RangeSliceResponseResolver(nodeCmd.keyspace, command.timestamp);
 			List<InetAddress> minimalEndpoints = filteredEndpoints.subList(0,
 			                                                               Math.min(filteredEndpoints.size(),
 			                                                                        consistency_level.blockFor(keyspace)));
@@ -1717,7 +1716,7 @@ public class StorageProxy implements StorageProxyMBean {
 			throw new RuntimeException(e);
 		}
 
-		for (Entry<FullScanTask,Future<List<Row>>> entry : futures.entrySet()) {
+		for (Entry<FullScanTask, Future<List<Row>>> entry : futures.entrySet()) {
 			FullScanTask task = entry.getKey();
 			Future<List<Row>> future = entry.getValue();
 			try {
@@ -1761,9 +1760,9 @@ public class StorageProxy implements StorageProxyMBean {
 				throw new RuntimeException(e);
 			}
 		}
-			
+
 		Log.debug("COMBINING " + rows.size());
-		return command.combine(rows);
+		return futures.size() > 1 ? command.combine(rows) : command.trim(rows);
 	}
 
 	private static final class FullScanTask implements Callable<List<Row>> {
