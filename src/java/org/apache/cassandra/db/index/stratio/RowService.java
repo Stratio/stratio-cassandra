@@ -70,7 +70,7 @@ import org.apache.lucene.util.Version;
  */
 public abstract class RowService {
 
-	private static final int PAGE_SIZE = 100;
+	private static final int PAGE_SIZE = 1000;
 
 	protected final ColumnFamilyStore baseCfs;
 	protected final CFMetaData metadata;
@@ -78,7 +78,7 @@ public abstract class RowService {
 	protected final LuceneIndex rowDirectory;
 	protected final FilterCache filterCache;
 
-	TaskQueue indexQueue;
+	private TaskQueue indexQueue;
 
 	/**
 	 * Returns a new {@code RowService}.
@@ -239,7 +239,7 @@ public abstract class RowService {
 	public final List<Row> search(Search search,
 	                              List<IndexExpression> filteredExpressions,
 	                              DataRange dataRange,
-	                              int limit,
+	                              final int limit,
 	                              long timestamp) {
 
 		// Setup search arguments
@@ -253,10 +253,15 @@ public abstract class RowService {
 
 		// Paginate search collecting documents
 		List<ScoredDocument> scoredDocuments;
+		int pageSize;
 		do {
+			pageSize = Math.max(limit - rows.size(), PAGE_SIZE);
+			Log.debug("LIMIT " + limit);
+			Log.debug("ROWS " + rows.size());
+			Log.debug("PAGE SIZE " + pageSize);
 
 			// Search in Lucene
-			scoredDocuments = rowDirectory.search(lastDoc, query, filter, sort, PAGE_SIZE, fieldsToLoad());
+			scoredDocuments = rowDirectory.search(lastDoc, query, filter, sort, pageSize, fieldsToLoad());
 
 			// Collect rows from Cassandra
 			for (ScoredDocument sd : scoredDocuments) {
@@ -271,7 +276,7 @@ public abstract class RowService {
 					return rows;
 				}
 			}
-		} while (scoredDocuments.size() == PAGE_SIZE); // Repeat while there may be more rows
+		} while (scoredDocuments.size() == pageSize); // Repeat while there may be more rows
 
 		Log.debug("Query time: " + (System.currentTimeMillis() - timestamp) + " ms");
 		return rows;
