@@ -32,15 +32,33 @@ public class SortingField {
 
 	private static final boolean DEFAULT_REVERSE = false;
 
+	/** The name of field to sort by. */
 	private String field;
+
+	/** {@code true} if natural order should be reversed. */
 	private boolean reverse;
 
+	/**
+	 * Returns a new {@link SortingField}.
+	 * 
+	 * @param field
+	 *            The name of field to sort by.
+	 * @param reverse
+	 *            {@code true} if natural order should be reversed.
+	 */
 	@JsonCreator
 	public SortingField(@JsonProperty("field") String field, @JsonProperty("reverse") Boolean reverse) {
 		this.field = field;
 		this.reverse = reverse == null ? DEFAULT_REVERSE : reverse;
 	}
 
+	/**
+	 * Returns the Lucene's {@link SortField} representing this {@link SortingField}.
+	 * 
+	 * @param schema
+	 *            The {@link Schema} to be used.
+	 * @return the Lucene's {@link SortField} representing this {@link SortingField}.
+	 */
 	public SortField sortField(Schema schema) {
 		if (field == null || field.trim().isEmpty()) {
 			throw new IllegalArgumentException("Field name required");

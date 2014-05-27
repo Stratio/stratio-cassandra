@@ -25,13 +25,14 @@ import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
 /**
- * A sorting for a search.
+ * A sorting of fields for a search.
  * 
  * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
 public class Sorting implements Iterable<SortingField> {
 
+	/** How to sort each field */
 	private final List<SortingField> sortingFields;
 
 	@JsonCreator
@@ -39,15 +40,30 @@ public class Sorting implements Iterable<SortingField> {
 		this.sortingFields = sortingFields;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public Iterator<SortingField> iterator() {
 		return sortingFields.iterator();
 	}
 
+	/**
+	 * Returns the {@link SortingField}s to be used.
+	 * 
+	 * @return
+	 */
 	public List<SortingField> getSortingFields() {
 		return sortingFields;
 	}
 
+	/**
+	 * Returns the Lucene's {@link Sort} representing this {@link Sorting}.
+	 * 
+	 * @param schema
+	 *            The {@link Schema} to be used.
+	 * @return the Lucene's {@link Sort} representing this {@link Sorting}.
+	 */
 	public Sort sort(Schema schema) {
 		SortField[] sortFields = new SortField[sortingFields.size()];
 		for (int i = 0; i < sortingFields.size(); i++) {
