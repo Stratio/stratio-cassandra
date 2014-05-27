@@ -54,6 +54,7 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
@@ -245,7 +246,7 @@ public abstract class RowService {
 		// Setup search arguments
 		Filter filter = cachedFilter(dataRange);
 		Query query = search.query(schema);
-		Sort sort = search.usesRelevance() ? null : sort();
+		Sort sort = search.usesSorting() ? search.sort(schema) : sort();
 
 		// Setup search pagination
 		List<Row> rows = new LinkedList<>(); // The row list to be returned
@@ -437,6 +438,8 @@ public abstract class RowService {
 	 *         according to the specified {@link Search}.
 	 */
 	public List<Row> combine(Search search, List<Row> rows, int count) {
+		Log.debug("Combining %d partial results", rows.size());
+		long startTime = System.currentTimeMillis();
 
 		// Skip trivia
 		if (rows.isEmpty()) {
@@ -444,18 +447,19 @@ public abstract class RowService {
 		}
 
 		// If it is not a relevance search, simply trunk results
-		if (!search.usesRelevance()) {
+		if (!search.usesSorting()) {
 			return rows.size() > count ? rows.subList(0, count) : rows;
 		}
-
-		// Get limit and initialize result
-		int limit = Math.min(count, rows.size());
-		List<Row> result = new ArrayList<>(limit);
 
 		// We only use the query condition because it is the only
 		// restriction affecting the relevance score.
 		Condition queryCondition = search.queryCondition();
-		Query query = queryCondition.query(schema);
+		Query query = queryCondition == null ? new MatchAllDocsQuery() : queryCondition.query(schema);
+		Sort sort = search.sort(schema);
+
+		// Get limit and initialize result
+		int limit = Math.min(count, rows.size());
+		List<Row> result = new ArrayList<>(limit);
 
 		try {
 
@@ -482,7 +486,12 @@ public abstract class RowService {
 			// Search in partial results.
 			IndexReader indexReader = DirectoryReader.open(directory);
 			IndexSearcher indexSearcher = new IndexSearcher(indexReader);
-			TopDocs topdocs = indexSearcher.search(query, limit);
+			TopDocs topdocs;
+			if (sort == null) {
+				topdocs = indexSearcher.search(query, limit);
+			} else {
+				topdocs = indexSearcher.search(query, limit, sort);
+			}
 			for (ScoreDoc scoreDoc : topdocs.scoreDocs) {
 				Document document = indexSearcher.doc(scoreDoc.doc, fieldsToLoad());
 				ByteBuffer docId = getUniqueId(document);
@@ -495,8 +504,13 @@ public abstract class RowService {
 			directory.close();
 
 		} catch (IOException e) {
+			Log.error(e, "Error combining partial results");
 			throw new RuntimeException(e);
 		}
+
+		long time = System.currentTimeMillis() - startTime;
+		Log.debug("Combined %d partial results to %d rows in %d ms", rows.size(), result.size(), time);
+
 		return result;
 	}
 }

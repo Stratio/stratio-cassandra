@@ -33,6 +33,8 @@ import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.LongField;
+import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
@@ -53,15 +55,9 @@ public class CellMapperDate extends CellMapper<Long> {
 
 	@JsonCreator
 	public CellMapperDate(@JsonProperty("pattern") String pattern) {
-		super(new AbstractType<?>[] { AsciiType.instance,
-		                             UTF8Type.instance,
-		                             Int32Type.instance,
-		                             LongType.instance,
-		                             IntegerType.instance,
-		                             FloatType.instance,
-		                             DoubleType.instance,
-		                             DecimalType.instance,
-		                             TimestampType.instance });
+		super(new AbstractType<?>[] { AsciiType.instance, UTF8Type.instance, Int32Type.instance, LongType.instance,
+		        IntegerType.instance, FloatType.instance, DoubleType.instance, DecimalType.instance,
+		        TimestampType.instance });
 		this.pattern = pattern == null ? DEFAULT_PATTERN : pattern;
 		concurrentDateFormat = new ThreadLocal<DateFormat>() {
 			@Override
@@ -103,6 +99,11 @@ public class CellMapperDate extends CellMapper<Long> {
 	@Override
 	public Field field(String name, Object value) {
 		return new LongField(name, indexValue(name, value), STORE);
+	}
+	
+	@Override
+	public SortField sortField(String field, boolean reverse) {
+		return new SortField(field, Type.LONG, reverse);
 	}
 
 	@Override

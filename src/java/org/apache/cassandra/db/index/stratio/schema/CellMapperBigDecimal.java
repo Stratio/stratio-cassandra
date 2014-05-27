@@ -30,6 +30,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
@@ -140,6 +142,11 @@ public class CellMapperBigDecimal extends CellMapper<String> {
 	public Field field(String name, Object value) {
 		String string = indexValue(name, value);
 		return new StringField(name, string, STORE);
+	}
+	
+	@Override
+	public SortField sortField(String field, boolean reverse) {
+		return new SortField(field, Type.STRING, reverse);
 	}
 
 	@Override

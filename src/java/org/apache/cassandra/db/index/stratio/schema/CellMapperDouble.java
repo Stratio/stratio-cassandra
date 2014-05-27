@@ -27,6 +27,8 @@ import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.DoubleField;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
@@ -43,14 +45,8 @@ public class CellMapperDouble extends CellMapper<Double> {
 
 	@JsonCreator
 	public CellMapperDouble(@JsonProperty("boost") Float boost) {
-		super(new AbstractType<?>[] { AsciiType.instance,
-		                             UTF8Type.instance,
-		                             Int32Type.instance,
-		                             LongType.instance,
-		                             IntegerType.instance,
-		                             FloatType.instance,
-		                             DoubleType.instance,
-		                             DecimalType.instance });
+		super(new AbstractType<?>[] { AsciiType.instance, UTF8Type.instance, Int32Type.instance, LongType.instance,
+		        IntegerType.instance, FloatType.instance, DoubleType.instance, DecimalType.instance });
 		this.boost = boost == null ? DEFAULT_BOOST : boost;
 	}
 
@@ -90,6 +86,11 @@ public class CellMapperDouble extends CellMapper<Double> {
 		Field field = new DoubleField(name, number, STORE);
 		field.setBoost(boost);
 		return field;
+	}
+
+	@Override
+	public SortField sortField(String field, boolean reverse) {
+		return new SortField(field, Type.DOUBLE, reverse);
 	}
 
 	@Override

@@ -1761,7 +1761,6 @@ public class StorageProxy implements StorageProxyMBean {
 			}
 		}
 
-		Log.debug("COMBINING " + rows.size());
 		return futures.size() > 1 ? command.combine(rows) : command.trim(rows);
 	}
 

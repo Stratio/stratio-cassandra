@@ -22,6 +22,8 @@ import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
 
 /**
@@ -75,6 +77,11 @@ public class CellMapperBoolean extends CellMapper<String> {
 	@Override
 	public Field field(String name, Object value) {
 		return new StringField(name, indexValue(name, value), STORE);
+	}
+	
+	@Override
+	public SortField sortField(String field, boolean reverse) {
+		return new SortField(field, Type.STRING, reverse);
 	}
 
 	@Override

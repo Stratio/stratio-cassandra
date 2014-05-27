@@ -107,14 +107,14 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
 	@Override
 	public boolean requiresFullScan(AbstractRangeCommand command) {
 		Search search = search(command.rowFilter);
-		return search.usesRelevance();
+		return search.usesSorting();
 	}
 
 	@Override
 	public List<Row> combine(AbstractRangeCommand command, List<Row> rows) {
 		try {
 			Search search = search(command.rowFilter);
-			if (search.usesRelevance()) {
+			if (search.usesSorting()) {
 				return rowService.combine(search, rows, command.limit());
 			} else {
 				return super.combine(command, rows);

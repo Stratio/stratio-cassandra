@@ -27,6 +27,8 @@ import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FloatField;
+import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
@@ -90,6 +92,11 @@ public class CellMapperFloat extends CellMapper<Float> {
 		Field field = new FloatField(name, number, STORE);
 		field.setBoost(boost);
 		return field;
+	}
+	
+	@Override
+	public SortField sortField(String field, boolean reverse) {
+		return new SortField(field, Type.FLOAT, reverse);
 	}
 
 	@Override

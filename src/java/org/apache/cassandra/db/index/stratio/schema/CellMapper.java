@@ -25,6 +25,7 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.core.KeywordAnalyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.search.SortField;
 import org.codehaus.jackson.annotate.JsonSubTypes;
 import org.codehaus.jackson.annotate.JsonTypeInfo;
 
@@ -36,18 +37,18 @@ import org.codehaus.jackson.annotate.JsonTypeInfo;
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 @JsonSubTypes({ @JsonSubTypes.Type(value = CellMapperBlob.class, name = "bytes"),
-               @JsonSubTypes.Type(value = CellMapperBoolean.class, name = "boolean"),
-               @JsonSubTypes.Type(value = CellMapperDate.class, name = "date"),
-               @JsonSubTypes.Type(value = CellMapperDouble.class, name = "double"),
-               @JsonSubTypes.Type(value = CellMapperFloat.class, name = "float"),
-               @JsonSubTypes.Type(value = CellMapperInet.class, name = "inet"),
-               @JsonSubTypes.Type(value = CellMapperInteger.class, name = "integer"),
-               @JsonSubTypes.Type(value = CellMapperLong.class, name = "long"),
-               @JsonSubTypes.Type(value = CellMapperString.class, name = "string"),
-               @JsonSubTypes.Type(value = CellMapperText.class, name = "text"),
-               @JsonSubTypes.Type(value = CellMapperUUID.class, name = "uuid"),
-               @JsonSubTypes.Type(value = CellMapperBigDecimal.class, name = "bigdec"),
-               @JsonSubTypes.Type(value = CellMapperBigInteger.class, name = "bigint"), })
+        @JsonSubTypes.Type(value = CellMapperBoolean.class, name = "boolean"),
+        @JsonSubTypes.Type(value = CellMapperDate.class, name = "date"),
+        @JsonSubTypes.Type(value = CellMapperDouble.class, name = "double"),
+        @JsonSubTypes.Type(value = CellMapperFloat.class, name = "float"),
+        @JsonSubTypes.Type(value = CellMapperInet.class, name = "inet"),
+        @JsonSubTypes.Type(value = CellMapperInteger.class, name = "integer"),
+        @JsonSubTypes.Type(value = CellMapperLong.class, name = "long"),
+        @JsonSubTypes.Type(value = CellMapperString.class, name = "string"),
+        @JsonSubTypes.Type(value = CellMapperText.class, name = "text"),
+        @JsonSubTypes.Type(value = CellMapperUUID.class, name = "uuid"),
+        @JsonSubTypes.Type(value = CellMapperBigDecimal.class, name = "bigdec"),
+        @JsonSubTypes.Type(value = CellMapperBigInteger.class, name = "bigint"), })
 public abstract class CellMapper<BASE> {
 
 	protected static final Analyzer EMPTY_ANALYZER = new KeywordAnalyzer();
@@ -102,6 +103,8 @@ public abstract class CellMapper<BASE> {
 	public abstract BASE indexValue(String field, Object value);
 
 	public abstract BASE queryValue(String field, Object value);
+
+	public abstract SortField sortField(String field, boolean reverse);
 
 	public boolean supports(final AbstractType<?> type) {
 

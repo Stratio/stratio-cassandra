@@ -33,6 +33,8 @@ import org.apache.cassandra.db.marshal.UUIDType;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
+import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
@@ -91,6 +93,11 @@ public class CellMapperText extends CellMapper<String> {
 	public Field field(String name, Object value) {
 		String text = indexValue(name, value);
 		return new TextField(name, text, STORE);
+	}
+	
+	@Override
+	public SortField sortField(String field, boolean reverse) {
+		return new SortField(field, Type.STRING, reverse);
 	}
 
 	@Override

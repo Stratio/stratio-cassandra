@@ -23,6 +23,7 @@ import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.FilteredQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.Sort;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
@@ -43,6 +44,8 @@ public class Search {
 	/** The filtering condition */
 	private final Condition filterCondition;
 
+	private final Sorting sorting;
+
 	/**
 	 * Returns a new {@link Search} composed by the specified querying and filtering conditions.
 	 * 
@@ -52,9 +55,12 @@ public class Search {
 	 *            The {@link Condition} for filtering, maybe {@code null} meaning no filtering.
 	 */
 	@JsonCreator
-	public Search(@JsonProperty("query") Condition queryCondition, @JsonProperty("filter") Condition filterCondition) {
+	public Search(@JsonProperty("query") Condition queryCondition,
+	              @JsonProperty("filter") Condition filterCondition,
+	              @JsonProperty("sort") Sorting sorting) {
 		this.queryCondition = queryCondition;
 		this.filterCondition = filterCondition;
+		this.sorting = sorting;
 	}
 
 	/**
@@ -68,8 +74,8 @@ public class Search {
 	 * @return {@code true} if the results must be ordered by relevance. If {@code false}, then the
 	 *         results must be sorted by the natural Cassandra's order.
 	 */
-	public boolean usesRelevance() {
-		return queryCondition != null;
+	public boolean usesSorting() {
+		return queryCondition != null || sorting != null;
 	}
 
 	/**
@@ -113,6 +119,10 @@ public class Search {
 		}
 	}
 
+	public Sort sort(Schema schema) {
+		return sorting == null ? null : sorting.sort(schema);
+	}
+
 	/**
 	 * Returns a new {@link Search} from the specified JSON {@code String}.
 	 * 
@@ -143,6 +153,9 @@ public class Search {
 		}
 		if (filterCondition != null) {
 			filterCondition.filter(schema);
+		}
+		if (sorting != null) {
+			sorting.sort(schema);
 		}
 	}
 
