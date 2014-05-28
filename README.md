@@ -3,13 +3,13 @@ Stratio Cassandra
 
 Stratio Cassandra is a fork of [Apache Cassandra](http://cassandra.apache.org/) where index functionality has been extended to provide near real time search such as ElasticSearch or Solr, including [full text search](http://en.wikipedia.org/wiki/Full_text_search) capabilities and free multivariable search. It is achieved through an [Apache Lucene](http://lucene.apache.org/) based implementation of Cassandra secondary indexes, where each node of the cluster indexes its own data. Stratio Cassandra is one of the core modules on which [Stratio's BigData platform (SDS)](http://www.stratio.com/) is based.
 
-Index [relevance queries](http://en.wikipedia.org/wiki/Relevance_(information_retrieval)) allows you to retrieve the *n* more relevant results satisfying a query. The coordinator node sends the query to each node in the cluster, each node returns its *n* best results and then the coordinator combines these partial results and gives you the *n* best of them, avoiding full scan.
+Index [relevance queries](http://en.wikipedia.org/wiki/Relevance_(information_retrieval)) allows you to retrieve the *n* more relevant results satisfying a query. The coordinator node sends the query to each node in the cluster, each node returns its *n* best results and then the coordinator combines these partial results and gives you the *n* best of them, avoiding full scan. You can also base the sorting in a combination of fields.
 
 Index filtered queries are a powerful help when analyzing the data stored in Cassandra with [MapReduce](http://es.wikipedia.org/wiki/MapReduce) frameworks as [Apache Hadoop](http://hadoop.apache.org/) or, even better, [Apache Spark](http://spark.apache.org/) through [Stratio Deep](https://github.com/Stratio/stratio-deep). Adding Lucene filters in the jobs input can dramatically reduce the amount of data to be processed, avoiding full scan.
 
 Any cell in the tables can be indexed, including those in the primary key as well as collections. Wide rows are also supported. You can scan token/key ranges, apply additional CQL3 clauses and page on the filtered results.
 
-Other information including documentation is available at [Stratio website.](http://wordpress.dev.strat.io/cassandra/extended-search-in-cassandra/)
+Other information including documentation is available at [Stratio website.](http://www.openstratio.org/manuals/extended-search-in-cassandra)
 
 Features
 ========
@@ -18,6 +18,7 @@ Stratio Cassandra and its integration with Lucene search technology provides:
 
   * Big data full text search
   * Relevance scoring and sorting
+  * Top-k queries
   * Complex boolean queries (and, or, not)
   * Near real time search
   * CQL3 support
@@ -128,6 +129,18 @@ SELECT * FROM tweets WHERE lucene='{
 }' limit 100;
 ```
 
+To get the 100 more recent filtered results you can use the *sort* option:
+
+```
+SELECT * FROM tweets WHERE lucene='{
+    filter : {type:"boolean", must:[
+                   {type:"range", field:"time", lower:"2014/04/25", upper:"2014/04/1"},
+                   {type:"prefix", field:"user", value:"a"} ] },
+    query  : {type:"phrase", field:"body", values:["big","data","gives","organizations"]},
+    sort  : {fields: [ {field:"time", reverse:true} ] }
+}' limit 100;
+```
+
 Finally, if you want to restrict the search to a certain token range:
 
 ```
@@ -141,15 +154,5 @@ SELECT * FROM tweets WHERE lucene='{
 
 This last is the basis for Hadoop, Spark and other MapReduce frameworks support.
 
-Please, refer to the comprehensive Stratio Cassandra documentation at [Stratio website](http://wordpress.dev.strat.io/cassandra/extended-search-in-cassandra/).
-
-
-
-
-
-
-
-
-
-
+Please, refer to the comprehensive Stratio Cassandra documentation at [Stratio website](http://www.openstratio.org/manuals/extended-search-in-cassandra/).
 
