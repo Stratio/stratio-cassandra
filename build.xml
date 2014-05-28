@@ -643,6 +643,8 @@
     <target name="build"
         depends="maven-ant-tasks-retrieve-build,build-project" description="Compile Cassandra classes"/>
     <target name="codecoverage" depends="cobertura-instrument,test,cobertura-report" description="Create code coverage report"/>
+	
+	<target name="codecoverage-stratio" depends="cobertura-instrument-stratio,test-index,cobertura-report-stratio" description="Create code coverage report"/>
 
     <target depends="init,gen-cli-grammar,gen-cql2-grammar,gen-cql3-grammar"
             name="build-project">
@@ -1247,12 +1249,45 @@
 
     </cobertura-instrument>
   </target>
+  
+  <target name="cobertura-instrument-stratio" depends="build,build-test">
+    <taskdef resource="tasks.properties">
+      <classpath refid="cobertura.classpath"/>
+      <classpath refid="cassandra.classpath"/>
+    </taskdef>
+
+    <delete file="${cobertura.datafile}"/>
+
+    <cobertura-instrument todir="${cobertura.classes.dir}" datafile="${cobertura.datafile}">
+      <ignore regex="org.apache.log4j.*"/>
+
+      <fileset dir="${build.classes.main}/org/apache/cassandra/db/index/stratio">
+        <include name="**/*.class"/>
+        <exclude name="**/*Test.class"/>
+        <exclude name="**/*TestCase.class"/>
+        <exclude name="**/test/*.class"/>
+        <!-- cobertura modifies the serialVersionUID of classes. Some of our unit tests rely on backward
+        wire compatability of these classes.  It was easier to exlude them from instrumentation than to
+        force their serialVersinUIDs. -->
+        <exclude name="**/*Token.class"/>
+        <exclude name="${cobertura.excludes}"/>
+      </fileset>
+
+    </cobertura-instrument>
+  </target>
 
   <!-- create both html and xml code coverage reports -->
   <target name="cobertura-report">
     <cobertura-report format="html" destdir="${cobertura.report.dir}" srcdir="${build.src.java}"
       datafile="${cobertura.datafile}"/>
     <cobertura-report format="xml" destdir="${cobertura.report.dir}" srcdir="${build.src.java}"
+      datafile="${cobertura.datafile}"/>
+  </target>
+  
+  <target name="cobertura-report-stratio">
+    <cobertura-report format="html" destdir="${cobertura.report.dir}" srcdir="${build.src.java}/org/apache/cassandra/db/index/stratio"
+      datafile="${cobertura.datafile}"/>
+    <cobertura-report format="xml" destdir="${cobertura.report.dir}" srcdir="${build.src.java}/org/apache/cassandra/db/index/stratio"
       datafile="${cobertura.datafile}"/>
   </target>
 
