@@ -46,305 +46,322 @@ import org.apache.cassandra.utils.FBUtilities;
 
 /**
  * Abstract base class for different types of secondary indexes.
- * 
+ *
  * Do not extend this directly, please pick from PerColumnSecondaryIndex or PerRowSecondaryIndex
  */
-public abstract class SecondaryIndex {
-	protected static final Logger logger = LoggerFactory.getLogger(SecondaryIndex.class);
+public abstract class SecondaryIndex
+{
+    protected static final Logger logger = LoggerFactory.getLogger(SecondaryIndex.class);
 
-	public static final String CUSTOM_INDEX_OPTION_NAME = "class_name";
+    public static final String CUSTOM_INDEX_OPTION_NAME = "class_name";
 
-	public static final AbstractType<?> keyComparator = StorageService.getPartitioner().preservesOrder() ? BytesType.instance
-	        : new LocalByPartionerType(StorageService.getPartitioner());
+    public static final AbstractType<?> keyComparator = StorageService.getPartitioner().preservesOrder()
+                                                      ? BytesType.instance
+                                                      : new LocalByPartionerType(StorageService.getPartitioner());
 
-	/**
-	 * Base CF that has many indexes
-	 */
-	protected ColumnFamilyStore baseCfs;
+    /**
+     * Base CF that has many indexes
+     */
+    protected ColumnFamilyStore baseCfs;
 
-	/**
-	 * The column definitions which this index is responsible for
-	 */
-	protected final Set<ColumnDefinition> columnDefs = Collections.newSetFromMap(new ConcurrentHashMap<ColumnDefinition, Boolean>());
 
-	/**
-	 * Perform any initialization work
-	 */
-	public abstract void init();
+    /**
+     * The column definitions which this index is responsible for
+     */
+    protected final Set<ColumnDefinition> columnDefs = Collections.newSetFromMap(new ConcurrentHashMap<ColumnDefinition,Boolean>());
 
-	/**
-	 * Reload an existing index following a change to its configuration, or that of the indexed
-	 * column(s). Differs from init() in that we expect expect new resources (such as CFS for a KEYS
-	 * index) to be created by init() but not here
-	 */
-	public abstract void reload();
+    /**
+     * Perform any initialization work
+     */
+    public abstract void init();
 
-	/**
-	 * Validates the index_options passed in the ColumnDef
-	 * 
-	 * @throws ConfigurationException
-	 */
-	public abstract void validateOptions() throws ConfigurationException;
+    /**
+     * Reload an existing index following a change to its configuration,
+     * or that of the indexed column(s). Differs from init() in that we expect
+     * expect new resources (such as CFS for a KEYS index) to be created by
+     * init() but not here
+     */
+    public abstract void reload();
 
-	/**
-	 * @return The name of the index
-	 */
-	abstract public String getIndexName();
+    /**
+     * Validates the index_options passed in the ColumnDef
+     * @throws ConfigurationException
+     */
+    public abstract void validateOptions() throws ConfigurationException;
 
-	/**
-	 * Return the unique name for this index and column to be stored in the SystemKeyspace that
-	 * tracks if each column is built
-	 * 
-	 * @param columnName
-	 *            the name of the column
-	 * @return the unique name
-	 */
-	abstract public String getNameForSystemKeyspace(ByteBuffer columnName);
+    /**
+     * @return The name of the index
+     */
+    abstract public String getIndexName();
 
-	/**
-	 * Checks if the index for specified column is fully built
-	 * 
-	 * @param columnName
-	 *            the column
-	 * @return true if the index is fully built
-	 */
-	public boolean isIndexBuilt(ByteBuffer columnName) {
-		return SystemKeyspace.isIndexBuilt(baseCfs.keyspace.getName(), getNameForSystemKeyspace(columnName));
-	}
 
-	public void setIndexBuilt() {
-		for (ColumnDefinition columnDef : columnDefs)
-			SystemKeyspace.setIndexBuilt(baseCfs.keyspace.getName(), getNameForSystemKeyspace(columnDef.name));
-	}
+    /**
+     * Return the unique name for this index and column
+     * to be stored in the SystemKeyspace that tracks if each column is built
+     *
+     * @param columnName the name of the column
+     * @return the unique name
+     */
+    abstract public String getNameForSystemKeyspace(ByteBuffer columnName);
 
-	public void setIndexRemoved() {
-		for (ColumnDefinition columnDef : columnDefs)
-			SystemKeyspace.setIndexRemoved(baseCfs.keyspace.getName(), getNameForSystemKeyspace(columnDef.name));
-	}
+    /**
+     * Checks if the index for specified column is fully built
+     *
+     * @param columnName the column
+     * @return true if the index is fully built
+     */
+    public boolean isIndexBuilt(ByteBuffer columnName)
+    {
+        return SystemKeyspace.isIndexBuilt(baseCfs.keyspace.getName(), getNameForSystemKeyspace(columnName));
+    }
 
-	/**
-	 * Called at query time Creates a implementation specific searcher instance for this index type
-	 * 
-	 * @param columns
-	 *            the list of columns which belong to this index type
-	 * @return the secondary index search impl
-	 */
-	protected abstract SecondaryIndexSearcher createSecondaryIndexSearcher(Set<ByteBuffer> columns);
+    public void setIndexBuilt()
+    {
+        for (ColumnDefinition columnDef : columnDefs)
+            SystemKeyspace.setIndexBuilt(baseCfs.keyspace.getName(), getNameForSystemKeyspace(columnDef.name));
+    }
 
-	/**
-	 * Forces this indexes in memory data to disk
-	 */
-	public abstract void forceBlockingFlush();
+    public void setIndexRemoved()
+    {
+        for (ColumnDefinition columnDef : columnDefs)
+            SystemKeyspace.setIndexRemoved(baseCfs.keyspace.getName(), getNameForSystemKeyspace(columnDef.name));
+    }
 
-	/**
-	 * Get current amount of memory this index is consuming (in bytes)
-	 */
-	public abstract long getLiveSize();
+    /**
+     * Called at query time
+     * Creates a implementation specific searcher instance for this index type
+     * @param columns the list of columns which belong to this index type
+     * @return the secondary index search impl
+     */
+    protected abstract SecondaryIndexSearcher createSecondaryIndexSearcher(Set<ByteBuffer> columns);
 
-	/**
-	 * Allow access to the underlying column family store if there is one
-	 * 
-	 * @return the underlying column family store or null
-	 */
-	public abstract ColumnFamilyStore getIndexCfs();
+    /**
+     * Forces this indexes in memory data to disk
+     */
+    public abstract void forceBlockingFlush();
 
-	/**
-	 * Delete all files and references to this index
-	 * 
-	 * @param columnName
-	 *            the indexed column to remove
-	 */
-	public abstract void removeIndex(ByteBuffer columnName);
+    /**
+     * Get current amount of memory this index is consuming (in bytes)
+     */
+    public abstract long getLiveSize();
 
-	/**
-	 * Remove the index and unregisters this index's mbean if one exists
-	 */
-	public abstract void invalidate();
+    /**
+     * Allow access to the underlying column family store if there is one
+     * @return the underlying column family store or null
+     */
+    public abstract ColumnFamilyStore getIndexCfs();
 
-	/**
-	 * Truncate all the data from the current index
-	 * 
-	 * @param truncatedAt
-	 *            The truncation timestamp, all data before that timestamp should be rejected.
-	 */
-	public abstract void truncateBlocking(long truncatedAt);
 
-	/**
-	 * Builds the index using the data in the underlying CFS Blocks till it's complete
-	 */
-	protected void buildIndexBlocking() {
-		logger.info(String.format("Submitting index build of %s for data in %s",
-		                          getIndexName(),
-		                          StringUtils.join(baseCfs.getSSTables(), ", ")));
+    /**
+     * Delete all files and references to this index
+     * @param columnName the indexed column to remove
+     */
+    public abstract void removeIndex(ByteBuffer columnName);
 
-		Collection<SSTableReader> sstables = baseCfs.markCurrentSSTablesReferenced();
-		try {
-			SecondaryIndexBuilder builder = new SecondaryIndexBuilder(baseCfs,
-			                                                          Collections.singleton(getIndexName()),
-			                                                          new ReducingKeyIterator(sstables));
-			Future<?> future = CompactionManager.instance.submitIndexBuild(builder);
-			FBUtilities.waitOnFuture(future);
-			forceBlockingFlush();
-			setIndexBuilt();
-		} finally {
-			SSTableReader.releaseReferences(sstables);
-		}
-		logger.info("Index build of " + getIndexName() + " complete");
-	}
+    /**
+     * Remove the index and unregisters this index's mbean if one exists
+     */
+    public abstract void invalidate();
 
-	/**
-	 * Builds the index using the data in the underlying CF, non blocking
-	 * 
-	 * 
-	 * @return A future object which the caller can block on (optional)
-	 */
-	public Future<?> buildIndexAsync() {
-		// if we're just linking in the index to indexedColumns on an already-built index
-		// post-restart, we're done
-		boolean allAreBuilt = true;
-		for (ColumnDefinition cdef : columnDefs) {
-			if (!SystemKeyspace.isIndexBuilt(baseCfs.keyspace.getName(), getNameForSystemKeyspace(cdef.name))) {
-				allAreBuilt = false;
-				break;
-			}
-		}
+    /**
+     * Truncate all the data from the current index
+     *
+     * @param truncatedAt The truncation timestamp, all data before that timestamp should be rejected.
+     */
+    public abstract void truncateBlocking(long truncatedAt);
 
-		if (allAreBuilt)
-			return null;
+    /**
+     * Builds the index using the data in the underlying CFS
+     * Blocks till it's complete
+     */
+    protected void buildIndexBlocking()
+    {
+        logger.info(String.format("Submitting index build of %s for data in %s",
+                getIndexName(), StringUtils.join(baseCfs.getSSTables(), ", ")));
 
-		// build it asynchronously; addIndex gets called by CFS open and schema update, neither of
-		// which
-		// we want to block for a long period. (actual build is serialized on CompactionManager.)
-		Runnable runnable = new Runnable() {
-			public void run() {
-				baseCfs.forceBlockingFlush();
-				buildIndexBlocking();
-			}
-		};
-		FutureTask<?> f = new FutureTask<Object>(runnable, null);
+        Collection<SSTableReader> sstables = baseCfs.markCurrentSSTablesReferenced();
+        try
+        {
+            SecondaryIndexBuilder builder = new SecondaryIndexBuilder(baseCfs,
+                                                                      Collections.singleton(getIndexName()),
+                                                                      new ReducingKeyIterator(sstables));
+            Future<?> future = CompactionManager.instance.submitIndexBuild(builder);
+            FBUtilities.waitOnFuture(future);
+            forceBlockingFlush();
+            setIndexBuilt();
+        }
+        finally
+        {
+            SSTableReader.releaseReferences(sstables);
+        }
+        logger.info("Index build of " + getIndexName() + " complete");
+    }
 
-		new Thread(f, "Creating index: " + getIndexName()).start();
-		return f;
-	}
 
-	public ColumnFamilyStore getBaseCfs() {
-		return baseCfs;
-	}
+    /**
+     * Builds the index using the data in the underlying CF, non blocking
+     *
+     *
+     * @return A future object which the caller can block on (optional)
+     */
+    public Future<?> buildIndexAsync()
+    {
+        // if we're just linking in the index to indexedColumns on an already-built index post-restart, we're done
+        boolean allAreBuilt = true;
+        for (ColumnDefinition cdef : columnDefs)
+        {
+            if (!SystemKeyspace.isIndexBuilt(baseCfs.keyspace.getName(), getNameForSystemKeyspace(cdef.name)))
+            {
+                allAreBuilt = false;
+                break;
+            }
+        }
 
-	private void setBaseCfs(ColumnFamilyStore baseCfs) {
-		this.baseCfs = baseCfs;
-	}
+        if (allAreBuilt)
+            return null;
 
-	public Set<ColumnDefinition> getColumnDefs() {
-		return columnDefs;
-	}
+        // build it asynchronously; addIndex gets called by CFS open and schema update, neither of which
+        // we want to block for a long period.  (actual build is serialized on CompactionManager.)
+        Runnable runnable = new Runnable()
+        {
+            public void run()
+            {
+                baseCfs.forceBlockingFlush();
+                buildIndexBlocking();
+            }
+        };
+        FutureTask<?> f = new FutureTask<Object>(runnable, null);
 
-	void addColumnDef(ColumnDefinition columnDef) {
-		columnDefs.add(columnDef);
-	}
+        new Thread(f, "Creating index: " + getIndexName()).start();
+        return f;
+    }
 
-	void removeColumnDef(ByteBuffer name) {
-		Set<ColumnDefinition> newColumnDefs = Collections.newSetFromMap(new ConcurrentHashMap<ColumnDefinition, Boolean>());
-		for (ColumnDefinition columnDefinition : columnDefs) {
+    public ColumnFamilyStore getBaseCfs()
+    {
+        return baseCfs;
+    }
+
+    private void setBaseCfs(ColumnFamilyStore baseCfs)
+    {
+        this.baseCfs = baseCfs;
+    }
+
+    public Set<ColumnDefinition> getColumnDefs()
+    {
+        return columnDefs;
+    }
+
+    void addColumnDef(ColumnDefinition columnDef)
+    {
+       columnDefs.add(columnDef);
+    }
+
+    void removeColumnDef(ByteBuffer name)
+    {
+        Set<ColumnDefinition> newColumnDefs = Collections.newSetFromMap(new ConcurrentHashMap<ColumnDefinition, Boolean>());
+		for (ColumnDefinition columnDefinition : columnDefs)
 			if (!columnDefinition.name.equals(name))
 				newColumnDefs.add(columnDefinition);
-		}
 		columnDefs.clear();
-		for (ColumnDefinition columnDefinition : newColumnDefs) {
+		for (ColumnDefinition columnDefinition : newColumnDefs)
 			columnDefs.add(columnDefinition);
-		}
-	}
+    }
 
-	/**
-	 * Returns the decoratedKey for a column value
-	 * 
-	 * @param value
-	 *            column value
-	 * @return decorated key
-	 */
-	public DecoratedKey getIndexKeyFor(ByteBuffer value) {
-		// FIXME: this imply one column definition per index
-		ByteBuffer name = columnDefs.iterator().next().name;
-		return new DecoratedKey(new LocalToken(baseCfs.metadata.getColumnDefinition(name).getValidator(), value), value);
-	}
+    /**
+     * Returns the decoratedKey for a column value
+     * @param value column value
+     * @return decorated key
+     */
+    public DecoratedKey getIndexKeyFor(ByteBuffer value)
+    {
+        // FIXME: this imply one column definition per index
+        ByteBuffer name = columnDefs.iterator().next().name;
+        return new DecoratedKey(new LocalToken(baseCfs.metadata.getColumnDefinition(name).getValidator(), value), value);
+    }
 
-	/**
-	 * Returns true if the provided column name is indexed by this secondary index.
-	 * 
-	 * The default implement checks whether the name is one the columnDef name, but this should be
-	 * overriden but subclass if needed.
-	 */
-	public boolean indexes(ByteBuffer name) {
-		for (ColumnDefinition columnDef : columnDefs) {
-			if (baseCfs.getComparator().compare(columnDef.name, name) == 0)
-				return true;
-		}
-		return false;
-	}
+    /**
+     * Returns true if the provided column name is indexed by this secondary index.
+     *
+     * The default implement checks whether the name is one the columnDef name,
+     * but this should be overriden but subclass if needed.
+     */
+    public boolean indexes(ByteBuffer name)
+    {
+        for (ColumnDefinition columnDef : columnDefs)
+        {
+            if (baseCfs.getComparator().compare(columnDef.name, name) == 0)
+                return true;
+        }
+        return false;
+    }
 
-	/**
-	 * This is the primary way to create a secondary index instance for a CF column. It will
-	 * validate the index_options before initializing.
-	 * 
-	 * @param baseCfs
-	 *            the source of data for the Index
-	 * @param cdef
-	 *            the meta information about this column (index_type, index_options, name, etc...)
-	 * 
-	 * @return The secondary index instance for this column
-	 * @throws ConfigurationException
-	 */
-	public static SecondaryIndex
-	        createInstance(ColumnFamilyStore baseCfs, ColumnDefinition cdef) throws ConfigurationException {
-		SecondaryIndex index;
+    /**
+     * This is the primary way to create a secondary index instance for a CF column.
+     * It will validate the index_options before initializing.
+     *
+     * @param baseCfs the source of data for the Index
+     * @param cdef the meta information about this column (index_type, index_options, name, etc...)
+     *
+     * @return The secondary index instance for this column
+     * @throws ConfigurationException
+     */
+    public static SecondaryIndex createInstance(ColumnFamilyStore baseCfs, ColumnDefinition cdef) throws ConfigurationException
+    {
+        SecondaryIndex index;
 
-		switch (cdef.getIndexType()) {
-		case KEYS:
-			index = new KeysIndex();
-			break;
-		case COMPOSITES:
-			index = CompositesIndex.create(cdef);
-			break;
-		case CUSTOM:
-			assert cdef.getIndexOptions() != null;
-			String class_name = cdef.getIndexOptions().get(CUSTOM_INDEX_OPTION_NAME);
-			assert class_name != null;
-			try {
-				index = (SecondaryIndex) Class.forName(class_name).newInstance();
-			} catch (Exception e) {
-				throw new RuntimeException(e);
-			}
-			break;
-		default:
-			throw new RuntimeException("Unknown index type: " + cdef.getIndexName());
-		}
+        switch (cdef.getIndexType())
+        {
+        case KEYS:
+            index = new KeysIndex();
+            break;
+        case COMPOSITES:
+            index = CompositesIndex.create(cdef);
+            break;
+        case CUSTOM:
+            assert cdef.getIndexOptions() != null;
+            String class_name = cdef.getIndexOptions().get(CUSTOM_INDEX_OPTION_NAME);
+            assert class_name != null;
+            try
+            {
+                index = (SecondaryIndex) Class.forName(class_name).newInstance();
+            }
+            catch (Exception e)
+            {
+                throw new RuntimeException(e);
+            }
+            break;
+            default:
+                throw new RuntimeException("Unknown index type: " + cdef.getIndexName());
+        }
 
-		index.addColumnDef(cdef);
-		index.setBaseCfs(baseCfs);
-		index.validateOptions();
+        index.addColumnDef(cdef);
+        index.setBaseCfs(baseCfs);
+        index.validateOptions();
 
-		return index;
-	}
+        return index;
+    }
 
-	public abstract boolean validate(Column column);
+    public abstract boolean validate(Column column);
 
-	/**
-	 * Returns the index comparator for index backed by CFS, or null.
-	 * 
-	 * Note: it would be cleaner to have this be a member method. However we need this when opening
-	 * indexes sstables, but by then the CFS won't be fully initiated, so the SecondaryIndex object
-	 * won't be accessible.
-	 */
-	public static AbstractType<?> getIndexComparator(CFMetaData baseMetadata, ColumnDefinition cdef) {
-		switch (cdef.getIndexType()) {
-		case KEYS:
-			return keyComparator;
-		case COMPOSITES:
-			return CompositesIndex.getIndexComparator(baseMetadata, cdef);
-		case CUSTOM:
-			return null;
-		}
-		throw new AssertionError();
-	}
-
+    /**
+     * Returns the index comparator for index backed by CFS, or null.
+     *
+     * Note: it would be cleaner to have this be a member method. However we need this when opening indexes
+     * sstables, but by then the CFS won't be fully initiated, so the SecondaryIndex object won't be accessible.
+     */
+    public static AbstractType<?> getIndexComparator(CFMetaData baseMetadata, ColumnDefinition cdef)
+    {
+        switch (cdef.getIndexType())
+        {
+            case KEYS:
+                return keyComparator;
+            case COMPOSITES:
+                return CompositesIndex.getIndexComparator(baseMetadata, cdef);
+            case CUSTOM:
+                return null;
+        }
+        throw new AssertionError();
+    }
+    
+    
 }
