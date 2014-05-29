@@ -73,7 +73,6 @@ import org.apache.cassandra.db.RowPosition;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.Truncation;
 import org.apache.cassandra.db.WriteType;
-import org.apache.cassandra.db.index.stratio.util.Log;
 import org.apache.cassandra.db.marshal.UUIDType;
 import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.dht.Bounds;
@@ -120,6 +119,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.Uninterruptibles;
+import com.stratio.cassandra.index.util.Log;
 
 public class StorageProxy implements StorageProxyMBean {
 	public static final String MBEAN_NAME = "org.apache.cassandra.db:type=StorageProxy";
