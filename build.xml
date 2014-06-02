@@ -329,7 +329,7 @@
             description="Define dependencies and dependency versions">
       <!-- The parent pom defines the versions of all dependencies -->
       <artifact:pom id="parent-pom"
-                    groupId="org.apache.cassandra"
+                    groupId="com.stratio.cassandra"
                     artifactId="cassandra-parent"
                     packaging="pom"
                     version="${version}"
@@ -376,8 +376,8 @@
           <dependency groupId="net.sourceforge.cobertura" artifactId="cobertura" version="${cobertura.version}"/>
 
           <dependency groupId="log4j" artifactId="log4j" version="1.2.16" />
-          <dependency groupId="org.apache.cassandra" artifactId="cassandra-all" version="${version}" />
-          <dependency groupId="org.apache.cassandra" artifactId="cassandra-thrift" version="${version}" />
+          <dependency groupId="com.stratio.cassandra" artifactId="cassandra-all" version="${version}" />
+          <dependency groupId="com.stratio.cassandra" artifactId="cassandra-thrift" version="${version}" />
           <dependency groupId="com.yammer.metrics" artifactId="metrics-core" version="2.2.0" />
           <dependency groupId="com.addthis.metrics" artifactId="reporter-config" version="2.1.0" />
           <dependency groupId="edu.stanford.ppl" artifactId="snaptree" version="0.1" />
@@ -400,12 +400,14 @@
         <developer id="mriou" name="Matthieu Riou"/>
         <developer id="pmalik" name="Prashant Malik"/>
         <developer id="slebresne" name="Sylvain Lebresne"/>
+        <developer id="adelapena" name="Andrés de la Peña"/>
+        <developer id="lrosellini" name="Luca Rosellini"/>
       </artifact:pom>
 
       <!-- each dependency set then defines the subset of the dependencies for that dependency set -->
       <artifact:pom id="build-deps-pom"
                     artifactId="cassandra-build-deps">
-        <parent groupId="org.apache.cassandra"
+        <parent groupId="com.stratio.cassandra"
                 artifactId="cassandra-parent"
                 version="${version}"/>
         <dependency groupId="junit" artifactId="junit"/>
@@ -420,7 +422,7 @@
 
       <artifact:pom id="coverage-deps-pom"
                     artifactId="cassandra-coverage-deps">
-        <parent groupId="org.apache.cassandra"
+        <parent groupId="com.stratio.cassandra"
                 artifactId="cassandra-parent"
                 version="${version}"/>
         <dependency groupId="net.sourceforge.cobertura" artifactId="cobertura"/>
@@ -428,7 +430,7 @@
 
       <artifact:pom id="test-deps-pom"
                     artifactId="cassandra-test-deps">
-        <parent groupId="org.apache.cassandra"
+        <parent groupId="com.stratio.cassandra"
                 artifactId="cassandra-parent"
                 version="${version}"/>
       </artifact:pom>
@@ -439,7 +441,7 @@
                     artifactId="cassandra-all"
                     url="http://cassandra.apache.org"
                     name="Apache Cassandra">
-        <parent groupId="org.apache.cassandra"
+        <parent groupId="com.stratio.cassandra"
                 artifactId="cassandra-parent"
                 version="${version}"/>
         <scm connection="${scm.connection}" developerConnection="${scm.developerConnection}" url="${scm.url}"/>
@@ -471,7 +473,7 @@
         <dependency groupId="org.slf4j" artifactId="slf4j-log4j12" scope="runtime"/>
 
         <dependency groupId="org.apache.thrift" artifactId="libthrift"/>
-        <dependency groupId="org.apache.cassandra" artifactId="cassandra-thrift"/>
+        <dependency groupId="com.stratio.cassandra" artifactId="cassandra-thrift"/>
         
         <!-- don't need hadoop classes to run, but if you use the hadoop stuff -->
         <dependency groupId="org.apache.hadoop" artifactId="hadoop-core" optional="true"/>
@@ -490,7 +492,7 @@
                     artifactId="cassandra-thrift"
                     url="http://cassandra.apache.org"
                     name="Apache Cassandra">
-        <parent groupId="org.apache.cassandra"
+        <parent groupId="com.stratio.cassandra"
                 artifactId="cassandra-parent"
                 version="${version}"/>
         <scm connection="${scm.connection}" developerConnection="${scm.developerConnection}" url="${scm.url}"/>
@@ -502,7 +504,7 @@
                     artifactId="cassandra-clientutil"
                     url="http://cassandra.apache.org"
                     name="Apache Cassandra">
-        <parent groupId="org.apache.cassandra"
+        <parent groupId="com.stratio.cassandra"
                 artifactId="cassandra-parent"
                 version="${version}"/>
         <scm connection="${scm.connection}" developerConnection="${scm.developerConnection}" url="${scm.url}"/>
@@ -514,7 +516,7 @@
                     packaging="pom"
                     url="http://cassandra.apache.org"
                     name="Apache Cassandra">
-        <parent groupId="org.apache.cassandra"
+        <parent groupId="com.stratio.cassandra"
                 artifactId="cassandra-parent"
                 version="${version}"/>
         <scm connection="${scm.connection}" developerConnection="${scm.developerConnection}" url="${scm.url}"/>

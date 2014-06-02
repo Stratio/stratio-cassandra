@@ -1,8 +1,8 @@
-nexus-snapshots-repository-url:http://nexus.strat.io:8081/nexus/content/repositories/snapshots"
-nexus-snapshots-repository-id:stratio-snapshots
+nexus-snapshots-repository-url:https://oss.sonatype.org/content/repositories/snapshots/
+nexus-snapshots-repository-id:sonatype-nexus-snapshots
 
-nexus-releases-repository-url:http://nexus.strat.io:8081/nexus/content/repositories/releases"
-nexus-releases-repository-id:stratio-releases
+nexus-releases-repository-url:https://oss.sonatype.org/service/local/staging/deploy/maven2/
+nexus-releases-repository-id:sonatype-nexus-staging
 
 # Comment out the following property to generate a release. By the default a snapshot is created.
-#release=true
+release=true
