@@ -60,7 +60,7 @@
     <property name="test.long.src" value="${test.dir}/long"/>
     <property name="test.pig.src" value="${test.dir}/pig"/>
     <property name="dist.dir" value="${build.dir}/dist"/>
-	<property name="test.index.src" value="${test.dir}/unit/org/apache/cassandra/db/index/stratio"/>
+	<property name="test.index.src" value="${test.dir}/unit/com/stratio/cassandra/index"/>
 	
 	<property name="source.version" value="1.7"/>
 	<property name="target.version" value="1.7"/>
@@ -1263,7 +1263,7 @@
     <cobertura-instrument todir="${cobertura.classes.dir}" datafile="${cobertura.datafile}">
       <ignore regex="org.apache.log4j.*"/>
 
-      <fileset dir="${build.classes.main}/org/apache/cassandra/db/index/stratio">
+      <fileset dir="${build.classes.main}/com/stratio/cassandra/index">
         <include name="**/*.class"/>
         <exclude name="**/*Test.class"/>
         <exclude name="**/*TestCase.class"/>
@@ -1287,9 +1287,9 @@
   </target>
   
   <target name="cobertura-report-stratio">
-    <cobertura-report format="html" destdir="${cobertura.report.dir}" srcdir="${build.src.java}/org/apache/cassandra/db/index/stratio"
+    <cobertura-report format="html" destdir="${cobertura.report.dir}" srcdir="${build.src.java}/com/stratio/cassandra/index"
       datafile="${cobertura.datafile}"/>
-    <cobertura-report format="xml" destdir="${cobertura.report.dir}" srcdir="${build.src.java}/org/apache/cassandra/db/index/stratio"
+    <cobertura-report format="xml" destdir="${cobertura.report.dir}" srcdir="${build.src.java}/com/stratio/cassandra/index"
       datafile="${cobertura.datafile}"/>
   </target>
 
