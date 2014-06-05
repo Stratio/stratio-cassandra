@@ -16,7 +16,6 @@
 package com.stratio.cassandra.index.query;
 
 import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
@@ -66,7 +65,7 @@ public class SortingField {
 		}
 		CellMapper<?> cellMapper = schema.getMapper(field);
 		if (cellMapper == null) {
-			return new SortField(field, Type.STRING, reverse);
+			throw new IllegalArgumentException("No mapper found for sort field " + field);
 		} else {
 			return cellMapper.sortField(field, reverse);
 		}

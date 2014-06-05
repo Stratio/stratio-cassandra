@@ -309,7 +309,7 @@ public class Schema {
 	}
 
 	public CellMapper<?> getMapper(String field) {
-		CellMapper<?> cellMapper = cellMappers.get(field.toLowerCase());
+		CellMapper<?> cellMapper = cellMappers.get(field);
 		if (cellMapper == null) {
 			String[] components = field.split("\\.");
 			if (components.length < 2) {
