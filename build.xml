@@ -25,7 +25,7 @@
     <property name="debuglevel" value="source,lines,vars"/>
 
     <!-- default version and SCM information -->
-    <property name="base.version" value="2.0.72"/>
+    <property name="base.version" value="2.0.81"/>
     <property name="scm.connection" value="scm:git://git.apache.org/cassandra.git"/>
     <property name="scm.developerConnection" value="scm:git://git.apache.org/cassandra.git"/>
     <property name="scm.url" value="http://git-wip-us.apache.org/repos/asf?p=cassandra.git;a=tree"/>
@@ -196,6 +196,7 @@
             classpath="${build.lib}/antlr-3.2.jar"
             fork="true"
             failonerror="true">
+         <jvmarg value="-Xmx512M" />
          <arg value="${build.src.java}/org/apache/cassandra/cli/Cli.g" />
          <arg value="-fo" />
          <arg value="${build.src.gen-java}/org/apache/cassandra/cli/" />
@@ -233,6 +234,7 @@
             classpath="${build.lib}/antlr-3.2.jar"
             fork="true"
             failonerror="true">
+         <jvmarg value="-Xmx512M" />
          <arg value="-Xconversiontimeout" />
          <arg value="10000" />
          <arg value="${build.src.java}/org/apache/cassandra/cql3/Cql.g" />
@@ -376,7 +378,9 @@
           <dependency groupId="org.apache.pig" artifactId="pig" version="0.10.0"/>
           <dependency groupId="net.java.dev.jna" artifactId="jna" version="3.2.7"/>
 
-          <dependency groupId="net.sourceforge.cobertura" artifactId="cobertura" version="${cobertura.version}"/>
+          <dependency groupId="net.sourceforge.cobertura" artifactId="cobertura" version="${cobertura.version}">
+            <exclusion groupId="xerces" artifactId="xercesImpl"/>
+          </dependency>
 
           <dependency groupId="log4j" artifactId="log4j" version="1.2.16" />
           <dependency groupId="com.stratio.cassandra" artifactId="cassandra-all" version="${version}" />
@@ -673,6 +677,7 @@
             <src path="${build.src.java}"/>
             <src path="${build.src.gen-java}"/>
             <classpath refid="cassandra.classpath"/>
+            <compilerarg value="-XDignore.symbol.file"/>
         </javac>
         <antcall target="createVersionPropFile"/>
         <copy todir="${build.classes.main}">

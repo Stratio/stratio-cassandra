@@ -129,9 +129,9 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         }
 
         // Otherwise, check the selected columns
-        selectsStaticColumns = !Iterables.isEmpty(Iterables.filter(selection.getColumnsList(), isStaticFilter));
+        selectsStaticColumns = !Iterables.isEmpty(Iterables.filter(selection.getColumns(), isStaticFilter));
         selectsOnlyStaticColumns = true;
-        for (CFDefinition.Name name : selection.getColumnsList())
+        for (CFDefinition.Name name : selection.getColumns())
         {
             if (name.kind != CFDefinition.Name.Kind.KEY_ALIAS && name.kind != CFDefinition.Name.Kind.STATIC)
             {
@@ -195,15 +195,16 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         cl.validateForRead(keyspace());
 
         int limit = getLimit(variables);
+        int limitForQuery = updateLimitForQuery(limit);
         long now = System.currentTimeMillis();
         Pageable command;
         if (isKeyRange || usesSecondaryIndexing)
         {
-            command = getRangeCommand(variables, limit, now);
+            command = getRangeCommand(variables, limitForQuery, now);
         }
         else
         {
-            List<ReadCommand> commands = getSliceCommands(variables, limit, now);
+            List<ReadCommand> commands = getSliceCommands(variables, limitForQuery, now);
             command = commands == null ? null : new Pageable.ReadCommands(commands);
         }
 
@@ -222,7 +223,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         {
             QueryPager pager = QueryPagers.pager(command, cl, options.getPagingState());
             if (parameters.isCount)
-                return pageCountQuery(pager, variables, pageSize, now);
+                return pageCountQuery(pager, variables, pageSize, now, limit);
 
             // We can't properly do post-query ordering if we page (see #6722)
             if (needsPostQueryOrdering())
@@ -254,7 +255,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         return processResults(rows, variables, limit, now);
     }
 
-    private ResultMessage.Rows pageCountQuery(QueryPager pager, List<ByteBuffer> variables, int pageSize, long now) throws RequestValidationException, RequestExecutionException
+    private ResultMessage.Rows pageCountQuery(QueryPager pager, List<ByteBuffer> variables, int pageSize, long now, int limit) throws RequestValidationException, RequestExecutionException
     {
         int count = 0;
         while (!pager.isExhausted())
@@ -265,7 +266,9 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
             count += rset.rows.size();
         }
 
-        ResultSet result = ResultSet.makeCountResult(keyspace(), columnFamily(), count, parameters.countAlias);
+        // We sometimes query one more result than the user limit asks to handle exclusive bounds with compact tables (see updateLimitForQuery).
+        // So do make sure the count is not greater than what the user asked for.
+        ResultSet result = ResultSet.makeCountResult(keyspace(), columnFamily(), Math.min(count, limit), parameters.countAlias);
         return new ResultMessage.Rows(result);
     }
 
@@ -290,16 +293,17 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
     {
         List<ByteBuffer> variables = Collections.emptyList();
         int limit = getLimit(variables);
+        int limitForQuery = updateLimitForQuery(limit);
         long now = System.currentTimeMillis();
         List<Row> rows;
         if (isKeyRange || usesSecondaryIndexing)
         {
-            RangeSliceCommand command = getRangeCommand(variables, limit, now);
+            RangeSliceCommand command = getRangeCommand(variables, limitForQuery, now);
             rows = command == null ? Collections.<Row>emptyList() : command.executeLocally();
         }
         else
         {
-            List<ReadCommand> commands = getSliceCommands(variables, limit, now);
+            List<ReadCommand> commands = getSliceCommands(variables, limitForQuery, now);
             rows = commands == null ? Collections.<Row>emptyList() : readLocally(keyspace(), commands);
         }
 
@@ -583,12 +587,16 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         if (l <= 0)
             throw new InvalidRequestException("LIMIT must be strictly positive");
 
-        // Internally, we don't support exclusive bounds for slices. Instead,
-        // we query one more element if necessary and exclude
-        if (sliceRestriction != null && (!sliceRestriction.isInclusive(Bound.START) || !sliceRestriction.isInclusive(Bound.END)) && l != Integer.MAX_VALUE)
-            l += 1;
-
         return l;
+    }
+
+    private int updateLimitForQuery(int limit)
+    {
+        // Internally, we don't support exclusive bounds for slices. Instead, we query one more element if necessary
+        // and exclude it later (in processColumnFamily)
+        return sliceRestriction != null && (!sliceRestriction.isInclusive(Bound.START) || !sliceRestriction.isInclusive(Bound.END)) && limit != Integer.MAX_VALUE
+             ? limit + 1
+             : limit;
     }
 
     private Collection<ByteBuffer> getKeys(final List<ByteBuffer> variables) throws InvalidRequestException
@@ -788,7 +796,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         if (!cfDef.hasCollections)
             return false;
 
-        for (CFDefinition.Name name : selection.getColumnsList())
+        for (CFDefinition.Name name : selection.getColumns())
         {
             if (name.type instanceof CollectionType)
                 return true;
@@ -941,7 +949,14 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                             throw new InvalidRequestException(String.format("Unsupported null value for indexed column %s", name));
                         if (value.remaining() > 0xFFFF)
                             throw new InvalidRequestException("Index expression values may not be larger than 64K");
-                        expressions.add(new IndexExpression(name.name.key, slice.getIndexOperator(b), value));
+
+                        IndexOperator op = slice.getIndexOperator(b);
+                        // If the underlying comparator for name is reversed, we need to reverse the IndexOperator: user operation
+                        // always refer to the "forward" sorting even if the clustering order is reversed, but the 2ndary code does
+                        // use the underlying comparator as is.
+                        if (name.type instanceof ReversedType)
+                            op = reverse(op);
+                        expressions.add(new IndexExpression(name.name.key, op, value));
                     }
                 }
             }
@@ -961,6 +976,18 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
             }
         }
         return expressions;
+    }
+
+    private static IndexOperator reverse(IndexOperator op)
+    {
+        switch (op)
+        {
+            case LT:  return IndexOperator.GT;
+            case LTE: return IndexOperator.GTE;
+            case GT:  return IndexOperator.LT;
+            case GTE: return IndexOperator.LTE;
+            default: return op;
+        }
     }
 
     private ResultSet process(List<Row> rows, List<ByteBuffer> variables, int limit, long now) throws InvalidRequestException
@@ -983,7 +1010,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         if (isReversed)
             cqlRows.reverse();
 
-        // Trim result if needed to respect the limit
+        // Trim result if needed to respect the user limit
         cqlRows.trim(limit);
         return cqlRows;
     }
@@ -1001,8 +1028,8 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
             if (!cf.hasOnlyTombstones(now))
             {
                 result.newRow();
-                // selection.getColumnsList() will contain only the partition key components - all of them.
-                for (CFDefinition.Name name : selection.getColumnsList())
+                // selection.getColumns() will contain only the partition key components - all of them.
+                for (CFDefinition.Name name : selection.getColumns())
                     result.add(keyComponents[name.position]);
             }
         }
@@ -1031,7 +1058,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
 
                 result.newRow();
                 // Respect selection order
-                for (CFDefinition.Name name : selection.getColumnsList())
+                for (CFDefinition.Name name : selection.getColumns())
                 {
                     switch (name.kind)
                     {
@@ -1072,35 +1099,25 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                 builder.add(c);
             }
 
-            Map<CFDefinition.Name, ByteBuffer> staticValues = Collections.emptyMap();
+            ColumnGroupMap staticGroup = null;
             // Gather up static values first
             if (!builder.isEmpty() && builder.firstGroup().isStatic)
             {
-                staticValues = new HashMap<>();
-                ColumnGroupMap group = builder.firstGroup();
-                for (CFDefinition.Name name : Iterables.filter(selection.getColumnsList(), isStaticFilter))
-                    staticValues.put(name, getValue(name, group));
+                staticGroup = builder.firstGroup();
                 builder.discardFirst();
 
                 // If there was static columns but there is no actual row, then provided the select was a full
                 // partition selection (i.e. not a 2ndary index search and there was no condition on clustering columns)
                 // then we want to include the static columns in the result set.
-                if (!staticValues.isEmpty() && builder.isEmpty() && !usesSecondaryIndexing && hasNoClusteringColumnsRestriction())
+                if (builder.isEmpty() && !usesSecondaryIndexing && hasNoClusteringColumnsRestriction() && hasValueForQuery(staticGroup))
                 {
-                    result.newRow();
-                    for (CFDefinition.Name name : selection.getColumnsList())
-                    {
-                        if (name.kind == CFDefinition.Name.Kind.KEY_ALIAS)
-                            result.add(keyComponents[name.position]);
-                        else
-                            result.add(name.kind == CFDefinition.Name.Kind.STATIC ? staticValues.get(name) : null);
-                    }
+                    handleGroup(result, keyComponents, ColumnGroupMap.EMPTY, staticGroup);
                     return;
                 }
             }
 
             for (ColumnGroupMap group : builder.groups())
-                handleGroup(selection, result, keyComponents, group, staticValues);
+                handleGroup(result, keyComponents, group, staticGroup);
         }
         else
         {
@@ -1109,7 +1126,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
 
             // Static case: One cqlRow for all columns
             result.newRow();
-            for (CFDefinition.Name name : selection.getColumnsList())
+            for (CFDefinition.Name name : selection.getColumns())
             {
                 if (name.kind == CFDefinition.Name.Kind.KEY_ALIAS)
                     result.add(keyComponents[name.position]);
@@ -1117,6 +1134,14 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                     result.add(cf.getColumn(name.name.key));
             }
         }
+    }
+
+    private boolean hasValueForQuery(ColumnGroupMap staticGroup)
+    {
+        for (CFDefinition.Name name : Iterables.filter(selection.getColumns(), isStaticFilter))
+            if (staticGroup.hasValueFor(name.name.key))
+                return true;
+        return false;
     }
 
     private boolean hasNoClusteringColumnsRestriction()
@@ -1169,15 +1194,14 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         Collections.sort(cqlRows.rows, new CompositeComparator(types, positions));
     }
 
-    private void handleGroup(Selection selection,
-                             Selection.ResultSetBuilder result,
+    private void handleGroup(Selection.ResultSetBuilder result,
                              ByteBuffer[] keyComponents,
                              ColumnGroupMap columns,
-                             Map<CFDefinition.Name, ByteBuffer> staticValues) throws InvalidRequestException
+                             ColumnGroupMap staticGroup) throws InvalidRequestException
     {
         // Respect requested order
         result.newRow();
-        for (CFDefinition.Name name : selection.getColumnsList())
+        for (CFDefinition.Name name : selection.getColumns())
         {
             switch (name.kind)
             {
@@ -1191,48 +1215,32 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                     // This should not happen for SPARSE
                     throw new AssertionError();
                 case COLUMN_METADATA:
-                    if (name.type.isCollection())
-                    {
-                        result.add(getCollectionValue(name, columns));
-                    }
-                    else
-                    {
-                        result.add(columns.getSimple(name.name.key));
-                    }
+                    addValue(result, name, columns);
                     break;
                 case STATIC:
-                    result.add(staticValues.get(name));
+                    addValue(result, name, staticGroup);
                     break;
             }
         }
     }
 
-    private static ByteBuffer getValue(CFDefinition.Name name, ColumnGroupMap columns)
+    private static void addValue(Selection.ResultSetBuilder result, CFDefinition.Name name, ColumnGroupMap group)
     {
+        if (group == null)
+        {
+            result.add((ByteBuffer)null);
+            return;
+        }
+
         if (name.type.isCollection())
-            return getCollectionValue(name, columns);
-        else if (name.type.isCommutative())
-            return getCounterValue(name, columns);
-
-        return getSimpleValue(name, columns);
-    }
-
-    private static ByteBuffer getCollectionValue(CFDefinition.Name name, ColumnGroupMap columns)
-    {
-        List<Pair<ByteBuffer, Column>> collection = columns.getCollection(name.name.key);
-        return collection == null ? null : ((CollectionType)name.type).serialize(collection);
-    }
-
-    private static ByteBuffer getSimpleValue(CFDefinition.Name name, ColumnGroupMap columns)
-    {
-        Column c = columns.getSimple(name.name.key);
-        return c == null ? null : c.value();
-    }
-
-    private static ByteBuffer getCounterValue(CFDefinition.Name name, ColumnGroupMap columns)
-    {
-        Column c = columns.getSimple(name.name.key);
-        return c == null ? null : CounterColumnType.instance.decompose(CounterContext.instance().total(c.value()));
+        {
+            List<Pair<ByteBuffer, Column>> collection = group.getCollection(name.name.key);
+            result.add(collection == null ? null : ((CollectionType)name.type).serialize(collection));
+        }
+        else
+        {
+            result.add(group.getSimple(name.name.key));
+        }
     }
 
     private static boolean isReversedType(CFDefinition.Name name)
@@ -1291,7 +1299,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                                 : Selection.fromSelectors(cfDef, selectClause);
 
             if (parameters.isDistinct)
-                validateDistinctSelection(selection.getColumnsList(), cfDef.partitionKeys());
+                validateDistinctSelection(selection.getColumns(), cfDef.partitionKeys());
 
             Term prepLimit = null;
             if (limit != null)
@@ -1465,8 +1473,6 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                     //   1) we're in the special case of the 'tuple' notation from #4851 which we expand as multiple
                     //      consecutive slices: in which case we're good with this restriction and we continue
                     //   2) we have a 2ndary index, in which case we have to use it but can skip more validation
-                    boolean hasTuple = false;
-                    boolean hasRestrictedNotTuple = false;
                     if (!(previousIsSlice && restriction.isSlice() && ((Restriction.Slice)restriction).isPartOfTuple()))
                     {
                         if (hasQueriableIndex)

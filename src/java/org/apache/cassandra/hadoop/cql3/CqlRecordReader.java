@@ -29,7 +29,6 @@ import com.google.common.collect.Maps;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.BytesType;
 import org.apache.cassandra.dht.IPartitioner;
@@ -90,8 +89,8 @@ public class CqlRecordReader extends RecordReader<Long, Row>
         totalRowCount = (this.split.getLength() < Long.MAX_VALUE)
                       ? (int) this.split.getLength()
                       : ConfigHelper.getInputSplitSize(conf);
-        cfName = ConfigHelper.getInputColumnFamily(conf);
-        keyspace = ConfigHelper.getInputKeyspace(conf);              
+        cfName = quote(ConfigHelper.getInputColumnFamily(conf));
+        keyspace = quote(ConfigHelper.getInputKeyspace(conf));
         cqlQuery = CqlConfigHelper.getInputCql(conf);
         partitioner = ConfigHelper.getInputPartitioner(context.getConfiguration());
         try
@@ -133,6 +132,8 @@ public class CqlRecordReader extends RecordReader<Long, Row>
     {
         if (session != null)
             session.close();
+        if (cluster != null)
+            cluster.close();
     }
 
     public Long getCurrentKey()
@@ -483,5 +484,10 @@ public class CqlRecordReader extends RecordReader<Long, Row>
         {
             return row.getMap(name, keysClass, valuesClass);
         }
+    }
+
+    private String quote(String identifier)
+    {
+        return "\"" + identifier.replaceAll("\"", "\"\"") + "\"";
     }
 }

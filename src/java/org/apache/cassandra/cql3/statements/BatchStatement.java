@@ -20,8 +20,12 @@ package org.apache.cassandra.cql3.statements;
 import java.nio.ByteBuffer;
 import java.util.*;
 
-import com.google.common.collect.Iterables;
+import com.google.common.base.Function;
+import com.google.common.collect.*;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.github.jamm.MemoryMeter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.db.*;
@@ -37,6 +41,9 @@ import org.apache.cassandra.transport.messages.ResultMessage;
  */
 public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
 {
+    private static boolean loggedCASTimestamp = false;
+    private static boolean loggedCounterTimestamp = false;
+
     public static enum Type
     {
         LOGGED, UNLOGGED, COUNTER
@@ -47,6 +54,7 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
     private final List<ModificationStatement> statements;
     private final Attributes attrs;
     private final boolean hasConditions;
+    private static final Logger logger = LoggerFactory.getLogger(BatchStatement.class);
 
     /**
      * Creates a new BatchStatement from a list of statements and a
@@ -97,10 +105,31 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
         if (attrs.isTimeToLiveSet())
             throw new InvalidRequestException("Global TTL on the BATCH statement is not supported.");
 
+        boolean timestampSet = attrs.isTimestampSet();
+        if (timestampSet)
+        {
+            if (hasConditions && !loggedCASTimestamp)
+            {
+                logger.warn("Detected use of 'USING TIMESTAMP' on a BATCH with conditions. This is invalid, " +
+                            "custom timestamps are not allowed when conditions are used and the timestamp has been ignored. " +
+                            "Such queries will be rejected in Cassandra 2.1+ - please fix your queries before then.");
+                loggedCASTimestamp = true;
+            }
+            if (type == Type.COUNTER && !loggedCounterTimestamp)
+            {
+                logger.warn("Detected use of 'USING TIMESTAMP' in a counter BATCH. This is invalid " +
+                            "because counters do not use timestamps, and the timestamp has been ignored. " +
+                            "Such queries will be rejected in Cassandra 2.1+ - please fix your queries before then.");
+                loggedCounterTimestamp = true;
+            }
+        }
+
         for (ModificationStatement statement : statements)
         {
-            if (attrs.isTimestampSet() && statement.isTimestampSet())
+            if (timestampSet && statement.isTimestampSet())
                 throw new InvalidRequestException("Timestamp must be set either on BATCH or individual statements");
+
+            statement.validate(state);
         }
     }
 
@@ -117,7 +146,8 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
         {
             ModificationStatement statement = statements.get(i);
             List<ByteBuffer> statementVariables = variables.getVariablesForStatement(i);
-            addStatementMutations(statement, statementVariables, local, cl, now, mutations);
+            long timestamp = attrs.getTimestamp(now, statementVariables);
+            addStatementMutations(statement, statementVariables, local, cl, timestamp, mutations);
         }
         return unzipMutations(mutations);
     }
@@ -176,6 +206,29 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
         }
     }
 
+    /**
+     * Checks batch size to ensure threshold is met. If not, a warning is logged.
+     * @param cfs ColumnFamilies that will store the batch's mutations.
+     */
+    private void verifyBatchSize(Iterable<ColumnFamily> cfs)
+    {
+        long size = 0;
+        long warnThreshold = DatabaseDescriptor.getBatchSizeWarnThreshold();
+
+        for (ColumnFamily cf : cfs)
+            size += cf.dataSize();
+
+        if (size > warnThreshold)
+        {
+            Set<String> ksCfPairs = new HashSet<>();
+            for (ColumnFamily cf : cfs)
+                ksCfPairs.add(cf.metadata().ksName + "." + cf.metadata().cfName);
+
+            String format = "Batch of prepared statements for {} is of size {}, exceeding specified threshold of {} by {}.";
+            logger.warn(format, ksCfPairs, size, warnThreshold, size - warnThreshold);
+        }
+    }
+
     public ResultMessage execute(QueryState queryState, QueryOptions options) throws RequestExecutionException, RequestValidationException
     {
         if (options.getConsistency() == null)
@@ -206,9 +259,20 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
 
     private void executeWithoutConditions(Collection<? extends IMutation> mutations, ConsistencyLevel cl) throws RequestExecutionException, RequestValidationException
     {
+        // Extract each collection of cfs from it's IMutation and then lazily concatenate all of them into a single Iterable.
+        Iterable<ColumnFamily> cfs = Iterables.concat(Iterables.transform(mutations, new Function<IMutation, Collection<ColumnFamily>>()
+        {
+            public Collection<ColumnFamily> apply(IMutation im)
+            {
+                return im.getColumnFamilies();
+            }
+        }));
+        verifyBatchSize(cfs);
+
         boolean mutateAtomic = (type == Type.LOGGED && mutations.size() > 1);
         StorageProxy.mutateWithTriggers(mutations, cl, mutateAtomic);
     }
+
 
     private ResultMessage executeWithConditions(BatchVariables variables, ConsistencyLevel cl, ConsistencyLevel serialCf, long now)
     throws RequestExecutionException, RequestValidationException
@@ -258,6 +322,7 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
             }
         }
 
+        verifyBatchSize(Collections.singleton(updates));
         ColumnFamily result = StorageProxy.cas(ksName, cfName, key, conditions, updates, serialCf, cl);
         return new ResultMessage.Rows(ModificationStatement.buildCasResultSet(ksName, key, cfName, result, columnsWithConditions, true));
     }
