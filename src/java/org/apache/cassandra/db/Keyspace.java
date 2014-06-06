@@ -237,9 +237,9 @@ public class Keyspace
      * @param snapshotName the user supplied snapshot name. It empty or null,
      *                     all the snapshots will be cleaned
      */
-    public void clearSnapshot(String snapshotName)
+    public static void clearSnapshot(String snapshotName, String keyspace)
     {
-        List<File> snapshotDirs = Directories.getKSChildDirectories(getName());
+        List<File> snapshotDirs = Directories.getKSChildDirectories(keyspace);
         Directories.clearSnapshot(snapshotName, snapshotDirs);
     }
 
@@ -389,7 +389,7 @@ public class Keyspace
         if (logger.isDebugEnabled())
             logger.debug("Indexing row {} ", cfs.metadata.getKeyValidator().getString(key.key));
 
-        Collection<SecondaryIndex> indexes = cfs.indexManager.getIndexesByNames(idxNames);
+        Set<SecondaryIndex> indexes = cfs.indexManager.getIndexesByNames(idxNames);
 
         switchLock.readLock().lock();
         try

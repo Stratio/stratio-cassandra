@@ -54,14 +54,14 @@ public class ColumnFamilyInputFormat extends AbstractColumnFamilyInputFormat<Byt
 
     public org.apache.hadoop.mapred.RecordReader<ByteBuffer, SortedMap<ByteBuffer, Column>> getRecordReader(org.apache.hadoop.mapred.InputSplit split, JobConf jobConf, final Reporter reporter) throws IOException
     {
-        TaskAttemptContext tac = new TaskAttemptContext(jobConf, TaskAttemptID.forName(jobConf.get(MAPRED_TASK_ID)))
-        {
-            @Override
-            public void progress()
-            {
-                reporter.progress();
-            }
-        };
+        TaskAttemptContext tac = HadoopCompat.newMapContext(
+                jobConf,
+                TaskAttemptID.forName(jobConf.get(MAPRED_TASK_ID)),
+                null,
+                null,
+                null,
+                new ReporterWrapper(reporter),
+                null);
 
         ColumnFamilyRecordReader recordReader = new ColumnFamilyRecordReader(jobConf.getInt(CASSANDRA_HADOOP_MAX_KEY_SIZE, CASSANDRA_HADOOP_MAX_KEY_SIZE_DEFAULT));
         recordReader.initialize((org.apache.hadoop.mapreduce.InputSplit)split, tac);

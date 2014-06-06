@@ -46,6 +46,7 @@ import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.service.MigrationManager;
 import org.apache.cassandra.thrift.IndexType;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.FBUtilities;
 
 public class SchemaLoader
 {
@@ -172,6 +173,11 @@ public class SchemaLoader
                                                           IntegerType.instance,
                                                           null),
                                            new CFMetaData(ks1,
+                                                          "StandardLong3",
+                                                          st,
+                                                          LongType.instance,
+                                                          null),
+                                           new CFMetaData(ks1,
                                                           "Counter1",
                                                           st,
                                                           bytes,
@@ -209,7 +215,18 @@ public class SchemaLoader
                                                                                .compactionStrategyOptions(leveledOptions),
                                            standardCFMD(ks1, "legacyleveled")
                                                                                .compactionStrategyClass(LeveledCompactionStrategy.class)
-                                                                               .compactionStrategyOptions(leveledOptions)));
+                                                                               .compactionStrategyOptions(leveledOptions),
+                                           standardCFMD(ks1, "UUIDKeys").keyValidator(UUIDType.instance),
+                                           new CFMetaData(ks1,
+                                                          "MixedTypes",
+                                                          st,
+                                                          LongType.instance,
+                                                          null).keyValidator(UUIDType.instance).defaultValidator(BooleanType.instance),
+                                           new CFMetaData(ks1,
+                                                          "MixedTypesComposite",
+                                                          st,
+                                                          composite,
+                                                          null).keyValidator(composite).defaultValidator(BooleanType.instance)));
 
         // Keyspace 2
         schema.add(KSMetaData.testMetadata(ks2,
@@ -300,7 +317,14 @@ public class SchemaLoader
                                                               + "k int PRIMARY KEY,"
                                                               + "v1 text,"
                                                               + "v2 int"
-                                                              + ")", ks_cql)));
+                                                              + ")", ks_cql),
+
+                                           CFMetaData.compile("CREATE TABLE table2 ("
+                                                              + "k text,"
+                                                              + "c text,"
+                                                              + "v text,"
+                                                              + "PRIMARY KEY (k, c))", ks_cql)
+                                           ));
 
 
         if (Boolean.parseBoolean(System.getProperty("cassandra.test.compression", "false")))
@@ -439,7 +463,7 @@ public class SchemaLoader
         for (int i = offset; i < offset + numberOfRows; i++)
         {
             DecoratedKey key = Util.dk("key" + i);
-            store.getColumnFamily(QueryFilter.getNamesFilter(key, columnFamily, ByteBufferUtil.bytes("col" + i), System.currentTimeMillis()));
+            store.getColumnFamily(QueryFilter.getNamesFilter(key, columnFamily, FBUtilities.singleton(ByteBufferUtil.bytes("col" + i), store.getComparator()), System.currentTimeMillis()));
         }
     }
 

@@ -258,12 +258,13 @@ public abstract class SecondaryIndex
 
     void removeColumnDef(ByteBuffer name)
     {
-        Iterator<ColumnDefinition> it = columnDefs.iterator();
-        while (it.hasNext())
-        {
-            if (it.next().name.equals(name))
-                it.remove();
-        }
+        Set<ColumnDefinition> newColumnDefs = Collections.newSetFromMap(new ConcurrentHashMap<ColumnDefinition, Boolean>());
+		for (ColumnDefinition columnDefinition : columnDefs)
+			if (!columnDefinition.name.equals(name))
+				newColumnDefs.add(columnDefinition);
+		columnDefs.clear();
+		for (ColumnDefinition columnDefinition : newColumnDefs)
+			columnDefs.add(columnDefinition);
     }
 
     /**

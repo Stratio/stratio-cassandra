@@ -20,26 +20,32 @@ package org.apache.cassandra.cql3.statements;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import com.google.common.base.Function;
+import com.google.common.collect.Iterables;
 import org.github.jamm.MemoryMeter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.auth.Permission;
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.filter.ColumnSlice;
+import org.apache.cassandra.db.filter.IDiskAtomFilter;
 import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.db.marshal.ListType;
 import org.apache.cassandra.db.marshal.BooleanType;
 import org.apache.cassandra.exceptions.*;
+import org.apache.cassandra.service.CASConditions;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.QueryState;
 import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.thrift.ThriftValidation;
 import org.apache.cassandra.transport.messages.ResultMessage;
 import org.apache.cassandra.utils.Pair;
-import org.apache.cassandra.utils.ByteBufferUtil;
 
 /*
  * Abstract parent class of individual modifications, i.e. INSERT, UPDATE and DELETE.
@@ -48,6 +54,14 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
 {
     private static final ColumnIdentifier CAS_RESULT_COLUMN = new ColumnIdentifier("[applied]", false);
 
+    private static final Logger logger = LoggerFactory.getLogger(ModificationStatement.class);
+
+    private static boolean loggedCounterTTL = false;
+    private static boolean loggedCounterTimestamp = false;
+
+    public static enum StatementType { INSERT, UPDATE, DELETE }
+    public final StatementType type;
+
     public final CFMetaData cfm;
     public final Attributes attrs;
 
@@ -55,11 +69,28 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
     private final List<Operation> columnOperations = new ArrayList<Operation>();
 
     private int boundTerms;
-    private List<Operation> columnConditions;
+    // Separating normal and static conditions makes things somewhat easier
+    private List<ColumnCondition> columnConditions;
+    private List<ColumnCondition> staticConditions;
     private boolean ifNotExists;
+    private boolean ifExists;
 
-    public ModificationStatement(CFMetaData cfm, Attributes attrs)
+    private boolean hasNoClusteringColumns = true;
+
+    private boolean setsStaticColumns;
+    private boolean setsRegularColumns;
+
+    private final Function<ColumnCondition, ColumnIdentifier> getColumnForCondition = new Function<ColumnCondition, ColumnIdentifier>()
     {
+        public ColumnIdentifier apply(ColumnCondition cond)
+        {
+            return cond.column.name;
+        }
+    };
+
+    public ModificationStatement(StatementType type, CFMetaData cfm, Attributes attrs)
+    {
+        this.type = type;
         this.cfm = cfm;
         this.attrs = attrs;
     }
@@ -70,11 +101,12 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
              + meter.measureDeep(attrs)
              + meter.measureDeep(processedKeys)
              + meter.measureDeep(columnOperations)
-             + (columnConditions == null ? 0 : meter.measureDeep(columnConditions));
+             + (columnConditions == null ? 0 : meter.measureDeep(columnConditions))
+             + (staticConditions == null ? 0 : meter.measureDeep(staticConditions));
     }
 
     public abstract boolean requireFullClusteringKey();
-    public abstract ColumnFamily updateForKey(ByteBuffer key, ColumnNameBuilder builder, UpdateParameters params) throws InvalidRequestException;
+    public abstract void addUpdateForKey(ColumnFamily updates, ByteBuffer key, ColumnNameBuilder builder, UpdateParameters params) throws InvalidRequestException;
 
     public int getBoundTerms()
     {
@@ -124,10 +156,33 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
     {
         if (hasConditions() && attrs.isTimestampSet())
             throw new InvalidRequestException("Custom timestamps are not allowed when conditions are used");
+
+        if (isCounter())
+        {
+            if (attrs.isTimestampSet() && !loggedCounterTimestamp)
+            {
+                logger.warn("Detected use of 'USING TIMESTAMP' in a counter UPDATE. This is invalid " +
+                            "because counters do not use timestamps, and the timestamp has been ignored. " +
+                            "Such queries will be rejected in Cassandra 2.1+ - please fix your queries before then.");
+                loggedCounterTimestamp = true;
+            }
+
+            if (attrs.isTimeToLiveSet() && !loggedCounterTTL)
+            {
+                logger.warn("Detected use of 'USING TTL' in a counter UPDATE. This is invalid " +
+                            "because counter tables do not support TTL, and the TTL value has been ignored. " +
+                            "Such queries will be rejected in Cassandra 2.1+ - please fix your queries before then.");
+                loggedCounterTTL = true;
+            }
+        }
     }
 
     public void addOperation(Operation op)
     {
+        if (op.isStatic(cfm))
+            setsStaticColumns = true;
+        else
+            setsRegularColumns = true;
         columnOperations.add(op);
     }
 
@@ -136,12 +191,33 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
         return columnOperations;
     }
 
-    public void addCondition(Operation op)
+    public Iterable<ColumnIdentifier> getColumnsWithConditions()
     {
-        if (columnConditions == null)
-            columnConditions = new ArrayList<Operation>();
+        if (ifNotExists || ifExists)
+            return null;
 
-        columnConditions.add(op);
+        return Iterables.concat(columnConditions == null ? Collections.<ColumnIdentifier>emptyList() : Iterables.transform(columnConditions, getColumnForCondition),
+                                staticConditions == null ? Collections.<ColumnIdentifier>emptyList() : Iterables.transform(staticConditions, getColumnForCondition));
+    }
+
+    public void addCondition(ColumnCondition cond) throws InvalidRequestException
+    {
+        List<ColumnCondition> conds = null;
+        if (cond.column.kind == CFDefinition.Name.Kind.STATIC)
+        {
+            setsStaticColumns = true;
+            if (staticConditions == null)
+                staticConditions = new ArrayList<ColumnCondition>();
+            conds = staticConditions;
+        }
+        else
+        {
+            setsRegularColumns = true;
+            if (columnConditions == null)
+                columnConditions = new ArrayList<ColumnCondition>();
+            conds = columnConditions;
+        }
+        conds.add(cond);
     }
 
     public void setIfNotExistCondition()
@@ -149,13 +225,30 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
         ifNotExists = true;
     }
 
-    private void addKeyValues(ColumnIdentifier name, Restriction values) throws InvalidRequestException
+    public boolean hasIfNotExistCondition()
     {
-        if (processedKeys.put(name, values) != null)
-            throw new InvalidRequestException(String.format("Multiple definitions found for PRIMARY KEY part %s", name));
+        return ifNotExists;
     }
 
-    public void addKeyValue(ColumnIdentifier name, Term value) throws InvalidRequestException
+    public void setIfExistCondition()
+    {
+        ifExists = true;
+    }
+
+    public boolean hasIfExistCondition()
+    {
+        return ifExists;
+    }
+
+    private void addKeyValues(CFDefinition.Name name, Restriction values) throws InvalidRequestException
+    {
+        if (name.kind == CFDefinition.Name.Kind.COLUMN_ALIAS)
+            hasNoClusteringColumns = false;
+        if (processedKeys.put(name.name, values) != null)
+            throw new InvalidRequestException(String.format("Multiple definitions found for PRIMARY KEY part %s", name.name));
+    }
+
+    public void addKeyValue(CFDefinition.Name name, Term value) throws InvalidRequestException
     {
         addKeyValues(name, new Restriction.EQ(value, false));
     }
@@ -206,10 +299,11 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
                         throw new InvalidRequestException(String.format("Invalid operator %s for PRIMARY KEY part %s", rel.operator(), name));
                     }
 
-                    addKeyValues(name.name, restriction);
+                    addKeyValues(name, restriction);
                     break;
                 case VALUE_ALIAS:
                 case COLUMN_METADATA:
+                case STATIC:
                     throw new InvalidRequestException(String.format("Non PRIMARY KEY %s found in where clause", name));
             }
         }
@@ -221,7 +315,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
         CFDefinition cfDef = cfm.getCfDef();
         ColumnNameBuilder keyBuilder = cfDef.getKeyNameBuilder();
         List<ByteBuffer> keys = new ArrayList<ByteBuffer>();
-        for (CFDefinition.Name name : cfDef.keys.values())
+        for (CFDefinition.Name name : cfDef.partitionKeys())
         {
             Restriction r = processedKeys.get(name.name);
             if (r == null)
@@ -235,7 +329,9 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
                 {
                     if (val == null)
                         throw new InvalidRequestException(String.format("Invalid null value for partition key part %s", name));
-                    keys.add(keyBuilder.copy().add(val).build());
+                    ByteBuffer key = keyBuilder.copy().add(val).build();
+                    ThriftValidation.validateKey(cfm, key);
+                    keys.add(key);
                 }
             }
             else
@@ -254,10 +350,56 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
     public ColumnNameBuilder createClusteringPrefixBuilder(List<ByteBuffer> variables)
     throws InvalidRequestException
     {
+        // If the only updated/deleted columns are static, then we don't need clustering columns.
+        // And in fact, unless it is an INSERT, we reject if clustering colums are provided as that
+        // suggest something unintended. For instance, given:
+        //   CREATE TABLE t (k int, v int, s int static, PRIMARY KEY (k, v))
+        // it can make sense to do:
+        //   INSERT INTO t(k, v, s) VALUES (0, 1, 2)
+        // but both
+        //   UPDATE t SET s = 3 WHERE k = 0 AND v = 1
+        //   DELETE v FROM t WHERE k = 0 AND v = 1
+        // sounds like you don't really understand what your are doing.
+        if (setsStaticColumns && !setsRegularColumns)
+        {
+            // If we set no non-static columns, then it's fine not to have clustering columns
+            if (hasNoClusteringColumns)
+                return cfm.getStaticColumnNameBuilder();
+
+            // If we do have clustering columns however, then either it's an INSERT and the query is valid
+            // but we still need to build a proper prefix, or it's not an INSERT, and then we want to reject
+            // (see above)
+            if (type != StatementType.INSERT)
+            {
+                for (CFDefinition.Name name : cfm.getCfDef().clusteringColumns())
+                    if (processedKeys.get(name.name) != null)
+                        throw new InvalidRequestException(String.format("Invalid restriction on clustering column %s since the %s statement modifies only static columns", name.name, type));
+                // we should get there as it contradicts hasNoClusteringColumns == false
+                throw new AssertionError();
+            }
+        }
+
+        return createClusteringPrefixBuilderInternal(variables);
+    }
+
+    private ColumnNameBuilder updatePrefixFor(ByteBuffer name, ColumnNameBuilder prefix)
+    {
+        return isStatic(name) ? cfm.getStaticColumnNameBuilder() : prefix;
+    }
+
+    public boolean isStatic(ByteBuffer name)
+    {
+        ColumnDefinition def = cfm.getColumnDefinition(name);
+        return def != null && def.type == ColumnDefinition.Type.STATIC;
+    }
+
+    private ColumnNameBuilder createClusteringPrefixBuilderInternal(List<ByteBuffer> variables)
+    throws InvalidRequestException
+    {
         CFDefinition cfDef = cfm.getCfDef();
         ColumnNameBuilder builder = cfDef.getColumnNameBuilder();
         CFDefinition.Name firstEmptyKey = null;
-        for (CFDefinition.Name name : cfDef.columns.values())
+        for (CFDefinition.Name name : cfDef.clusteringColumns())
         {
             Restriction r = processedKeys.get(name.name);
             if (r == null)
@@ -285,7 +427,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
 
     protected CFDefinition.Name getFirstEmptyKey()
     {
-        for (CFDefinition.Name name : cfm.getCfDef().columns.values())
+        for (CFDefinition.Name name : cfm.getCfDef().clusteringColumns())
         {
             if (processedKeys.get(name.name) == null)
                 return name;
@@ -293,7 +435,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
         return null;
     }
 
-    protected Map<ByteBuffer, ColumnGroupMap> readRequiredRows(List<ByteBuffer> partitionKeys, ColumnNameBuilder clusteringPrefix, boolean local, ConsistencyLevel cl)
+    protected Map<ByteBuffer, ColumnGroupMap> readRequiredRows(Collection<ByteBuffer> partitionKeys, ColumnNameBuilder clusteringPrefix, boolean local, ConsistencyLevel cl)
     throws RequestExecutionException, RequestValidationException
     {
         // Lists SET operation incurs a read.
@@ -311,7 +453,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
         return toRead == null ? null : readRows(partitionKeys, clusteringPrefix, toRead, (CompositeType)cfm.comparator, local, cl);
     }
 
-    private Map<ByteBuffer, ColumnGroupMap> readRows(List<ByteBuffer> partitionKeys, ColumnNameBuilder clusteringPrefix, Set<ByteBuffer> toRead, CompositeType composite, boolean local, ConsistencyLevel cl)
+    private Map<ByteBuffer, ColumnGroupMap> readRows(Collection<ByteBuffer> partitionKeys, ColumnNameBuilder clusteringPrefix, Set<ByteBuffer> toRead, CompositeType composite, boolean local, ConsistencyLevel cl)
     throws RequestExecutionException, RequestValidationException
     {
         try
@@ -327,8 +469,9 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
         int i = 0;
         for (ByteBuffer name : toRead)
         {
-            ByteBuffer start = clusteringPrefix.copy().add(name).build();
-            ByteBuffer finish = clusteringPrefix.copy().add(name).buildAsEndOfRange();
+            ColumnNameBuilder prefix = updatePrefixFor(name, clusteringPrefix);
+            ByteBuffer start = prefix.copy().add(name).build();
+            ByteBuffer finish = prefix.copy().add(name).buildAsEndOfRange();
             slices[i++] = new ColumnSlice(start, finish);
         }
 
@@ -365,7 +508,10 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
 
     public boolean hasConditions()
     {
-        return ifNotExists || (columnConditions != null && !columnConditions.isEmpty());
+        return ifNotExists
+            || ifExists
+            || (columnConditions != null && !columnConditions.isEmpty())
+            || (staticConditions != null && !staticConditions.isEmpty());
     }
 
     public ResultMessage execute(QueryState queryState, QueryOptions options)
@@ -391,7 +537,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
         else
             cl.validateForWrite(cfm.ksName);
 
-        Collection<? extends IMutation> mutations = getMutations(options.getValues(), false, cl, queryState.getTimestamp(), false);
+        Collection<? extends IMutation> mutations = getMutations(options.getValues(), false, cl, queryState.getTimestamp());
         if (!mutations.isEmpty())
             StorageProxy.mutateWithTriggers(mutations, cl, false);
 
@@ -407,40 +553,65 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
         if (keys.size() > 1)
             throw new InvalidRequestException("IN on the partition key is not supported with conditional updates");
 
-        ColumnNameBuilder clusteringPrefix = createClusteringPrefixBuilder(variables);
-
         ByteBuffer key = keys.get(0);
-        ThriftValidation.validateKey(cfm, key);
 
-        UpdateParameters updParams = new UpdateParameters(cfm, variables, queryState.getTimestamp(), getTimeToLive(variables), null);
-        ColumnFamily updates = updateForKey(key, clusteringPrefix, updParams);
-
-        // When building the conditions, we should not use the TTL. It's not useful, and if a very low ttl (1 seconds) is used, it's possible
-        // for it to expire before actually build the conditions which would break since we would then test for the presence of tombstones.
-        UpdateParameters condParams = new UpdateParameters(cfm, variables, queryState.getTimestamp(), 0, null);
-        ColumnFamily expected = buildConditions(key, clusteringPrefix, condParams);
+        CQL3CasConditions conditions = new CQL3CasConditions(cfm, queryState.getTimestamp());
+        ColumnNameBuilder prefix = createClusteringPrefixBuilder(variables);
+        ColumnFamily updates = UnsortedColumns.factory.create(cfm);
+        addUpdatesAndConditions(key, prefix, updates, conditions, variables, getTimestamp(queryState.getTimestamp(), variables));
 
         ColumnFamily result = StorageProxy.cas(keyspace(),
                                                columnFamily(),
                                                key,
-                                               clusteringPrefix,
-                                               expected,
+                                               conditions,
                                                updates,
                                                options.getSerialConsistency(),
                                                options.getConsistency());
         return new ResultMessage.Rows(buildCasResultSet(key, result));
     }
 
+    public void addUpdatesAndConditions(ByteBuffer key, ColumnNameBuilder clusteringPrefix, ColumnFamily updates, CQL3CasConditions conditions, List<ByteBuffer> variables, long now)
+    throws InvalidRequestException
+    {
+        UpdateParameters updParams = new UpdateParameters(cfm, variables, now, getTimeToLive(variables), null);
+        addUpdateForKey(updates, key, clusteringPrefix, updParams);
+
+        if (ifNotExists)
+        {
+            // If we use ifNotExists, if the statement applies to any non static columns, then the condition is on the row of the non-static
+            // columns and the prefix should be the rowPrefix. But if only static columns are set, then the ifNotExists apply to the existence
+            // of any static columns and we should use the prefix for the "static part" of the partition.
+            conditions.addNotExist(clusteringPrefix);
+        }
+        else if (ifExists)
+        {
+            conditions.addExist(clusteringPrefix);
+        }
+        else
+        {
+            if (columnConditions != null)
+                conditions.addConditions(clusteringPrefix, columnConditions, variables);
+            if (staticConditions != null)
+                conditions.addConditions(cfm.getStaticColumnNameBuilder(), staticConditions, variables);
+        }
+    }
+
     private ResultSet buildCasResultSet(ByteBuffer key, ColumnFamily cf) throws InvalidRequestException
+    {
+        return buildCasResultSet(keyspace(), key, columnFamily(), cf, getColumnsWithConditions(), false);
+    }
+
+    public static ResultSet buildCasResultSet(String ksName, ByteBuffer key, String cfName, ColumnFamily cf, Iterable<ColumnIdentifier> columnsWithConditions, boolean isBatch)
+    throws InvalidRequestException
     {
         boolean success = cf == null;
 
-        ColumnSpecification spec = new ColumnSpecification(keyspace(), columnFamily(), CAS_RESULT_COLUMN, BooleanType.instance);
+        ColumnSpecification spec = new ColumnSpecification(ksName, cfName, CAS_RESULT_COLUMN, BooleanType.instance);
         ResultSet.Metadata metadata = new ResultSet.Metadata(Collections.singletonList(spec));
         List<List<ByteBuffer>> rows = Collections.singletonList(Collections.singletonList(BooleanType.instance.decompose(success)));
 
         ResultSet rs = new ResultSet(metadata, rows);
-        return success ? rs : merge(rs, buildCasFailureResultSet(key, cf));
+        return success ? rs : merge(rs, buildCasFailureResultSet(key, cf, columnsWithConditions, isBatch));
     }
 
     private static ResultSet merge(ResultSet left, ResultSet right)
@@ -450,31 +621,44 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
         else if (right.size() == 0)
             return left;
 
-        assert left.size() == 1 && right.size() == 1;
+        assert left.size() == 1;
         int size = left.metadata.names.size() + right.metadata.names.size();
         List<ColumnSpecification> specs = new ArrayList<ColumnSpecification>(size);
         specs.addAll(left.metadata.names);
         specs.addAll(right.metadata.names);
-        List<ByteBuffer> row = new ArrayList<ByteBuffer>(size);
-        row.addAll(left.rows.get(0));
-        row.addAll(right.rows.get(0));
-        return new ResultSet(new ResultSet.Metadata(specs), Collections.singletonList(row));
+        List<List<ByteBuffer>> rows = new ArrayList<>(right.size());
+        for (int i = 0; i < right.size(); i++)
+        {
+            List<ByteBuffer> row = new ArrayList<ByteBuffer>(size);
+            row.addAll(left.rows.get(0));
+            row.addAll(right.rows.get(i));
+            rows.add(row);
+        }
+        return new ResultSet(new ResultSet.Metadata(specs), rows);
     }
 
-    private ResultSet buildCasFailureResultSet(ByteBuffer key, ColumnFamily cf) throws InvalidRequestException
+    private static ResultSet buildCasFailureResultSet(ByteBuffer key, ColumnFamily cf, Iterable<ColumnIdentifier> columnsWithConditions, boolean isBatch)
+    throws InvalidRequestException
     {
-        CFDefinition cfDef = cfm.getCfDef();
+        CFDefinition cfDef = cf.metadata().getCfDef();
 
         Selection selection;
-        if (ifNotExists)
+        if (columnsWithConditions == null)
         {
             selection = Selection.wildcard(cfDef);
         }
         else
         {
-            List<CFDefinition.Name> names = new ArrayList<CFDefinition.Name>(columnConditions.size());
-            for (Operation condition : columnConditions)
-                names.add(cfDef.get(condition.columnName));
+            List<CFDefinition.Name> names = new ArrayList<CFDefinition.Name>();
+            // Adding the partition key for batches to disambiguate if the conditions span multipe rows (we don't add them outside
+            // of batches for compatibility sakes).
+            if (isBatch)
+            {
+                names.addAll(cfDef.partitionKeys());
+                names.addAll(cfDef.clusteringColumns());
+            }
+            for (ColumnIdentifier id : columnsWithConditions)
+                names.add(cfDef.get(id));
             selection = Selection.forColumns(names);
         }
 
@@ -490,7 +674,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
         if (hasConditions())
             throw new UnsupportedOperationException();
 
-        for (IMutation mutation : getMutations(Collections.<ByteBuffer>emptyList(), true, null, queryState.getTimestamp(), false))
+        for (IMutation mutation : getMutations(Collections.<ByteBuffer>emptyList(), true, null, queryState.getTimestamp()))
             mutation.apply();
         return null;
     }
@@ -506,78 +690,53 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
      * @return list of the mutations
      * @throws InvalidRequestException on invalid requests
      */
-    public Collection<? extends IMutation> getMutations(List<ByteBuffer> variables, boolean local, ConsistencyLevel cl, long now, boolean isBatch)
+    private Collection<? extends IMutation> getMutations(List<ByteBuffer> variables, boolean local, ConsistencyLevel cl, long now)
     throws RequestExecutionException, RequestValidationException
     {
         List<ByteBuffer> keys = buildPartitionKeyNames(variables);
         ColumnNameBuilder clusteringPrefix = createClusteringPrefixBuilder(variables);
 
-        // Some lists operation requires reading
-        Map<ByteBuffer, ColumnGroupMap> rows = readRequiredRows(keys, clusteringPrefix, local, cl);
-        UpdateParameters params = new UpdateParameters(cfm, variables, getTimestamp(now, variables), getTimeToLive(variables), rows);
+        UpdateParameters params = makeUpdateParameters(keys, clusteringPrefix, variables, local, cl, now);
 
         Collection<IMutation> mutations = new ArrayList<IMutation>();
         for (ByteBuffer key: keys)
         {
             ThriftValidation.validateKey(cfm, key);
-            ColumnFamily cf = updateForKey(key, clusteringPrefix, params);
-            mutations.add(makeMutation(key, cf, cl, isBatch));
+            ColumnFamily cf = UnsortedColumns.factory.create(cfm);
+            addUpdateForKey(cf, key, clusteringPrefix, params);
+            RowMutation rm = new RowMutation(cfm.ksName, key, cf);
+            mutations.add(isCounter() ? new CounterMutation(rm, cl) : rm);
         }
         return mutations;
     }
 
-    private IMutation makeMutation(ByteBuffer key, ColumnFamily cf, ConsistencyLevel cl, boolean isBatch)
+    public UpdateParameters makeUpdateParameters(Collection<ByteBuffer> keys,
+                                                 ColumnNameBuilder prefix,
+                                                 List<ByteBuffer> variables,
+                                                 boolean local,
+                                                 ConsistencyLevel cl,
+                                                 long now)
+    throws RequestExecutionException, RequestValidationException
     {
-        RowMutation rm;
-        if (isBatch)
-        {
-            // we might group other mutations together with this one later, so make it mutable
-            rm = new RowMutation(cfm.ksName, key);
-            rm.add(cf);
-        }
-        else
-        {
-            rm = new RowMutation(cfm.ksName, key, cf);
-        }
-        return isCounter() ? new CounterMutation(rm, cl) : rm;
-    }
-
-    private ColumnFamily buildConditions(ByteBuffer key, ColumnNameBuilder clusteringPrefix, UpdateParameters params)
-    throws InvalidRequestException
-    {
-        if (ifNotExists)
-            return null;
-
-        ColumnFamily cf = TreeMapBackedSortedColumns.factory.create(cfm);
-
-        // CQL row marker
-        CFDefinition cfDef = cfm.getCfDef();
-        if (cfDef.isComposite && !cfDef.isCompact && !cfm.isSuper())
-        {
-            ByteBuffer name = clusteringPrefix.copy().add(ByteBufferUtil.EMPTY_BYTE_BUFFER).build();
-            cf.addColumn(params.makeColumn(name, ByteBufferUtil.EMPTY_BYTE_BUFFER));
-        }
-
-        // Conditions
-        for (Operation condition : columnConditions)
-            condition.execute(key, cf, clusteringPrefix.copy(), params);
-
-        assert !cf.isEmpty();
-        return cf;
+        // Some lists operation requires reading
+        Map<ByteBuffer, ColumnGroupMap> rows = readRequiredRows(keys, prefix, local, cl);
+        return new UpdateParameters(cfm, variables, getTimestamp(now, variables), getTimeToLive(variables), rows);
     }
 
     public static abstract class Parsed extends CFStatement
     {
         protected final Attributes.Raw attrs;
-        private final List<Pair<ColumnIdentifier, Operation.RawUpdate>> conditions;
+        protected final List<Pair<ColumnIdentifier, ColumnCondition.Raw>> conditions;
         private final boolean ifNotExists;
+        private final boolean ifExists;
 
-        protected Parsed(CFName name, Attributes.Raw attrs, List<Pair<ColumnIdentifier, Operation.RawUpdate>> conditions, boolean ifNotExists)
+        protected Parsed(CFName name, Attributes.Raw attrs, List<Pair<ColumnIdentifier, ColumnCondition.Raw>> conditions, boolean ifNotExists, boolean ifExists)
         {
             super(name);
             this.attrs = attrs;
-            this.conditions = conditions == null ? Collections.<Pair<ColumnIdentifier, Operation.RawUpdate>>emptyList() : conditions;
+            this.conditions = conditions == null ? Collections.<Pair<ColumnIdentifier, ColumnCondition.Raw>>emptyList() : conditions;
             this.ifNotExists = ifNotExists;
+            this.ifExists = ifExists;
         }
 
         public ParsedStatement.Prepared prepare() throws InvalidRequestException
@@ -601,7 +760,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
 
             ModificationStatement stmt = prepareInternal(cfDef, boundNames, preparedAttributes);
 
-            if (ifNotExists || (conditions != null && !conditions.isEmpty()))
+            if (ifNotExists || ifExists || !conditions.isEmpty())
             {
                 if (stmt.isCounter())
                     throw new InvalidRequestException("Conditional updates are not supported on counter tables");
@@ -614,28 +773,24 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
                     // To have both 'IF NOT EXISTS' and some other conditions doesn't make sense.
                     // So far this is enforced by the parser, but let's assert it for sanity if ever the parse changes.
                     assert conditions.isEmpty();
+                    assert !ifExists;
                     stmt.setIfNotExistCondition();
+                }
+                else if (ifExists)
+                {
+                    assert conditions.isEmpty();
+                    assert !ifNotExists;
+                    stmt.setIfExistCondition();
                 }
                 else
                 {
-                    for (Pair<ColumnIdentifier, Operation.RawUpdate> entry : conditions)
+                    for (Pair<ColumnIdentifier, ColumnCondition.Raw> entry : conditions)
                     {
                         CFDefinition.Name name = cfDef.get(entry.left);
                         if (name == null)
                             throw new InvalidRequestException(String.format("Unknown identifier %s", entry.left));
 
-                        /*
-                         * Lists column names are based on a server-side generated timeuuid. So we can't allow lists
-                         * operation or that would yield unexpected results (update that should apply wouldn't). So for
-                         * now, we just refuse lists, which also save use from having to bother about the read that some
-                         * list operation involve.
-                         */
-                        if (name.type instanceof ListType)
-                            throw new InvalidRequestException(String.format("List operation (%s) are not allowed in conditional updates", name));
-
-                        Operation condition = entry.right.prepare(name);
-                        assert !condition.requiresRead();
-
+                        ColumnCondition condition = entry.right.prepare(name);
                         condition.collectMarkerSpecification(boundNames);
 
                         switch (name.kind)
@@ -645,6 +800,7 @@ public abstract class ModificationStatement implements CQLStatement, MeasurableF
                                 throw new InvalidRequestException(String.format("PRIMARY KEY part %s found in SET part", entry.left));
                             case VALUE_ALIAS:
                             case COLUMN_METADATA:
+                            case STATIC:
                                 stmt.addCondition(condition);
                                 break;
                         }

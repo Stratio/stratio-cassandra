@@ -76,6 +76,8 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
         this.resolver = resolver;
         this.start = System.nanoTime();
         this.endpoints = endpoints;
+        // we don't support read repair (or rapid read protection) for range scans yet (CASSANDRA-6897)
+        assert !(resolver instanceof RangeSliceResponseResolver) || blockfor >= endpoints.size();
     }
 
     public boolean await(long timePastStart, TimeUnit unit)
@@ -96,9 +98,6 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
         if (!await(command.getTimeout(), TimeUnit.MILLISECONDS))
         {
             // Same as for writes, see AbstractWriteResponseHandler
-            int acks = received.get();
-            if (resolver.isDataPresent() && acks >= blockfor)
-                acks = blockfor - 1;
             ReadTimeoutException ex = new ReadTimeoutException(consistencyLevel, received.get(), blockfor, resolver.isDataPresent());
             if (logger.isDebugEnabled())
                 logger.debug("Read timeout: {}", ex.toString());
@@ -117,7 +116,10 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
         if (n >= blockfor && resolver.isDataPresent())
         {
             condition.signalAll();
-            maybeResolveForRepair(n);
+            // kick off a background digest comparison if this is a result that (may have) arrived after
+            // the original resolve that get() kicks off as soon as the condition is signaled
+            if (blockfor < endpoints.size() && n == endpoints.size())
+                StageManager.getStage(Stage.READ_REPAIR).execute(new AsyncRepairRunner());
         }
     }
 
@@ -147,19 +149,6 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
                                                        MessagingService.Verb.INTERNAL_RESPONSE,
                                                        MessagingService.current_version);
         response(message);
-    }
-
-    /**
-     * Check digests in the background on the Repair stage if we've received replies
-     * to all the requests we sent.
-     */
-    protected void maybeResolveForRepair(int n)
-    {
-        if (blockfor < endpoints.size() && n == endpoints.size())
-        {
-            assert resolver.isDataPresent();
-            StageManager.getStage(Stage.READ_REPAIR).execute(new AsyncRepairRunner());
-        }
     }
 
     public void assureSufficientLiveNodes() throws UnavailableException

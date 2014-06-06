@@ -23,7 +23,9 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
-import com.google.common.collect.*;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,7 +34,7 @@ import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.service.MigrationManager;
-import org.apache.cassandra.tracing.Tracing;
+import org.apache.cassandra.utils.ConcurrentBiMap;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.Pair;
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
@@ -58,7 +60,7 @@ public class Schema
     private final Map<String, Keyspace> keyspaceInstances = new NonBlockingHashMap<String, Keyspace>();
 
     /* metadata map for faster ColumnFamily lookup */
-    private final BiMap<Pair<String, String>, UUID> cfIdMap = HashBiMap.create();
+    private final ConcurrentBiMap<Pair<String, String>, UUID> cfIdMap = new ConcurrentBiMap<>();
 
     private volatile UUID version;
 
@@ -233,20 +235,6 @@ public class Schema
     }
 
     /**
-     * Get value validator for specific column
-     *
-     * @param ksName The keyspace name
-     * @param cfName The ColumnFamily name
-     * @param column The name of the column
-     *
-     * @return value validator specific to the column or default (per-cf) one
-     */
-    public AbstractType<?> getValueValidator(String ksName, String cfName, ByteBuffer column)
-    {
-        return getCFMetaData(ksName, cfName).getValueValidator(column);
-    }
-
-    /**
      * Get metadata about keyspace by its name
      *
      * @param keyspaceName The name of the keyspace
@@ -385,6 +373,10 @@ public class Schema
                 if (invalidSchemaRow(row) || ignoredSchemaRow(row))
                     continue;
 
+                // we want to digest only live columns
+                ColumnFamilyStore.removeDeletedColumnsOnly(row.cf, Integer.MAX_VALUE);
+                row.cf.purgeTombstones(Integer.MAX_VALUE);
+                
                 row.cf.updateDigest(versionDigest);
             }
 

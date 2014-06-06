@@ -77,7 +77,8 @@ public class ColumnCounter
     {
         private final CompositeType type;
         private final int toGroup;
-        private ByteBuffer[] last;
+        private ByteBuffer[] previous;
+        private boolean previousGroupIsStatic;
 
         /**
          * A column counter that count only 1 for all the columns sharing a
@@ -115,24 +116,42 @@ public class ColumnCounter
             ByteBuffer[] current = type.split(column.name());
             assert current.length >= toGroup;
 
-            if (last != null)
+            if (previous == null)
             {
-                boolean isSameGroup = true;
-                for (int i = 0; i < toGroup; i++)
+                // Only the first group can be static
+                previousGroupIsStatic = type.isStaticName(column.name());
+            }
+            else
+            {
+                boolean isSameGroup = previousGroupIsStatic == type.isStaticName(column.name());
+                if (isSameGroup)
                 {
-                    if (ByteBufferUtil.compareUnsigned(last[i], current[i]) != 0)
+                    for (int i = 0; i < toGroup; i++)
                     {
-                        isSameGroup = false;
-                        break;
+                        if (ByteBufferUtil.compareUnsigned(previous[i], current[i]) != 0)
+                        {
+                            isSameGroup = false;
+                            break;
+                        }
                     }
                 }
 
                 if (isSameGroup)
                     return;
+
+                // We want to count the static group as 1 (CQL) row only if it's the only
+                // group in the partition. So, since we have already counted it at this point,
+                // just don't count the 2nd group if there is one and the first one was static
+                if (previousGroupIsStatic)
+                {
+                    previous = current;
+                    previousGroupIsStatic = false;
+                    return;
+                }
             }
 
             live++;
-            last = current;
+            previous = current;
         }
     }
 }

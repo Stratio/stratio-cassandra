@@ -723,7 +723,7 @@ def update_countername_completer(ctxt, cass):
     cqltype = layout.get_column(curcol).cqltype
     coltype = cqltype.typename
     if coltype == 'counter':
-        return maybe_escape_name(curcol)
+        return [maybe_escape_name(curcol)]
     if coltype in ('map', 'set'):
         return ["{"]
     if coltype == 'list':
@@ -741,7 +741,7 @@ def update_counter_inc_completer(ctxt, cass):
     layout = get_cf_layout(ctxt, cass)
     curcol = dequote_name(ctxt.get_binding('updatecol', ''))
     if layout.is_counter_col(curcol):
-        return Hint('<wholenumber>')
+        return [Hint('<wholenumber>')]
     return []
 
 @completer_for('assignment', 'listadder')
@@ -749,6 +749,7 @@ def update_listadder_completer(ctxt, cass):
     rhs = ctxt.get_binding('update_rhs')
     if rhs.startswith('['):
         return ['+']
+    return []
 
 @completer_for('assignment', 'listcol')
 def update_listcol_completer(ctxt, cass):
@@ -851,8 +852,8 @@ syntax_rules += r'''
                     ;
 
 <compositeKeyCfSpec> ::= [newcolname]=<cident> <simpleStorageType>
-                         "," [newcolname]=<cident> <storageType>
-                         ( "," [newcolname]=<cident> <storageType> )*
+                         "," [newcolname]=<cident> <storageType> ( "static" )?
+                         ( "," [newcolname]=<cident> <storageType> ( "static" )? )*
                          "," "PRIMARY" k="KEY" p="(" ( partkey=<pkDef> | [pkey]=<cident> )
                                                      ( c="," [pkey]=<cident> )* ")"
                        ;
@@ -985,7 +986,7 @@ syntax_rules += r'''
                                <alterInstructions>
                         ;
 <alterInstructions> ::= "ALTER" existcol=<cident> "TYPE" <storageType>
-                      | "ADD" newcol=<cident> <storageType>
+                      | "ADD" newcol=<cident> <storageType> ("static")?
                       | "DROP" existcol=<cident>
                       | "WITH" <cfamProperty> ( "AND" <cfamProperty> )*
                       | "RENAME" existcol=<cident> "TO" newcol=<cident>
@@ -1103,6 +1104,9 @@ class CqlColumnDef:
         if c.index_type == 'CUSTOM':
             c.index_options = json.loads(layout[u'index_options'])
         return c
+
+    def is_static(self):
+        return self.component_type == 'static'
 
     def __str__(self):
         indexstr = ' (index %s)' % self.index_name if self.index_name is not None else ''

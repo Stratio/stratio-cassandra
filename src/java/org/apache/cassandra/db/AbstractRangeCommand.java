@@ -63,7 +63,11 @@ public abstract class AbstractRangeCommand implements IReadCommand {
 		else if (countCQL3Rows())
 			return rows;
 		else
-			return rows.size() > limit() ? rows.subList(0, limit()) : rows;
+			return trim(rows);
+	}
+	
+	public List<Row> trim(List<Row> rows) {
+		return rows.size() > limit() ? rows.subList(0, limit()) : rows;
 	}
 
 	public String getKeyspace() {

@@ -23,6 +23,8 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.cassandra.hadoop.HadoopCompat;
+import org.apache.hadoop.util.Progressable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,7 +38,6 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.exceptions.SyntaxException;
 import org.apache.cassandra.hadoop.AbstractColumnFamilyRecordWriter;
 import org.apache.cassandra.hadoop.ConfigHelper;
-import org.apache.cassandra.hadoop.Progressable;
 import org.apache.cassandra.thrift.*;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
@@ -64,7 +65,7 @@ final class CqlRecordWriter extends AbstractColumnFamilyRecordWriter<Map<String,
     private static final Logger logger = LoggerFactory.getLogger(CqlRecordWriter.class);
 
     // handles for clients for each range running in the threadpool
-    private final Map<Range, RangeClient> clients;
+    private final Map<InetAddress, RangeClient> clients;
 
     // host to prepared statement id mappings
     private ConcurrentHashMap<Cassandra.Client, Integer> preparedStatements = new ConcurrentHashMap<Cassandra.Client, Integer>();
@@ -84,8 +85,8 @@ final class CqlRecordWriter extends AbstractColumnFamilyRecordWriter<Map<String,
      */
     CqlRecordWriter(TaskAttemptContext context) throws IOException
     {
-        this(context.getConfiguration());
-        this.progressable = new Progressable(context);
+        this(HadoopCompat.getConfiguration(context));
+        this.context = context;
     }
 
     CqlRecordWriter(Configuration conf, Progressable progressable) throws IOException
@@ -97,7 +98,7 @@ final class CqlRecordWriter extends AbstractColumnFamilyRecordWriter<Map<String,
     CqlRecordWriter(Configuration conf)
     {
         super(conf);
-        this.clients = new HashMap<Range, RangeClient>();
+        this.clients = new HashMap<>();
 
         try
         {
@@ -162,13 +163,14 @@ final class CqlRecordWriter extends AbstractColumnFamilyRecordWriter<Map<String,
         Range<Token> range = ringCache.getRange(getPartitionKey(keyColumns));
 
         // get the client for the given range, or create a new one
-        RangeClient client = clients.get(range);
+	final InetAddress address = ringCache.getEndpoint(range).get(0);
+        RangeClient client = clients.get(address);
         if (client == null)
         {
             // haven't seen keys for this range: create new client
             client = new RangeClient(ringCache.getEndpoint(range));
             client.start();
-            clients.put(range, client);
+            clients.put(address, client);
         }
 
         // add primary key columns to the bind variables
@@ -179,7 +181,11 @@ final class CqlRecordWriter extends AbstractColumnFamilyRecordWriter<Map<String,
             allValues.add(keyColumns.get(column));
 
         client.put(allValues);
-        progressable.progress();
+
+        if (progressable != null)
+            progressable.progress();
+        if (context != null)
+            HadoopCompat.progress(context);
     }
 
     /**
