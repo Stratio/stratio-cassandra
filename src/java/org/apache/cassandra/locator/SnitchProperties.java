@@ -18,6 +18,7 @@
 package org.apache.cassandra.locator;
 
 import java.io.InputStream;
+import java.net.URL;
 import java.util.Properties;
 
 import org.apache.cassandra.io.util.FileUtils;
@@ -32,15 +33,24 @@ public class SnitchProperties
 
     static
     {
-        InputStream stream = SnitchProperties.class.getClassLoader().getResourceAsStream(RACKDC_PROPERTY_FILENAME);
+        properties = new Properties();
+        InputStream stream = null;
+        String configURL = System.getProperty(RACKDC_PROPERTY_FILENAME);
         try
         {
+            URL url;
+            if (configURL == null)
+                url = SnitchProperties.class.getClassLoader().getResource(RACKDC_PROPERTY_FILENAME);
+            else 
+            	url = new URL(configURL);
+            
+            stream = url.openStream(); // catch block handles potential NPE
             properties.load(stream);
         }
         catch (Exception e)
         {
-            // do not throw exception here, just consider this a incomplete or a empty property file.
-            logger.warn("Unable to read " + RACKDC_PROPERTY_FILENAME);
+            // do not throw exception here, just consider this an incomplete or an empty property file.
+            logger.warn("Unable to read {}", ((configURL != null) ? configURL : RACKDC_PROPERTY_FILENAME));
         }
         finally
         {

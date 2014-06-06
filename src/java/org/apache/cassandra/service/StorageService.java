@@ -45,6 +45,7 @@ import com.google.common.util.concurrent.Uninterruptibles;
 import org.apache.cassandra.cql3.CQL3Type;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Level;
+import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +58,6 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.*;
-import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.db.index.SecondaryIndex;
 import org.apache.cassandra.dht.*;
@@ -103,8 +103,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     /* JMX notification serial number counter */
     private final AtomicLong notificationSerialNumber = new AtomicLong();
-
-    private final AtomicDouble severity = new AtomicDouble();
 
     private static int getRingDelay()
     {
@@ -208,8 +206,9 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         SystemKeyspace.updateTokens(tokens);
         tokenMetadata.updateNormalTokens(tokens, FBUtilities.getBroadcastAddress());
         // order is important here, the gossiper can fire in between adding these two states.  It's ok to send TOKENS without STATUS, but *not* vice versa.
-        Gossiper.instance.addLocalApplicationState(ApplicationState.TOKENS, valueFactory.tokens(getLocalTokens()));
-        Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS, valueFactory.normal(getLocalTokens()));
+        Collection<Token> localTokens = getLocalTokens();
+        Gossiper.instance.addLocalApplicationState(ApplicationState.TOKENS, valueFactory.tokens(localTokens));
+        Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS, valueFactory.normal(localTokens));
         setMode(Mode.NORMAL, false);
     }
 
@@ -659,9 +658,10 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             // for bootstrap to get the load info it needs.
             // (we won't be part of the storage ring though until we add a counterId to our state, below.)
             // Seed the host ID-to-endpoint map with our own ID.
-            getTokenMetadata().updateHostId(SystemKeyspace.getLocalHostId(), FBUtilities.getBroadcastAddress());
+            UUID localHostId = SystemKeyspace.getLocalHostId();
+            getTokenMetadata().updateHostId(localHostId, FBUtilities.getBroadcastAddress());
             appStates.put(ApplicationState.NET_VERSION, valueFactory.networkVersion());
-            appStates.put(ApplicationState.HOST_ID, valueFactory.hostId(SystemKeyspace.getLocalHostId()));
+            appStates.put(ApplicationState.HOST_ID, valueFactory.hostId(localHostId));
             appStates.put(ApplicationState.RPC_ADDRESS, valueFactory.rpcaddress(DatabaseDescriptor.getRpcAddress()));
             appStates.put(ApplicationState.RELEASE_VERSION, valueFactory.releaseVersion());
             logger.info("Starting up server gossip");
@@ -1054,6 +1054,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         bgMonitor.incrCompactionSeverity(incr);
     }
 
+    public void reportManualSeverity(double incr)
+    {
+        bgMonitor.incrManualSeverity(incr);
+    }
+
     public double getSeverity(InetAddress endpoint)
     {
         return bgMonitor.getSeverity(endpoint);
@@ -1420,6 +1425,35 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         }
     }
 
+    private void updatePeerInfo(InetAddress endpoint)
+    {
+        EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
+        for (Map.Entry<ApplicationState, VersionedValue> entry : epState.getApplicationStateMap().entrySet())
+        {
+            switch (entry.getKey())
+            {
+                case RELEASE_VERSION:
+                    SystemKeyspace.updatePeerInfo(endpoint, "release_version", quote(entry.getValue().value));
+                    break;
+                case DC:
+                    SystemKeyspace.updatePeerInfo(endpoint, "data_center", quote(entry.getValue().value));
+                    break;
+                case RACK:
+                    SystemKeyspace.updatePeerInfo(endpoint, "rack", quote(entry.getValue().value));
+                    break;
+                case RPC_ADDRESS:
+                    SystemKeyspace.updatePeerInfo(endpoint, "rpc_address", quote(entry.getValue().value));
+                    break;
+                case SCHEMA:
+                    SystemKeyspace.updatePeerInfo(endpoint, "schema_version", entry.getValue().value);
+                    break;
+                case HOST_ID:
+                    SystemKeyspace.updatePeerInfo(endpoint, "host_id", entry.getValue().value);
+                    break;
+            }
+        }
+    }
+
     private String quote(String value)
     {
         return "'" + value + "'";
@@ -1521,6 +1555,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         if (tokenMetadata.isMember(endpoint))
             logger.info("Node " + endpoint + " state jump to normal");
 
+        updatePeerInfo(endpoint);
         // Order Matters, TM.updateHostID() should be called before TM.updateNormalToken(), (see CASSANDRA-4300).
         if (Gossiper.instance.usesHostId(endpoint))
         {
@@ -1571,8 +1606,9 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             else if (endpoint.equals(currentOwner))
             {
                 // set state back to normal, since the node may have tried to leave, but failed and is now back up
-                // no need to persist, token/ip did not change
                 tokensToUpdateInMetadata.add(token);
+                if (!isClientMode)
+                    tokensToUpdateInSystemKeyspace.add(token);
             }
             else if (tokenMetadata.isRelocating(token) && tokenMetadata.getRelocatingRanges().get(token).equals(endpoint))
             {
@@ -2790,9 +2826,44 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     public void setLog4jLevel(String classQualifier, String rawLevel)
     {
+        org.apache.log4j.Logger log4jlogger = org.apache.log4j.Logger.getLogger(classQualifier);
+        // if both classQualifer and rawLevel are empty, reload from configuration
+        if (StringUtils.isBlank(classQualifier) && StringUtils.isBlank(rawLevel))
+        {
+            LogManager.resetConfiguration();
+            CassandraDaemon.initLog4j();
+            return;
+        }
+        // classQualifer is set, but blank level given
+        else if (StringUtils.isNotBlank(classQualifier) && StringUtils.isBlank(rawLevel))
+        {
+            if (log4jlogger.getLevel() != null || log4jlogger.getAllAppenders().hasMoreElements())
+                log4jlogger.setLevel(null);
+            return;
+        }
+
         Level level = Level.toLevel(rawLevel);
-        org.apache.log4j.Logger.getLogger(classQualifier).setLevel(level);
-        logger.info("set log level to " + level + " for classes under '" + classQualifier + "' (if the level doesn't look like '" + rawLevel + "' then log4j couldn't parse '" + rawLevel + "')");
+        log4jlogger.setLevel(level);
+        logger.info("set log level to {} for classes under '{}' (if the level doesn't look like '{}' then the logger couldn't parse '{}')", level, classQualifier, rawLevel, rawLevel);
+    }
+
+    /**
+     * @return the runtime logging levels for all the configured loggers
+     */
+    @Override
+    public Map<String,String> getLoggingLevels()
+    {
+        Map<String, String> logLevelMaps = Maps.newLinkedHashMap();
+        org.apache.log4j.Logger rootLogger = org.apache.log4j.Logger.getRootLogger();
+        logLevelMaps.put(rootLogger.getName(), rootLogger.getLevel().toString());
+        Enumeration<org.apache.log4j.Logger> loggers = LogManager.getCurrentLoggers();
+        while (loggers.hasMoreElements())
+        {
+            org.apache.log4j.Logger logger= loggers.nextElement();
+            if (logger.getLevel() != null)
+                logLevelMaps.put(logger.getName(), logger.getLevel().toString());
+        }
+        return logLevelMaps;
     }
 
     /**
@@ -3064,7 +3135,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     private class RangeRelocator
     {
-        private StreamPlan streamPlan = new StreamPlan("Bootstrap");
+        private StreamPlan streamPlan = new StreamPlan("Relocation");
 
         private RangeRelocator(Collection<Token> tokens, List<String> keyspaceNames)
         {
