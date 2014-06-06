@@ -40,129 +40,148 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * 
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class CellMapperBigDecimal extends CellMapper<String> {
+public class CellMapperBigDecimal extends CellMapper<String>
+{
 
-	public static final int DEFAULT_INTEGER_DIGITS = 32;
-	public static final int DEFAULT_DECIMAL_DIGITS = 32;
+    public static final int DEFAULT_INTEGER_DIGITS = 32;
+    public static final int DEFAULT_DECIMAL_DIGITS = 32;
 
-	private final int integerDigits;
-	private final int decimalDigits;
+    private final int integerDigits;
+    private final int decimalDigits;
 
-	private final BigDecimal complement;
+    private final BigDecimal complement;
 
-	@JsonCreator
-	public CellMapperBigDecimal(@JsonProperty("integer_digits") Integer integerDigits,
-	                            @JsonProperty("decimal_digits") Integer decimalDigits) {
-		super(new AbstractType<?>[] { AsciiType.instance,
-		                             UTF8Type.instance,
-		                             Int32Type.instance,
-		                             LongType.instance,
-		                             IntegerType.instance,
-		                             FloatType.instance,
-		                             DoubleType.instance,
-		                             DecimalType.instance });
+    @JsonCreator
+    public CellMapperBigDecimal(@JsonProperty("integer_digits") Integer integerDigits,
+                                @JsonProperty("decimal_digits") Integer decimalDigits)
+    {
+        super(new AbstractType<?>[] { AsciiType.instance,
+                UTF8Type.instance,
+                Int32Type.instance,
+                LongType.instance,
+                IntegerType.instance,
+                FloatType.instance,
+                DoubleType.instance,
+                DecimalType.instance });
 
-		// Setup integer part mapping
-		if (integerDigits != null && integerDigits <= 0) {
-			throw new IllegalArgumentException("Positive integer part digits required");
-		}
-		this.integerDigits = integerDigits == null ? DEFAULT_INTEGER_DIGITS : integerDigits;
+        // Setup integer part mapping
+        if (integerDigits != null && integerDigits <= 0)
+        {
+            throw new IllegalArgumentException("Positive integer part digits required");
+        }
+        this.integerDigits = integerDigits == null ? DEFAULT_INTEGER_DIGITS : integerDigits;
 
-		// Setup decimal part mapping
-		if (decimalDigits != null && decimalDigits <= 0) {
-			throw new IllegalArgumentException("Positive decimal part digits required");
-		}
-		this.decimalDigits = decimalDigits == null ? DEFAULT_DECIMAL_DIGITS : decimalDigits;
+        // Setup decimal part mapping
+        if (decimalDigits != null && decimalDigits <= 0)
+        {
+            throw new IllegalArgumentException("Positive decimal part digits required");
+        }
+        this.decimalDigits = decimalDigits == null ? DEFAULT_DECIMAL_DIGITS : decimalDigits;
 
-		int totalDigits = this.integerDigits + this.decimalDigits;
-		BigDecimal divisor = BigDecimal.valueOf(10).pow(this.decimalDigits);
-		BigDecimal dividend = BigDecimal.valueOf(10).pow(totalDigits).subtract(BigDecimal.valueOf(1));
-		complement = dividend.divide(divisor);
-	}
+        int totalDigits = this.integerDigits + this.decimalDigits;
+        BigDecimal divisor = BigDecimal.valueOf(10).pow(this.decimalDigits);
+        BigDecimal dividend = BigDecimal.valueOf(10).pow(totalDigits).subtract(BigDecimal.valueOf(1));
+        complement = dividend.divide(divisor);
+    }
 
-	public int getIntegerDigits() {
-		return integerDigits;
-	}
+    public int getIntegerDigits()
+    {
+        return integerDigits;
+    }
 
-	public int getDecimalDigits() {
-		return decimalDigits;
-	}
+    public int getDecimalDigits()
+    {
+        return decimalDigits;
+    }
 
-	@Override
-	public Analyzer analyzer() {
-		return EMPTY_ANALYZER;
-	}
+    @Override
+    public Analyzer analyzer()
+    {
+        return EMPTY_ANALYZER;
+    }
 
-	@Override
-	public String indexValue(String name, Object value) {
+    @Override
+    public String indexValue(String name, Object value)
+    {
 
-		// Check not null
-		if (value == null) {
-			return null;
-		}
+        // Check not null
+        if (value == null)
+        {
+            return null;
+        }
 
-		// Parse big decimal
-		String svalue = value.toString();
-		BigDecimal bd;
-		try {
-			bd = new BigDecimal(value.toString());
-		} catch (NumberFormatException e) {
-			String message = String.format("Field %s requires a base 10 decimal, but found \"%s\"", name, svalue);
-			throw new IllegalArgumentException(message);
-		}
+        // Parse big decimal
+        String svalue = value.toString();
+        BigDecimal bd;
+        try
+        {
+            bd = new BigDecimal(value.toString());
+        }
+        catch (NumberFormatException e)
+        {
+            String message = String.format("Field %s requires a base 10 decimal, but found \"%s\"", name, svalue);
+            throw new IllegalArgumentException(message);
+        }
 
-		// Split integer and decimal part
-		bd = bd.stripTrailingZeros();
-		String[] parts = bd.toPlainString().split("\\.");
-		String integerPart = parts[0];
-		String decimalPart = parts.length == 1 ? "0" : parts[1];
+        // Split integer and decimal part
+        bd = bd.stripTrailingZeros();
+        String[] parts = bd.toPlainString().split("\\.");
+        String integerPart = parts[0];
+        String decimalPart = parts.length == 1 ? "0" : parts[1];
 
-		if (integerPart.replaceFirst("-", "").length() > integerDigits) {
-			throw new IllegalArgumentException("Too much digits in integer part");
-		}
-		if (decimalPart.length() > decimalDigits) {
-			throw new IllegalArgumentException("Too much digits in decimal part");
-		}
+        if (integerPart.replaceFirst("-", "").length() > integerDigits)
+        {
+            throw new IllegalArgumentException("Too much digits in integer part");
+        }
+        if (decimalPart.length() > decimalDigits)
+        {
+            throw new IllegalArgumentException("Too much digits in decimal part");
+        }
 
-		BigDecimal complemented = bd.add(complement);
-		String bds[] = complemented.toString().split("\\.");
-		integerPart = bds[0];
-		decimalPart = bds.length == 2 ? bds[1] : "0";
-		integerPart = StringUtils.leftPad(integerPart, integerDigits + 1, '0');
+        BigDecimal complemented = bd.add(complement);
+        String bds[] = complemented.toString().split("\\.");
+        integerPart = bds[0];
+        decimalPart = bds.length == 2 ? bds[1] : "0";
+        integerPart = StringUtils.leftPad(integerPart, integerDigits + 1, '0');
 
-		return integerPart + "." + decimalPart;
-	}
+        return integerPart + "." + decimalPart;
+    }
 
-	@Override
-	public String queryValue(String name, Object value) {
-		return indexValue(name, value);
-	}
+    @Override
+    public String queryValue(String name, Object value)
+    {
+        return indexValue(name, value);
+    }
 
-	@Override
-	public Field field(String name, Object value) {
-		String string = indexValue(name, value);
-		return new StringField(name, string, STORE);
-	}
-	
-	@Override
-	public SortField sortField(String field, boolean reverse) {
-		return new SortField(field, Type.STRING, reverse);
-	}
+    @Override
+    public Field field(String name, Object value)
+    {
+        String string = indexValue(name, value);
+        return new StringField(name, string, STORE);
+    }
 
-	@Override
-	public Class<String> baseClass() {
-		return String.class;
-	}
+    @Override
+    public SortField sortField(String field, boolean reverse)
+    {
+        return new SortField(field, Type.STRING, reverse);
+    }
 
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("CellMapperBigDecimal [integerDigits=");
-		builder.append(integerDigits);
-		builder.append(", decimalDigits=");
-		builder.append(decimalDigits);
-		builder.append("]");
-		return builder.toString();
-	}
+    @Override
+    public Class<String> baseClass()
+    {
+        return String.class;
+    }
+
+    @Override
+    public String toString()
+    {
+        StringBuilder builder = new StringBuilder();
+        builder.append("CellMapperBigDecimal [integerDigits=");
+        builder.append(integerDigits);
+        builder.append(", decimalDigits=");
+        builder.append(decimalDigits);
+        builder.append("]");
+        return builder.toString();
+    }
 
 }

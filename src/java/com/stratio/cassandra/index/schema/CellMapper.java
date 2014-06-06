@@ -49,82 +49,95 @@ import org.codehaus.jackson.annotate.JsonTypeInfo;
         @JsonSubTypes.Type(value = CellMapperUUID.class, name = "uuid"),
         @JsonSubTypes.Type(value = CellMapperBigDecimal.class, name = "bigdec"),
         @JsonSubTypes.Type(value = CellMapperBigInteger.class, name = "bigint"), })
-public abstract class CellMapper<BASE> {
+public abstract class CellMapper<BASE>
+{
 
-	protected static final Analyzer EMPTY_ANALYZER = new KeywordAnalyzer();
+    protected static final Analyzer EMPTY_ANALYZER = new KeywordAnalyzer();
 
-	protected static final Store STORE = Store.NO;
+    protected static final Store STORE = Store.NO;
 
-	protected final AbstractType<?>[] supportedTypes;
+    protected final AbstractType<?>[] supportedTypes;
 
-	protected CellMapper(AbstractType<?>[] supportedTypes) {
-		this.supportedTypes = supportedTypes;
-	}
+    protected CellMapper(AbstractType<?>[] supportedTypes)
+    {
+        this.supportedTypes = supportedTypes;
+    }
 
-	public static Cell cell(String name, ByteBuffer value, AbstractType<?> type) {
-		return new Cell(name, value, type);
-	}
+    public static Cell cell(String name, ByteBuffer value, AbstractType<?> type)
+    {
+        return new Cell(name, value, type);
+    }
 
-	public static Cell cell(String name, String nameSufix, ByteBuffer value, AbstractType<?> type) {
-		return new Cell(name, nameSufix, value, type);
-	}
+    public static Cell cell(String name, String nameSufix, ByteBuffer value, AbstractType<?> type)
+    {
+        return new Cell(name, nameSufix, value, type);
+    }
 
-	public abstract Analyzer analyzer();
+    public abstract Analyzer analyzer();
 
-	/**
-	 * Returns the Lucene's {@link org.apache.lucene.document.Field} resulting from the mapping of
-	 * {@code value}, using {@code name} as field's name.
-	 * 
-	 * @param name
-	 *            The name of the Lucene's field.
-	 * @param value
-	 *            The value of the Lucene's field.
-	 * @return The Lucene's {@link org.apache.lucene.document.Field} resulting from the mapping of
-	 *         {@code value}, using {@code name} as field's name.
-	 */
-	public abstract Field field(String name, Object value);
+    /**
+     * Returns the Lucene's {@link org.apache.lucene.document.Field} resulting from the mapping of {@code value}, using
+     * {@code name} as field's name.
+     * 
+     * @param name
+     *            The name of the Lucene's field.
+     * @param value
+     *            The value of the Lucene's field.
+     * @return The Lucene's {@link org.apache.lucene.document.Field} resulting from the mapping of {@code value}, using
+     *         {@code name} as field's name.
+     */
+    public abstract Field field(String name, Object value);
 
-	/**
-	 * Returns the Lucene's type for this mapper.
-	 * 
-	 * @return The Lucene's type for this mapper.
-	 */
-	public abstract Class<BASE> baseClass();
+    /**
+     * Returns the Lucene's type for this mapper.
+     * 
+     * @return The Lucene's type for this mapper.
+     */
+    public abstract Class<BASE> baseClass();
 
-	/**
-	 * Returns the cell value resulting from the mapping of the specified object.
-	 * 
-	 * @param field
-	 *            The field name.
-	 * @param value
-	 *            The object to be mapped.
-	 * @return The cell value resulting from the mapping of the specified object.
-	 */
-	public abstract BASE indexValue(String field, Object value);
+    /**
+     * Returns the cell value resulting from the mapping of the specified object.
+     * 
+     * @param field
+     *            The field name.
+     * @param value
+     *            The object to be mapped.
+     * @return The cell value resulting from the mapping of the specified object.
+     */
+    public abstract BASE indexValue(String field, Object value);
 
-	public abstract BASE queryValue(String field, Object value);
+    public abstract BASE queryValue(String field, Object value);
 
-	public abstract SortField sortField(String field, boolean reverse);
+    public abstract SortField sortField(String field, boolean reverse);
 
-	public boolean supports(final AbstractType<?> type) {
+    public boolean supports(final AbstractType<?> type)
+    {
 
-		AbstractType<?> checkedType = type;
-		if (type.isCollection()) {
-			if (type instanceof MapType<?, ?>) {
-				checkedType = ((MapType<?, ?>) type).values;
-			} else if (type instanceof ListType<?>) {
-				checkedType = ((ListType<?>) type).elements;
-			} else if (type instanceof SetType) {
-				checkedType = ((SetType<?>) type).elements;
-			}
-		}
+        AbstractType<?> checkedType = type;
+        if (type.isCollection())
+        {
+            if (type instanceof MapType<?, ?>)
+            {
+                checkedType = ((MapType<?, ?>) type).values;
+            }
+            else if (type instanceof ListType<?>)
+            {
+                checkedType = ((ListType<?>) type).elements;
+            }
+            else if (type instanceof SetType)
+            {
+                checkedType = ((SetType<?>) type).elements;
+            }
+        }
 
-		for (AbstractType<?> n : supportedTypes) {
-			if (checkedType.getClass() == n.getClass()) {
-				return true;
-			}
-		}
-		return false;
-	}
+        for (AbstractType<?> n : supportedTypes)
+        {
+            if (checkedType.getClass() == n.getClass())
+            {
+                return true;
+            }
+        }
+        return false;
+    }
 
 }

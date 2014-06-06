@@ -37,92 +37,99 @@ import com.stratio.cassandra.index.util.ByteBufferUtils;
  * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
-public class PartitionKeyMapper {
+public class PartitionKeyMapper
+{
 
-	/** The Lucene's field name. */
-	public static final String FIELD_NAME = "_partition_key";
+    /** The Lucene's field name. */
+    public static final String FIELD_NAME = "_partition_key";
 
-	/** The active active partition key. */
-	private final IPartitioner<?> partitioner;
+    /** The active active partition key. */
+    private final IPartitioner<?> partitioner;
 
-	/**
-	 * Returns a new {@code PartitionKeyMapper} according to the specified column family meta data.
-	 */
-	private PartitionKeyMapper(CFMetaData metadata) {
-		partitioner = DatabaseDescriptor.getPartitioner();
-	}
+    /**
+     * Returns a new {@code PartitionKeyMapper} according to the specified column family meta data.
+     */
+    private PartitionKeyMapper(CFMetaData metadata)
+    {
+        partitioner = DatabaseDescriptor.getPartitioner();
+    }
 
-	/**
-	 * Returns a new {@code PartitionKeyMapper} according to the specified column family meta data.
-	 * 
-	 * @param metadata
-	 *            The meta data of the indexed column family.
-	 * @return a new {@code PartitionKeyMapper} according to the specified column family meta data.
-	 */
-	public static PartitionKeyMapper instance(CFMetaData metadata) {
-		return new PartitionKeyMapper(metadata);
-	}
+    /**
+     * Returns a new {@code PartitionKeyMapper} according to the specified column family meta data.
+     * 
+     * @param metadata
+     *            The meta data of the indexed column family.
+     * @return a new {@code PartitionKeyMapper} according to the specified column family meta data.
+     */
+    public static PartitionKeyMapper instance(CFMetaData metadata)
+    {
+        return new PartitionKeyMapper(metadata);
+    }
 
-	/**
-	 * Adds to the specified {@link Document} the {@link Field}s associated to the specified raw
-	 * partition key.
-	 * 
-	 * @param document
-	 *            The document in which the fields are going to be added.
-	 * @param partitionKey
-	 *            The raw partition key to be converted.
-	 */
-	public void addFields(Document document, DecoratedKey partitionKey) {
-		String serializedKey = ByteBufferUtils.toString(partitionKey.key);
-		Field field = new StringField(FIELD_NAME, serializedKey, Store.YES);
-		document.add(field);
-	}
+    /**
+     * Adds to the specified {@link Document} the {@link Field}s associated to the specified raw partition key.
+     * 
+     * @param document
+     *            The document in which the fields are going to be added.
+     * @param partitionKey
+     *            The raw partition key to be converted.
+     */
+    public void addFields(Document document, DecoratedKey partitionKey)
+    {
+        String serializedKey = ByteBufferUtils.toString(partitionKey.key);
+        Field field = new StringField(FIELD_NAME, serializedKey, Store.YES);
+        document.add(field);
+    }
 
-	/**
-	 * Returns the specified raw partition key as a Lucene's {@link Term}.
-	 * 
-	 * @param partitionKey
-	 *            The raw partition key to be converted.
-	 * @return The specified raw partition key as a Lucene's {@link Term}.
-	 */
-	public Term term(DecoratedKey partitionKey) {
-		String serializedKey = ByteBufferUtils.toString(partitionKey.key);
-		return new Term(FIELD_NAME, serializedKey);
-	}
+    /**
+     * Returns the specified raw partition key as a Lucene's {@link Term}.
+     * 
+     * @param partitionKey
+     *            The raw partition key to be converted.
+     * @return The specified raw partition key as a Lucene's {@link Term}.
+     */
+    public Term term(DecoratedKey partitionKey)
+    {
+        String serializedKey = ByteBufferUtils.toString(partitionKey.key);
+        return new Term(FIELD_NAME, serializedKey);
+    }
 
-	/**
-	 * Returns the specified raw partition key as a Lucene's {@link Query}.
-	 * 
-	 * @param partitionKey
-	 *            The raw partition key to be converted.
-	 * @return The specified raw partition key as a Lucene's {@link Query}.
-	 */
-	public Query query(DecoratedKey partitionKey) {
-		return new TermQuery(term(partitionKey));
-	}
+    /**
+     * Returns the specified raw partition key as a Lucene's {@link Query}.
+     * 
+     * @param partitionKey
+     *            The raw partition key to be converted.
+     * @return The specified raw partition key as a Lucene's {@link Query}.
+     */
+    public Query query(DecoratedKey partitionKey)
+    {
+        return new TermQuery(term(partitionKey));
+    }
 
-	/**
-	 * Returns the {@link DocoratedKey} contained in the specified Lucene's {@link Document}.
-	 * 
-	 * @param document
-	 *            the {@link Document} containing the partition key to be get.
-	 * @return The {@link DocoratedKey} contained in the specified Lucene's {@link Document}.
-	 */
-	public DecoratedKey decoratedKey(Document document) {
-		String string = document.get(FIELD_NAME);
-		ByteBuffer partitionKey = ByteBufferUtils.fromString(string);
-		return decoratedKey(partitionKey);
-	}
+    /**
+     * Returns the {@link DocoratedKey} contained in the specified Lucene's {@link Document}.
+     * 
+     * @param document
+     *            the {@link Document} containing the partition key to be get.
+     * @return The {@link DocoratedKey} contained in the specified Lucene's {@link Document}.
+     */
+    public DecoratedKey decoratedKey(Document document)
+    {
+        String string = document.get(FIELD_NAME);
+        ByteBuffer partitionKey = ByteBufferUtils.fromString(string);
+        return decoratedKey(partitionKey);
+    }
 
-	/**
-	 * Returns the specified raw partition key as a a {@link DecoratedKey}.
-	 * 
-	 * @param partitionKey
-	 *            The raw partition key to be converted.
-	 * @return The specified raw partition key as a a {@link DecoratedKey}.
-	 */
-	public DecoratedKey decoratedKey(ByteBuffer partitionKey) {
-		return partitioner.decorateKey(partitionKey);
-	}
+    /**
+     * Returns the specified raw partition key as a a {@link DecoratedKey}.
+     * 
+     * @param partitionKey
+     *            The raw partition key to be converted.
+     * @return The specified raw partition key as a a {@link DecoratedKey}.
+     */
+    public DecoratedKey decoratedKey(ByteBuffer partitionKey)
+    {
+        return partitioner.decorateKey(partitionKey);
+    }
 
 }

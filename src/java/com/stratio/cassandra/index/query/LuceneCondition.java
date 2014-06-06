@@ -30,94 +30,104 @@ import com.stratio.cassandra.index.schema.Schema;
  * 
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class LuceneCondition extends Condition {
+public class LuceneCondition extends Condition
+{
 
-	public static final String DEFAULT_FIELD = "lucene";
+    public static final String DEFAULT_FIELD = "lucene";
 
-	/** The default field name */
-	private final String defaultField;
+    /** The default field name */
+    private final String defaultField;
 
-	/** The query value */
-	private final String query;
+    /** The query value */
+    private final String query;
 
-	/**
-	 * Constructor using the field name and the value to be matched.
-	 * 
-	 * @param boost
-	 *            The boost for this query clause. Documents matching this clause will (in addition
-	 *            to the normal weightings) have their score multiplied by {@code boost}. If
-	 *            {@code null}, then {@link DEFAULT_BOOST} is used as default.
-	 * @param defaultField
-	 *            the default field name.
-	 * @param query
-	 *            the Lucene Query Syntax query.
-	 */
-	@JsonCreator
-	public LuceneCondition(@JsonProperty("boost") Float boost,
-	                       @JsonProperty("default_field") String defaultField,
-	                       @JsonProperty("query") String query) {
-		super(boost);
+    /**
+     * Constructor using the field name and the value to be matched.
+     * 
+     * @param boost
+     *            The boost for this query clause. Documents matching this clause will (in addition to the normal
+     *            weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link DEFAULT_BOOST}
+     *            is used as default.
+     * @param defaultField
+     *            the default field name.
+     * @param query
+     *            the Lucene Query Syntax query.
+     */
+    @JsonCreator
+    public LuceneCondition(@JsonProperty("boost") Float boost,
+                           @JsonProperty("default_field") String defaultField,
+                           @JsonProperty("query") String query)
+    {
+        super(boost);
 
-		this.query = query;
-		this.defaultField = defaultField == null ? DEFAULT_FIELD : defaultField;
-	}
+        this.query = query;
+        this.defaultField = defaultField == null ? DEFAULT_FIELD : defaultField;
+    }
 
-	/**
-	 * Returns the default field name.
-	 * 
-	 * @return the default field name.
-	 */
-	public String getDefaultField() {
-		return defaultField;
-	}
+    /**
+     * Returns the default field name.
+     * 
+     * @return the default field name.
+     */
+    public String getDefaultField()
+    {
+        return defaultField;
+    }
 
-	/**
-	 * Returns the Lucene Query Syntax query.
-	 * 
-	 * @return the Lucene Query Syntax query.
-	 */
-	public String getQuery() {
-		return query;
-	}
+    /**
+     * Returns the Lucene Query Syntax query.
+     * 
+     * @return the Lucene Query Syntax query.
+     */
+    public String getQuery()
+    {
+        return query;
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Query query(Schema schema) {
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Query query(Schema schema)
+    {
 
-		if (query == null) {
-			throw new IllegalArgumentException("Query statement required");
-		}
+        if (query == null)
+        {
+            throw new IllegalArgumentException("Query statement required");
+        }
 
-		try {
-			Analyzer analyzer = schema.analyzer();
-			QueryParser queryParser = new QueryParser(Version.LUCENE_46, defaultField, analyzer);
-			queryParser.setAllowLeadingWildcard(true);
-			queryParser.setLowercaseExpandedTerms(false);
-			Query luceneQuery = queryParser.parse(query);
-			luceneQuery.setBoost(boost);
-			return luceneQuery;
-		} catch (ParseException e) {
-			throw new RuntimeException("Error while parsing lucene syntax query", e);
-		}
-	}
+        try
+        {
+            Analyzer analyzer = schema.analyzer();
+            QueryParser queryParser = new QueryParser(Version.LUCENE_46, defaultField, analyzer);
+            queryParser.setAllowLeadingWildcard(true);
+            queryParser.setLowercaseExpandedTerms(false);
+            Query luceneQuery = queryParser.parse(query);
+            luceneQuery.setBoost(boost);
+            return luceneQuery;
+        }
+        catch (ParseException e)
+        {
+            throw new RuntimeException("Error while parsing lucene syntax query", e);
+        }
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append(getClass().getSimpleName());
-		builder.append(" [boost=");
-		builder.append(boost);
-		builder.append(", defaultField=");
-		builder.append(defaultField);
-		builder.append(", query=");
-		builder.append(query);
-		builder.append("]");
-		return builder.toString();
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String toString()
+    {
+        StringBuilder builder = new StringBuilder();
+        builder.append(getClass().getSimpleName());
+        builder.append(" [boost=");
+        builder.append(boost);
+        builder.append(", defaultField=");
+        builder.append(defaultField);
+        builder.append(", query=");
+        builder.append(query);
+        builder.append("]");
+        return builder.toString();
+    }
 
 }

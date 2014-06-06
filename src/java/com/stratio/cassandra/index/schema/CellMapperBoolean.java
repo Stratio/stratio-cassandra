@@ -31,70 +31,92 @@ import org.codehaus.jackson.annotate.JsonCreator;
  * 
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class CellMapperBoolean extends CellMapper<String> {
+public class CellMapperBoolean extends CellMapper<String>
+{
 
-	private static final String TRUE = "true";
-	private static final String FALSE = "false";
+    private static final String TRUE = "true";
+    private static final String FALSE = "false";
 
-	@JsonCreator
-	public CellMapperBoolean() {
-		super(new AbstractType<?>[] { AsciiType.instance, UTF8Type.instance, BooleanType.instance });
-	}
+    @JsonCreator
+    public CellMapperBoolean()
+    {
+        super(new AbstractType<?>[] { AsciiType.instance, UTF8Type.instance, BooleanType.instance });
+    }
 
-	@Override
-	public Analyzer analyzer() {
-		return EMPTY_ANALYZER;
-	}
+    @Override
+    public Analyzer analyzer()
+    {
+        return EMPTY_ANALYZER;
+    }
 
-	@Override
-	public String indexValue(String name, Object value) {
-		if (value == null) {
-			return null;
-		} else if (value instanceof Boolean) {
-			return (Boolean) value ? TRUE : FALSE;
-		} else if (value instanceof String) {
-			String s = (String) value;
-			if (s.equalsIgnoreCase(TRUE)) {
-				return TRUE;
-			} else if (s.equalsIgnoreCase(FALSE)) {
-				return FALSE;
-			}
-		}
-		throw new IllegalArgumentException();
-	}
+    @Override
+    public String indexValue(String name, Object value)
+    {
+        if (value == null)
+        {
+            return null;
+        }
+        else if (value instanceof Boolean)
+        {
+            return (Boolean) value ? TRUE : FALSE;
+        }
+        else if (value instanceof String)
+        {
+            String s = (String) value;
+            if (s.equalsIgnoreCase(TRUE))
+            {
+                return TRUE;
+            }
+            else if (s.equalsIgnoreCase(FALSE))
+            {
+                return FALSE;
+            }
+        }
+        throw new IllegalArgumentException();
+    }
 
-	@Override
-	public String queryValue(String name, Object value) {
-		if (value == null) {
-			return null;
-		} else if (value instanceof Boolean) {
-			return (Boolean) value ? TRUE : FALSE;
-		} else {
-			return value.toString();
-		}
-	}
+    @Override
+    public String queryValue(String name, Object value)
+    {
+        if (value == null)
+        {
+            return null;
+        }
+        else if (value instanceof Boolean)
+        {
+            return (Boolean) value ? TRUE : FALSE;
+        }
+        else
+        {
+            return value.toString();
+        }
+    }
 
-	@Override
-	public Field field(String name, Object value) {
-		return new StringField(name, indexValue(name, value), STORE);
-	}
-	
-	@Override
-	public SortField sortField(String field, boolean reverse) {
-		return new SortField(field, Type.STRING, reverse);
-	}
+    @Override
+    public Field field(String name, Object value)
+    {
+        return new StringField(name, indexValue(name, value), STORE);
+    }
 
-	@Override
-	public Class<String> baseClass() {
-		return String.class;
-	}
+    @Override
+    public SortField sortField(String field, boolean reverse)
+    {
+        return new SortField(field, Type.STRING, reverse);
+    }
 
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append(getClass().getSimpleName());
-		builder.append(" []");
-		return builder.toString();
-	}
+    @Override
+    public Class<String> baseClass()
+    {
+        return String.class;
+    }
+
+    @Override
+    public String toString()
+    {
+        StringBuilder builder = new StringBuilder();
+        builder.append(getClass().getSimpleName());
+        builder.append(" []");
+        return builder.toString();
+    }
 
 }

@@ -37,80 +37,99 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * 
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class CellMapperLong extends CellMapper<Long> {
+public class CellMapperLong extends CellMapper<Long>
+{
 
-	private Float DEFAULT_BOOST = 1.0f;
+    private Float DEFAULT_BOOST = 1.0f;
 
-	private final Float boost;
+    private final Float boost;
 
-	@JsonCreator
-	public CellMapperLong(@JsonProperty("boost") Float boost) {
-		super(new AbstractType<?>[] { AsciiType.instance,
-		                             UTF8Type.instance,
-		                             Int32Type.instance,
-		                             LongType.instance,
-		                             IntegerType.instance,
-		                             FloatType.instance,
-		                             DoubleType.instance,
-		                             DecimalType.instance });
-		this.boost = boost == null ? DEFAULT_BOOST : boost;
-	}
+    @JsonCreator
+    public CellMapperLong(@JsonProperty("boost") Float boost)
+    {
+        super(new AbstractType<?>[] { AsciiType.instance,
+                UTF8Type.instance,
+                Int32Type.instance,
+                LongType.instance,
+                IntegerType.instance,
+                FloatType.instance,
+                DoubleType.instance,
+                DecimalType.instance });
+        this.boost = boost == null ? DEFAULT_BOOST : boost;
+    }
 
-	@Override
-	public Analyzer analyzer() {
-		return EMPTY_ANALYZER;
-	}
+    @Override
+    public Analyzer analyzer()
+    {
+        return EMPTY_ANALYZER;
+    }
 
-	@Override
-	public Long indexValue(String name, Object value) {
-		if (value == null) {
-			return null;
-		} else if (value instanceof Number) {
-			return ((Number) value).longValue();
-		} else if (value instanceof String) {
-			String svalue = (String) value;
-			try {
-				return Double.valueOf(svalue).longValue();
-			} catch (NumberFormatException e) {
-				String message = String.format("Field %s requires a base 10 long, but found \"%s\"", name, svalue);
-				throw new IllegalArgumentException(message);
-			}
-		} else {
-			String message = String.format("Field %s requires a base 10 long, but found \"%s\"", name, value);
-			throw new IllegalArgumentException(message);
-		}
-	}
+    @Override
+    public Long indexValue(String name, Object value)
+    {
+        if (value == null)
+        {
+            return null;
+        }
+        else if (value instanceof Number)
+        {
+            return ((Number) value).longValue();
+        }
+        else if (value instanceof String)
+        {
+            String svalue = (String) value;
+            try
+            {
+                return Double.valueOf(svalue).longValue();
+            }
+            catch (NumberFormatException e)
+            {
+                String message = String.format("Field %s requires a base 10 long, but found \"%s\"", name, svalue);
+                throw new IllegalArgumentException(message);
+            }
+        }
+        else
+        {
+            String message = String.format("Field %s requires a base 10 long, but found \"%s\"", name, value);
+            throw new IllegalArgumentException(message);
+        }
+    }
 
-	@Override
-	public Long queryValue(String name, Object value) {
-		return indexValue(name, value);
-	}
+    @Override
+    public Long queryValue(String name, Object value)
+    {
+        return indexValue(name, value);
+    }
 
-	@Override
-	public Field field(String name, Object value) {
-		Long number = indexValue(name, value);
-		Field field = new LongField(name, number, STORE);
-		field.setBoost(boost);
-		return field;
-	}
-	
-	@Override
-	public SortField sortField(String field, boolean reverse) {
-		return new SortField(field, Type.LONG, reverse);
-	}
+    @Override
+    public Field field(String name, Object value)
+    {
+        Long number = indexValue(name, value);
+        Field field = new LongField(name, number, STORE);
+        field.setBoost(boost);
+        return field;
+    }
 
-	@Override
-	public Class<Long> baseClass() {
-		return Long.class;
-	}
+    @Override
+    public SortField sortField(String field, boolean reverse)
+    {
+        return new SortField(field, Type.LONG, reverse);
+    }
 
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("CellMapperLong [boost=");
-		builder.append(boost);
-		builder.append("]");
-		return builder.toString();
-	}
+    @Override
+    public Class<Long> baseClass()
+    {
+        return Long.class;
+    }
+
+    @Override
+    public String toString()
+    {
+        StringBuilder builder = new StringBuilder();
+        builder.append("CellMapperLong [boost=");
+        builder.append(boost);
+        builder.append("]");
+        return builder.toString();
+    }
 
 }

@@ -38,104 +38,113 @@ import org.apache.lucene.search.SortField;
  * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
-public abstract class TokenMapper {
+public abstract class TokenMapper
+{
 
-	/** The lazily created singleton instance. */
-	private static TokenMapper instance;
+    /** The lazily created singleton instance. */
+    private static TokenMapper instance;
 
-	protected final ColumnFamilyStore baseCfs;
+    protected final ColumnFamilyStore baseCfs;
 
-	/**
-	 * Returns the {@link TokenMapper} instance for the current partitioner.
-	 * 
-	 * @param baseCfs
-	 * @return The {@link TokenMapper} instance for the current partitioner.
-	 */
-	public static TokenMapper instance(ColumnFamilyStore baseCfs) {
-		if (instance == null) {
-			IPartitioner<?> partitioner = DatabaseDescriptor.getPartitioner();
-			if (partitioner instanceof Murmur3Partitioner) {
-				instance = new TokenMapperMurmur(baseCfs);
-			} else {
-				instance = new TokenMapperGeneric(baseCfs);
-			}
-		}
-		return instance;
-	}
+    /**
+     * Returns the {@link TokenMapper} instance for the current partitioner.
+     * 
+     * @param baseCfs
+     * @return The {@link TokenMapper} instance for the current partitioner.
+     */
+    public static TokenMapper instance(ColumnFamilyStore baseCfs)
+    {
+        if (instance == null)
+        {
+            IPartitioner<?> partitioner = DatabaseDescriptor.getPartitioner();
+            if (partitioner instanceof Murmur3Partitioner)
+            {
+                instance = new TokenMapperMurmur(baseCfs);
+            }
+            else
+            {
+                instance = new TokenMapperGeneric(baseCfs);
+            }
+        }
+        return instance;
+    }
 
-	public TokenMapper(ColumnFamilyStore baseCfs) {
-		this.baseCfs = baseCfs;
-	}
+    public TokenMapper(ColumnFamilyStore baseCfs)
+    {
+        this.baseCfs = baseCfs;
+    }
 
-	/**
-	 * Adds to the specified {@link Document} the {@link Field}s associated to the token of the
-	 * specified row key.
-	 * 
-	 * @param document
-	 *            A {@link Document}.
-	 * @param partitionKey
-	 *            The raw partition key to be added.
-	 */
-	public abstract void addFields(Document document, DecoratedKey partitionKey);
+    /**
+     * Adds to the specified {@link Document} the {@link Field}s associated to the token of the specified row key.
+     * 
+     * @param document
+     *            A {@link Document}.
+     * @param partitionKey
+     *            The raw partition key to be added.
+     */
+    public abstract void addFields(Document document, DecoratedKey partitionKey);
 
-	@SuppressWarnings({ "rawtypes", "unchecked" })
-	private boolean needsFilter(DataRange dataRange) {
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    private boolean needsFilter(DataRange dataRange)
+    {
 
-		// Get token bounds
-		AbstractBounds<Token> bounds = dataRange.keyRange().toTokenBounds();
-		Token left = bounds.left;
-		Token right = bounds.right;
+        // Get token bounds
+        AbstractBounds<Token> bounds = dataRange.keyRange().toTokenBounds();
+        Token left = bounds.left;
+        Token right = bounds.right;
 
-		// Check if it's a full cluster range
-		Token minimum = DatabaseDescriptor.getPartitioner().getMinimumToken();
-		if (left.compareTo(minimum) == 0 && right.compareTo(minimum) == 0) {
-			return false;
-		}
+        // Check if it's a full cluster range
+        Token minimum = DatabaseDescriptor.getPartitioner().getMinimumToken();
+        if (left.compareTo(minimum) == 0 && right.compareTo(minimum) == 0)
+        {
+            return false;
+        }
 
-		// Check if it's a full node range
-		String ksName = baseCfs.keyspace.getName();
-		Collection<Range<Token>> localRanges = StorageService.instance.getLocalRanges(ksName);
-		if (localRanges.size() == 1) { // No virtual nodes
-			Range<Token> nodeRange = localRanges.iterator().next();
-			if (left.compareTo(nodeRange.left) == 0 && right.compareTo(nodeRange.right) == 0) {
-				return false;
-			}
-		}
+        // Check if it's a full node range
+        String ksName = baseCfs.keyspace.getName();
+        Collection<Range<Token>> localRanges = StorageService.instance.getLocalRanges(ksName);
+        if (localRanges.size() == 1)
+        { // No virtual nodes
+            Range<Token> nodeRange = localRanges.iterator().next();
+            if (left.compareTo(nodeRange.left) == 0 && right.compareTo(nodeRange.right) == 0)
+            {
+                return false;
+            }
+        }
 
-		return true;
-	}
+        return true;
+    }
 
-	/**
-	 * Returns a Lucene's {@link Filter} for filtering documents/rows according to the row token
-	 * range specified in {@code dataRange}.
-	 * 
-	 * @param dataRange
-	 *            The data range containing the row token range to be filtered.
-	 * @return A Lucene's {@link Filter} for filtering documents/rows according to the row token
-	 *         range specified in {@code dataRage}.
-	 */
-	public Filter filter(DataRange dataRange) {
-		return needsFilter(dataRange) ? newFilter(dataRange) : null;
-	}
+    /**
+     * Returns a Lucene's {@link Filter} for filtering documents/rows according to the row token range specified in
+     * {@code dataRange}.
+     * 
+     * @param dataRange
+     *            The data range containing the row token range to be filtered.
+     * @return A Lucene's {@link Filter} for filtering documents/rows according to the row token range specified in
+     *         {@code dataRage}.
+     */
+    public Filter filter(DataRange dataRange)
+    {
+        return needsFilter(dataRange) ? newFilter(dataRange) : null;
+    }
 
-	/**
-	 * Returns a Lucene's {@link Filter} for filtering documents/rows according to the row token
-	 * range specified in {@code dataRange}.
-	 * 
-	 * @param dataRange
-	 *            The data range containing the row token range to be filtered.
-	 * @return A Lucene's {@link Filter} for filtering documents/rows according to the row token
-	 *         range specified in {@code dataRage}.
-	 */
-	public abstract Filter newFilter(DataRange dataRange);
+    /**
+     * Returns a Lucene's {@link Filter} for filtering documents/rows according to the row token range specified in
+     * {@code dataRange}.
+     * 
+     * @param dataRange
+     *            The data range containing the row token range to be filtered.
+     * @return A Lucene's {@link Filter} for filtering documents/rows according to the row token range specified in
+     *         {@code dataRage}.
+     */
+    public abstract Filter newFilter(DataRange dataRange);
 
-	/**
-	 * Returns a Lucene's {@link SortField} array for sorting documents/rows according to the
-	 * current partitioner.
-	 * 
-	 * @return A Lucene's {@link SortField} array for sorting documents/rows according to the
-	 *         current partitioner.
-	 */
-	public abstract SortField[] sortFields();
+    /**
+     * Returns a Lucene's {@link SortField} array for sorting documents/rows according to the current partitioner.
+     * 
+     * @return A Lucene's {@link SortField} array for sorting documents/rows according to the current partitioner.
+     */
+    public abstract SortField[] sortFields();
 
 }

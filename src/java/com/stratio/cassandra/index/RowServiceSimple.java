@@ -38,141 +38,156 @@ import org.apache.lucene.search.Sort;
  * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
-public class RowServiceSimple extends RowService {
+public class RowServiceSimple extends RowService
+{
 
-	/** The Lucene's fields to be loaded */
-	private static final Set<String> FIELDS_TO_LOAD;
-	static {
-		FIELDS_TO_LOAD = new HashSet<>();
-		FIELDS_TO_LOAD.add(PartitionKeyMapper.FIELD_NAME);
-	}
+    /** The Lucene's fields to be loaded */
+    private static final Set<String> FIELDS_TO_LOAD;
+    static
+    {
+        FIELDS_TO_LOAD = new HashSet<>();
+        FIELDS_TO_LOAD.add(PartitionKeyMapper.FIELD_NAME);
+    }
 
-	/** The partitioning token mapper */
-	private final TokenMapper tokenMapper;
+    /** The partitioning token mapper */
+    private final TokenMapper tokenMapper;
 
-	/** The partitioning key mapper */
-	private final PartitionKeyMapper partitionKeyMapper;
+    /** The partitioning key mapper */
+    private final PartitionKeyMapper partitionKeyMapper;
 
-	/**
-	 * Returns a new {@code RowServiceSimple} for manage simple rows.
-	 * 
-	 * @param baseCfs
-	 *            The base column family store.
-	 * @param columnDefinition
-	 *            The indexed column definition.
-	 */
-	public RowServiceSimple(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) {
-		super(baseCfs, columnDefinition);
-		partitionKeyMapper = PartitionKeyMapper.instance(metadata);
-		tokenMapper = TokenMapper.instance(baseCfs);
-	}
+    /**
+     * Returns a new {@code RowServiceSimple} for manage simple rows.
+     * 
+     * @param baseCfs
+     *            The base column family store.
+     * @param columnDefinition
+     *            The indexed column definition.
+     */
+    public RowServiceSimple(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition)
+    {
+        super(baseCfs, columnDefinition);
+        partitionKeyMapper = PartitionKeyMapper.instance(metadata);
+        tokenMapper = TokenMapper.instance(baseCfs);
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Set<String> fieldsToLoad() {
-		return FIELDS_TO_LOAD;
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Set<String> fieldsToLoad()
+    {
+        return FIELDS_TO_LOAD;
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp) {
-		DeletionInfo deletionInfo = columnFamily.deletionInfo();
-		DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(key);
-		Row row = row(partitionKey, timestamp);
-		if (row.cf.iterator().hasNext()) {
-			Document document = document(row);
-			Term term = identifyingTerm(row);
-			rowDirectory.upsert(term, document);
-		} else if (deletionInfo != null) {
-			Term term = partitionKeyMapper.term(partitionKey);
-			rowDirectory.delete(term);
-		}
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp)
+    {
+        DeletionInfo deletionInfo = columnFamily.deletionInfo();
+        DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(key);
+        Row row = row(partitionKey, timestamp);
+        if (row.cf.iterator().hasNext())
+        {
+            Document document = document(row);
+            Term term = identifyingTerm(row);
+            rowDirectory.upsert(term, document);
+        }
+        else if (deletionInfo != null)
+        {
+            Term term = partitionKeyMapper.term(partitionKey);
+            rowDirectory.delete(term);
+        }
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Document document(Row row) {
-		DecoratedKey partitionKey = row.key;
-		ColumnFamily columnFamily = row.cf;
-		Document document = new Document();
-		tokenMapper.addFields(document, partitionKey);
-		partitionKeyMapper.addFields(document, partitionKey);
-		schema.addFields(document, metadata, partitionKey, columnFamily);
-		return document;
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Document document(Row row)
+    {
+        DecoratedKey partitionKey = row.key;
+        ColumnFamily columnFamily = row.cf;
+        Document document = new Document();
+        tokenMapper.addFields(document, partitionKey);
+        partitionKeyMapper.addFields(document, partitionKey);
+        schema.addFields(document, metadata, partitionKey, columnFamily);
+        return document;
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public void deleteInner(DecoratedKey partitionKey) {
-		Term term = partitionKeyMapper.term(partitionKey);
-		rowDirectory.delete(term);
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteInner(DecoratedKey partitionKey)
+    {
+        Term term = partitionKeyMapper.term(partitionKey);
+        rowDirectory.delete(term);
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	protected Row row(Document document, long timestamp) {
-		DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
-		return row(partitionKey, timestamp);
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected Row row(Document document, long timestamp)
+    {
+        DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
+        return row(partitionKey, timestamp);
+    }
 
-	/**
-	 * Returns the CQL3 {@link Row} identified by the specified key pair, using the specified time
-	 * stamp to ignore deleted columns. The {@link Row} is retrieved from the storage engine, so it
-	 * involves IO operations.
-	 * 
-	 * @param partitionKey
-	 *            The partition key.
-	 * @param timestamp
-	 *            The time stamp to ignore deleted columns.
-	 * @return The CQL3 {@link Row} identified by the specified key pair.
-	 */
-	private Row row(DecoratedKey partitionKey, long timestamp) {
-		QueryFilter queryFilter = QueryFilter.getIdentityFilter(partitionKey, metadata.cfName, timestamp);
-		return row(queryFilter, timestamp);
-	}
+    /**
+     * Returns the CQL3 {@link Row} identified by the specified key pair, using the specified time stamp to ignore
+     * deleted columns. The {@link Row} is retrieved from the storage engine, so it involves IO operations.
+     * 
+     * @param partitionKey
+     *            The partition key.
+     * @param timestamp
+     *            The time stamp to ignore deleted columns.
+     * @return The CQL3 {@link Row} identified by the specified key pair.
+     */
+    private Row row(DecoratedKey partitionKey, long timestamp)
+    {
+        QueryFilter queryFilter = QueryFilter.getIdentityFilter(partitionKey, metadata.cfName, timestamp);
+        return row(queryFilter, timestamp);
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	protected Sort sort() {
-		return new Sort(tokenMapper.sortFields());
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected Sort sort()
+    {
+        return new Sort(tokenMapper.sortFields());
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	protected Filter filter(DataRange dataRange) {
-		return tokenMapper.filter(dataRange);
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected Filter filter(DataRange dataRange)
+    {
+        return tokenMapper.filter(dataRange);
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	protected Term identifyingTerm(Row row) {
-		DecoratedKey partitionKey = row.key;
-		return partitionKeyMapper.term(partitionKey);
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected Term identifyingTerm(Row row)
+    {
+        DecoratedKey partitionKey = row.key;
+        return partitionKeyMapper.term(partitionKey);
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	protected ByteBuffer getUniqueId(Document document) {
-		DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
-		return partitionKey.key;
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected ByteBuffer getUniqueId(Document document)
+    {
+        DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
+        return partitionKey.key;
+    }
 
 }

@@ -30,71 +30,76 @@ import com.stratio.cassandra.index.schema.CellMapperInteger;
 import com.stratio.cassandra.index.schema.CellMapperString;
 import com.stratio.cassandra.index.schema.Schema;
 
-public class WildcardConditionTest {
+public class WildcardConditionTest
+{
 
-	@Test
-	public void testString() {
+    @Test
+    public void testString()
+    {
 
-		Map<String, CellMapper<?>> map = new HashMap<>();
-		map.put("name", new CellMapperString());
-		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Map<String, CellMapper<?>> map = new HashMap<>();
+        map.put("name", new CellMapperString());
+        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		WildcardCondition wildcardCondition = new WildcardCondition(0.5f, "name", "tr*");
-		Query query = wildcardCondition.query(mappers);
+        WildcardCondition wildcardCondition = new WildcardCondition(0.5f, "name", "tr*");
+        Query query = wildcardCondition.query(mappers);
 
-		Assert.assertNotNull(query);
-		Assert.assertEquals(org.apache.lucene.search.WildcardQuery.class, query.getClass());
-		org.apache.lucene.search.WildcardQuery luceneQuery = (org.apache.lucene.search.WildcardQuery) query;
-		Assert.assertEquals("name", luceneQuery.getField());
-		Assert.assertEquals("tr*", luceneQuery.getTerm().text());
-		Assert.assertEquals(0.5f, query.getBoost(), 0);
-	}
+        Assert.assertNotNull(query);
+        Assert.assertEquals(org.apache.lucene.search.WildcardQuery.class, query.getClass());
+        org.apache.lucene.search.WildcardQuery luceneQuery = (org.apache.lucene.search.WildcardQuery) query;
+        Assert.assertEquals("name", luceneQuery.getField());
+        Assert.assertEquals("tr*", luceneQuery.getTerm().text());
+        Assert.assertEquals(0.5f, query.getBoost(), 0);
+    }
 
-	@Test(expected = UnsupportedOperationException.class)
-	public void testInteger() {
+    @Test(expected = UnsupportedOperationException.class)
+    public void testInteger()
+    {
 
-		Map<String, CellMapper<?>> map = new HashMap<>();
-		map.put("name", new CellMapperInteger(1f));
-		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Map<String, CellMapper<?>> map = new HashMap<>();
+        map.put("name", new CellMapperInteger(1f));
+        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		WildcardCondition wildcardCondition = new WildcardCondition(0.5f, "name", "22*");
-		wildcardCondition.query(mappers);
-	}
+        WildcardCondition wildcardCondition = new WildcardCondition(0.5f, "name", "22*");
+        wildcardCondition.query(mappers);
+    }
 
-	@Test
-	public void testInetV4() {
+    @Test
+    public void testInetV4()
+    {
 
-		Map<String, CellMapper<?>> map = new HashMap<>();
-		map.put("name", new CellMapperInet());
-		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Map<String, CellMapper<?>> map = new HashMap<>();
+        map.put("name", new CellMapperInet());
+        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		WildcardCondition wildcardCondition = new WildcardCondition(0.5f, "name", "192.168.*");
-		Query query = wildcardCondition.query(mappers);
+        WildcardCondition wildcardCondition = new WildcardCondition(0.5f, "name", "192.168.*");
+        Query query = wildcardCondition.query(mappers);
 
-		Assert.assertNotNull(query);
-		Assert.assertEquals(org.apache.lucene.search.WildcardQuery.class, query.getClass());
-		org.apache.lucene.search.WildcardQuery luceneQuery = (org.apache.lucene.search.WildcardQuery) query;
-		Assert.assertEquals("name", luceneQuery.getField());
-		Assert.assertEquals("192.168.*", luceneQuery.getTerm().text());
-		Assert.assertEquals(0.5f, query.getBoost(), 0);
-	}
+        Assert.assertNotNull(query);
+        Assert.assertEquals(org.apache.lucene.search.WildcardQuery.class, query.getClass());
+        org.apache.lucene.search.WildcardQuery luceneQuery = (org.apache.lucene.search.WildcardQuery) query;
+        Assert.assertEquals("name", luceneQuery.getField());
+        Assert.assertEquals("192.168.*", luceneQuery.getTerm().text());
+        Assert.assertEquals(0.5f, query.getBoost(), 0);
+    }
 
-	@Test
-	public void testInetV6() {
+    @Test
+    public void testInetV6()
+    {
 
-		Map<String, CellMapper<?>> map = new HashMap<>();
-		map.put("name", new CellMapperInet());
-		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Map<String, CellMapper<?>> map = new HashMap<>();
+        map.put("name", new CellMapperInet());
+        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		WildcardCondition wildcardCondition = new WildcardCondition(0.5f, "name", "2001:db8:2de:0:0:0:0:e*");
-		Query query = wildcardCondition.query(mappers);
+        WildcardCondition wildcardCondition = new WildcardCondition(0.5f, "name", "2001:db8:2de:0:0:0:0:e*");
+        Query query = wildcardCondition.query(mappers);
 
-		Assert.assertNotNull(query);
-		Assert.assertEquals(org.apache.lucene.search.WildcardQuery.class, query.getClass());
-		org.apache.lucene.search.WildcardQuery luceneQuery = (org.apache.lucene.search.WildcardQuery) query;
-		Assert.assertEquals("name", luceneQuery.getField());
-		Assert.assertEquals("2001:db8:2de:0:0:0:0:e*", luceneQuery.getTerm().text());
-		Assert.assertEquals(0.5f, query.getBoost(), 0);
-	}
+        Assert.assertNotNull(query);
+        Assert.assertEquals(org.apache.lucene.search.WildcardQuery.class, query.getClass());
+        org.apache.lucene.search.WildcardQuery luceneQuery = (org.apache.lucene.search.WildcardQuery) query;
+        Assert.assertEquals("name", luceneQuery.getField());
+        Assert.assertEquals("2001:db8:2de:0:0:0:0:e*", luceneQuery.getTerm().text());
+        Assert.assertEquals(0.5f, query.getBoost(), 0);
+    }
 
 }

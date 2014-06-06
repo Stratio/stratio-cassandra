@@ -34,62 +34,81 @@ import org.codehaus.jackson.annotate.JsonCreator;
  * 
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class CellMapperUUID extends CellMapper<String> {
+public class CellMapperUUID extends CellMapper<String>
+{
 
-	@JsonCreator
-	public CellMapperUUID() {
-		super(new AbstractType<?>[] { AsciiType.instance, UTF8Type.instance, UUIDType.instance, TimeUUIDType.instance });
-	}
+    @JsonCreator
+    public CellMapperUUID()
+    {
+        super(new AbstractType<?>[] { AsciiType.instance, UTF8Type.instance, UUIDType.instance, TimeUUIDType.instance });
+    }
 
-	@Override
-	public Analyzer analyzer() {
-		return EMPTY_ANALYZER;
-	}
+    @Override
+    public Analyzer analyzer()
+    {
+        return EMPTY_ANALYZER;
+    }
 
-	@Override
-	public String indexValue(String name, Object value) {
-		if (value == null) {
-			return null;
-		} else if (value instanceof UUID) {
-			return value.toString();
-		} else if (value instanceof String) {
-			return java.util.UUID.fromString((String) value).toString();
-		} else {
-			throw new IllegalArgumentException();
-		}
-	}
+    @Override
+    public String indexValue(String name, Object value)
+    {
+        if (value == null)
+        {
+            return null;
+        }
+        else if (value instanceof UUID)
+        {
+            return value.toString();
+        }
+        else if (value instanceof String)
+        {
+            return java.util.UUID.fromString((String) value).toString();
+        }
+        else
+        {
+            throw new IllegalArgumentException();
+        }
+    }
 
-	@Override
-	public String queryValue(String name, Object value) {
-		if (value == null) {
-			return null;
-		} else {
-			return value.toString();
-		}
-	}
+    @Override
+    public String queryValue(String name, Object value)
+    {
+        if (value == null)
+        {
+            return null;
+        }
+        else
+        {
+            return value.toString();
+        }
+    }
 
-	@Override
-	public Field field(String name, Object value) {
-		String uuid = indexValue(name, value);
-		return new StringField(name, uuid, STORE);
-	}
-	
-	@Override
-	public SortField sortField(String field, boolean reverse) {
-		return new SortField(field, Type.STRING, reverse);
-	}
+    @Override
+    public Field field(String name, Object value)
+    {
+        String uuid = indexValue(name, value);
+        return new StringField(name, uuid, STORE);
+    }
 
-	@Override
-	public Class<String> baseClass() {
-		return String.class;
-	}
+    @Override
+    public SortField sortField(String field, boolean reverse)
+    {
+        return new SortField(field, Type.STRING, reverse);
+    }
 
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append(getClass().getSimpleName());
-		builder.append(" []");
-		return builder.toString();
-	}
+    @Override
+    public Class<String> baseClass()
+    {
+        return String.class;
+    }
+
+    @Override
+    public String toString()
+    {
+        StringBuilder builder = new StringBuilder();
+        builder.append(getClass().getSimpleName());
+        builder.append(" []");
+        return builder.toString();
+    }
 
 }

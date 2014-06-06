@@ -36,146 +36,155 @@ import com.stratio.cassandra.index.schema.CellMapperLong;
 import com.stratio.cassandra.index.schema.CellMapperString;
 import com.stratio.cassandra.index.schema.Schema;
 
-public class MatchConditionTest {
+public class MatchConditionTest
+{
 
-	@Test
-	public void testString() {
+    @Test
+    public void testString()
+    {
 
-		Map<String, CellMapper<?>> map = new HashMap<>();
-		map.put("name", new CellMapperString());
-		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Map<String, CellMapper<?>> map = new HashMap<>();
+        map.put("name", new CellMapperString());
+        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		MatchCondition matchCondition = new MatchCondition(0.5f, "name", "casa");
-		Query query = matchCondition.query(mappers);
+        MatchCondition matchCondition = new MatchCondition(0.5f, "name", "casa");
+        Query query = matchCondition.query(mappers);
 
-		Assert.assertNotNull(query);
-		Assert.assertEquals(TermQuery.class, query.getClass());
-		Assert.assertEquals("casa", ((TermQuery) query).getTerm().bytes().utf8ToString());
-		Assert.assertEquals(0.5f, query.getBoost(), 0);
-	}
+        Assert.assertNotNull(query);
+        Assert.assertEquals(TermQuery.class, query.getClass());
+        Assert.assertEquals("casa", ((TermQuery) query).getTerm().bytes().utf8ToString());
+        Assert.assertEquals(0.5f, query.getBoost(), 0);
+    }
 
-	@Test
-	public void testInteger() {
+    @Test
+    public void testInteger()
+    {
 
-		Map<String, CellMapper<?>> map = new HashMap<>();
-		map.put("name", new CellMapperInteger(1f));
-		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Map<String, CellMapper<?>> map = new HashMap<>();
+        map.put("name", new CellMapperInteger(1f));
+        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		MatchCondition matchCondition = new MatchCondition(0.5f, "name", 42);
-		Query query = matchCondition.query(mappers);
+        MatchCondition matchCondition = new MatchCondition(0.5f, "name", 42);
+        Query query = matchCondition.query(mappers);
 
-		Assert.assertNotNull(query);
-		Assert.assertEquals(NumericRangeQuery.class, query.getClass());
-		Assert.assertEquals(42, ((NumericRangeQuery<?>) query).getMin());
-		Assert.assertEquals(42, ((NumericRangeQuery<?>) query).getMax());
-		Assert.assertEquals(true, ((NumericRangeQuery<?>) query).includesMin());
-		Assert.assertEquals(true, ((NumericRangeQuery<?>) query).includesMax());
-		Assert.assertEquals(0.5f, query.getBoost(), 0);
-	}
+        Assert.assertNotNull(query);
+        Assert.assertEquals(NumericRangeQuery.class, query.getClass());
+        Assert.assertEquals(42, ((NumericRangeQuery<?>) query).getMin());
+        Assert.assertEquals(42, ((NumericRangeQuery<?>) query).getMax());
+        Assert.assertEquals(true, ((NumericRangeQuery<?>) query).includesMin());
+        Assert.assertEquals(true, ((NumericRangeQuery<?>) query).includesMax());
+        Assert.assertEquals(0.5f, query.getBoost(), 0);
+    }
 
-	@Test
-	public void testLong() {
+    @Test
+    public void testLong()
+    {
 
-		Map<String, CellMapper<?>> map = new HashMap<>();
-		map.put("name", new CellMapperLong(1f));
-		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Map<String, CellMapper<?>> map = new HashMap<>();
+        map.put("name", new CellMapperLong(1f));
+        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		MatchCondition matchCondition = new MatchCondition(0.5f, "name", 42L);
-		Query query = matchCondition.query(mappers);
+        MatchCondition matchCondition = new MatchCondition(0.5f, "name", 42L);
+        Query query = matchCondition.query(mappers);
 
-		Assert.assertNotNull(query);
-		Assert.assertEquals(NumericRangeQuery.class, query.getClass());
-		Assert.assertEquals(42L, ((NumericRangeQuery<?>) query).getMin());
-		Assert.assertEquals(42L, ((NumericRangeQuery<?>) query).getMax());
-		Assert.assertEquals(true, ((NumericRangeQuery<?>) query).includesMin());
-		Assert.assertEquals(true, ((NumericRangeQuery<?>) query).includesMax());
-		Assert.assertEquals(0.5f, query.getBoost(), 0);
-	}
+        Assert.assertNotNull(query);
+        Assert.assertEquals(NumericRangeQuery.class, query.getClass());
+        Assert.assertEquals(42L, ((NumericRangeQuery<?>) query).getMin());
+        Assert.assertEquals(42L, ((NumericRangeQuery<?>) query).getMax());
+        Assert.assertEquals(true, ((NumericRangeQuery<?>) query).includesMin());
+        Assert.assertEquals(true, ((NumericRangeQuery<?>) query).includesMax());
+        Assert.assertEquals(0.5f, query.getBoost(), 0);
+    }
 
-	@Test
-	public void testFloat() {
+    @Test
+    public void testFloat()
+    {
 
-		Map<String, CellMapper<?>> map = new HashMap<>();
-		map.put("name", new CellMapperFloat(1f));
-		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Map<String, CellMapper<?>> map = new HashMap<>();
+        map.put("name", new CellMapperFloat(1f));
+        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		MatchCondition matchCondition = new MatchCondition(0.5f, "name", 42.42F);
-		Query query = matchCondition.query(mappers);
+        MatchCondition matchCondition = new MatchCondition(0.5f, "name", 42.42F);
+        Query query = matchCondition.query(mappers);
 
-		Assert.assertNotNull(query);
-		Assert.assertEquals(NumericRangeQuery.class, query.getClass());
-		Assert.assertEquals(42.42F, ((NumericRangeQuery<?>) query).getMin());
-		Assert.assertEquals(42.42F, ((NumericRangeQuery<?>) query).getMax());
-		Assert.assertEquals(true, ((NumericRangeQuery<?>) query).includesMin());
-		Assert.assertEquals(true, ((NumericRangeQuery<?>) query).includesMax());
-		Assert.assertEquals(0.5f, query.getBoost(), 0);
-	}
+        Assert.assertNotNull(query);
+        Assert.assertEquals(NumericRangeQuery.class, query.getClass());
+        Assert.assertEquals(42.42F, ((NumericRangeQuery<?>) query).getMin());
+        Assert.assertEquals(42.42F, ((NumericRangeQuery<?>) query).getMax());
+        Assert.assertEquals(true, ((NumericRangeQuery<?>) query).includesMin());
+        Assert.assertEquals(true, ((NumericRangeQuery<?>) query).includesMax());
+        Assert.assertEquals(0.5f, query.getBoost(), 0);
+    }
 
-	@Test
-	public void testDouble() {
+    @Test
+    public void testDouble()
+    {
 
-		Map<String, CellMapper<?>> map = new HashMap<>();
-		map.put("name", new CellMapperDouble(1f));
-		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Map<String, CellMapper<?>> map = new HashMap<>();
+        map.put("name", new CellMapperDouble(1f));
+        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		MatchCondition matchCondition = new MatchCondition(0.5f, "name", 42.42D);
-		Query query = matchCondition.query(mappers);
+        MatchCondition matchCondition = new MatchCondition(0.5f, "name", 42.42D);
+        Query query = matchCondition.query(mappers);
 
-		Assert.assertNotNull(query);
-		Assert.assertEquals(NumericRangeQuery.class, query.getClass());
-		Assert.assertEquals(42.42D, ((NumericRangeQuery<?>) query).getMin());
-		Assert.assertEquals(42.42D, ((NumericRangeQuery<?>) query).getMax());
-		Assert.assertEquals(true, ((NumericRangeQuery<?>) query).includesMin());
-		Assert.assertEquals(true, ((NumericRangeQuery<?>) query).includesMax());
-		Assert.assertEquals(0.5f, query.getBoost(), 0);
-	}
+        Assert.assertNotNull(query);
+        Assert.assertEquals(NumericRangeQuery.class, query.getClass());
+        Assert.assertEquals(42.42D, ((NumericRangeQuery<?>) query).getMin());
+        Assert.assertEquals(42.42D, ((NumericRangeQuery<?>) query).getMax());
+        Assert.assertEquals(true, ((NumericRangeQuery<?>) query).includesMin());
+        Assert.assertEquals(true, ((NumericRangeQuery<?>) query).includesMax());
+        Assert.assertEquals(0.5f, query.getBoost(), 0);
+    }
 
-	@Test
-	public void testBlob() {
+    @Test
+    public void testBlob()
+    {
 
-		Map<String, CellMapper<?>> map = new HashMap<>();
-		map.put("name", new CellMapperBlob());
-		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Map<String, CellMapper<?>> map = new HashMap<>();
+        map.put("name", new CellMapperBlob());
+        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		MatchCondition matchCondition = new MatchCondition(0.5f, "name", "0Fa1");
-		Query query = matchCondition.query(mappers);
+        MatchCondition matchCondition = new MatchCondition(0.5f, "name", "0Fa1");
+        Query query = matchCondition.query(mappers);
 
-		Assert.assertNotNull(query);
-		Assert.assertEquals(TermQuery.class, query.getClass());
-		Assert.assertEquals("0fa1", ((TermQuery) query).getTerm().bytes().utf8ToString());
-		Assert.assertEquals(0.5f, query.getBoost(), 0);
-	}
+        Assert.assertNotNull(query);
+        Assert.assertEquals(TermQuery.class, query.getClass());
+        Assert.assertEquals("0fa1", ((TermQuery) query).getTerm().bytes().utf8ToString());
+        Assert.assertEquals(0.5f, query.getBoost(), 0);
+    }
 
-	@Test
-	public void testInetV4() {
+    @Test
+    public void testInetV4()
+    {
 
-		Map<String, CellMapper<?>> map = new HashMap<>();
-		map.put("name", new CellMapperInet());
-		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Map<String, CellMapper<?>> map = new HashMap<>();
+        map.put("name", new CellMapperInet());
+        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		MatchCondition matchCondition = new MatchCondition(0.5f, "name", "192.168.0.01");
-		Query query = matchCondition.query(mappers);
+        MatchCondition matchCondition = new MatchCondition(0.5f, "name", "192.168.0.01");
+        Query query = matchCondition.query(mappers);
 
-		Assert.assertNotNull(query);
-		Assert.assertEquals(TermQuery.class, query.getClass());
-		Assert.assertEquals("192.168.0.1", ((TermQuery) query).getTerm().bytes().utf8ToString());
-		Assert.assertEquals(0.5f, query.getBoost(), 0);
-	}
+        Assert.assertNotNull(query);
+        Assert.assertEquals(TermQuery.class, query.getClass());
+        Assert.assertEquals("192.168.0.1", ((TermQuery) query).getTerm().bytes().utf8ToString());
+        Assert.assertEquals(0.5f, query.getBoost(), 0);
+    }
 
-	@Test
-	public void testInetV6() {
+    @Test
+    public void testInetV6()
+    {
 
-		Map<String, CellMapper<?>> map = new HashMap<>();
-		map.put("name", new CellMapperInet());
-		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Map<String, CellMapper<?>> map = new HashMap<>();
+        map.put("name", new CellMapperInet());
+        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		MatchCondition matchCondition = new MatchCondition(0.5f, "name", "2001:DB8:2de::0e13");
-		Query query = matchCondition.query(mappers);
+        MatchCondition matchCondition = new MatchCondition(0.5f, "name", "2001:DB8:2de::0e13");
+        Query query = matchCondition.query(mappers);
 
-		Assert.assertNotNull(query);
-		Assert.assertEquals(TermQuery.class, query.getClass());
-		Assert.assertEquals("2001:db8:2de:0:0:0:0:e13", ((TermQuery) query).getTerm().bytes().utf8ToString());
-		Assert.assertEquals(0.5f, query.getBoost(), 0);
-	}
+        Assert.assertNotNull(query);
+        Assert.assertEquals(TermQuery.class, query.getClass());
+        Assert.assertEquals("2001:db8:2de:0:0:0:0:e13", ((TermQuery) query).getTerm().bytes().utf8ToString());
+        Assert.assertEquals(0.5f, query.getBoost(), 0);
+    }
 
 }

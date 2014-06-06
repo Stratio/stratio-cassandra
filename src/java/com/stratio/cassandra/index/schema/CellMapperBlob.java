@@ -36,69 +36,90 @@ import com.stratio.cassandra.index.util.ByteBufferUtils;
  * 
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class CellMapperBlob extends CellMapper<String> {
+public class CellMapperBlob extends CellMapper<String>
+{
 
-	@JsonCreator
-	public CellMapperBlob() {
-		super(new AbstractType<?>[] { AsciiType.instance, UTF8Type.instance, BytesType.instance });
-	}
+    @JsonCreator
+    public CellMapperBlob()
+    {
+        super(new AbstractType<?>[] { AsciiType.instance, UTF8Type.instance, BytesType.instance });
+    }
 
-	@Override
-	public Analyzer analyzer() {
-		return EMPTY_ANALYZER;
-	}
+    @Override
+    public Analyzer analyzer()
+    {
+        return EMPTY_ANALYZER;
+    }
 
-	@Override
-	public String indexValue(String name, Object value) {
-		if (value == null) {
-			return null;
-		} else if (value instanceof ByteBuffer) {
-			ByteBuffer bb = (ByteBuffer) value;
-			return ByteBufferUtils.toHex(bb);
-		} else if (value instanceof byte[]) {
-			byte[] bytes = (byte[]) value;
-			return ByteBufferUtils.toHex(bytes);
-		} else if (value instanceof String) {
-			String string = (String) value;
-			string = string.replaceFirst("0x", "");
-			byte[] bytes = Hex.hexToBytes(string);
-			return Hex.bytesToHex(bytes);
-		} else {
-			throw new IllegalArgumentException(String.format("Value '%s' cannot be cast to byte array", value));
-		}
-	}
+    @Override
+    public String indexValue(String name, Object value)
+    {
+        if (value == null)
+        {
+            return null;
+        }
+        else if (value instanceof ByteBuffer)
+        {
+            ByteBuffer bb = (ByteBuffer) value;
+            return ByteBufferUtils.toHex(bb);
+        }
+        else if (value instanceof byte[])
+        {
+            byte[] bytes = (byte[]) value;
+            return ByteBufferUtils.toHex(bytes);
+        }
+        else if (value instanceof String)
+        {
+            String string = (String) value;
+            string = string.replaceFirst("0x", "");
+            byte[] bytes = Hex.hexToBytes(string);
+            return Hex.bytesToHex(bytes);
+        }
+        else
+        {
+            throw new IllegalArgumentException(String.format("Value '%s' cannot be cast to byte array", value));
+        }
+    }
 
-	@Override
-	public String queryValue(String name, Object value) {
-		if (value == null) {
-			return null;
-		} else {
-			return value.toString().toLowerCase().replaceFirst("0x", "");
-		}
-	}
+    @Override
+    public String queryValue(String name, Object value)
+    {
+        if (value == null)
+        {
+            return null;
+        }
+        else
+        {
+            return value.toString().toLowerCase().replaceFirst("0x", "");
+        }
+    }
 
-	@Override
-	public Field field(String name, Object value) {
-		String string = indexValue(name, value);
-		return new StringField(name, string, STORE);
-	}
-	
-	@Override
-	public SortField sortField(String field, boolean reverse) {
-		return new SortField(field, Type.STRING, reverse);
-	}
+    @Override
+    public Field field(String name, Object value)
+    {
+        String string = indexValue(name, value);
+        return new StringField(name, string, STORE);
+    }
 
-	@Override
-	public Class<String> baseClass() {
-		return String.class;
-	}
+    @Override
+    public SortField sortField(String field, boolean reverse)
+    {
+        return new SortField(field, Type.STRING, reverse);
+    }
 
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append(getClass().getSimpleName());
-		builder.append(" []");
-		return builder.toString();
-	}
+    @Override
+    public Class<String> baseClass()
+    {
+        return String.class;
+    }
+
+    @Override
+    public String toString()
+    {
+        StringBuilder builder = new StringBuilder();
+        builder.append(getClass().getSimpleName());
+        builder.append(" []");
+        return builder.toString();
+    }
 
 }

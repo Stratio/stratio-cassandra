@@ -30,56 +30,63 @@ import org.apache.lucene.search.NumericRangeFilter;
 import org.apache.lucene.search.SortField;
 
 /**
- * {@link PartitionKeyMapper} to be used when {@link Murmur3Partitioner} is used. It indexes the
- * token long value as a Lucene's long field.
+ * {@link PartitionKeyMapper} to be used when {@link Murmur3Partitioner} is used. It indexes the token long value as a
+ * Lucene's long field.
  * 
  * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
-public class TokenMapperMurmur extends TokenMapper {
+public class TokenMapperMurmur extends TokenMapper
+{
 
-	private static final String FIELD_NAME = "_token_murmur";
+    private static final String FIELD_NAME = "_token_murmur";
 
-	public TokenMapperMurmur(ColumnFamilyStore baseCfs) {
-		super(baseCfs);
-	}
+    public TokenMapperMurmur(ColumnFamilyStore baseCfs)
+    {
+        super(baseCfs);
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public void addFields(Document document, DecoratedKey partitionKey) {
-		Long value = (Long) partitionKey.token.token;
-		Field tokenField = new LongField(FIELD_NAME, value, Store.NO);
-		document.add(tokenField);
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addFields(Document document, DecoratedKey partitionKey)
+    {
+        Long value = (Long) partitionKey.token.token;
+        Field tokenField = new LongField(FIELD_NAME, value, Store.NO);
+        document.add(tokenField);
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Filter newFilter(DataRange dataRange) {
-		RowPosition startPosition = dataRange.startKey();
-		RowPosition stopPosition = dataRange.stopKey();
-		Long start = (Long) startPosition.getToken().token;
-		Long stop = (Long) stopPosition.getToken().token;
-		if (startPosition.isMinimum()) {
-			start = null;
-		}
-		if (stopPosition.isMinimum()) {
-			stop = null;
-		}
-		boolean includeLower = startPosition.kind() == Kind.MIN_BOUND;
-		boolean includeUpper = stopPosition.kind() == Kind.MAX_BOUND;
-		return NumericRangeFilter.newLongRange(FIELD_NAME, start, stop, includeLower, includeUpper);
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Filter newFilter(DataRange dataRange)
+    {
+        RowPosition startPosition = dataRange.startKey();
+        RowPosition stopPosition = dataRange.stopKey();
+        Long start = (Long) startPosition.getToken().token;
+        Long stop = (Long) stopPosition.getToken().token;
+        if (startPosition.isMinimum())
+        {
+            start = null;
+        }
+        if (stopPosition.isMinimum())
+        {
+            stop = null;
+        }
+        boolean includeLower = startPosition.kind() == Kind.MIN_BOUND;
+        boolean includeUpper = stopPosition.kind() == Kind.MAX_BOUND;
+        return NumericRangeFilter.newLongRange(FIELD_NAME, start, stop, includeLower, includeUpper);
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public SortField[] sortFields() {
-		return new SortField[] { new SortField(FIELD_NAME, SortField.Type.LONG) };
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public SortField[] sortFields()
+    {
+        return new SortField[] { new SortField(FIELD_NAME, SortField.Type.LONG) };
+    }
 
 }

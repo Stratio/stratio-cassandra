@@ -43,82 +43,105 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * 
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class CellMapperDate extends CellMapper<Long> {
+public class CellMapperDate extends CellMapper<Long>
+{
 
-	public static final String DEFAULT_PATTERN = "yyyy/MM/dd HH:mm:ss.SSS";
+    public static final String DEFAULT_PATTERN = "yyyy/MM/dd HH:mm:ss.SSS";
 
-	/** The date and time pattern. */
-	private final String pattern;
+    /** The date and time pattern. */
+    private final String pattern;
 
-	/** The thread safe date format */
-	private final ThreadLocal<DateFormat> concurrentDateFormat;
+    /** The thread safe date format */
+    private final ThreadLocal<DateFormat> concurrentDateFormat;
 
-	@JsonCreator
-	public CellMapperDate(@JsonProperty("pattern") String pattern) {
-		super(new AbstractType<?>[] { AsciiType.instance, UTF8Type.instance, Int32Type.instance, LongType.instance,
-		        IntegerType.instance, FloatType.instance, DoubleType.instance, DecimalType.instance,
-		        TimestampType.instance });
-		this.pattern = pattern == null ? DEFAULT_PATTERN : pattern;
-		concurrentDateFormat = new ThreadLocal<DateFormat>() {
-			@Override
-			protected DateFormat initialValue() {
-				return new SimpleDateFormat(CellMapperDate.this.pattern);
-			}
-		};
-	}
+    @JsonCreator
+    public CellMapperDate(@JsonProperty("pattern") String pattern)
+    {
+        super(new AbstractType<?>[] { AsciiType.instance, UTF8Type.instance, Int32Type.instance, LongType.instance,
+                IntegerType.instance, FloatType.instance, DoubleType.instance, DecimalType.instance,
+                TimestampType.instance });
+        this.pattern = pattern == null ? DEFAULT_PATTERN : pattern;
+        concurrentDateFormat = new ThreadLocal<DateFormat>()
+        {
+            @Override
+            protected DateFormat initialValue()
+            {
+                return new SimpleDateFormat(CellMapperDate.this.pattern);
+            }
+        };
+    }
 
-	@Override
-	public Analyzer analyzer() {
-		return EMPTY_ANALYZER;
-	}
+    @Override
+    public Analyzer analyzer()
+    {
+        return EMPTY_ANALYZER;
+    }
 
-	@Override
-	public Long indexValue(String name, Object value) {
-		if (value == null) {
-			return null;
-		} else if (value instanceof Date) {
-			return ((Date) value).getTime();
-		} else if (value instanceof Number) {
-			return ((Number) value).longValue();
-		} else if (value instanceof String) {
-			try {
-				return concurrentDateFormat.get().parse(value.toString()).getTime();
-			} catch (ParseException e) {
-				throw new IllegalArgumentException(e);
-			}
-		} else {
-			throw new IllegalArgumentException();
-		}
-	}
+    @Override
+    public Long indexValue(String name, Object value)
+    {
+        if (value == null)
+        {
+            return null;
+        }
+        else if (value instanceof Date)
+        {
+            return ((Date) value).getTime();
+        }
+        else if (value instanceof Number)
+        {
+            return ((Number) value).longValue();
+        }
+        else if (value instanceof String)
+        {
+            try
+            {
+                return concurrentDateFormat.get().parse(value.toString()).getTime();
+            }
+            catch (ParseException e)
+            {
+                throw new IllegalArgumentException(e);
+            }
+        }
+        else
+        {
+            throw new IllegalArgumentException();
+        }
+    }
 
-	@Override
-	public Long queryValue(String name, Object value) {
-		return indexValue(name, value);
-	}
+    @Override
+    public Long queryValue(String name, Object value)
+    {
+        return indexValue(name, value);
+    }
 
-	@Override
-	public Field field(String name, Object value) {
-		return new LongField(name, indexValue(name, value), STORE);
-	}
-	
-	@Override
-	public SortField sortField(String field, boolean reverse) {
-		return new SortField(field, Type.LONG, reverse);
-	}
+    @Override
+    public Field field(String name, Object value)
+    {
+        return new LongField(name, indexValue(name, value), STORE);
+    }
 
-	@Override
-	public Class<Long> baseClass() {
-		return Long.class;
-	}
+    @Override
+    public SortField sortField(String field, boolean reverse)
+    {
+        return new SortField(field, Type.LONG, reverse);
+    }
 
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append(getClass().getSimpleName());
-		builder.append(" [pattern=");
-		builder.append(pattern);
-		builder.append("]");
-		return builder.toString();
-	}
+    @Override
+    public Class<Long> baseClass()
+    {
+        return Long.class;
+    }
+
+    @Override
+    public String toString()
+    {
+        StringBuilder builder = new StringBuilder();
+        builder.append(getClass().getSimpleName());
+        builder.append(" [pattern=");
+        builder.append(pattern);
+        builder.append("]");
+        return builder.toString();
+    }
 
 }

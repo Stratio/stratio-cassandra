@@ -44,76 +44,91 @@ import com.stratio.cassandra.index.AnalyzerFactory;
  * 
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class CellMapperText extends CellMapper<String> {
+public class CellMapperText extends CellMapper<String>
+{
 
-	/** The Lucene's {@link corg.apache.lucene.analysis.Analyzer}. */
-	private Analyzer analyzer;
+    /** The Lucene's {@link corg.apache.lucene.analysis.Analyzer}. */
+    private Analyzer analyzer;
 
-	@JsonCreator
-	public CellMapperText(@JsonProperty("analyzer") String analyzerClassName) {
-		super(new AbstractType<?>[] { AsciiType.instance,
-		                             UTF8Type.instance,
-		                             Int32Type.instance,
-		                             LongType.instance,
-		                             IntegerType.instance,
-		                             FloatType.instance,
-		                             DoubleType.instance,
-		                             BooleanType.instance,
-		                             UUIDType.instance,
-		                             TimeUUIDType.instance,
-		                             TimestampType.instance,
-		                             BytesType.instance,
-		                             InetAddressType.instance });
-		if (analyzerClassName != null) {
-			this.analyzer = AnalyzerFactory.getAnalyzer(analyzerClassName);
-		} else {
-			this.analyzer = null;
-		}
-	}
+    @JsonCreator
+    public CellMapperText(@JsonProperty("analyzer") String analyzerClassName)
+    {
+        super(new AbstractType<?>[] { AsciiType.instance,
+                UTF8Type.instance,
+                Int32Type.instance,
+                LongType.instance,
+                IntegerType.instance,
+                FloatType.instance,
+                DoubleType.instance,
+                BooleanType.instance,
+                UUIDType.instance,
+                TimeUUIDType.instance,
+                TimestampType.instance,
+                BytesType.instance,
+                InetAddressType.instance });
+        if (analyzerClassName != null)
+        {
+            this.analyzer = AnalyzerFactory.getAnalyzer(analyzerClassName);
+        }
+        else
+        {
+            this.analyzer = null;
+        }
+    }
 
-	@Override
-	public Analyzer analyzer() {
-		return analyzer;
-	}
+    @Override
+    public Analyzer analyzer()
+    {
+        return analyzer;
+    }
 
-	@Override
-	public String indexValue(String name, Object value) {
-		if (value == null) {
-			return null;
-		} else {
-			return value.toString();
-		}
-	}
+    @Override
+    public String indexValue(String name, Object value)
+    {
+        if (value == null)
+        {
+            return null;
+        }
+        else
+        {
+            return value.toString();
+        }
+    }
 
-	@Override
-	public String queryValue(String name, Object value) {
-		return indexValue(name, value);
-	}
+    @Override
+    public String queryValue(String name, Object value)
+    {
+        return indexValue(name, value);
+    }
 
-	@Override
-	public Field field(String name, Object value) {
-		String text = indexValue(name, value);
-		return new TextField(name, text, STORE);
-	}
-	
-	@Override
-	public SortField sortField(String field, boolean reverse) {
-		return new SortField(field, Type.STRING, reverse);
-	}
+    @Override
+    public Field field(String name, Object value)
+    {
+        String text = indexValue(name, value);
+        return new TextField(name, text, STORE);
+    }
 
-	@Override
-	public Class<String> baseClass() {
-		return String.class;
-	}
+    @Override
+    public SortField sortField(String field, boolean reverse)
+    {
+        return new SortField(field, Type.STRING, reverse);
+    }
 
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append(getClass().getSimpleName());
-		builder.append(" [analyzer=");
-		builder.append(analyzer);
-		builder.append("]");
-		return builder.toString();
-	}
+    @Override
+    public Class<String> baseClass()
+    {
+        return String.class;
+    }
+
+    @Override
+    public String toString()
+    {
+        StringBuilder builder = new StringBuilder();
+        builder.append(getClass().getSimpleName());
+        builder.append(" [analyzer=");
+        builder.append(analyzer);
+        builder.append("]");
+        return builder.toString();
+    }
 
 }
