@@ -392,13 +392,6 @@
           <dependency groupId="io.netty" artifactId="netty" version="3.6.6.Final" />
           <dependency groupId="com.datastax.cassandra" artifactId="cassandra-driver-core" version="2.0.1" />
           <dependency groupId="net.sf.supercsv" artifactId="super-csv" version="2.1.0" />
-
-            <dependency groupId="org.apache.lucene" artifactId="lucene-core" version="${lucene.version}" />
-            <dependency groupId="org.apache.lucene" artifactId="lucene-codecs" version="${lucene.version}" />
-            <dependency groupId="org.apache.lucene" artifactId="lucene-misc" version="${lucene.version}" />
-            <dependency groupId="org.apache.lucene" artifactId="lucene-queries" version="${lucene.version}" />
-            <dependency groupId="org.apache.lucene" artifactId="lucene-queryparser" version="${lucene.version}" />
-            <dependency groupId="org.apache.lucene" artifactId="lucene-analyzers-common" version="${lucene.version}" />
         	
         </dependencyManagement>
         <developer id="alakshman" name="Avinash Lakshman"/>
@@ -502,6 +495,15 @@
         <!-- don't need jamm unless running a server in which case it needs to be a -javagent to be used anyway -->
         <dependency groupId="com.github.stephenc" artifactId="jamm"/>
         <dependency groupId="io.netty" artifactId="netty"/>
+
+      	<!-- Lucene dependencies -->
+        <dependency groupId="org.apache.lucene" artifactId="lucene-core" version="${lucene.version}" />
+        <dependency groupId="org.apache.lucene" artifactId="lucene-codecs" version="${lucene.version}" />
+        <dependency groupId="org.apache.lucene" artifactId="lucene-misc" version="${lucene.version}" />
+        <dependency groupId="org.apache.lucene" artifactId="lucene-queries" version="${lucene.version}" />
+        <dependency groupId="org.apache.lucene" artifactId="lucene-queryparser" version="${lucene.version}" />
+        <dependency groupId="org.apache.lucene" artifactId="lucene-analyzers-common" version="${lucene.version}" />
+      	
       </artifact:pom>
       <artifact:pom id="thrift-pom"
                     artifactId="cassandra-thrift"
