@@ -46,190 +46,217 @@ import org.apache.lucene.search.SortField;
  * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
-public class RowServiceWide extends RowService {
+public class RowServiceWide extends RowService
+{
 
-	private static final Set<String> FIELDS_TO_LOAD;
-	static {
-		FIELDS_TO_LOAD = new HashSet<>();
-		FIELDS_TO_LOAD.add(PartitionKeyMapper.FIELD_NAME);
-		FIELDS_TO_LOAD.add(ClusteringKeyMapper.FIELD_NAME);
-	}
+    private static final Set<String> FIELDS_TO_LOAD;
+    static
+    {
+        FIELDS_TO_LOAD = new HashSet<>();
+        FIELDS_TO_LOAD.add(PartitionKeyMapper.FIELD_NAME);
+        FIELDS_TO_LOAD.add(ClusteringKeyMapper.FIELD_NAME);
+    }
 
-	private final int clusteringPosition;
+    private final int clusteringPosition;
 
-	private final TokenMapper tokenMapper;
-	private final PartitionKeyMapper partitionKeyMapper;
-	private final ClusteringKeyMapper clusteringKeyMapper;
-	private final FullKeyMapper fullKeyMapper;
+    private final TokenMapper tokenMapper;
+    private final PartitionKeyMapper partitionKeyMapper;
+    private final ClusteringKeyMapper clusteringKeyMapper;
+    private final FullKeyMapper fullKeyMapper;
 
-	/**
-	 * Returns a new {@code RowServiceWide} for manage wide rows.
-	 * 
-	 * @param baseCfs
-	 *            The base column family store.
-	 * @param columnDefinition
-	 *            The indexed column definition.
-	 */
-	public RowServiceWide(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) {
-		super(baseCfs, columnDefinition);
+    /**
+     * Returns a new {@code RowServiceWide} for manage wide rows.
+     * 
+     * @param baseCfs
+     *            The base column family store.
+     * @param columnDefinition
+     *            The indexed column definition.
+     */
+    public RowServiceWide(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition)
+    {
+        super(baseCfs, columnDefinition);
 
-		partitionKeyMapper = PartitionKeyMapper.instance(metadata);
-		tokenMapper = TokenMapper.instance(baseCfs);
-		clusteringKeyMapper = ClusteringKeyMapper.instance(metadata);
-		fullKeyMapper = FullKeyMapper.instance(metadata);
+        partitionKeyMapper = PartitionKeyMapper.instance(metadata);
+        tokenMapper = TokenMapper.instance(baseCfs);
+        clusteringKeyMapper = ClusteringKeyMapper.instance(metadata);
+        fullKeyMapper = FullKeyMapper.instance(metadata);
 
-		clusteringPosition = metadata.clusteringKeyColumns().size();
-	}
+        clusteringPosition = metadata.clusteringKeyColumns().size();
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Set<String> fieldsToLoad() {
-		return FIELDS_TO_LOAD;
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Set<String> fieldsToLoad()
+    {
+        return FIELDS_TO_LOAD;
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp) {
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp)
+    {
 
-		DeletionInfo deletionInfo = columnFamily.deletionInfo();
-		DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(key);
+        DeletionInfo deletionInfo = columnFamily.deletionInfo();
+        DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(key);
 
-		if (columnFamily.iterator().hasNext()) {
-			for (ByteBuffer clusteringKey : clusteringKeyMapper.byteBuffers(columnFamily)) {
-				Row row = row(partitionKey, clusteringKey, timestamp);
-				Document document = document(row);
-				Term term = identifyingTerm(row);
-				rowDirectory.upsert(term, document);
-			}
-		} else if (deletionInfo != null) {
-			Iterator<RangeTombstone> iterator = deletionInfo.rangeIterator();
-			if (iterator.hasNext()) {
-				while (iterator.hasNext()) {
-					RangeTombstone rangeTombstone = iterator.next();
-					Filter filter = clusteringKeyMapper.filter(rangeTombstone);
-					Query partitionKeyQuery = partitionKeyMapper.query(partitionKey);
-					Query query = new FilteredQuery(partitionKeyQuery, filter);
-					rowDirectory.delete(query);
-				}
-			} else {
-				Term term = partitionKeyMapper.term(partitionKey);
-				rowDirectory.delete(term);
-			}
-		}
-	}
+        if (columnFamily.iterator().hasNext())
+        {
+            for (ByteBuffer clusteringKey : clusteringKeyMapper.byteBuffers(columnFamily))
+            {
+                Row row = row(partitionKey, clusteringKey, timestamp);
+                Document document = document(row);
+                Term term = identifyingTerm(row);
+                rowDirectory.upsert(term, document);
+            }
+        }
+        else if (deletionInfo != null)
+        {
+            Iterator<RangeTombstone> iterator = deletionInfo.rangeIterator();
+            if (iterator.hasNext())
+            {
+                while (iterator.hasNext())
+                {
+                    RangeTombstone rangeTombstone = iterator.next();
+                    Filter filter = clusteringKeyMapper.filter(rangeTombstone);
+                    Query partitionKeyQuery = partitionKeyMapper.query(partitionKey);
+                    Query query = new FilteredQuery(partitionKeyQuery, filter);
+                    rowDirectory.delete(query);
+                }
+            }
+            else
+            {
+                Term term = partitionKeyMapper.term(partitionKey);
+                rowDirectory.delete(term);
+            }
+        }
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Document document(Row row) {
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Document document(Row row)
+    {
 
-		DecoratedKey partitionKey = row.key;
-		ColumnFamily columnFamily = row.cf;
-		ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(columnFamily);
+        DecoratedKey partitionKey = row.key;
+        ColumnFamily columnFamily = row.cf;
+        ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(columnFamily);
 
-		Document document = new Document();
+        Document document = new Document();
 
-		tokenMapper.addFields(document, partitionKey);
-		partitionKeyMapper.addFields(document, partitionKey);
-		schema.addFields(document, metadata, partitionKey, columnFamily);
-		clusteringKeyMapper.addFields(document, clusteringKey);
-		fullKeyMapper.addFields(document, partitionKey, clusteringKey);
+        tokenMapper.addFields(document, partitionKey);
+        partitionKeyMapper.addFields(document, partitionKey);
+        schema.addFields(document, metadata, partitionKey, columnFamily);
+        clusteringKeyMapper.addFields(document, clusteringKey);
+        fullKeyMapper.addFields(document, partitionKey, clusteringKey);
 
-		return document;
-	}
+        return document;
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public void deleteInner(DecoratedKey partitionKey) {
-		Term term = partitionKeyMapper.term(partitionKey);
-		rowDirectory.delete(term);
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteInner(DecoratedKey partitionKey)
+    {
+        Term term = partitionKeyMapper.term(partitionKey);
+        rowDirectory.delete(term);
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	protected Row row(Document document, long timestamp) {
-		DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
-		ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(document);
-		return row(partitionKey, clusteringKey, timestamp);
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected Row row(Document document, long timestamp)
+    {
+        DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
+        ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(document);
+        return row(partitionKey, clusteringKey, timestamp);
+    }
 
-	/**
-	 * Returns the CQL3 {@link Row} identified by the specified key pair, using the specified time
-	 * stamp to ignore deleted columns. The {@link Row} is retrieved from the storage engine, so it
-	 * involves IO operations.
-	 * 
-	 * @param partitionKey
-	 *            The partition key.
-	 * @param clusteringKey
-	 *            The clustering key, maybe {@code null}.
-	 * @param timestamp
-	 *            The time stamp to ignore deleted columns.
-	 * @return The CQL3 {@link Row} identified by the specified key pair.
-	 */
-	private Row row(DecoratedKey partitionKey, ByteBuffer clusteringKey, long timestamp) {
-		ByteBuffer start = clusteringKeyMapper.start(clusteringKey);
-		ByteBuffer stop = clusteringKeyMapper.stop(clusteringKey);
-		SliceQueryFilter dataFilter = new SliceQueryFilter(start, stop, false, Integer.MAX_VALUE, clusteringPosition);
-		QueryFilter queryFilter = new QueryFilter(partitionKey, baseCfs.name, dataFilter, timestamp);
-		return row(queryFilter, timestamp);
-	}
+    /**
+     * Returns the CQL3 {@link Row} identified by the specified key pair, using the specified time stamp to ignore
+     * deleted columns. The {@link Row} is retrieved from the storage engine, so it involves IO operations.
+     * 
+     * @param partitionKey
+     *            The partition key.
+     * @param clusteringKey
+     *            The clustering key, maybe {@code null}.
+     * @param timestamp
+     *            The time stamp to ignore deleted columns.
+     * @return The CQL3 {@link Row} identified by the specified key pair.
+     */
+    private Row row(DecoratedKey partitionKey, ByteBuffer clusteringKey, long timestamp)
+    {
+        ByteBuffer start = clusteringKeyMapper.start(clusteringKey);
+        ByteBuffer stop = clusteringKeyMapper.stop(clusteringKey);
+        SliceQueryFilter dataFilter = new SliceQueryFilter(start, stop, false, Integer.MAX_VALUE, clusteringPosition);
+        QueryFilter queryFilter = new QueryFilter(partitionKey, baseCfs.name, dataFilter, timestamp);
+        return row(queryFilter, timestamp);
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	protected Sort sort() {
-		SortField[] partitionKeySort = tokenMapper.sortFields();
-		SortField[] clusteringKeySort = clusteringKeyMapper.sortFields();
-		return new Sort(ArrayUtils.addAll(partitionKeySort, clusteringKeySort));
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected Sort sort()
+    {
+        SortField[] partitionKeySort = tokenMapper.sortFields();
+        SortField[] clusteringKeySort = clusteringKeyMapper.sortFields();
+        return new Sort(ArrayUtils.addAll(partitionKeySort, clusteringKeySort));
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	protected Filter filter(DataRange dataRange) {
-		Filter tokenFilter = tokenMapper.filter(dataRange);
-		Filter clusteringKeyFilter = clusteringKeyMapper.filter(dataRange);
-		if (tokenFilter == null && clusteringKeyFilter == null) {
-			return null;
-		} else if (tokenFilter != null && clusteringKeyFilter == null) {
-			return tokenFilter;
-		} else if (tokenFilter == null && clusteringKeyFilter != null) {
-			return clusteringKeyFilter;
-		} else {
-			Filter[] filters = new Filter[] { tokenFilter, clusteringKeyFilter };
-			return new ChainedFilter(filters, ChainedFilter.AND);
-		}
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected Filter filter(DataRange dataRange)
+    {
+        Filter tokenFilter = tokenMapper.filter(dataRange);
+        Filter clusteringKeyFilter = clusteringKeyMapper.filter(dataRange);
+        if (tokenFilter == null && clusteringKeyFilter == null)
+        {
+            return null;
+        }
+        else if (tokenFilter != null && clusteringKeyFilter == null)
+        {
+            return tokenFilter;
+        }
+        else if (tokenFilter == null && clusteringKeyFilter != null)
+        {
+            return clusteringKeyFilter;
+        }
+        else
+        {
+            Filter[] filters = new Filter[] { tokenFilter, clusteringKeyFilter };
+            return new ChainedFilter(filters, ChainedFilter.AND);
+        }
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public Term identifyingTerm(Row row) {
-		DecoratedKey partitionKey = row.key;
-		ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(row.cf);
-		return fullKeyMapper.term(partitionKey, clusteringKey);
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Term identifyingTerm(Row row)
+    {
+        DecoratedKey partitionKey = row.key;
+        ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(row.cf);
+        return fullKeyMapper.term(partitionKey, clusteringKey);
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public ByteBuffer getUniqueId(Document document) {
-		DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
-		ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(document);
-		return fullKeyMapper.byteBuffer(partitionKey, clusteringKey);
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public ByteBuffer getUniqueId(Document document)
+    {
+        DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
+        ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(document);
+        return fullKeyMapper.byteBuffer(partitionKey, clusteringKey);
+    }
 
 }

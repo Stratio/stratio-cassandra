@@ -31,71 +31,76 @@ import com.stratio.cassandra.index.schema.CellMapperInteger;
 import com.stratio.cassandra.index.schema.CellMapperString;
 import com.stratio.cassandra.index.schema.Schema;
 
-public class PrefixConditionTest {
+public class PrefixConditionTest
+{
 
-	@Test
-	public void testString() {
+    @Test
+    public void testString()
+    {
 
-		Map<String, CellMapper<?>> map = new HashMap<>();
-		map.put("name", new CellMapperString());
-		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Map<String, CellMapper<?>> map = new HashMap<>();
+        map.put("name", new CellMapperString());
+        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		PrefixCondition prefixCondition = new PrefixCondition(0.5f, "name", "tr");
-		Query query = prefixCondition.query(mappers);
+        PrefixCondition prefixCondition = new PrefixCondition(0.5f, "name", "tr");
+        Query query = prefixCondition.query(mappers);
 
-		Assert.assertNotNull(query);
-		Assert.assertEquals(PrefixQuery.class, query.getClass());
-		PrefixQuery luceneQuery = (PrefixQuery) query;
-		Assert.assertEquals("name", luceneQuery.getField());
-		Assert.assertEquals("tr", luceneQuery.getPrefix().text());
-		Assert.assertEquals(0.5f, query.getBoost(), 0);
-	}
+        Assert.assertNotNull(query);
+        Assert.assertEquals(PrefixQuery.class, query.getClass());
+        PrefixQuery luceneQuery = (PrefixQuery) query;
+        Assert.assertEquals("name", luceneQuery.getField());
+        Assert.assertEquals("tr", luceneQuery.getPrefix().text());
+        Assert.assertEquals(0.5f, query.getBoost(), 0);
+    }
 
-	@Test(expected = UnsupportedOperationException.class)
-	public void testInteger() {
+    @Test(expected = UnsupportedOperationException.class)
+    public void testInteger()
+    {
 
-		Map<String, CellMapper<?>> map = new HashMap<>();
-		map.put("name", new CellMapperInteger(1f));
-		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Map<String, CellMapper<?>> map = new HashMap<>();
+        map.put("name", new CellMapperInteger(1f));
+        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		PrefixCondition prefixCondition = new PrefixCondition(0.5f, "name", "2*");
-		prefixCondition.query(mappers);
-	}
+        PrefixCondition prefixCondition = new PrefixCondition(0.5f, "name", "2*");
+        prefixCondition.query(mappers);
+    }
 
-	@Test
-	public void testInetV4() {
+    @Test
+    public void testInetV4()
+    {
 
-		Map<String, CellMapper<?>> map = new HashMap<>();
-		map.put("name", new CellMapperInet());
-		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Map<String, CellMapper<?>> map = new HashMap<>();
+        map.put("name", new CellMapperInet());
+        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		PrefixCondition wildcardCondition = new PrefixCondition(0.5f, "name", "192.168.");
-		Query query = wildcardCondition.query(mappers);
+        PrefixCondition wildcardCondition = new PrefixCondition(0.5f, "name", "192.168.");
+        Query query = wildcardCondition.query(mappers);
 
-		Assert.assertNotNull(query);
-		Assert.assertEquals(PrefixQuery.class, query.getClass());
-		PrefixQuery luceneQuery = (PrefixQuery) query;
-		Assert.assertEquals("name", luceneQuery.getField());
-		Assert.assertEquals("192.168.", luceneQuery.getPrefix().text());
-		Assert.assertEquals(0.5f, query.getBoost(), 0);
-	}
+        Assert.assertNotNull(query);
+        Assert.assertEquals(PrefixQuery.class, query.getClass());
+        PrefixQuery luceneQuery = (PrefixQuery) query;
+        Assert.assertEquals("name", luceneQuery.getField());
+        Assert.assertEquals("192.168.", luceneQuery.getPrefix().text());
+        Assert.assertEquals(0.5f, query.getBoost(), 0);
+    }
 
-	@Test
-	public void testInetV6() {
+    @Test
+    public void testInetV6()
+    {
 
-		Map<String, CellMapper<?>> map = new HashMap<>();
-		map.put("name", new CellMapperInet());
-		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Map<String, CellMapper<?>> map = new HashMap<>();
+        map.put("name", new CellMapperInet());
+        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		PrefixCondition wildcardCondition = new PrefixCondition(0.5f, "name", "2001:db8:2de:0:0:0:0:e");
-		Query query = wildcardCondition.query(mappers);
+        PrefixCondition wildcardCondition = new PrefixCondition(0.5f, "name", "2001:db8:2de:0:0:0:0:e");
+        Query query = wildcardCondition.query(mappers);
 
-		Assert.assertNotNull(query);
-		Assert.assertEquals(PrefixQuery.class, query.getClass());
-		PrefixQuery luceneQuery = (PrefixQuery) query;
-		Assert.assertEquals("name", luceneQuery.getField());
-		Assert.assertEquals("2001:db8:2de:0:0:0:0:e", luceneQuery.getPrefix().text());
-		Assert.assertEquals(0.5f, query.getBoost(), 0);
-	}
+        Assert.assertNotNull(query);
+        Assert.assertEquals(PrefixQuery.class, query.getClass());
+        PrefixQuery luceneQuery = (PrefixQuery) query;
+        Assert.assertEquals("name", luceneQuery.getField());
+        Assert.assertEquals("2001:db8:2de:0:0:0:0:e", luceneQuery.getPrefix().text());
+        Assert.assertEquals(0.5f, query.getBoost(), 0);
+    }
 
 }

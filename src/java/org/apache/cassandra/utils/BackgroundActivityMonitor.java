@@ -56,6 +56,7 @@ public class BackgroundActivityMonitor
     private static final String PROC_STAT_PATH = "/proc/stat";
 
     private final AtomicDouble compaction_severity = new AtomicDouble();
+    private final AtomicDouble manual_severity = new AtomicDouble();
     private final ScheduledExecutorService reportThread = new DebuggableScheduledThreadPoolExecutor("Background_Reporter");
 
     private RandomAccessFile statsFile;
@@ -84,7 +85,7 @@ public class BackgroundActivityMonitor
         String name = tokenizer.nextToken();
         assert name.equalsIgnoreCase("cpu");
         long[] returned = new long[tokenizer.countTokens()];
-        for (int i = 0; i < tokenizer.countTokens(); i++)
+        for (int i = 0; i < returned.length; i++)
             returned[i] = Long.parseLong(tokenizer.nextToken());
         return returned;
     }
@@ -110,6 +111,11 @@ public class BackgroundActivityMonitor
     public void incrCompactionSeverity(double sev)
     {
         compaction_severity.addAndGet(sev);
+    }
+
+    public void incrManualSeverity(double sev)
+    {
+        manual_severity.addAndGet(sev);
     }
 
     public double getIOWait() throws IOException
@@ -157,6 +163,7 @@ public class BackgroundActivityMonitor
 
             if (!Gossiper.instance.isEnabled())
                 return;
+            report += manual_severity.get(); // add manual severity setting.
             VersionedValue updated = StorageService.instance.valueFactory.severity(report);
             Gossiper.instance.addLocalApplicationState(ApplicationState.SEVERITY, updated);
         }

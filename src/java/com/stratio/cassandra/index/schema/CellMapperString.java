@@ -41,66 +41,78 @@ import org.codehaus.jackson.annotate.JsonCreator;
  * 
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class CellMapperString extends CellMapper<String> {
+public class CellMapperString extends CellMapper<String>
+{
 
-	@JsonCreator
-	public CellMapperString() {
-		super(new AbstractType<?>[] { AsciiType.instance,
-		                             UTF8Type.instance,
-		                             Int32Type.instance,
-		                             LongType.instance,
-		                             IntegerType.instance,
-		                             FloatType.instance,
-		                             DoubleType.instance,
-		                             BooleanType.instance,
-		                             UUIDType.instance,
-		                             TimeUUIDType.instance,
-		                             TimestampType.instance,
-		                             BytesType.instance,
-		                             InetAddressType.instance });
-	}
+    @JsonCreator
+    public CellMapperString()
+    {
+        super(new AbstractType<?>[] { AsciiType.instance,
+                UTF8Type.instance,
+                Int32Type.instance,
+                LongType.instance,
+                IntegerType.instance,
+                FloatType.instance,
+                DoubleType.instance,
+                BooleanType.instance,
+                UUIDType.instance,
+                TimeUUIDType.instance,
+                TimestampType.instance,
+                BytesType.instance,
+                InetAddressType.instance });
+    }
 
-	@Override
-	public Analyzer analyzer() {
-		return EMPTY_ANALYZER;
-	}
+    @Override
+    public Analyzer analyzer()
+    {
+        return EMPTY_ANALYZER;
+    }
 
-	@Override
-	public String indexValue(String name, Object value) {
-		if (value == null) {
-			return null;
-		} else {
-			return value.toString();
-		}
-	}
+    @Override
+    public String indexValue(String name, Object value)
+    {
+        if (value == null)
+        {
+            return null;
+        }
+        else
+        {
+            return value.toString();
+        }
+    }
 
-	@Override
-	public String queryValue(String name, Object value) {
-		return indexValue(name, value);
-	}
+    @Override
+    public String queryValue(String name, Object value)
+    {
+        return indexValue(name, value);
+    }
 
-	@Override
-	public Field field(String name, Object value) {
-		String string = indexValue(name, value);
-		return new StringField(name, string, STORE);
-	}
-	
-	@Override
-	public SortField sortField(String field, boolean reverse) {
-		return new SortField(field, Type.STRING, reverse);
-	}
+    @Override
+    public Field field(String name, Object value)
+    {
+        String string = indexValue(name, value);
+        return new StringField(name, string, STORE);
+    }
 
-	@Override
-	public Class<String> baseClass() {
-		return String.class;
-	}
+    @Override
+    public SortField sortField(String field, boolean reverse)
+    {
+        return new SortField(field, Type.STRING, reverse);
+    }
 
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append(getClass().getSimpleName());
-		builder.append(" []");
-		return builder.toString();
-	}
+    @Override
+    public Class<String> baseClass()
+    {
+        return String.class;
+    }
+
+    @Override
+    public String toString()
+    {
+        StringBuilder builder = new StringBuilder();
+        builder.append(getClass().getSimpleName());
+        builder.append(" []");
+        return builder.toString();
+    }
 
 }

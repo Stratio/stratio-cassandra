@@ -42,131 +42,157 @@ import com.stratio.cassandra.index.util.Log;
  * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
-public class RowIndexSearcher extends SecondaryIndexSearcher {
+public class RowIndexSearcher extends SecondaryIndexSearcher
+{
 
-	protected static final Logger logger = LoggerFactory.getLogger(SecondaryIndexSearcher.class);
+    protected static final Logger logger = LoggerFactory.getLogger(SecondaryIndexSearcher.class);
 
-	private final RowIndex index;
-	private final RowService rowService;
-	private final Schema schema;
-	private final ByteBuffer indexedColumnName;
+    private final RowIndex index;
+    private final RowService rowService;
+    private final Schema schema;
+    private final ByteBuffer indexedColumnName;
 
-	/**
-	 * Returns a new {@code RowIndexSearcher}.
-	 * 
-	 * @param indexManager
-	 * @param index
-	 * @param columns
-	 * @param rowService
-	 */
-	public RowIndexSearcher(SecondaryIndexManager indexManager,
-	                        RowIndex index,
-	                        Set<ByteBuffer> columns,
-	                        RowService rowService) {
-		super(indexManager, columns);
-		this.index = index;
-		this.rowService = rowService;
-		schema = rowService.getSchema();
-		indexedColumnName = index.getColumnDefinition().name;
-	}
+    /**
+     * Returns a new {@code RowIndexSearcher}.
+     * 
+     * @param indexManager
+     * @param index
+     * @param columns
+     * @param rowService
+     */
+    public RowIndexSearcher(SecondaryIndexManager indexManager,
+                            RowIndex index,
+                            Set<ByteBuffer> columns,
+                            RowService rowService)
+    {
+        super(indexManager, columns);
+        this.index = index;
+        this.rowService = rowService;
+        schema = rowService.getSchema();
+        indexedColumnName = index.getColumnDefinition().name;
+    }
 
-	@Override
-	public List<Row> search(ExtendedFilter extendedFilter) {
-		// Log.debug("Searching %s", extendedFilter);
-		try {
-			long timestamp = extendedFilter.timestamp;
-			int limit = extendedFilter.maxColumns();
-			DataRange dataRange = extendedFilter.dataRange;
-			List<IndexExpression> clause = extendedFilter.getClause();
-			List<IndexExpression> filteredExpressions = filteredExpressions(clause);
-			Search search = search(clause);
-			return rowService.search(search, filteredExpressions, dataRange, limit, timestamp);
-		} catch (Exception e) {
-			Log.error(e, "Error while searching: %s", e.getMessage());
-			return new ArrayList<>(0);
-		}
-	}
+    @Override
+    public List<Row> search(ExtendedFilter extendedFilter)
+    {
+        // Log.debug("Searching %s", extendedFilter);
+        try
+        {
+            long timestamp = extendedFilter.timestamp;
+            int limit = extendedFilter.maxColumns();
+            DataRange dataRange = extendedFilter.dataRange;
+            List<IndexExpression> clause = extendedFilter.getClause();
+            List<IndexExpression> filteredExpressions = filteredExpressions(clause);
+            Search search = search(clause);
+            return rowService.search(search, filteredExpressions, dataRange, limit, timestamp);
+        }
+        catch (Exception e)
+        {
+            Log.error(e, "Error while searching: %s", e.getMessage());
+            return new ArrayList<>(0);
+        }
+    }
 
-	@Override
-	public boolean isIndexing(List<IndexExpression> clause) {
-		for (IndexExpression expression : clause) {
-			ByteBuffer columnName = expression.column_name;
-			boolean sameName = indexedColumnName.equals(columnName);
-			if (expression.op.equals(IndexOperator.EQ) && sameName) {
-				return true;
-			}
-		}
-		return false;
-	}
+    @Override
+    public boolean isIndexing(List<IndexExpression> clause)
+    {
+        for (IndexExpression expression : clause)
+        {
+            ByteBuffer columnName = expression.column_name;
+            boolean sameName = indexedColumnName.equals(columnName);
+            if (expression.op.equals(IndexOperator.EQ) && sameName)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
 
-	@Override
-	public void validate(List<IndexExpression> clause) {
-		Search search = search(clause);
-		search.validate(schema);
-	}
+    @Override
+    public void validate(List<IndexExpression> clause)
+    {
+        Search search = search(clause);
+        search.validate(schema);
+    }
 
-	@Override
-	public boolean requiresFullScan(AbstractRangeCommand command) {
-		Search search = search(command.rowFilter);
-		return search.usesSorting();
-	}
+    @Override
+    public boolean requiresFullScan(AbstractRangeCommand command)
+    {
+        Search search = search(command.rowFilter);
+        return search.usesSorting();
+    }
 
-	@Override
-	public List<Row> combine(AbstractRangeCommand command, List<Row> rows) {
-		try {
-			Search search = search(command.rowFilter);
-			if (search.usesSorting()) {
-				return rowService.combine(search, rows, command.limit());
-			} else {
-				return super.combine(command, rows);
-			}
-		} catch (Exception e) {
-			String message = String.format("Error while combining partial results: %s", e.getMessage());
-			Log.error(e, message);
-			throw new RuntimeException(message, e);
-		}
-	}
+    @Override
+    public List<Row> combine(AbstractRangeCommand command, List<Row> rows)
+    {
+        try
+        {
+            Search search = search(command.rowFilter);
+            if (search.usesSorting())
+            {
+                return rowService.combine(search, rows, command.limit());
+            }
+            else
+            {
+                return super.combine(command, rows);
+            }
+        }
+        catch (Exception e)
+        {
+            String message = String.format("Error while combining partial results: %s", e.getMessage());
+            Log.error(e, message);
+            throw new RuntimeException(message, e);
+        }
+    }
 
-	private Search search(List<IndexExpression> clause) {
-		IndexExpression indexedExpression = indexedExpression(clause);
-		String json = UTF8Type.instance.compose(indexedExpression.value);
-		return Search.fromJson(json);
-	}
+    private Search search(List<IndexExpression> clause)
+    {
+        IndexExpression indexedExpression = indexedExpression(clause);
+        String json = UTF8Type.instance.compose(indexedExpression.value);
+        return Search.fromJson(json);
+    }
 
-	private IndexExpression indexedExpression(List<IndexExpression> clause) {
-		for (IndexExpression indexExpression : clause) {
-			ByteBuffer columnName = indexExpression.column_name;
-			if (indexedColumnName.equals(columnName)) {
-				return indexExpression;
-			}
-		}
-		return null;
-	}
+    private IndexExpression indexedExpression(List<IndexExpression> clause)
+    {
+        for (IndexExpression indexExpression : clause)
+        {
+            ByteBuffer columnName = indexExpression.column_name;
+            if (indexedColumnName.equals(columnName))
+            {
+                return indexExpression;
+            }
+        }
+        return null;
+    }
 
-	private List<IndexExpression> filteredExpressions(List<IndexExpression> clause) {
-		List<IndexExpression> filteredExpressions = new ArrayList<>(clause.size());
-		for (IndexExpression ie : clause) {
-			ByteBuffer columnName = ie.column_name;
-			if (!indexedColumnName.equals(columnName)) {
-				filteredExpressions.add(ie);
-			}
-		}
-		return filteredExpressions;
-	}
+    private List<IndexExpression> filteredExpressions(List<IndexExpression> clause)
+    {
+        List<IndexExpression> filteredExpressions = new ArrayList<>(clause.size());
+        for (IndexExpression ie : clause)
+        {
+            ByteBuffer columnName = ie.column_name;
+            if (!indexedColumnName.equals(columnName))
+            {
+                filteredExpressions.add(ie);
+            }
+        }
+        return filteredExpressions;
+    }
 
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("RowIndexSearcher [index=");
-		builder.append(index.getIndexName());
-		builder.append(", keyspace=");
-		builder.append(index.getKeyspaceName());
-		builder.append(", table=");
-		builder.append(index.getTableName());
-		builder.append(", column=");
-		builder.append(index.getColumnName());
-		builder.append("]");
-		return builder.toString();
-	}
+    @Override
+    public String toString()
+    {
+        StringBuilder builder = new StringBuilder();
+        builder.append("RowIndexSearcher [index=");
+        builder.append(index.getIndexName());
+        builder.append(", keyspace=");
+        builder.append(index.getKeyspaceName());
+        builder.append(", table=");
+        builder.append(index.getTableName());
+        builder.append(", column=");
+        builder.append(index.getColumnName());
+        builder.append("]");
+        return builder.toString();
+    }
 
 }

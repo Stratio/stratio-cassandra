@@ -28,58 +28,66 @@ import com.stratio.cassandra.index.schema.Schema;
  * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
-public class SortingField {
+public class SortingField
+{
 
-	private static final boolean DEFAULT_REVERSE = false;
+    private static final boolean DEFAULT_REVERSE = false;
 
-	/** The name of field to sort by. */
-	private String field;
+    /** The name of field to sort by. */
+    private String field;
 
-	/** {@code true} if natural order should be reversed. */
-	private boolean reverse;
+    /** {@code true} if natural order should be reversed. */
+    private boolean reverse;
 
-	/**
-	 * Returns a new {@link SortingField}.
-	 * 
-	 * @param field
-	 *            The name of field to sort by.
-	 * @param reverse
-	 *            {@code true} if natural order should be reversed.
-	 */
-	@JsonCreator
-	public SortingField(@JsonProperty("field") String field, @JsonProperty("reverse") Boolean reverse) {
-		this.field = field;
-		this.reverse = reverse == null ? DEFAULT_REVERSE : reverse;
-	}
+    /**
+     * Returns a new {@link SortingField}.
+     * 
+     * @param field
+     *            The name of field to sort by.
+     * @param reverse
+     *            {@code true} if natural order should be reversed.
+     */
+    @JsonCreator
+    public SortingField(@JsonProperty("field") String field, @JsonProperty("reverse") Boolean reverse)
+    {
+        this.field = field;
+        this.reverse = reverse == null ? DEFAULT_REVERSE : reverse;
+    }
 
-	/**
-	 * Returns the Lucene's {@link SortField} representing this {@link SortingField}.
-	 * 
-	 * @param schema
-	 *            The {@link Schema} to be used.
-	 * @return the Lucene's {@link SortField} representing this {@link SortingField}.
-	 */
-	public SortField sortField(Schema schema) {
-		if (field == null || field.trim().isEmpty()) {
-			throw new IllegalArgumentException("Field name required");
-		}
-		CellMapper<?> cellMapper = schema.getMapper(field);
-		if (cellMapper == null) {
-			throw new IllegalArgumentException("No mapper found for sort field " + field);
-		} else {
-			return cellMapper.sortField(field, reverse);
-		}
-	}
+    /**
+     * Returns the Lucene's {@link SortField} representing this {@link SortingField}.
+     * 
+     * @param schema
+     *            The {@link Schema} to be used.
+     * @return the Lucene's {@link SortField} representing this {@link SortingField}.
+     */
+    public SortField sortField(Schema schema)
+    {
+        if (field == null || field.trim().isEmpty())
+        {
+            throw new IllegalArgumentException("Field name required");
+        }
+        CellMapper<?> cellMapper = schema.getMapper(field);
+        if (cellMapper == null)
+        {
+            throw new IllegalArgumentException("No mapper found for sort field " + field);
+        }
+        else
+        {
+            return cellMapper.sortField(field, reverse);
+        }
+    }
 
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("Sort [field=");
-		builder.append(field);
-		builder.append(", reverse=");
-		builder.append(reverse);
-		builder.append("]");
-		return builder.toString();
-	}
+    @Override
+    public String toString()
+    {
+        StringBuilder builder = new StringBuilder();
+        builder.append("Sort [field=");
+        builder.append(field);
+        builder.append(", reverse=");
+        builder.append(reverse);
+        builder.append("]");
+        return builder.toString();
+    }
 
 }

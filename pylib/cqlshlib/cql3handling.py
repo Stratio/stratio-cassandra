@@ -79,7 +79,7 @@ class Cql3ParsingRuleSet(CqlParsingRuleSet):
         # (CQL3 option name, schema_columnfamilies column name (or None if same),
         #  list of known map keys)
         ('compaction', 'compaction_strategy_options',
-            ('class', 'min_threshold', 'max_threshold')),
+            ('class', 'max_threshold', 'tombstone_compaction_interval', 'tombstone_threshold', 'enabled')),
         ('compression', 'compression_parameters',
             ('sstable_compression', 'chunk_length_kb', 'crc_check_chance')),
     )
@@ -178,6 +178,7 @@ JUNK ::= /([ \t\r\f\v]+|(--|[/][/])[^\n\r]*([\n\r]|$)|[/][*].*?[*][/])/ ;
 <quotedName> ::=    /"([^"]|"")*"/ ;
 <float> ::=         /-?[0-9]+\.[0-9]+/ ;
 <uuid> ::=          /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/ ;
+<blobLiteral> ::=    /0x[0-9a-f]+/ ;
 <wholenumber> ::=   /[0-9]+/ ;
 <identifier> ::=    /[a-z][a-z0-9_]*/ ;
 <colon> ::=         ":" ;
@@ -201,10 +202,15 @@ JUNK ::= /([ \t\r\f\v]+|(--|[/][/])[^\n\r]*([\n\r]|$)|[/][*].*?[*][/])/ ;
          | <float>
          | <uuid>
          | <boolean>
+         | <blobLiteral>
+         | <functionName> <functionArguments>
          ;
 
+<functionArguments> ::= "(" ( <term> ( "," <term> )* )? ")"
+                 ;
+
 <tokenDefinition> ::= token="TOKEN" "(" <term> ( "," <term> )* ")"
-                    | <stringLiteral>
+                    | <term>
                     ;
 <value> ::= <term>
           | <collectionLiteral>
@@ -225,6 +231,9 @@ JUNK ::= /([ \t\r\f\v]+|(--|[/][/])[^\n\r]*([\n\r]|$)|[/][*].*?[*][/])/ ;
                ;
 <mapLiteral> ::= "{" <term> ":" <term> ( "," <term> ":" <term> )* "}"
                ;
+
+<functionName> ::= <identifier>
+                 ;
 
 <statementBody> ::= <useStatement>
                   | <selectStatement>
@@ -464,6 +473,10 @@ def cf_prop_val_mapkey_completer(ctxt, cass):
         csc = csc.split('.')[-1]
         if csc == 'SizeTieredCompactionStrategy':
             opts.add('min_sstable_size')
+            opts.add('min_threshold')
+            opts.add('bucket_high')
+            opts.add('bucket_low')
+            opts.add('cold_reads_to_omit')
         elif csc == 'LeveledCompactionStrategy':
             opts.add('sstable_size_in_mb')
         return map(escape_value, opts)
@@ -556,13 +569,13 @@ syntax_rules += r'''
                  ;
 <selectStatement> ::= "SELECT" <selectClause>
                         "FROM" cf=<columnFamilyName>
-                          ("WHERE" <whereClause>)?
-                          ("ORDER" "BY" <orderByClause> ( "," <orderByClause> )* )?
-                          ("LIMIT" limit=<wholenumber>)?
+                          ( "WHERE" <whereClause> )?
+                          ( "ORDER" "BY" <orderByClause> ( "," <orderByClause> )* )?
+                          ( "LIMIT" limit=<wholenumber> )?
                     ;
-<whereClause> ::= <relation> ("AND" <relation>)*
+<whereClause> ::= <relation> ( "AND" <relation> )*
                 ;
-<relation> ::= [rel_lhs]=<cident> ("=" | "<" | ">" | "<=" | ">=") <term>
+<relation> ::= [rel_lhs]=<cident> ( "=" | "<" | ">" | "<=" | ">=" ) <term>
              | token="TOKEN" "(" [rel_tokname]=<cident>
                                  ( "," [rel_tokname]=<cident> )*
                              ")" ("=" | "<" | ">" | "<=" | ">=") <tokenDefinition>
@@ -575,7 +588,10 @@ syntax_rules += r'''
 <selector> ::= [colname]=<cident>
              | "WRITETIME" "(" [colname]=<cident> ")"
              | "TTL" "(" [colname]=<cident> ")"
+             | <functionName> <selectionFunctionArguments>
              ;
+<selectionFunctionArguments> ::= "(" ( <selector> ( "," <selector> )* )? ")"
+                          ;
 <orderByClause> ::= [ordercol]=<cident> ( "ASC" | "DESC" )?
                   ;
 '''

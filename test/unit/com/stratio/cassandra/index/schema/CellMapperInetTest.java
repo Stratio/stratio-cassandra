@@ -29,138 +29,158 @@ import com.stratio.cassandra.index.schema.CellMapper;
 import com.stratio.cassandra.index.schema.CellMapperInet;
 import com.stratio.cassandra.index.schema.Schema;
 
-public class CellMapperInetTest {
+public class CellMapperInetTest
+{
 
-	@Test()
-	public void testValueNull() {
-		CellMapperInet mapper = new CellMapperInet();
-		String parsed = mapper.indexValue("test", null);
-		Assert.assertNull(parsed);
-	}
+    @Test()
+    public void testValueNull()
+    {
+        CellMapperInet mapper = new CellMapperInet();
+        String parsed = mapper.indexValue("test", null);
+        Assert.assertNull(parsed);
+    }
 
-	@Test(expected = IllegalArgumentException.class)
-	public void testValueInteger() {
-		CellMapperInet mapper = new CellMapperInet();
-		mapper.indexValue("test", 3);
-	}
+    @Test(expected = IllegalArgumentException.class)
+    public void testValueInteger()
+    {
+        CellMapperInet mapper = new CellMapperInet();
+        mapper.indexValue("test", 3);
+    }
 
-	@Test(expected = IllegalArgumentException.class)
-	public void testValueLong() {
-		CellMapperInet mapper = new CellMapperInet();
-		mapper.indexValue("test", 3l);
-	}
+    @Test(expected = IllegalArgumentException.class)
+    public void testValueLong()
+    {
+        CellMapperInet mapper = new CellMapperInet();
+        mapper.indexValue("test", 3l);
+    }
 
-	@Test(expected = IllegalArgumentException.class)
-	public void testValueFloat() {
-		CellMapperInet mapper = new CellMapperInet();
-		mapper.indexValue("test", 3.5f);
-	}
+    @Test(expected = IllegalArgumentException.class)
+    public void testValueFloat()
+    {
+        CellMapperInet mapper = new CellMapperInet();
+        mapper.indexValue("test", 3.5f);
+    }
 
-	@Test(expected = IllegalArgumentException.class)
-	public void testValueDouble() {
-		CellMapperInet mapper = new CellMapperInet();
-		mapper.indexValue("test", 3.6d);
-	}
+    @Test(expected = IllegalArgumentException.class)
+    public void testValueDouble()
+    {
+        CellMapperInet mapper = new CellMapperInet();
+        mapper.indexValue("test", 3.6d);
+    }
 
-	@Test(expected = IllegalArgumentException.class)
-	public void testValueUUID() {
-		CellMapperInet mapper = new CellMapperInet();
-		mapper.indexValue("test", UUID.randomUUID());
-	}
+    @Test(expected = IllegalArgumentException.class)
+    public void testValueUUID()
+    {
+        CellMapperInet mapper = new CellMapperInet();
+        mapper.indexValue("test", UUID.randomUUID());
+    }
 
-	@Test(expected = IllegalArgumentException.class)
-	public void testValueStringInvalid() {
-		CellMapperInet mapper = new CellMapperInet();
-		mapper.indexValue("test", "Hello");
-	}
+    @Test(expected = IllegalArgumentException.class)
+    public void testValueStringInvalid()
+    {
+        CellMapperInet mapper = new CellMapperInet();
+        mapper.indexValue("test", "Hello");
+    }
 
-	@Test
-	public void testValueStringV4WithoutZeros() {
-		CellMapperInet mapper = new CellMapperInet();
-		String parsed = mapper.indexValue("test", "192.168.0.1");
-		Assert.assertEquals("192.168.0.1", parsed);
-	}
+    @Test
+    public void testValueStringV4WithoutZeros()
+    {
+        CellMapperInet mapper = new CellMapperInet();
+        String parsed = mapper.indexValue("test", "192.168.0.1");
+        Assert.assertEquals("192.168.0.1", parsed);
+    }
 
-	@Test
-	public void testValueStringV4WithZeros() {
-		CellMapperInet mapper = new CellMapperInet();
-		String parsed = mapper.indexValue("test", "192.168.000.001");
-		Assert.assertEquals("192.168.0.1", parsed);
-	}
+    @Test
+    public void testValueStringV4WithZeros()
+    {
+        CellMapperInet mapper = new CellMapperInet();
+        String parsed = mapper.indexValue("test", "192.168.000.001");
+        Assert.assertEquals("192.168.0.1", parsed);
+    }
 
-	@Test
-	public void testValueStringV6WithoutZeros() {
-		CellMapperInet mapper = new CellMapperInet();
-		String parsed = mapper.indexValue("test", "2001:db8:2de:0:0:0:0:e13");
-		Assert.assertEquals("2001:db8:2de:0:0:0:0:e13", parsed);
-	}
+    @Test
+    public void testValueStringV6WithoutZeros()
+    {
+        CellMapperInet mapper = new CellMapperInet();
+        String parsed = mapper.indexValue("test", "2001:db8:2de:0:0:0:0:e13");
+        Assert.assertEquals("2001:db8:2de:0:0:0:0:e13", parsed);
+    }
 
-	@Test
-	public void testValueStringV6WithZeros() {
-		CellMapperInet mapper = new CellMapperInet();
-		String parsed = mapper.indexValue("test", "2001:0db8:02de:0000:0000:0000:0000:0e13");
-		Assert.assertEquals("2001:db8:2de:0:0:0:0:e13", parsed);
-	}
+    @Test
+    public void testValueStringV6WithZeros()
+    {
+        CellMapperInet mapper = new CellMapperInet();
+        String parsed = mapper.indexValue("test", "2001:0db8:02de:0000:0000:0000:0000:0e13");
+        Assert.assertEquals("2001:db8:2de:0:0:0:0:e13", parsed);
+    }
 
-	@Test
-	public void testValueStringV6Compact() {
-		CellMapperInet mapper = new CellMapperInet();
-		String parsed = mapper.indexValue("test", "2001:DB8:2de::0e13");
-		Assert.assertEquals("2001:db8:2de:0:0:0:0:e13", parsed);
-	}
+    @Test
+    public void testValueStringV6Compact()
+    {
+        CellMapperInet mapper = new CellMapperInet();
+        String parsed = mapper.indexValue("test", "2001:DB8:2de::0e13");
+        Assert.assertEquals("2001:db8:2de:0:0:0:0:e13", parsed);
+    }
 
-	@Test
-	public void testValueInetV4() throws UnknownHostException {
-		CellMapperInet mapper = new CellMapperInet();
-		InetAddress inet = InetAddress.getByName("192.168.0.13");
-		String parsed = mapper.indexValue("test", inet);
-		Assert.assertEquals("192.168.0.13", parsed);
-	}
+    @Test
+    public void testValueInetV4() throws UnknownHostException
+    {
+        CellMapperInet mapper = new CellMapperInet();
+        InetAddress inet = InetAddress.getByName("192.168.0.13");
+        String parsed = mapper.indexValue("test", inet);
+        Assert.assertEquals("192.168.0.13", parsed);
+    }
 
-	@Test
-	public void testValueInetV6() throws UnknownHostException {
-		CellMapperInet mapper = new CellMapperInet();
-		InetAddress inet = InetAddress.getByName("2001:db8:2de:0:0:0:0:e13");
-		String parsed = mapper.indexValue("test", inet);
-		Assert.assertEquals("2001:db8:2de:0:0:0:0:e13", parsed);
-	}
+    @Test
+    public void testValueInetV6() throws UnknownHostException
+    {
+        CellMapperInet mapper = new CellMapperInet();
+        InetAddress inet = InetAddress.getByName("2001:db8:2de:0:0:0:0:e13");
+        String parsed = mapper.indexValue("test", inet);
+        Assert.assertEquals("2001:db8:2de:0:0:0:0:e13", parsed);
+    }
 
-	@Test
-	public void testField() {
-		CellMapperInet mapper = new CellMapperInet();
-		Field field = mapper.field("name", "192.168.0.13");
-		Assert.assertNotNull(field);
-		Assert.assertEquals("192.168.0.13", field.stringValue());
-		Assert.assertEquals("name", field.name());
-		Assert.assertEquals(false, field.fieldType().stored());
-	}
+    @Test
+    public void testField()
+    {
+        CellMapperInet mapper = new CellMapperInet();
+        Field field = mapper.field("name", "192.168.0.13");
+        Assert.assertNotNull(field);
+        Assert.assertEquals("192.168.0.13", field.stringValue());
+        Assert.assertEquals("name", field.name());
+        Assert.assertEquals(false, field.fieldType().stored());
+    }
 
-	@Test
-	public void testExtractAnalyzers() {
-		CellMapperInet mapper = new CellMapperInet();
-		Analyzer analyzer = mapper.analyzer();
-		Assert.assertEquals(CellMapper.EMPTY_ANALYZER, analyzer);
-	}
+    @Test
+    public void testExtractAnalyzers()
+    {
+        CellMapperInet mapper = new CellMapperInet();
+        Analyzer analyzer = mapper.analyzer();
+        Assert.assertEquals(CellMapper.EMPTY_ANALYZER, analyzer);
+    }
 
-	@Test
-	public void testParseJSON() throws IOException {
-		String json = "{fields:{age:{type:\"inet\"}}}";
-		Schema schema = Schema.fromJson(json);
-		CellMapper<?> cellMapper = schema.getMapper("age");
-		Assert.assertNotNull(cellMapper);
-		Assert.assertEquals(CellMapperInet.class, cellMapper.getClass());
-	}
+    @Test
+    public void testParseJSON() throws IOException
+    {
+        String json = "{fields:{age:{type:\"inet\"}}}";
+        Schema schema = Schema.fromJson(json);
+        CellMapper<?> cellMapper = schema.getMapper("age");
+        Assert.assertNotNull(cellMapper);
+        Assert.assertEquals(CellMapperInet.class, cellMapper.getClass());
+    }
 
-	@Test(expected = IllegalArgumentException.class)
-	public void testParseJSONEmpty() throws IOException {
-		String json = "{fields:{}}";
-		Schema schema = Schema.fromJson(json);
-		schema.getMapper("age");
-	}
+    @Test(expected = IllegalArgumentException.class)
+    public void testParseJSONEmpty() throws IOException
+    {
+        String json = "{fields:{}}";
+        Schema schema = Schema.fromJson(json);
+        schema.getMapper("age");
+    }
 
-	@Test(expected = IllegalArgumentException.class)
-	public void testParseJSONInvalid() throws IOException {
-		String json = "{fields:{age:{}}";
-		Schema.fromJson(json);
-	}
+    @Test(expected = IllegalArgumentException.class)
+    public void testParseJSONInvalid() throws IOException
+    {
+        String json = "{fields:{age:{}}";
+        Schema.fromJson(json);
+    }
 }

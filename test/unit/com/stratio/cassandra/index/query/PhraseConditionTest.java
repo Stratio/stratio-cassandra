@@ -30,27 +30,29 @@ import com.stratio.cassandra.index.schema.CellMapper;
 import com.stratio.cassandra.index.schema.CellMapperBoolean;
 import com.stratio.cassandra.index.schema.Schema;
 
-public class PhraseConditionTest {
+public class PhraseConditionTest
+{
 
-	@Test
-	public void testPhraseQuery() {
+    @Test
+    public void testPhraseQuery()
+    {
 
-		Map<String, CellMapper<?>> map = new HashMap<>();
-		map.put("name", new CellMapperBoolean());
-		Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Map<String, CellMapper<?>> map = new HashMap<>();
+        map.put("name", new CellMapperBoolean());
+        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-		List<String> values = new ArrayList<>();
-		values.add("hola");
-		values.add("adios");
+        List<String> values = new ArrayList<>();
+        values.add("hola");
+        values.add("adios");
 
-		PhraseCondition phraseCondition = new PhraseCondition(0.5f, "name", values, 2);
-		Query query = phraseCondition.query(mappers);
-		Assert.assertNotNull(query);
-		Assert.assertEquals(org.apache.lucene.search.PhraseQuery.class, query.getClass());
-		org.apache.lucene.search.PhraseQuery luceneQuery = (org.apache.lucene.search.PhraseQuery) query;
-		Assert.assertEquals(values.size(), luceneQuery.getTerms().length);
-		Assert.assertEquals(2, luceneQuery.getSlop());
-		Assert.assertEquals(0.5f, query.getBoost(), 0);
-	}
+        PhraseCondition phraseCondition = new PhraseCondition(0.5f, "name", values, 2);
+        Query query = phraseCondition.query(mappers);
+        Assert.assertNotNull(query);
+        Assert.assertEquals(org.apache.lucene.search.PhraseQuery.class, query.getClass());
+        org.apache.lucene.search.PhraseQuery luceneQuery = (org.apache.lucene.search.PhraseQuery) query;
+        Assert.assertEquals(values.size(), luceneQuery.getTerms().length);
+        Assert.assertEquals(2, luceneQuery.getSlop());
+        Assert.assertEquals(0.5f, query.getBoost(), 0);
+    }
 
 }

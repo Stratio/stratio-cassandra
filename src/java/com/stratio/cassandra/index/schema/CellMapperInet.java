@@ -35,86 +35,117 @@ import org.codehaus.jackson.annotate.JsonCreator;
  * 
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class CellMapperInet extends CellMapper<String> {
+public class CellMapperInet extends CellMapper<String>
+{
 
-	private static final Pattern IPV4_PATTERN = Pattern.compile("(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])");
-	private static final Pattern IPV6_PATTERN = Pattern.compile("^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$");
-	private static final Pattern IPV6_COMPRESSED_PATTERN = Pattern.compile("^((?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4})*)?)::((?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4})*)?)$");
+    private static final Pattern IPV4_PATTERN = Pattern
+            .compile("(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])");
+    private static final Pattern IPV6_PATTERN = Pattern.compile("^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$");
+    private static final Pattern IPV6_COMPRESSED_PATTERN = Pattern
+            .compile("^((?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4})*)?)::((?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4})*)?)$");
 
-	@JsonCreator
-	public CellMapperInet() {
-		super(new AbstractType<?>[] { AsciiType.instance, UTF8Type.instance, InetAddressType.instance });
-	}
+    @JsonCreator
+    public CellMapperInet()
+    {
+        super(new AbstractType<?>[] { AsciiType.instance, UTF8Type.instance, InetAddressType.instance });
+    }
 
-	@Override
-	public Analyzer analyzer() {
-		return EMPTY_ANALYZER;
-	}
+    @Override
+    public Analyzer analyzer()
+    {
+        return EMPTY_ANALYZER;
+    }
 
-	@Override
-	public String indexValue(String name, Object value) {
-		if (value == null) {
-			return null;
-		} else if (value instanceof InetAddress) {
-			InetAddress inetAddress = (InetAddress) value;
-			return inetAddress.getHostAddress();
-		} else if (value instanceof String) {
-			String svalue = (String) value;
-			if (IPV4_PATTERN.matcher(svalue).matches() || IPV6_PATTERN.matcher(svalue).matches()
-			        || IPV6_COMPRESSED_PATTERN.matcher(svalue).matches()) {
-				try {
-					return InetAddress.getByName(svalue).getHostAddress();
-				} catch (UnknownHostException e) {
-				}
-			}
-		}
-		throw new IllegalArgumentException(String.format("Value '%s' cannot be cast to InetAddress", value));
-	}
+    @Override
+    public String indexValue(String name, Object value)
+    {
+        if (value == null)
+        {
+            return null;
+        }
+        else if (value instanceof InetAddress)
+        {
+            InetAddress inetAddress = (InetAddress) value;
+            return inetAddress.getHostAddress();
+        }
+        else if (value instanceof String)
+        {
+            String svalue = (String) value;
+            if (IPV4_PATTERN.matcher(svalue).matches() || IPV6_PATTERN.matcher(svalue).matches()
+                    || IPV6_COMPRESSED_PATTERN.matcher(svalue).matches())
+            {
+                try
+                {
+                    return InetAddress.getByName(svalue).getHostAddress();
+                }
+                catch (UnknownHostException e)
+                {
+                }
+            }
+        }
+        throw new IllegalArgumentException(String.format("Value '%s' cannot be cast to InetAddress", value));
+    }
 
-	@Override
-	public String queryValue(String name, Object value) {
-		if (value == null) {
-			return null;
-		} else if (value instanceof InetAddress) {
-			InetAddress inetAddress = (InetAddress) value;
-			return inetAddress.getHostAddress();
-		} else if (value instanceof String) {
-			String svalue = (String) value;
-			if (IPV4_PATTERN.matcher(svalue).matches() || IPV6_PATTERN.matcher(svalue).matches()
-			        || IPV6_COMPRESSED_PATTERN.matcher(svalue).matches()) {
-				try {
-					return InetAddress.getByName(svalue).getHostAddress();
-				} catch (UnknownHostException e) {
-				}
-			} else {
-				return svalue;
-			}
-		}
-		throw new IllegalArgumentException(String.format("Value '%s' cannot be cast to InetAddress", value));
-	}
+    @Override
+    public String queryValue(String name, Object value)
+    {
+        if (value == null)
+        {
+            return null;
+        }
+        else if (value instanceof InetAddress)
+        {
+            InetAddress inetAddress = (InetAddress) value;
+            return inetAddress.getHostAddress();
+        }
+        else if (value instanceof String)
+        {
+            String svalue = (String) value;
+            if (IPV4_PATTERN.matcher(svalue).matches() || IPV6_PATTERN.matcher(svalue).matches()
+                    || IPV6_COMPRESSED_PATTERN.matcher(svalue).matches())
+            {
+                try
+                {
+                    return InetAddress.getByName(svalue).getHostAddress();
+                }
+                catch (UnknownHostException e)
+                {
+                }
+            }
+            else
+            {
+                return svalue;
+            }
+        }
+        throw new IllegalArgumentException(String.format("Value '%s' cannot be cast to InetAddress", value));
+    }
 
-	@Override
-	public Field field(String name, Object value) {
-		String string = indexValue(name, value);
-		return new StringField(name, string, STORE);
-	}
+    @Override
+    public Field field(String name, Object value)
+    {
+        String string = indexValue(name, value);
+        return new StringField(name, string, STORE);
+    }
 
-	@Override
-	public SortField sortField(String field, boolean reverse) {
-		return new SortField(field, Type.STRING, reverse);
-	}
+    @Override
+    public SortField sortField(String field, boolean reverse)
+    {
+        return new SortField(field, Type.STRING, reverse);
+    }
 
-	@Override
-	public Class<String> baseClass() {
-		return String.class;
-	}
+    @Override
+    public Class<String> baseClass()
+    {
+        return String.class;
+    }
 
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append(getClass().getSimpleName());
-		builder.append(" []");
-		return builder.toString();
-	}
+    @Override
+    public String toString()
+    {
+        StringBuilder builder = new StringBuilder();
+        builder.append(getClass().getSimpleName());
+        builder.append(" []");
+        return builder.toString();
+    }
 
 }
