@@ -78,22 +78,51 @@ public abstract class SecondaryIndexSearcher
             Tracing.trace("No applicable indexes found");
         else
             Tracing.trace("Candidate index mean cardinalities are {}. Scanning with {}.",
-                          FBUtilities.toString(candidates), indexManager.getIndexForColumn(best.column_name).getIndexName());
+                          FBUtilities.toString(candidates), indexManager.getIndexForColumn(best.column_name)
+                                  .getIndexName());
 
         return best;
     }
-    
-    public void validate(List<IndexExpression> clause) {
-	}
 
-	public boolean requiresFullScan(AbstractRangeCommand command) {
-		return false;
-	}
+    /**
+     * Validates the specified {@link IndexExpression} clause. It will throw a {@link RuntimeException} if the provided
+     * clause is not valid for the index implementation.
+     * 
+     * @param clause
+     *            An {@link IndexExpression} to be validated
+     */
+    public void validate(List<IndexExpression> clause)
+    {
+    }
 
-	public List<Row> combine(AbstractRangeCommand command, List<Row> rows) {
-		if (command.countCQL3Rows())
-			return rows;
-		else
-			return rows.size() > command.limit() ? rows.subList(0, command.limit()) : rows;
-	}
+    /**
+     * Returns {@code true} if the specified {@link AbstractRangeCommand} requires a full scan of all the nodes,
+     * {@code false} otherwise.
+     * 
+     * @param command
+     *            A {@link AbstractRangeCommand}.
+     * @return {@code true} if the {@code command} requires a full scan, {@code false} otherwise.
+     */
+    public boolean requiresFullScan(AbstractRangeCommand command)
+    {
+        return false;
+    }
+
+    /**
+     * Combines a list of cluster-wide collected {@link Row}s to satisfy the specified {@link AbstractRangeCommand}.
+     * This default implementation just truncates the provided list of rows according to the number of requested rows.
+     * 
+     * @param command
+     *            A {@link AbstractRangeCommand}.
+     * @param rows
+     *            A list of {@link Row}s collected by local instances of this index.
+     * @return The combination of the specified partial results according to the specified command.
+     */
+    public List<Row> combine(AbstractRangeCommand command, List<Row> rows)
+    {
+        if (command.countCQL3Rows())
+            return rows;
+        else
+            return rows.size() > command.limit() ? rows.subList(0, command.limit()) : rows;
+    }
 }
