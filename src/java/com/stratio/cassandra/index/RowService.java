@@ -279,15 +279,17 @@ public abstract class RowService
 
         // Paginate search collecting documents
         List<ScoredDocument> scoredDocuments;
-        int pageSize;
+        int pageSize = Math.min(limit, PAGE_SIZE);
         do
         {
-            pageSize = Math.max(limit - rows.size(), PAGE_SIZE);
 
             // Search in Lucene
+            long searchStartTime = System.currentTimeMillis();
             scoredDocuments = rowDirectory.search(lastDoc, query, filter, sort, pageSize, fieldsToLoad());
+            Log.debug("Search time: " + (System.currentTimeMillis() - searchStartTime) + " ms");
 
             // Collect rows from Cassandra
+            long collectStartTime = System.currentTimeMillis();
             for (ScoredDocument sd : scoredDocuments)
             {
                 lastDoc = sd.scoreDoc;
@@ -297,13 +299,13 @@ public abstract class RowService
                 {
                     rows.add(row);
                 }
-                if (rows.size() >= limit)
-                { // Break if we have enough rows
-                    Log.debug("Query time: " + (System.currentTimeMillis() - timestamp) + " ms");
-                    return rows;
-                }
             }
-        } while (scoredDocuments.size() == pageSize); // Repeat while there may be more rows
+            
+            pageSize = Math.max(limit - rows.size(), PAGE_SIZE);
+            
+            Log.debug("Collect time: " + (System.currentTimeMillis() - collectStartTime) + " ms");
+            
+        } while (scoredDocuments.size() == pageSize && rows.size() < limit);
 
         Log.debug("Query time: " + (System.currentTimeMillis() - timestamp) + " ms");
         return rows;
