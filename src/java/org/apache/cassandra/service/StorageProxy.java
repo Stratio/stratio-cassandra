@@ -1765,13 +1765,10 @@ public class StorageProxy implements StorageProxyMBean
 	
 	public List<Row> call() throws TimeoutException, ReadTimeoutException, DigestMismatchException {
 		List<Row> rows = new LinkedList<>();
-		Log.debug("Processing task");
 		for (Row row : handler.get()) {
 			rows.add(row);
 		}
-		Log.debug("Rows get");
 		FBUtilities.waitOnFutures(resolver.repairResults, DatabaseDescriptor.getWriteRpcTimeout());
-		Log.debug("Processed task");
 		return rows;
 	}
 	}
