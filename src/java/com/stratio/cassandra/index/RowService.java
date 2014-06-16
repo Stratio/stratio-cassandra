@@ -73,7 +73,8 @@ import com.stratio.cassandra.index.util.TaskQueue;
 public abstract class RowService
 {
 
-    private static final int PAGE_SIZE = 1000;
+    private static final int MAX_PAGE_SIZE = 1000;
+    private static final int MIN_PAGE_SIZE = 10;
 
     protected final ColumnFamilyStore baseCfs;
     protected final CFMetaData metadata;
@@ -279,7 +280,7 @@ public abstract class RowService
 
         // Paginate search collecting documents
         List<ScoredDocument> scoredDocuments;
-        int pageSize = Math.min(limit, PAGE_SIZE);
+        int pageSize = Math.min(limit, MAX_PAGE_SIZE);
         do
         {
 
@@ -300,11 +301,12 @@ public abstract class RowService
                     rows.add(row);
                 }
             }
-            
-            pageSize = Math.max(limit - rows.size(), PAGE_SIZE);
-            
+
+            pageSize = Math.max(MIN_PAGE_SIZE, Math.min(rows.size() - limit, MAX_PAGE_SIZE));
+
             Log.debug("Collect time: " + (System.currentTimeMillis() - collectStartTime) + " ms");
-            
+
+            // Iterate while there are still documents to read and we don't have enough rows
         } while (scoredDocuments.size() == pageSize && rows.size() < limit);
 
         Log.debug("Query time: " + (System.currentTimeMillis() - timestamp) + " ms");
