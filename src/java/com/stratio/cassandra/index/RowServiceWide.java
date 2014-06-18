@@ -80,7 +80,6 @@ public class RowServiceWide extends RowService
         tokenMapper = TokenMapper.instance(baseCfs);
         clusteringKeyMapper = ClusteringKeyMapper.instance(metadata);
         fullKeyMapper = FullKeyMapper.instance(metadata);
-
         clusteringPosition = metadata.clusteringKeyColumns().size();
     }
 
@@ -256,6 +255,17 @@ public class RowServiceWide extends RowService
     {
         DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
         ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(document);
+        return fullKeyMapper.byteBuffer(partitionKey, clusteringKey);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public ByteBuffer getUniqueId(Row row)
+    {
+        DecoratedKey partitionKey = row.key;
+        ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(row.cf);
         return fullKeyMapper.byteBuffer(partitionKey, clusteringKey);
     }
 

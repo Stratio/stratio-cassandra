@@ -93,14 +93,12 @@ public class LuceneIndex
             FSDirectory fsDirectory = FSDirectory.open(file);
             directory = new NRTCachingDirectory(fsDirectory, maxMergeMB, maxCachedMB);
 
-            // Set analyzer
-            this.analyzer = analyzer;
-
             // Setup index writer
-            IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_46, analyzer);
+            IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_48, analyzer);
             config.setRAMBufferSizeMB(ramBufferMB);
             config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
             config.setUseCompoundFile(true);
+            // SortingMergePolicy policy = new SortingMergePolicy(config.getMergePolicy(), sort);
             indexWriter = new IndexWriter(directory, config);
 
             // Setup NRT search

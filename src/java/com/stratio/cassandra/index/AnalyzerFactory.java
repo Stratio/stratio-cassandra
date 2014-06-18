@@ -54,7 +54,7 @@ public final class AnalyzerFactory
         {
             Class<?> analyzerClass = Class.forName(analyzerClassName);
             Constructor<?> constructor = analyzerClass.getConstructor(Version.class);
-            analyzer = (Analyzer) constructor.newInstance(Version.LUCENE_46);
+            analyzer = (Analyzer) constructor.newInstance(Version.LUCENE_48);
             analyzers.put(analyzerClassName, analyzer);
             return analyzer;
         }

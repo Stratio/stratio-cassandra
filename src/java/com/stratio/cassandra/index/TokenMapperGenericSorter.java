@@ -46,6 +46,7 @@ public class TokenMapperGenericSorter extends FieldComparator<BytesRef>
     private final String field;
     private BytesRef bottom;
     private final BytesRef tempBR = new BytesRef();
+    private BytesRef topValue;
 
     /**
      * Returns a new {@code TokenMapperGenericSorter}
@@ -184,14 +185,23 @@ public class TokenMapperGenericSorter extends FieldComparator<BytesRef>
      * {@inheritDoc}
      */
     @Override
-    public int compareDocToValue(int doc, BytesRef value)
+    public int compareTop(int doc)
     {
         docTerms.get(doc, tempBR);
         if (tempBR.length == 0 && docsWithField.get(doc) == false)
         {
             tempBR.bytes = MISSING_BYTES;
         }
-        return compare(tempBR, value);
+        return compare(tempBR, topValue);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setTopValue(BytesRef value)
+    {
+        topValue = value;
     }
 
     /**

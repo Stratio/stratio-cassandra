@@ -56,7 +56,7 @@ public class Schema
 {
 
     /** The default Lucene's analyzer to be used if no other specified. */
-    public static final Analyzer DEFAULT_ANALYZER = new StandardAnalyzer(Version.LUCENE_46);
+    public static final Analyzer DEFAULT_ANALYZER = new StandardAnalyzer(Version.LUCENE_48);
 
     /** The Lucene's {@link corg.apache.lucene.analysis.Analyzer}. */
     private final Analyzer defaultAnalyzer;

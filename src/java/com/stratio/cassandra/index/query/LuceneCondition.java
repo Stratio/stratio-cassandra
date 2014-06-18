@@ -99,7 +99,7 @@ public class LuceneCondition extends Condition
         try
         {
             Analyzer analyzer = schema.analyzer();
-            QueryParser queryParser = new QueryParser(Version.LUCENE_46, defaultField, analyzer);
+            QueryParser queryParser = new QueryParser(Version.LUCENE_48, defaultField, analyzer);
             queryParser.setAllowLeadingWildcard(true);
             queryParser.setLowercaseExpandedTerms(false);
             Query luceneQuery = queryParser.parse(query);

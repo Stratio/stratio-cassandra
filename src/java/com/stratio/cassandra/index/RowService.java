@@ -438,21 +438,24 @@ public abstract class RowService
     {
         if (filterCache == null)
         {
+            Log.debug(" -> Filter cache not present for range " + dataRange.keyRange());
             return filter(dataRange);
         }
         Filter filter = filterCache.get(dataRange);
         if (filter == null)
         {
-            Log.debug(" -> Cache fails for range " + dataRange.keyRange());
             filter = filter(dataRange);
             if (filter != null)
             {
+                Log.debug(" -> Filter cache fails for range " + dataRange.keyRange());
                 filterCache.put(dataRange, filter);
+            } else {
+                Log.debug(" -> Filter cache unneeded for range " + dataRange.keyRange());
             }
         }
         else
         {
-            Log.debug(" -> Cache hits for range " + dataRange.keyRange());
+            Log.debug(" -> Filter cache hits for range " + dataRange.keyRange());
         }
         return filter;
     }
@@ -467,6 +470,8 @@ public abstract class RowService
     protected abstract Term identifyingTerm(Row row);
 
     protected abstract ByteBuffer getUniqueId(Document document);
+
+    protected abstract ByteBuffer getUniqueId(Row row);
 
     /**
      * Return the {@code limit} {@link Row}s of those in the specified {@link Row}s selected according to the specified
@@ -504,8 +509,15 @@ public abstract class RowService
         Query query = queryCondition == null ? new MatchAllDocsQuery() : queryCondition.query(schema);
         Sort sort = search.sort(schema);
 
+        Map<ByteBuffer, Row> map = new HashMap<>(rows.size());
+        for (Row row : rows)
+        {
+            ByteBuffer id = getUniqueId(row);
+            map.put(id, row);
+        }
+
         // Get limit and initialize result
-        int limit = Math.min(count, rows.size());
+        int limit = Math.min(count, map.size());
         List<Row> result = new ArrayList<>(limit);
 
         try
@@ -516,18 +528,14 @@ public abstract class RowService
 
             // Index partial results
             Analyzer analyzer = schema.analyzer();
-            IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_46, analyzer);
+            IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_48, analyzer);
             config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
             config.setUseCompoundFile(false);
             IndexWriter indexWriter = new IndexWriter(directory, config);
-            Map<ByteBuffer, Row> map = new HashMap<>(rows.size());
-            for (Row row : rows)
+            for (Row row : map.values())
             {
                 Document document = document(row);
-                Term term = identifyingTerm(row);
-                indexWriter.updateDocument(term, document);
-                ByteBuffer docId = getUniqueId(document);
-                map.put(docId, row);
+                indexWriter.addDocument(document);
             }
             indexWriter.commit();
             indexWriter.close();

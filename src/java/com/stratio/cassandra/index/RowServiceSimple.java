@@ -190,4 +190,14 @@ public class RowServiceSimple extends RowService
         return partitionKey.key;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected ByteBuffer getUniqueId(Row row)
+    {
+        DecoratedKey partitionKey = row.key;
+        return partitionKey.key;
+    }
+
 }
