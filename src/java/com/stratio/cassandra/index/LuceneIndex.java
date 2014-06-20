@@ -28,14 +28,20 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TrackingIndexWriter;
+import org.apache.lucene.index.sorter.EarlyTerminatingSortingCollector;
+import org.apache.lucene.index.sorter.SortingMergePolicy;
+import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.ControlledRealTimeReopenThread;
+import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopFieldCollector;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.NRTCachingDirectory;
@@ -51,14 +57,21 @@ import com.stratio.cassandra.index.util.Log;
  */
 public class LuceneIndex
 {
+    private final String path;
+    private final Double refreshSeconds;
+    private final Integer ramBufferMB;
+    private final Integer maxMergeMB;
+    private final Integer maxCachedMB;
+    private final Analyzer analyzer;
 
     private File file;
     private Directory directory;
-    private Analyzer analyzer;
     private IndexWriter indexWriter;
     private TrackingIndexWriter trackingIndexWriter;
     private SearcherManager searcherManager;
     private ControlledRealTimeReopenThread<IndexSearcher> indexSearcherReopenThread;
+
+    private Sort sort;
 
     /**
      * Builds a new {@code RowDirectory} using the specified directory path and analyzer.
@@ -75,6 +88,7 @@ public class LuceneIndex
      * @param maxCachedMB
      *            NRTCachingDirectory max cached MB.
      * @param analyzer
+     *            The default {@link Analyzer}.
      */
     public LuceneIndex(String path,
                        Double refreshSeconds,
@@ -83,6 +97,23 @@ public class LuceneIndex
                        Integer maxCachedMB,
                        Analyzer analyzer)
     {
+        this.path = path;
+        this.refreshSeconds = refreshSeconds;
+        this.ramBufferMB = ramBufferMB;
+        this.maxMergeMB = maxMergeMB;
+        this.maxCachedMB = maxCachedMB;
+        this.analyzer = analyzer;
+    }
+
+    /**
+     * Initializes this using the specified {@link Sort} for trying to keep the {@link Document}s sorted.
+     * 
+     * @param sort
+     *            The {@link Sort} to be used.
+     */
+    public void init(Sort sort)
+    {
+        this.sort = sort;
         try
         {
 
@@ -98,7 +129,7 @@ public class LuceneIndex
             config.setRAMBufferSizeMB(ramBufferMB);
             config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
             config.setUseCompoundFile(true);
-            // SortingMergePolicy policy = new SortingMergePolicy(config.getMergePolicy(), sort);
+            config.setMergePolicy(new SortingMergePolicy(config.getMergePolicy(), sort));
             indexWriter = new IndexWriter(directory, config);
 
             // Setup NRT search
@@ -294,16 +325,18 @@ public class LuceneIndex
      *            The {@link Filter} to be applied.
      * @param sort
      *            The {@link Sort} to be applied.
+     * @param after
+     * 
      * @param count
      *            Return only the top {@code count} results.
      * @param fieldsToLoad
      *            The name of the fields to be loaded.
      * @return The found documents, sorted according to the supplied {@link Sort} instance.
      */
-    public List<ScoredDocument> search(ScoreDoc after,
-                                       Query query,
+    public List<ScoredDocument> search(Query query,
                                        Filter filter,
                                        Sort sort,
+                                       ScoredDocument after,
                                        Integer count,
                                        Set<String> fieldsToLoad)
     {
@@ -311,12 +344,9 @@ public class LuceneIndex
         Log.debug("Searching with filter %s ", filter);
         Log.debug("Searching with count %d", count);
         Log.debug("Searching with sort %s", sort);
+        Log.debug("Searching with start %s", after == null ? null : after.scoreDoc);
 
         // Validate
-        if (query == null)
-        {
-            throw new IllegalArgumentException("Query required");
-        }
         if (count == null || count < 0)
         {
             throw new IllegalArgumentException("Positive count required");
@@ -333,7 +363,8 @@ public class LuceneIndex
             {
 
                 // Search
-                TopDocs topDocs = topDocs(indexSearcher, after, query, filter, sort, count);
+                ScoreDoc start = after == null ? null : after.scoreDoc;
+                TopDocs topDocs = topDocs(indexSearcher, query, filter, sort, start, count);
                 ScoreDoc[] scoreDocs = topDocs.scoreDocs;
 
                 // Collect the documents from query result
@@ -359,60 +390,49 @@ public class LuceneIndex
         }
     }
 
-    private TopDocs topDocs(IndexSearcher indexSearcher,
-                            ScoreDoc after,
-                            Query query,
-                            Filter filter,
-                            Sort sort,
-                            Integer count) throws IOException
+    private TopDocs topDocs(IndexSearcher searcher, Query query, Filter filter, Sort sort, ScoreDoc after, int count)
+            throws IOException
     {
-        if (filter == null)
+        if (query == null)
         {
-            if (after == null)
+            query = new MatchAllDocsQuery();
+            sort = sort == null ? this.sort : sort;
+            FieldDoc start = after == null ? null : (FieldDoc) after;
+            TopFieldCollector tfc = TopFieldCollector.create(sort, count, start, false, false, false, false);
+            Collector collector = new EarlyTerminatingSortingCollector(tfc, sort, count);
+            if (filter == null)
             {
-                if (sort == null)
-                {
-                    return indexSearcher.search(query, count);
-                }
-                else
-                {
-                    return indexSearcher.search(query, count, sort);
-                }
+                searcher.search(query, collector);
             }
             else
             {
-                if (sort == null)
-                {
-                    return indexSearcher.searchAfter(after, query, count);
-                }
-                else
-                {
-                    return indexSearcher.searchAfter(after, query, count, sort);
-                }
+                searcher.search(query, filter, collector);
             }
+            return tfc.topDocs();
         }
         else
         {
-            if (after == null)
+            query = query == null ? new MatchAllDocsQuery() : query;
+            if (filter == null)
             {
                 if (sort == null)
                 {
-                    return indexSearcher.search(query, filter, count);
+                    return searcher.searchAfter(after, query, count);
                 }
                 else
                 {
-                    return indexSearcher.search(query, filter, count, sort);
+                    return searcher.searchAfter(after, query, count, sort);
                 }
             }
             else
             {
                 if (sort == null)
                 {
-                    return indexSearcher.searchAfter(after, query, filter, count);
+                    return searcher.searchAfter(after, query, filter, count);
                 }
                 else
                 {
-                    return indexSearcher.searchAfter(after, query, filter, count, sort);
+                    return searcher.searchAfter(after, query, filter, count, sort);
                 }
             }
         }
