@@ -102,7 +102,6 @@ public class RowIndex extends PerRowSecondaryIndex
 
     private void setup()
     {
-
         // Load column family info
         secondaryIndexManager = baseCfs.indexManager;
         metadata = baseCfs.metadata;
@@ -138,8 +137,9 @@ public class RowIndex extends PerRowSecondaryIndex
                 rowService.index(key, columnFamily, timestamp);
             }
         }
-        catch (Exception e)
-        { // Ignore errors
+        catch (RuntimeException e)
+        {
+            // Ignore errors
             Log.error(e, "Ignoring error while indexing row %s", key);
         }
         finally
@@ -162,6 +162,11 @@ public class RowIndex extends PerRowSecondaryIndex
         {
             rowService.delete(key);
             rowService = null;
+        }
+        catch (RuntimeException e)
+        {
+            Log.error(e, "Error deleting row %s", key);
+            throw e;
         }
         finally
         {
@@ -228,10 +233,10 @@ public class RowIndex extends PerRowSecondaryIndex
             }
             Log.info("Removed index %s", logName);
         }
-        catch (Exception e)
+        catch (RuntimeException e)
         {
             Log.error(e, "Removing index %s", logName);
-            throw new RuntimeException(e);
+            throw e;
         }
         finally
         {
@@ -253,10 +258,10 @@ public class RowIndex extends PerRowSecondaryIndex
             }
             Log.info("Invalidated index %s", logName);
         }
-        catch (Exception e)
+        catch (RuntimeException e)
         {
             Log.error(e, "Invalidating index %s", logName);
-            throw new RuntimeException(e);
+            throw e;
         }
         finally
         {
@@ -277,10 +282,10 @@ public class RowIndex extends PerRowSecondaryIndex
             }
             Log.info("Truncated index %s", logName);
         }
-        catch (Exception e)
+        catch (RuntimeException e)
         {
             Log.error(e, "Truncating index %s", logName);
-            throw new RuntimeException(e);
+            throw e;
         }
         finally
         {
@@ -316,10 +321,10 @@ public class RowIndex extends PerRowSecondaryIndex
             rowService.commit();
             Log.info("Flushed index %s", logName);
         }
-        catch (Exception e)
+        catch (RuntimeException e)
         {
             Log.error(e, "Flushing index %s", logName);
-            throw new RuntimeException(e);
+            throw e;
         }
         finally
         {
