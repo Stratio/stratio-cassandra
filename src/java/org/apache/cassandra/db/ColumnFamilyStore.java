@@ -1931,6 +1931,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
     public void forceMajorCompaction() throws InterruptedException, ExecutionException
     {
         CompactionManager.instance.performMaximal(this);
+        for (SecondaryIndex index : indexManager.getIndexes())
+            index.compact();
     }
 
     public static Iterable<ColumnFamilyStore> all()

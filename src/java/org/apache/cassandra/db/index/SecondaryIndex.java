@@ -363,5 +363,8 @@ public abstract class SecondaryIndex
         throw new AssertionError();
     }
     
+    public void compact() 
+    {
+    }
     
 }

@@ -15,9 +15,7 @@
  */
 package com.stratio.cassandra.index.query;
 
-import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.Filter;
-import org.apache.lucene.search.FilteredQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
@@ -99,8 +97,9 @@ public class Search
     {
         return filterCondition;
     }
-    
-    public Filter filter(Schema schema) {
+
+    public Filter filter(Schema schema)
+    {
         return filterCondition == null ? null : filterCondition.filter(schema);
     }
 

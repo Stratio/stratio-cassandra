@@ -324,7 +324,7 @@ public abstract class RowService
     {
         Query query = search.query(schema);
         Filter filter = search.filter(schema);
-        
+
         if (query == null && filter == null)
         {
             return new MatchAllDocsQuery();
@@ -607,5 +607,10 @@ public abstract class RowService
         Log.debug("Combined %d partial results to %d rows in %d ms", rows.size(), result.size(), time);
 
         return result;
+    }
+
+    public void compact()
+    {
+        luceneIndex.compact();
     }
 }

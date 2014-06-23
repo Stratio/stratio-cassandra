@@ -465,4 +465,18 @@ public class LuceneIndex
         }
 
     }
+
+    public void compact()
+    {
+        try
+        {
+            System.out.println(" -------- COMPACTING");
+            indexWriter.forceMerge(1, true);
+        }
+        catch (IOException e)
+        {
+            Log.error(e, "Error while merging");
+            throw new RuntimeException(e);
+        }
+    }
 }
