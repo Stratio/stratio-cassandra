@@ -466,11 +466,10 @@ public class LuceneIndex
 
     }
 
-    public void compact()
+    public void optimize()
     {
         try
         {
-            System.out.println(" -------- COMPACTING");
             indexWriter.forceMerge(1, true);
         }
         catch (IOException e)

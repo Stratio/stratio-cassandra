@@ -611,6 +611,6 @@ public abstract class RowService
 
     public void compact()
     {
-        luceneIndex.compact();
+        luceneIndex.optimize();
     }
 }

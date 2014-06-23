@@ -338,11 +338,20 @@ public class RowIndex extends PerRowSecondaryIndex
         // Log.debug("Creating searcher for index %s", logName);
         return new RowIndexSearcher(secondaryIndexManager, this, columns, rowService);
     }
-    
+
     @Override
-    public void compact() 
+    public void optimize()
     {
-        rowService.compact();
+        Log.info("Compacting index %s", logName);
+        try
+        {
+            rowService.compact();
+        }
+        catch (RuntimeException e)
+        {
+            Log.error(e, "Compacting index %s", logName);
+            throw e;
+        }
     }
 
     @Override
