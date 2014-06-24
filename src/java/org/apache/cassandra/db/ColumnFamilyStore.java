@@ -1932,7 +1932,11 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
     {
         CompactionManager.instance.performMaximal(this);
         for (SecondaryIndex index : indexManager.getIndexes())
+        {
+            String indexName = name + "." + index.getIndexName();
+            logger.trace("Optimizing index {}", indexName);
             index.optimize();
+        }
     }
 
     public static Iterable<ColumnFamilyStore> all()

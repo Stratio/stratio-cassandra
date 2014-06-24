@@ -471,6 +471,7 @@ public class LuceneIndex
         try
         {
             indexWriter.forceMerge(1, true);
+            indexWriter.commit();
         }
         catch (IOException e)
         {
