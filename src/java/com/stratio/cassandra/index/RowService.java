@@ -44,8 +44,9 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.queries.ChainedFilter;
+import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.Filter;
+import org.apache.lucene.search.FilteredQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
@@ -270,8 +271,8 @@ public abstract class RowService
         Log.debug("Searching with search %s ", search);
 
         // Setup search arguments
-        Filter filter = filter(dataRange, search);
-        Query query = search.query(schema);
+        Filter filter = cachedFilter(dataRange);
+        Query query = query(search);
         Sort sort = search.sort(schema);
 
         // Setup search pagination
@@ -319,25 +320,26 @@ public abstract class RowService
         return rows;
     }
 
-    private Filter filter(DataRange dataRange, Search search)
+    private Query query(Search search)
     {
-        Filter rangeFilter = cachedFilter(dataRange);
-        Filter searchFilter = search.filter(schema);
-        if (rangeFilter == null && searchFilter == null)
+        Query query = search.query(schema);
+        Filter filter = search.filter(schema);
+
+        if (query == null && filter == null)
         {
-            return null;
+            return new MatchAllDocsQuery();
         }
-        else if (rangeFilter != null && searchFilter == null)
+        else if (query != null && filter == null)
         {
-            return rangeFilter;
+            return query;
         }
-        else if (rangeFilter == null && searchFilter != null)
+        else if (query == null && filter != null)
         {
-            return searchFilter;
+            return new ConstantScoreQuery(filter);
         }
         else
         {
-            return new ChainedFilter(new Filter[] { rangeFilter, searchFilter });
+            return new FilteredQuery(query, filter);
         }
     }
 
@@ -605,5 +607,10 @@ public abstract class RowService
         Log.debug("Combined %d partial results to %d rows in %d ms", rows.size(), result.size(), time);
 
         return result;
+    }
+
+    public void compact()
+    {
+        luceneIndex.optimize();
     }
 }

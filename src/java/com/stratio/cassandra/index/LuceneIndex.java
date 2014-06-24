@@ -69,7 +69,7 @@ public class LuceneIndex
     private IndexWriter indexWriter;
     private TrackingIndexWriter trackingIndexWriter;
     private SearcherManager searcherManager;
-    private ControlledRealTimeReopenThread<IndexSearcher> indexSearcherReopenThread;
+    private ControlledRealTimeReopenThread<IndexSearcher> searcherReopener;
 
     private Sort sort;
 
@@ -135,11 +135,11 @@ public class LuceneIndex
             // Setup NRT search
             trackingIndexWriter = new TrackingIndexWriter(indexWriter);
             searcherManager = new SearcherManager(indexWriter, true, null);
-            indexSearcherReopenThread = new ControlledRealTimeReopenThread<>(trackingIndexWriter,
-                                                                             searcherManager,
-                                                                             refreshSeconds,
-                                                                             refreshSeconds);
-            indexSearcherReopenThread.start(); // Start the refresher thread
+            searcherReopener = new ControlledRealTimeReopenThread<>(trackingIndexWriter,
+                                                                    searcherManager,
+                                                                    refreshSeconds,
+                                                                    refreshSeconds);
+            searcherReopener.start(); // Start the refresher thread
 
         }
         catch (IOException e)
@@ -277,7 +277,7 @@ public class LuceneIndex
     public void close() throws IOException
     {
         Log.info("Closing");
-        indexSearcherReopenThread.interrupt();
+        searcherReopener.interrupt();
         searcherManager.close();
         indexWriter.close();
         directory.close();
@@ -464,5 +464,19 @@ public class LuceneIndex
             return builder.toString();
         }
 
+    }
+
+    public void optimize()
+    {
+        try
+        {
+            indexWriter.forceMerge(1, true);
+            indexWriter.commit();
+        }
+        catch (IOException e)
+        {
+            Log.error(e, "Error while merging");
+            throw new RuntimeException(e);
+        }
     }
 }
