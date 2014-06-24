@@ -559,6 +559,8 @@ commands:
             - chunk_length_kb: specify the size of the chunk used by sstable
               compression (default to 64, must be a power of 2).
 
+            - use_hc: use high-compression algorithm (if available).
+
           To disable compression just set compression_options to null like this
           `compression_options = null`.
 
@@ -851,6 +853,8 @@ commands:
 
             - chunk_length_kb: specify the size of the chunk used by sstable
               compression (default to 64, must be a power of 2).
+
+            - use_hc: use high-compression algorithm (if available).
 
           To disable compression just set compression_options to null like this
           `compression_options = null`.

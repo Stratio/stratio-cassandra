@@ -80,8 +80,9 @@ public class RowServiceWide extends RowService
         tokenMapper = TokenMapper.instance(baseCfs);
         clusteringKeyMapper = ClusteringKeyMapper.instance(metadata);
         fullKeyMapper = FullKeyMapper.instance(metadata);
-
         clusteringPosition = metadata.clusteringKeyColumns().size();
+        
+        luceneIndex.init(sort());
     }
 
     /**
@@ -110,7 +111,7 @@ public class RowServiceWide extends RowService
                 Row row = row(partitionKey, clusteringKey, timestamp);
                 Document document = document(row);
                 Term term = identifyingTerm(row);
-                rowDirectory.upsert(term, document);
+                luceneIndex.upsert(term, document);
             }
         }
         else if (deletionInfo != null)
@@ -124,13 +125,13 @@ public class RowServiceWide extends RowService
                     Filter filter = clusteringKeyMapper.filter(rangeTombstone);
                     Query partitionKeyQuery = partitionKeyMapper.query(partitionKey);
                     Query query = new FilteredQuery(partitionKeyQuery, filter);
-                    rowDirectory.delete(query);
+                    luceneIndex.delete(query);
                 }
             }
             else
             {
                 Term term = partitionKeyMapper.term(partitionKey);
-                rowDirectory.delete(term);
+                luceneIndex.delete(term);
             }
         }
     }
@@ -164,7 +165,7 @@ public class RowServiceWide extends RowService
     public void deleteInner(DecoratedKey partitionKey)
     {
         Term term = partitionKeyMapper.term(partitionKey);
-        rowDirectory.delete(term);
+        luceneIndex.delete(term);
     }
 
     /**
@@ -256,6 +257,17 @@ public class RowServiceWide extends RowService
     {
         DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
         ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(document);
+        return fullKeyMapper.byteBuffer(partitionKey, clusteringKey);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public ByteBuffer getUniqueId(Row row)
+    {
+        DecoratedKey partitionKey = row.key;
+        ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(row.cf);
         return fullKeyMapper.byteBuffer(partitionKey, clusteringKey);
     }
 

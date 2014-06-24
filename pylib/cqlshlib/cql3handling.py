@@ -81,7 +81,7 @@ class Cql3ParsingRuleSet(CqlParsingRuleSet):
         ('compaction', 'compaction_strategy_options',
             ('class', 'max_threshold', 'tombstone_compaction_interval', 'tombstone_threshold', 'enabled')),
         ('compression', 'compression_parameters',
-            ('sstable_compression', 'chunk_length_kb', 'crc_check_chance')),
+            ('sstable_compression', 'chunk_length_kb', 'crc_check_chance', 'use_hc')),
     )
 
     obsolete_cf_options = ()

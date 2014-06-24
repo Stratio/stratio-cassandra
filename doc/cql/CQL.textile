@@ -550,7 +550,7 @@ A number of optional keyword arguments can be supplied to control the configurat
 |max_compaction_threshold|32|Maximum number of SSTables allowed before a minor compaction is forced.|
 |replicate_on_write|false| |
 |compaction_strategy_options|none|CompactionStrategy specific options such as "sstable_size_in_mb" for LeveledCompactionStrategy and "min_sstable_size" for SizeTieredCompactionStrategy|
-|compression_parameters|none|Compression parameters such as "sstable_compressor" and "chunk_length_kb"|
+|compression_parameters|none|Compression parameters such as "sstable_compressor", "chunk_length_kb" and "use_hc"|
 
 h2. CREATE INDEX
 

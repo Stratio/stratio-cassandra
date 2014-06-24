@@ -45,9 +45,10 @@ public class CompressionParameters
 
     public static final String SSTABLE_COMPRESSION = "sstable_compression";
     public static final String CHUNK_LENGTH_KB = "chunk_length_kb";
+    public static final String USE_HC = "use_hc";
     public static final String CRC_CHECK_CHANCE = "crc_check_chance";
 
-    public static final Set<String> GLOBAL_OPTIONS = ImmutableSet.of(CRC_CHECK_CHANCE);
+    public static final Set<String> GLOBAL_OPTIONS = ImmutableSet.of(CRC_CHECK_CHANCE, USE_HC);
 
     public final ICompressor sstableCompressor;
     private final Integer chunkLength;

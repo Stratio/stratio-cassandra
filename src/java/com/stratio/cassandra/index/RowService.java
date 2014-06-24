@@ -44,7 +44,9 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.Filter;
+import org.apache.lucene.search.FilteredQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
@@ -72,14 +74,13 @@ import com.stratio.cassandra.index.util.TaskQueue;
  */
 public abstract class RowService
 {
-
-    private static final int PAGE_SIZE = 1000;
-
     protected final ColumnFamilyStore baseCfs;
     protected final CFMetaData metadata;
     protected final Schema schema;
-    protected final LuceneIndex rowDirectory;
+    protected final LuceneIndex luceneIndex;
     protected final FilterCache filterCache;
+
+    private static final int FILTERING_PAGE_SIZE = 1000;
 
     private TaskQueue indexQueue;
 
@@ -105,12 +106,12 @@ public abstract class RowService
 
         schema = config.getSchema();
 
-        rowDirectory = new LuceneIndex(config.getPath(),
-                                       config.getRefreshSeconds(),
-                                       config.getRamBufferMB(),
-                                       config.getMaxMergeMB(),
-                                       config.getMaxCachedMB(),
-                                       schema.analyzer());
+        luceneIndex = new LuceneIndex(config.getPath(),
+                                      config.getRefreshSeconds(),
+                                      config.getRamBufferMB(),
+                                      config.getMaxMergeMB(),
+                                      config.getMaxCachedMB(),
+                                      schema.analyzer());
 
         indexQueue = new TaskQueue(config.getIndexingThreads(), config.getIndexingQueuesSize());
     }
@@ -225,7 +226,7 @@ public abstract class RowService
      */
     public final void truncate()
     {
-        rowDirectory.truncate();
+        luceneIndex.truncate();
     }
 
     /**
@@ -235,7 +236,7 @@ public abstract class RowService
      */
     public final void delete()
     {
-        rowDirectory.drop();
+        luceneIndex.drop();
     }
 
     /**
@@ -248,7 +249,7 @@ public abstract class RowService
             @Override
             public void run()
             {
-                rowDirectory.commit();
+                luceneIndex.commit();
             }
         });
     }
@@ -267,46 +268,79 @@ public abstract class RowService
                                   final int limit,
                                   long timestamp)
     {
+        Log.debug("Searching with search %s ", search);
 
         // Setup search arguments
         Filter filter = cachedFilter(dataRange);
-        Query query = search.query(schema);
-        Sort sort = search.usesSorting() ? search.sort(schema) : sort();
+        Query query = query(search);
+        Sort sort = search.sort(schema);
 
         // Setup search pagination
         List<Row> rows = new LinkedList<>(); // The row list to be returned
-        ScoreDoc lastDoc = null; // The last search result
+        ScoredDocument lastDoc = null; // The last search result
+        long searchTime = 0;
+        long collectTime = 0;
 
         // Paginate search collecting documents
         List<ScoredDocument> scoredDocuments;
-        int pageSize;
+        int pageSize = limit;
+        boolean maybeMore;
         do
         {
-            pageSize = Math.max(limit - rows.size(), PAGE_SIZE);
-
-            // Search in Lucene
-            scoredDocuments = rowDirectory.search(lastDoc, query, filter, sort, pageSize, fieldsToLoad());
+            // Search rows identifiers in Lucene
+            long searchStartTime = System.currentTimeMillis();
+            scoredDocuments = luceneIndex.search(query, filter, sort, lastDoc, pageSize, fieldsToLoad());
+            searchTime += System.currentTimeMillis() - searchStartTime;
 
             // Collect rows from Cassandra
+            long collectStartTime = System.currentTimeMillis();
             for (ScoredDocument sd : scoredDocuments)
             {
-                lastDoc = sd.scoreDoc;
+                lastDoc = sd;
                 Document document = sd.document;
                 Row row = row(document, timestamp);
                 if (row != null && accepted(row, filteredExpressions))
                 {
                     rows.add(row);
                 }
-                if (rows.size() >= limit)
-                { // Break if we have enough rows
-                    Log.debug("Query time: " + (System.currentTimeMillis() - timestamp) + " ms");
-                    return rows;
-                }
             }
-        } while (scoredDocuments.size() == pageSize); // Repeat while there may be more rows
+            collectTime = System.currentTimeMillis() - collectStartTime;
 
+            // Setup next iteration
+            maybeMore = scoredDocuments.size() == pageSize;
+            pageSize = Math.max(FILTERING_PAGE_SIZE, rows.size() - limit);
+
+            // Iterate while there are still documents to read and we don't have enough rows
+        } while (maybeMore && rows.size() < limit);
+
+        Log.debug("Search time: " + searchTime + " ms");
+        Log.debug("Collect time: " + collectTime + " ms");
         Log.debug("Query time: " + (System.currentTimeMillis() - timestamp) + " ms");
+
         return rows;
+    }
+
+    private Query query(Search search)
+    {
+        Query query = search.query(schema);
+        Filter filter = search.filter(schema);
+
+        if (query == null && filter == null)
+        {
+            return new MatchAllDocsQuery();
+        }
+        else if (query != null && filter == null)
+        {
+            return query;
+        }
+        else if (query == null && filter != null)
+        {
+            return new ConstantScoreQuery(filter);
+        }
+        else
+        {
+            return new FilteredQuery(query, filter);
+        }
     }
 
     private boolean accepted(Row row, List<IndexExpression> expressions)
@@ -434,21 +468,26 @@ public abstract class RowService
     {
         if (filterCache == null)
         {
+            Log.debug(" -> Filter cache not present for range " + dataRange.keyRange());
             return filter(dataRange);
         }
         Filter filter = filterCache.get(dataRange);
         if (filter == null)
         {
-            Log.debug(" -> Cache fails for range " + dataRange.keyRange());
             filter = filter(dataRange);
             if (filter != null)
             {
+                Log.debug(" -> Filter cache fails for range " + dataRange.keyRange());
                 filterCache.put(dataRange, filter);
+            }
+            else
+            {
+                Log.debug(" -> Filter cache unneeded for range " + dataRange.keyRange());
             }
         }
         else
         {
-            Log.debug(" -> Cache hits for range " + dataRange.keyRange());
+            Log.debug(" -> Filter cache hits for range " + dataRange.keyRange());
         }
         return filter;
     }
@@ -463,6 +502,8 @@ public abstract class RowService
     protected abstract Term identifyingTerm(Row row);
 
     protected abstract ByteBuffer getUniqueId(Document document);
+
+    protected abstract ByteBuffer getUniqueId(Row row);
 
     /**
      * Return the {@code limit} {@link Row}s of those in the specified {@link Row}s selected according to the specified
@@ -500,8 +541,15 @@ public abstract class RowService
         Query query = queryCondition == null ? new MatchAllDocsQuery() : queryCondition.query(schema);
         Sort sort = search.sort(schema);
 
+        Map<ByteBuffer, Row> map = new HashMap<>(rows.size());
+        for (Row row : rows)
+        {
+            ByteBuffer id = getUniqueId(row);
+            map.put(id, row);
+        }
+
         // Get limit and initialize result
-        int limit = Math.min(count, rows.size());
+        int limit = Math.min(count, map.size());
         List<Row> result = new ArrayList<>(limit);
 
         try
@@ -512,18 +560,14 @@ public abstract class RowService
 
             // Index partial results
             Analyzer analyzer = schema.analyzer();
-            IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_46, analyzer);
+            IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_48, analyzer);
             config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
             config.setUseCompoundFile(false);
             IndexWriter indexWriter = new IndexWriter(directory, config);
-            Map<ByteBuffer, Row> map = new HashMap<>(rows.size());
-            for (Row row : rows)
+            for (Row row : map.values())
             {
                 Document document = document(row);
-                Term term = identifyingTerm(row);
-                indexWriter.updateDocument(term, document);
-                ByteBuffer docId = getUniqueId(document);
-                map.put(docId, row);
+                indexWriter.addDocument(document);
             }
             indexWriter.commit();
             indexWriter.close();
@@ -563,5 +607,10 @@ public abstract class RowService
         Log.debug("Combined %d partial results to %d rows in %d ms", rows.size(), result.size(), time);
 
         return result;
+    }
+
+    public void compact()
+    {
+        luceneIndex.optimize();
     }
 }

@@ -66,8 +66,11 @@ public class RowServiceSimple extends RowService
     public RowServiceSimple(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition)
     {
         super(baseCfs, columnDefinition);
+
         partitionKeyMapper = PartitionKeyMapper.instance(metadata);
         tokenMapper = TokenMapper.instance(baseCfs);
+
+        luceneIndex.init(sort());
     }
 
     /**
@@ -92,12 +95,12 @@ public class RowServiceSimple extends RowService
         {
             Document document = document(row);
             Term term = identifyingTerm(row);
-            rowDirectory.upsert(term, document);
+            luceneIndex.upsert(term, document);
         }
         else if (deletionInfo != null)
         {
             Term term = partitionKeyMapper.term(partitionKey);
-            rowDirectory.delete(term);
+            luceneIndex.delete(term);
         }
     }
 
@@ -123,7 +126,7 @@ public class RowServiceSimple extends RowService
     public void deleteInner(DecoratedKey partitionKey)
     {
         Term term = partitionKeyMapper.term(partitionKey);
-        rowDirectory.delete(term);
+        luceneIndex.delete(term);
     }
 
     /**
@@ -187,6 +190,16 @@ public class RowServiceSimple extends RowService
     protected ByteBuffer getUniqueId(Document document)
     {
         DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
+        return partitionKey.key;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected ByteBuffer getUniqueId(Row row)
+    {
+        DecoratedKey partitionKey = row.key;
         return partitionKey.key;
     }
 

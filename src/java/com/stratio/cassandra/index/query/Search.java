@@ -15,9 +15,7 @@
  */
 package com.stratio.cassandra.index.query;
 
-import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.Filter;
-import org.apache.lucene.search.FilteredQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
@@ -100,6 +98,11 @@ public class Search
         return filterCondition;
     }
 
+    public Filter filter(Schema schema)
+    {
+        return filterCondition == null ? null : filterCondition.filter(schema);
+    }
+
     /**
      * Returns the Lucene's {@link Query} representation of this search. This {@link Query} include both the querying
      * and filtering {@link Condition}s. If none of them is set, then a {@link MatchAllDocsQuery} is returned.
@@ -110,24 +113,7 @@ public class Search
      */
     public Query query(Schema schema)
     {
-        Query query = queryCondition == null ? null : queryCondition.query(schema);
-        Filter filter = filterCondition == null ? null : filterCondition.filter(schema);
-        if (query == null && filter == null)
-        {
-            return new MatchAllDocsQuery();
-        }
-        else if (query != null && filter == null)
-        {
-            return query;
-        }
-        else if (query == null && filter != null)
-        {
-            return new ConstantScoreQuery(filter);
-        }
-        else
-        {
-            return new FilteredQuery(query, filter);
-        }
+        return queryCondition == null ? null : queryCondition.query(schema);
     }
 
     public Sort sort(Schema schema)
