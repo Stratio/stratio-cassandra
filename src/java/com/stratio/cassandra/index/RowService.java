@@ -15,17 +15,17 @@
  */
 package com.stratio.cassandra.index;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
+import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.db.Column;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.ColumnFamilyStore;
@@ -35,31 +35,22 @@ import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.TreeMapBackedSortedColumns;
 import org.apache.cassandra.db.filter.QueryFilter;
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.thrift.IndexExpression;
-import org.apache.lucene.analysis.Analyzer;
+import org.apache.cassandra.utils.HeapAllocator;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.FilteredQuery;
-import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.RAMDirectory;
-import org.apache.lucene.util.Version;
 
 import com.stratio.cassandra.index.LuceneIndex.ScoredDocument;
-import com.stratio.cassandra.index.query.Condition;
 import com.stratio.cassandra.index.query.Search;
+import com.stratio.cassandra.index.query.Sorting;
 import com.stratio.cassandra.index.schema.Cell;
 import com.stratio.cassandra.index.schema.Cells;
 import com.stratio.cassandra.index.schema.Schema;
@@ -74,8 +65,11 @@ import com.stratio.cassandra.index.util.TaskQueue;
  */
 public abstract class RowService
 {
+
     protected final ColumnFamilyStore baseCfs;
     protected final CFMetaData metadata;
+    protected final CompositeType nameType;
+    protected final ColumnIdentifier indexedColumnName;
     protected final Schema schema;
     protected final LuceneIndex luceneIndex;
     protected final FilterCache filterCache;
@@ -97,6 +91,8 @@ public abstract class RowService
 
         this.baseCfs = baseCfs;
         metadata = baseCfs.metadata;
+        nameType = (CompositeType) metadata.comparator;
+        indexedColumnName = new ColumnIdentifier(columnDefinition.name, columnDefinition.getValidator());
 
         RowIndexConfig config = new RowIndexConfig(metadata,
                                                    columnDefinition.getIndexName(),
@@ -297,10 +293,18 @@ public abstract class RowService
             for (ScoredDocument sd : scoredDocuments)
             {
                 lastDoc = sd;
+                float score = sd.scoreDoc.score;
                 Document document = sd.document;
                 Row row = row(document, timestamp);
                 if (row != null && accepted(row, filteredExpressions))
                 {
+
+                    org.apache.cassandra.db.Column scoringCell = scoreCell(document, score);
+                    ColumnFamily decoratedCf = TreeMapBackedSortedColumns.factory.create(baseCfs.metadata);
+                    decoratedCf.addColumn(scoringCell);
+                    decoratedCf.addAll(row.cf, HeapAllocator.instance);
+                    row = new Row(row.key, decoratedCf);
+
                     rows.add(row);
                 }
             }
@@ -347,7 +351,7 @@ public abstract class RowService
     {
         if (!expressions.isEmpty())
         {
-            Cells cells = schema.cells(metadata, row.key, row.cf);
+            Cells cells = schema.cells(metadata, row);
             for (IndexExpression expression : expressions)
             {
                 if (!accepted(cells, expression))
@@ -530,77 +534,19 @@ public abstract class RowService
         }
 
         // If it is not a relevance search, simply trunk results
-        if (!search.usesSorting())
+        if (!search.usesRelevanceOrSorting())
         {
             return rows.size() > count ? rows.subList(0, count) : rows;
         }
 
-        // We only use the query condition because it is the only
-        // restriction affecting the relevance score.
-        Condition queryCondition = search.queryCondition();
-        Query query = queryCondition == null ? new MatchAllDocsQuery() : queryCondition.query(schema);
-        Sort sort = search.sort(schema);
-
-        Map<ByteBuffer, Row> map = new HashMap<>(rows.size());
-        for (Row row : rows)
+        List<Row> result;
+        if (search.usesSorting())
         {
-            ByteBuffer id = getUniqueId(row);
-            map.put(id, row);
+            result = combineWithSort(search, rows, count);
         }
-
-        // Get limit and initialize result
-        int limit = Math.min(count, map.size());
-        List<Row> result = new ArrayList<>(limit);
-
-        try
+        else
         {
-
-            // Setup RAM directory for index and query again partial results.
-            Directory directory = new RAMDirectory();
-
-            // Index partial results
-            Analyzer analyzer = schema.analyzer();
-            IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_48, analyzer);
-            config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
-            config.setUseCompoundFile(false);
-            IndexWriter indexWriter = new IndexWriter(directory, config);
-            for (Row row : map.values())
-            {
-                Document document = document(row);
-                indexWriter.addDocument(document);
-            }
-            indexWriter.commit();
-            indexWriter.close();
-
-            // Search in partial results.
-            IndexReader indexReader = DirectoryReader.open(directory);
-            IndexSearcher indexSearcher = new IndexSearcher(indexReader);
-            TopDocs topdocs;
-            if (sort == null)
-            {
-                topdocs = indexSearcher.search(query, limit);
-            }
-            else
-            {
-                topdocs = indexSearcher.search(query, limit, sort);
-            }
-            for (ScoreDoc scoreDoc : topdocs.scoreDocs)
-            {
-                Document document = indexSearcher.doc(scoreDoc.doc, fieldsToLoad());
-                ByteBuffer docId = getUniqueId(document);
-                Row row = map.get(docId);
-                result.add(row);
-            }
-            indexReader.close();
-
-            // Close RAM directory
-            directory.close();
-
-        }
-        catch (IOException e)
-        {
-            Log.error(e, "Error combining partial results");
-            throw new RuntimeException(e);
+            result = combineWithScore(search, rows, count);
         }
 
         long time = System.currentTimeMillis() - startTime;
@@ -609,8 +555,47 @@ public abstract class RowService
         return result;
     }
 
+    private List<Row> combineWithScore(Search search, List<Row> rows, int count)
+    {
+        Collections.sort(rows, new Comparator<Row>()
+        {
+            public int compare(Row r1, Row r2)
+            {
+                Float score1 = score(r1);
+                Float score2 = score(r2);
+                return score2.compareTo(score1);
+            }
+        });
+        return rows.size() > count ? rows.subList(0, count) : rows;
+    }
+
+    private List<Row> combineWithSort(Search search, List<Row> rows, int count)
+    {
+
+        Sorting sorting = search.getSorting();
+        Comparator<Cells> comparator = sorting.comparator();
+        List<Cells> allCells = new ArrayList<>(rows.size());
+        for (Row row : rows)
+        {
+            Cells cells = schema.cells(metadata, row);
+            allCells.add(cells);
+        }
+        Collections.sort(allCells, comparator);
+        List<Row> result = new ArrayList<Row>(rows.size());
+        for (Cells cells : allCells)
+        {
+            result.add(cells.getRow());
+        }
+        return result.size() > count ? result.subList(0, count) : result;
+    }
+
+    protected abstract Column scoreCell(Document document, Float score);
+
+    protected abstract Float score(Row row);
+
     public void compact()
     {
         luceneIndex.optimize();
     }
+
 }

@@ -73,9 +73,19 @@ public class Search
      * @return {@code true} if the results must be ordered by relevance. If {@code false}, then the results must be
      *         sorted by the natural Cassandra's order.
      */
-    public boolean usesSorting()
+    public boolean usesRelevanceOrSorting()
     {
         return queryCondition != null || sorting != null;
+    }
+
+    public boolean usesRelevance()
+    {
+        return queryCondition != null;
+    }
+
+    public boolean usesSorting ()
+    {
+        return sorting != null;
     }
 
     /**
@@ -96,6 +106,11 @@ public class Search
     public Condition filterCondition()
     {
         return filterCondition;
+    }
+
+    public Sorting getSorting()
+    {
+        return sorting;
     }
 
     public Filter filter(Schema schema)

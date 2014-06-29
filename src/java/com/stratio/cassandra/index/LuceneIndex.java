@@ -24,6 +24,7 @@ import java.util.Set;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
@@ -38,6 +39,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.SearcherFactory;
 import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
@@ -133,8 +135,17 @@ public class LuceneIndex
             indexWriter = new IndexWriter(directory, config);
 
             // Setup NRT search
+            SearcherFactory searcherFactory = new SearcherFactory()
+            {
+                public IndexSearcher newSearcher(IndexReader reader) throws IOException
+                {
+                    IndexSearcher searcher = new IndexSearcher(reader);
+                    searcher.setSimilarity(new NoIDFSimilarity());
+                    return searcher;
+                }
+            };
             trackingIndexWriter = new TrackingIndexWriter(indexWriter);
-            searcherManager = new SearcherManager(indexWriter, true, null);
+            searcherManager = new SearcherManager(indexWriter, true, searcherFactory);
             searcherReopener = new ControlledRealTimeReopenThread<>(trackingIndexWriter,
                                                                     searcherManager,
                                                                     refreshSeconds,
@@ -358,20 +369,20 @@ public class LuceneIndex
 
         try
         {
-            IndexSearcher indexSearcher = searcherManager.acquire();
+            IndexSearcher searcher = searcherManager.acquire();
             try
             {
 
                 // Search
                 ScoreDoc start = after == null ? null : after.scoreDoc;
-                TopDocs topDocs = topDocs(indexSearcher, query, filter, sort, start, count);
+                TopDocs topDocs = topDocs(searcher, query, filter, sort, start, count);
                 ScoreDoc[] scoreDocs = topDocs.scoreDocs;
 
                 // Collect the documents from query result
                 List<ScoredDocument> scoredDocuments = new ArrayList<>(scoreDocs.length);
                 for (ScoreDoc scoreDoc : scoreDocs)
                 {
-                    Document document = indexSearcher.doc(scoreDoc.doc, fieldsToLoad);
+                    Document document = searcher.doc(scoreDoc.doc, fieldsToLoad);
                     ScoredDocument scoredDocument = new ScoredDocument(scoreDoc, document);
                     scoredDocuments.add(scoredDocument);
                     // Log.debug("Found %s", scoredDocument);
@@ -381,7 +392,7 @@ public class LuceneIndex
             }
             finally
             {
-                searcherManager.release(indexSearcher);
+                searcherManager.release(searcher);
             }
         }
         catch (IOException e)
