@@ -93,6 +93,9 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean isIndexing(List<IndexExpression> clause)
     {
@@ -108,6 +111,9 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         return false;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void validate(List<IndexExpression> clause)
     {
@@ -115,6 +121,9 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         search.validate(schema);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean requiresFullScan(AbstractRangeCommand command)
     {
@@ -122,6 +131,9 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         return search.usesRelevanceOrSorting();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<Row> combine(AbstractRangeCommand command, List<Row> rows)
     {
@@ -145,6 +157,13 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         }
     }
 
+    /**
+     * Returns the {@link Search} contained in the specified list of {@link IndexExpression}s.
+     * 
+     * @param clause
+     *            A list of {@link IndexExpression}s.
+     * @return The {@link Search} contained in the specified list of {@link IndexExpression}s.
+     */
     private Search search(List<IndexExpression> clause)
     {
         IndexExpression indexedExpression = indexedExpression(clause);
@@ -152,6 +171,13 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         return Search.fromJson(json);
     }
 
+    /**
+     * Returns the {@link IndexExpression} relative to this index.
+     * 
+     * @param clause
+     *            A list of {@link IndexExpression}s.
+     * @return The {@link IndexExpression} relative to this index.
+     */
     private IndexExpression indexedExpression(List<IndexExpression> clause)
     {
         for (IndexExpression indexExpression : clause)
@@ -165,6 +191,13 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         return null;
     }
 
+    /**
+     * Returns the {@link IndexExpression} not relative to this index.
+     * 
+     * @param clause
+     *            A list of {@link IndexExpression}s.
+     * @return The {@link IndexExpression} not relative to this index.
+     */
     private List<IndexExpression> filteredExpressions(List<IndexExpression> clause)
     {
         List<IndexExpression> filteredExpressions = new ArrayList<>(clause.size());
@@ -179,6 +212,9 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         return filteredExpressions;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String toString()
     {

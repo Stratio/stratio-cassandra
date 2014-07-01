@@ -25,8 +25,8 @@ import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
 import com.stratio.cassandra.index.schema.Cells;
+import com.stratio.cassandra.index.schema.CellsComparator;
 import com.stratio.cassandra.index.schema.Schema;
-import com.stratio.cassandra.index.util.ComparatorChain;
 
 /**
  * A sorting of fields for a search.
@@ -84,7 +84,7 @@ public class Sorting implements Iterable<SortingField>
 
     public Comparator<Cells> comparator()
     {
-        return new ComparatorCells(sortingFields);
+        return new CellsComparator(sortingFields);
     }
 
     @Override
@@ -95,28 +95,6 @@ public class Sorting implements Iterable<SortingField>
         builder.append(sortingFields);
         builder.append("]");
         return builder.toString();
-    }
-
-    private static final class ComparatorCells implements Comparator<Cells>
-    {
-
-        private final ComparatorChain<Cells> comparatorChain;
-
-        public ComparatorCells(List<SortingField> sortingFields)
-        {
-            comparatorChain = new ComparatorChain<>();
-            for (SortingField sortingField : sortingFields)
-            {
-                Comparator<Cells> comparator = sortingField.comparator();
-                comparatorChain.addComparator(comparator);
-            }
-        }
-
-        @Override
-        public int compare(Cells o1, Cells o2)
-        {
-            return comparatorChain.compare(o1, o2);
-        }
     }
 
 }

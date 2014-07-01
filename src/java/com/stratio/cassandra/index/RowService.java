@@ -38,17 +38,12 @@ import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.thrift.IndexExpression;
-import org.apache.cassandra.utils.HeapAllocator;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.Filter;
-import org.apache.lucene.search.FilteredQuery;
-import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 
-import com.stratio.cassandra.index.LuceneIndex.ScoredDocument;
 import com.stratio.cassandra.index.query.Search;
 import com.stratio.cassandra.index.query.Sorting;
 import com.stratio.cassandra.index.schema.Cell;
@@ -73,6 +68,7 @@ public abstract class RowService
     protected final Schema schema;
     protected final LuceneIndex luceneIndex;
     protected final FilterCache filterCache;
+    protected final Comparator<Row> scoredRowComparator;
 
     private static final int FILTERING_PAGE_SIZE = 1000;
 
@@ -110,8 +106,27 @@ public abstract class RowService
                                       schema.analyzer());
 
         indexQueue = new TaskQueue(config.getIndexingThreads(), config.getIndexingQueuesSize());
+
+        scoredRowComparator = new Comparator<Row>()
+        {
+            public int compare(Row r1, Row r2)
+            {
+                Float score1 = score(r1);
+                Float score2 = score(r2);
+                return score2.compareTo(score1);
+            }
+        };
     }
 
+    /**
+     * Returns a new {@link RowService} for the specified {@link ColumnFamilyStore} and {@link ColumnDefinition}.
+     * 
+     * @param baseCfs
+     *            The {@link ColumnFamilyStore} associated to the managed index.
+     * @param columnDefinition
+     *            The {@link ColumnDefinition} of the indexed column.
+     * @return A new {@link RowService} for the specified {@link ColumnFamilyStore} and {@link ColumnDefinition}.
+     */
     public static RowService build(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition)
     {
         int clusteringPosition = baseCfs.metadata.clusteringKeyColumns().size();
@@ -258,17 +273,34 @@ public abstract class RowService
      *            The filter to be satisfied.
      * @return The Cassandra rows satisfying {@code extendedFilter}.
      */
+
+    /**
+     * Returns the stored and indexed {@link Row}s satisfying the specified restrictions.
+     * 
+     * @param search
+     *            The {@link Search} to be performed.
+     * @param filteredExpressions
+     *            A list of filtering {@link IndexExpression}s to be satisfied.
+     * @param dataRange
+     *            A {@link DataRange} to be satisfied.
+     * @param limit
+     *            The max number of {@link Row}s to be returned.
+     * @param timestamp
+     *            The operation time stamp.
+     * @return The {@link Row}s satisfying the specified restrictions.
+     */
     public final List<Row> search(Search search,
                                   List<IndexExpression> filteredExpressions,
                                   DataRange dataRange,
                                   final int limit,
                                   long timestamp)
     {
-        Log.debug("Searching with search %s ", search);
+        long startTime = System.currentTimeMillis();
+        // Log.debug("Searching with search %s ", search);
 
         // Setup search arguments
         Filter filter = cachedFilter(dataRange);
-        Query query = query(search);
+        Query query = search.filteredQuery(schema);
         Sort sort = search.sort(schema);
 
         // Setup search pagination
@@ -290,25 +322,16 @@ public abstract class RowService
 
             // Collect rows from Cassandra
             long collectStartTime = System.currentTimeMillis();
-            for (ScoredDocument sd : scoredDocuments)
+            for (ScoredDocument scoredDocument : scoredDocuments)
             {
-                lastDoc = sd;
-                float score = sd.scoreDoc.score;
-                Document document = sd.document;
-                Row row = row(document, timestamp);
+                lastDoc = scoredDocument;
+                Row row = row(scoredDocument, timestamp);
                 if (row != null && accepted(row, filteredExpressions))
                 {
-
-                    org.apache.cassandra.db.Column scoringCell = scoreCell(document, score);
-                    ColumnFamily decoratedCf = TreeMapBackedSortedColumns.factory.create(baseCfs.metadata);
-                    decoratedCf.addColumn(scoringCell);
-                    decoratedCf.addAll(row.cf, HeapAllocator.instance);
-                    row = new Row(row.key, decoratedCf);
-
                     rows.add(row);
                 }
             }
-            collectTime = System.currentTimeMillis() - collectStartTime;
+            collectTime += System.currentTimeMillis() - collectStartTime;
 
             // Setup next iteration
             maybeMore = scoredDocuments.size() == pageSize;
@@ -317,36 +340,26 @@ public abstract class RowService
             // Iterate while there are still documents to read and we don't have enough rows
         } while (maybeMore && rows.size() < limit);
 
-        Log.debug("Search time: " + searchTime + " ms");
-        Log.debug("Collect time: " + collectTime + " ms");
-        Log.debug("Query time: " + (System.currentTimeMillis() - timestamp) + " ms");
+        long queryTime = System.currentTimeMillis() - startTime;
+
+        Log.debug("Search time: %d ms", searchTime);
+        Log.debug("Collect time: %d ms", collectTime);
+        Log.debug("Query time: %d ms", queryTime);
 
         return rows;
     }
 
-    private Query query(Search search)
-    {
-        Query query = search.query(schema);
-        Filter filter = search.filter(schema);
-
-        if (query == null && filter == null)
-        {
-            return new MatchAllDocsQuery();
-        }
-        else if (query != null && filter == null)
-        {
-            return query;
-        }
-        else if (query == null && filter != null)
-        {
-            return new ConstantScoreQuery(filter);
-        }
-        else
-        {
-            return new FilteredQuery(query, filter);
-        }
-    }
-
+    /**
+     * Returns {@code true} if the specified {@link Row} satisfies the all the specified {@link IndexExpression}s,
+     * {@code false} otherwise.
+     * 
+     * @param row
+     *            A {@link Row}.
+     * @param expressions
+     *            A list of {@link IndexExpression}s to be satisfied by {@code row}.
+     * @return {@code true} if the specified {@link Row} satisfies the all the specified {@link IndexExpression}s,
+     *         {@code false} otherwise.
+     */
     private boolean accepted(Row row, List<IndexExpression> expressions)
     {
         if (!expressions.isEmpty())
@@ -363,6 +376,17 @@ public abstract class RowService
         return true;
     }
 
+    /**
+     * Returns {@code true} if the specified {@link Cells} satisfies the the specified {@link IndexExpression},
+     * {@code false} otherwise.
+     * 
+     * @param cells
+     *            A {@link Cells}
+     * @param expression
+     *            A {@link IndexExpression}s to be satisfied by {@code cells}.
+     * @return {@code true} if the specified {@link Cells} satisfies the the specified {@link IndexExpression},
+     *         {@code false} otherwise.
+     */
     private boolean accepted(Cells cells, IndexExpression expression)
     {
 
@@ -412,7 +436,7 @@ public abstract class RowService
      *            The time stamp to ignore deleted columns.
      * @return The {@link Row} identified by the specified {@link Document}
      */
-    protected abstract Row row(Document document, long timestamp);
+    protected abstract Row row(ScoredDocument scoredDocument, long timestamp);
 
     /**
      * Returns the CQL3 {@link Row} identified by the specified {@link QueryFilter}, using the specified time stamp to
@@ -472,7 +496,6 @@ public abstract class RowService
     {
         if (filterCache == null)
         {
-            Log.debug(" -> Filter cache not present for range " + dataRange.keyRange());
             return filter(dataRange);
         }
         Filter filter = filterCache.get(dataRange);
@@ -481,17 +504,8 @@ public abstract class RowService
             filter = filter(dataRange);
             if (filter != null)
             {
-                Log.debug(" -> Filter cache fails for range " + dataRange.keyRange());
                 filterCache.put(dataRange, filter);
             }
-            else
-            {
-                Log.debug(" -> Filter cache unneeded for range " + dataRange.keyRange());
-            }
-        }
-        else
-        {
-            Log.debug(" -> Filter cache hits for range " + dataRange.keyRange());
         }
         return filter;
     }
@@ -505,22 +519,34 @@ public abstract class RowService
      */
     protected abstract Term identifyingTerm(Row row);
 
-    protected abstract ByteBuffer getUniqueId(Document document);
-
-    protected abstract ByteBuffer getUniqueId(Row row);
+    /**
+     * Returns a {@link ByteBuffer} uniquely identifying the specified {@link Document}.
+     * 
+     * @param document
+     *            A {@link Document}
+     * @return A {@link ByteBuffer} uniquely identifying the specified {@link Document}.
+     */
+    protected abstract ByteBuffer identifyingByteBuffer(Document document);
 
     /**
-     * Return the {@code limit} {@link Row}s of those in the specified {@link Row}s selected according to the specified
-     * {@link Search}.
+     * Returns a {@link ByteBuffer} uniquely identifying the specified {@link Row}.
+     * 
+     * @param row
+     *            A {@link Row}
+     * @return A {@link ByteBuffer} uniquely identifying the specified {@link Row}.
+     */
+    protected abstract ByteBuffer identifyingByteBuffer(Row row);
+
+    /**
+     * Returns he combination of the specified rows according to the specified {@link Search}.
      * 
      * @param search
      *            A {@link Search}.
      * @param rows
-     *            A list of {@link Row}s.
+     *            A list of {@link Row}s to be combined.
      * @param count
      *            The number of {@link Row}s to be returned.
-     * @return The {@code limit} {@link Row}s of those in the specified {@link Row}s selected according to the specified
-     *         {@link Search}.
+     * @return The combination of the specified rows according to the specified {@link Search}.
      */
     public List<Row> combine(Search search, List<Row> rows, int count)
     {
@@ -542,11 +568,11 @@ public abstract class RowService
         List<Row> result;
         if (search.usesSorting())
         {
-            result = combineWithSort(search, rows, count);
+            result = combineWithSort(search.getSorting(), rows, count);
         }
         else
         {
-            result = combineWithScore(search, rows, count);
+            result = combineWithScore(rows, count);
         }
 
         long time = System.currentTimeMillis() - startTime;
@@ -555,24 +581,34 @@ public abstract class RowService
         return result;
     }
 
-    private List<Row> combineWithScore(Search search, List<Row> rows, int count)
+    /**
+     * Returns he combination of the specified rows according to its scores.
+     * 
+     * @param rows
+     *            A list of {@link Row}s to be combined.
+     * @param count
+     *            The max number of {@link Row}s to be returned.
+     * @return The combination of the specified rows according to its scores.
+     */
+    private List<Row> combineWithScore(List<Row> rows, int count)
     {
-        Collections.sort(rows, new Comparator<Row>()
-        {
-            public int compare(Row r1, Row r2)
-            {
-                Float score1 = score(r1);
-                Float score2 = score(r2);
-                return score2.compareTo(score1);
-            }
-        });
+        Collections.sort(rows, scoredRowComparator);
         return rows.size() > count ? rows.subList(0, count) : rows;
     }
 
-    private List<Row> combineWithSort(Search search, List<Row> rows, int count)
+    /**
+     * Returns he combination of the specified rows according to the specified {@link Sorting}.
+     * 
+     * @param sorting
+     *            A {@link Sorting}.
+     * @param rows
+     *            A list of {@link Row}s to be combined.
+     * @param count
+     *            The max number of {@link Row}s to be returned.
+     * @return The combination of the specified rows according to the specified {@link Sorting}.
+     */
+    private List<Row> combineWithSort(Sorting sorting, List<Row> rows, int count)
     {
-
-        Sorting sorting = search.getSorting();
         Comparator<Cells> comparator = sorting.comparator();
         List<Cells> allCells = new ArrayList<>(rows.size());
         for (Row row : rows)
@@ -589,11 +625,19 @@ public abstract class RowService
         return result.size() > count ? result.subList(0, count) : result;
     }
 
-    protected abstract Column scoreCell(Document document, Float score);
-
+    /**
+     * Returns the score of the specified {@link Row}.
+     * 
+     * @param row
+     *            A {@link Row}.
+     * @return The score of the specified {@link Row}.
+     */
     protected abstract Float score(Row row);
 
-    public void compact()
+    /**
+     * Optimizes the managed Lucene's index.
+     */
+    public void optimize()
     {
         luceneIndex.optimize();
     }

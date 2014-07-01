@@ -15,7 +15,9 @@
  */
 package com.stratio.cassandra.index.query;
 
+import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.Filter;
+import org.apache.lucene.search.FilteredQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
@@ -83,7 +85,7 @@ public class Search
         return queryCondition != null;
     }
 
-    public boolean usesSorting ()
+    public boolean usesSorting()
     {
         return sorting != null;
     }
@@ -113,9 +115,19 @@ public class Search
         return sorting;
     }
 
+    public Query query(Schema schema)
+    {
+        return queryCondition == null ? null : queryCondition.query(schema);
+    }
+
     public Filter filter(Schema schema)
     {
         return filterCondition == null ? null : filterCondition.filter(schema);
+    }
+
+    public Sort sort(Schema schema)
+    {
+        return sorting == null ? null : sorting.sort(schema);
     }
 
     /**
@@ -126,14 +138,27 @@ public class Search
      *            The {@link Schema} to be used.
      * @return The Lucene's {@link Query} representation of this search.
      */
-    public Query query(Schema schema)
+    public Query filteredQuery(Schema schema)
     {
-        return queryCondition == null ? null : queryCondition.query(schema);
-    }
+        Query query = query(schema);
+        Filter filter = filter(schema);
 
-    public Sort sort(Schema schema)
-    {
-        return sorting == null ? null : sorting.sort(schema);
+        if (query == null && filter == null)
+        {
+            return new MatchAllDocsQuery();
+        }
+        else if (query != null && filter == null)
+        {
+            return query;
+        }
+        else if (query == null && filter != null)
+        {
+            return new ConstantScoreQuery(filter);
+        }
+        else
+        {
+            return new FilteredQuery(query, filter);
+        }
     }
 
     /**

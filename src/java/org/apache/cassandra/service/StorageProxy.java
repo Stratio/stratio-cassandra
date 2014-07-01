@@ -24,7 +24,6 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.Map.Entry;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
@@ -33,7 +32,6 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.collect.*;
 import com.google.common.util.concurrent.Uninterruptibles;
 import org.apache.commons.lang3.StringUtils;
-import com.stratio.cassandra.index.util.Log;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1408,12 +1406,12 @@ public class StorageProxy implements StorageProxyMBean
         Keyspace keyspace = Keyspace.open(command.keyspace);
         List<Row> rows;
         // now scan until we have enough results
+        
+        boolean requiresFullScan = command.requiresFullScan();
+        int numRanges = 0;
+        
         try
         {
-        	if (command.requiresFullScan()) 
-			{
-				return getRangeSliceFullScan(command, consistency_level);
-			}
         	
             int cql3RowCount = 0;
             rows = new ArrayList<>();
@@ -1507,6 +1505,7 @@ public class StorageProxy implements StorageProxyMBean
 
                 try
                 {
+                    numRanges++;
                     for (Row row : handler.get())
                     {
                         rows.add(row);
@@ -1553,7 +1552,7 @@ public class StorageProxy implements StorageProxyMBean
 
                 // if we're done, great, otherwise, move to the next range
                 int count = nodeCmd.countCQL3Rows() ? cql3RowCount : rows.size();
-                if (count >= nodeCmd.limit())
+                if (count >= nodeCmd.limit() && !requiresFullScan)
                     break;
             }
         }
@@ -1563,194 +1562,8 @@ public class StorageProxy implements StorageProxyMBean
             rangeMetrics.addNano(latency);
             Keyspace.open(command.keyspace).getColumnFamilyStore(command.columnFamily).metric.coordinatorScanLatency.update(latency, TimeUnit.NANOSECONDS);
         }
-        return command.trim(rows);
+        return (requiresFullScan && numRanges > 1) ? command.combine(rows) : command.trim(rows);
     }
-	
-	public static List<Row> getRangeSliceFullScan(AbstractRangeCommand command, ConsistencyLevel consistency_level) 
-    throws UnavailableException, ReadTimeoutException 
-    {
-	
-		Keyspace keyspace = Keyspace.open(command.keyspace);
-		List<Row> rows = new ArrayList<>();
-		Map<FullScanTask, Future<List<Row>>> futures = new HashMap<>();
-		ExecutorService executorService = Executors.newFixedThreadPool(4);
-		
-		// when dealing with LocalStrategy keyspaces, we can skip the range splitting and
-		// merging (which can be
-		// expensive in clusters with vnodes)
-		List<? extends AbstractBounds<RowPosition>> ranges;
-		if (keyspace.getReplicationStrategy() instanceof LocalStrategy)
-			ranges = command.keyRange.unwrap();
-		else
-			ranges = getRestrictedRanges(command.keyRange);
-		
-		int i = 0;
-		AbstractBounds<RowPosition> nextRange = null;
-		List<InetAddress> nextEndpoints = null;
-		List<InetAddress> nextFilteredEndpoints = null;
-		while (i < ranges.size()) 
-		{
-			AbstractBounds<RowPosition> range = nextRange == null
-                    ? ranges.get(i)
-                    : nextRange;
-			List<InetAddress> liveEndpoints = nextEndpoints == null
-			                  ? getLiveSortedEndpoints(keyspace, range.right)
-			                  : nextEndpoints;
-			List<InetAddress> filteredEndpoints = nextFilteredEndpoints == null
-			                      ? consistency_level.filterForQuery(keyspace, liveEndpoints)
-			                      : nextFilteredEndpoints;
-			++i;
-		
-			// getRestrictedRange has broken the queried range into per-[vnode] token ranges,
-			// but this doesn't take
-			// the replication factor into account. If the intersection of live endpoints for 2
-			// consecutive ranges
-			// still meets the CL requirements, then we can merge both ranges into the same
-			// RangeSliceCommand.
-			while (i < ranges.size()) 
-			{
-				nextRange = ranges.get(i);
-				nextEndpoints = getLiveSortedEndpoints(keyspace, nextRange.right);
-				nextFilteredEndpoints = consistency_level.filterForQuery(keyspace, nextEndpoints);
-		
-				/*
-				 * If the current range right is the min token, we should stop merging because
-				 * CFS.getRangeSlice don't know how to deal with a wrapping range. Note: it would be
-				 * slightly more efficient to have CFS.getRangeSlice on the destination nodes
-				 * unwraps the range if necessary and deal with it. However, we can't start sending
-				 * wrapped range without breaking wire compatibility, so It's likely easier not to
-				 * bother;
-				 */
-				if (range.right.isMinimum())
-					break;
-		
-				List<InetAddress> merged = intersection(liveEndpoints, nextEndpoints);
-		
-				// Check if there is enough endpoint for the merge to be possible.
-				if (!consistency_level.isSufficientLiveNodes(keyspace, merged))
-					break;
-		
-				List<InetAddress> filteredMerged = consistency_level.filterForQuery(keyspace, merged);
-		
-				// Estimate whether merging will be a win or not
-				if (!DatabaseDescriptor.getEndpointSnitch().isWorthMergingForRangeQuery(filteredMerged,
-				                                                                        filteredEndpoints,
-				                                                                        nextFilteredEndpoints))
-					break;
-		
-				// If we get there, merge this range and the next one
-				range = range.withNewRight(nextRange.right);
-				liveEndpoints = merged;
-				filteredEndpoints = filteredMerged;
-				++i;
-			}
-		
-			AbstractRangeCommand nodeCmd = command.forSubRange(range);
-		
-			// collect replies and resolve according to consistency level
-			RangeSliceResponseResolver resolver = new RangeSliceResponseResolver(nodeCmd.keyspace, command.timestamp);
-			List<InetAddress> minimalEndpoints = filteredEndpoints.subList(0,
-			                                                               Math.min(filteredEndpoints.size(),
-			                                                                        consistency_level.blockFor(keyspace)));
-			ReadCallback<RangeSliceReply, Iterable<Row>> handler = new ReadCallback<>(resolver,
-			                                                                          consistency_level,
-			                                                                          nodeCmd,
-			                                                                          minimalEndpoints);
-			handler.assureSufficientLiveNodes();
-			resolver.setSources(filteredEndpoints);
-			if (filteredEndpoints.size() == 1 && filteredEndpoints.get(0).equals(FBUtilities.getBroadcastAddress())
-			        && OPTIMIZE_LOCAL_REQUESTS) 
-			{
-				StageManager.getStage(Stage.READ).execute(new LocalRangeSliceRunnable(nodeCmd, handler));
-			} 
-			else 
-			{
-				MessageOut<? extends AbstractRangeCommand> message = nodeCmd.createMessage();
-				for (InetAddress endpoint : filteredEndpoints) 
-				{
-					Tracing.trace("Enqueuing request to {}", endpoint);
-					MessagingService.instance().sendRR(message, endpoint, handler);
-				}
-			}
-		
-			FullScanTask fullScanTask = new FullScanTask(handler, resolver);
-			Future<List<Row>> future = executorService.submit(fullScanTask);
-			futures.put(fullScanTask, future);
-		}
-		
-		try 
-		{
-			executorService.shutdown();
-			while (!executorService.awaitTermination(10, TimeUnit.SECONDS)) 
-			{
-				Log.info("Awaiting completion of threads.");
-			}
-		} 
-		catch (InterruptedException e) 
-		{
-			Log.error(e, "INTERRUPTED");
-			throw new RuntimeException(e);
-		}
-		
-		for (Entry<FullScanTask, Future<List<Row>>> entry : futures.entrySet()) {
-			FullScanTask task = entry.getKey();
-			Future<List<Row>> future = entry.getValue();
-			try 
-			{
-				List<Row> nodeRows = future.get();
-				rows.addAll(nodeRows);
-			} 
-			catch (ExecutionException e) 
-			{
-				Throwable cause = e.getCause();
-				if (cause instanceof ReadTimeoutException) 
-				{
-					int blockFor = consistency_level.blockFor(keyspace);
-					int responseCount = task.resolver.responses.size();
-					String gotData = responseCount > 0 ? task.resolver.isDataPresent() ? " (including data)"
-					        : " (only digests)" : "";
-		
-					if (Tracing.isTracing()) {
-						Tracing.trace("Timed out; received {} of {} responses{} for range {} of {}", new Object[] {
-						        responseCount, blockFor, gotData, i, ranges.size() });
-					} 
-					else if (logger.isDebugEnabled()) 
-					{
-						logger.debug("Range slice timeout; received {} of {} responses{} for range {} of {}",
-						             responseCount,
-						             blockFor,
-						             gotData,
-						             i,
-						             ranges.size());
-					}
-					throw (ReadTimeoutException) cause;
-				} 
-				else if (cause instanceof TimeoutException) 
-				{
-					// We got all responses, but timed out while repairing
-					int blockFor = consistency_level.blockFor(keyspace);
-					if (Tracing.isTracing())
-						Tracing.trace("Timed out while read-repairing after receiving all {} data and digest responses",
-						              blockFor);
-					else
-						logger.debug("Range slice timeout while read-repairing after receiving all {} data and digest responses",
-						             blockFor);
-					throw new ReadTimeoutException(consistency_level, blockFor - 1, blockFor, true);
-				} 
-				else if (cause instanceof DigestMismatchException) 
-				{
-					throw new AssertionError(e); // no digests in range slices yet
-				}
-			} 
-			catch (InterruptedException e) 
-			{
-				Log.error(e, "=======> Error interrupted");
-				throw new RuntimeException(e);
-			}
-		}
-		
-		return futures.size() > 1 ? command.combine(rows) : command.trim(rows);
-	}
 	
 	private static final class FullScanTask implements Callable<List<Row>> {
 	

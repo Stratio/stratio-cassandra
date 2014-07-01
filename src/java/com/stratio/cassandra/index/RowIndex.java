@@ -345,7 +345,7 @@ public class RowIndex extends PerRowSecondaryIndex
         Log.info("Compacting index %s", logName);
         try
         {
-            rowService.compact();
+            rowService.optimize();
         }
         catch (RuntimeException e)
         {

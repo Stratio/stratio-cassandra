@@ -47,10 +47,12 @@ public abstract class TokenMapper
     protected final ColumnFamilyStore baseCfs;
 
     /**
-     * Returns the {@link TokenMapper} instance for the current partitioner.
+     * Returns a new {@link TokenMapper} instance for the current partitioner using the specified
+     * {@link ColumnFamilyStore}.
      * 
      * @param baseCfs
-     * @return The {@link TokenMapper} instance for the current partitioner.
+     *            A {@link ColumnFamilyStore}.
+     * @return A new {@link TokenMapper} instance for the current partitioner.
      */
     public static TokenMapper instance(ColumnFamilyStore baseCfs)
     {
