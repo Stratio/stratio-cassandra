@@ -20,7 +20,7 @@ package org.apache.cassandra.db;
 import java.util.List;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.db.filter.*;
+import org.apache.cassandra.db.filter.IDiskAtomFilter;
 import org.apache.cassandra.db.index.SecondaryIndexSearcher;
 import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.net.MessageOut;
@@ -56,19 +56,16 @@ public abstract class AbstractRangeCommand implements IReadCommand {
 	public boolean requiresFullScan() {
 		return searcher == null ? false : searcher.requiresFullScan(this);
 	}
-
-	public List<Row> combine(List<Row> rows) {
-		if (searcher != null)
-			return searcher.combine(this, rows);
-		else if (countCQL3Rows())
-			return rows;
-		else
-			return trim(rows);
-	}
-	
-	public List<Row> trim(List<Row> rows) {
-		return rows.size() > limit() ? rows.subList(0, limit()) : rows;
-	}
+    
+    public Merger merger() 
+    {
+        if (searcher != null)
+            return searcher.merger(this, limit());
+        else if (countCQL3Rows())
+            return new Merger();
+        else
+            return new Merger(limit());
+    }
 
 	public String getKeyspace() {
 		return keyspace;

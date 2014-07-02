@@ -355,7 +355,7 @@ public class LuceneIndex
         // Log.debug("Searching with filter %s ", filter);
         // Log.debug("Searching with count %d", count);
         // Log.debug("Searching with sort %s", sort);
-        // Log.debug("Searching with start %s", after == null ? null : after.scoreDoc);
+        // Log.debug("Searching with start %s", after == null ? null : after.getScoreDoc());
 
         // Validate
         if (count == null || count < 0)

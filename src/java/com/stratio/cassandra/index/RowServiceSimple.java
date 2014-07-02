@@ -153,7 +153,7 @@ public class RowServiceSimple extends RowService
         Float score = scoredDocument.getScore();
         ByteBuffer columnName = nameType.builder().add(indexedColumnName.key).build();
         ByteBuffer columnValue = UTF8Type.instance.decompose(score.toString());
-        Column scoreColumn = new Column(columnName, columnValue);
+        Column scoreColumn = new Column(columnName, columnValue, timestamp);
 
         // Return new row with score column
         ColumnFamily decoratedCf = TreeMapBackedSortedColumns.factory.create(baseCfs.metadata);

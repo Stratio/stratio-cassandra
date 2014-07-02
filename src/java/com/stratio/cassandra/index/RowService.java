@@ -16,8 +16,6 @@
 package com.stratio.cassandra.index;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
@@ -32,11 +30,13 @@ import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Row;
+import org.apache.cassandra.db.RowPosition;
 import org.apache.cassandra.db.TreeMapBackedSortedColumns;
 import org.apache.cassandra.db.filter.QueryFilter;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.db.marshal.UTF8Type;
+import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.thrift.IndexExpression;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
@@ -45,7 +45,6 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 
 import com.stratio.cassandra.index.query.Search;
-import com.stratio.cassandra.index.query.Sorting;
 import com.stratio.cassandra.index.schema.Cell;
 import com.stratio.cassandra.index.schema.Cells;
 import com.stratio.cassandra.index.schema.Schema;
@@ -494,8 +493,10 @@ public abstract class RowService
      */
     protected final Filter cachedFilter(DataRange dataRange)
     {
+        AbstractBounds<RowPosition> keyRange = dataRange.keyRange();
         if (filterCache == null)
         {
+            Log.debug("Filter cache not present for range %s", keyRange);
             return filter(dataRange);
         }
         Filter filter = filterCache.get(dataRange);
@@ -504,8 +505,17 @@ public abstract class RowService
             filter = filter(dataRange);
             if (filter != null)
             {
+                Log.debug("Filter cache fails for range %s", keyRange);
                 filterCache.put(dataRange, filter);
             }
+            else
+            {
+                Log.debug("Filter cache unneeded for range %s", keyRange);
+            }
+        }
+        else
+        {
+            Log.debug("Filter cache hits for range %s", keyRange);
         }
         return filter;
     }
@@ -538,91 +548,25 @@ public abstract class RowService
     protected abstract ByteBuffer identifyingByteBuffer(Row row);
 
     /**
-     * Returns he combination of the specified rows according to the specified {@link Search}.
      * 
      * @param search
-     *            A {@link Search}.
-     * @param rows
-     *            A list of {@link Row}s to be combined.
-     * @param count
-     *            The number of {@link Row}s to be returned.
-     * @return The combination of the specified rows according to the specified {@link Search}.
+     * @param limit
+     * @return
      */
-    public List<Row> combine(Search search, List<Row> rows, int count)
+    public Comparator<Row> comparator(Search search, int limit)
     {
-        Log.debug("Combining %d partial results", rows.size());
-        long startTime = System.currentTimeMillis();
-
-        // Skip trivia
-        if (rows.isEmpty())
-        {
-            return rows;
-        }
-
-        // If it is not a relevance search, simply trunk results
-        if (!search.usesRelevanceOrSorting())
-        {
-            return rows.size() > count ? rows.subList(0, count) : rows;
-        }
-
-        List<Row> result;
         if (search.usesSorting())
         {
-            result = combineWithSort(search.getSorting(), rows, count);
+            return new RowsComparator(metadata, schema, search.getSorting());
+        }
+        else if (search.usesRelevance())
+        {
+            return scoredRowComparator;
         }
         else
         {
-            result = combineWithScore(rows, count);
+            return null;
         }
-
-        long time = System.currentTimeMillis() - startTime;
-        Log.debug("Combined %d partial results to %d rows in %d ms", rows.size(), result.size(), time);
-
-        return result;
-    }
-
-    /**
-     * Returns he combination of the specified rows according to its scores.
-     * 
-     * @param rows
-     *            A list of {@link Row}s to be combined.
-     * @param count
-     *            The max number of {@link Row}s to be returned.
-     * @return The combination of the specified rows according to its scores.
-     */
-    private List<Row> combineWithScore(List<Row> rows, int count)
-    {
-        Collections.sort(rows, scoredRowComparator);
-        return rows.size() > count ? rows.subList(0, count) : rows;
-    }
-
-    /**
-     * Returns he combination of the specified rows according to the specified {@link Sorting}.
-     * 
-     * @param sorting
-     *            A {@link Sorting}.
-     * @param rows
-     *            A list of {@link Row}s to be combined.
-     * @param count
-     *            The max number of {@link Row}s to be returned.
-     * @return The combination of the specified rows according to the specified {@link Sorting}.
-     */
-    private List<Row> combineWithSort(Sorting sorting, List<Row> rows, int count)
-    {
-        Comparator<Cells> comparator = sorting.comparator();
-        List<Cells> allCells = new ArrayList<>(rows.size());
-        for (Row row : rows)
-        {
-            Cells cells = schema.cells(metadata, row);
-            allCells.add(cells);
-        }
-        Collections.sort(allCells, comparator);
-        List<Row> result = new ArrayList<Row>(rows.size());
-        for (Cells cells : allCells)
-        {
-            result.add(cells.getRow());
-        }
-        return result.size() > count ? result.subList(0, count) : result;
     }
 
     /**

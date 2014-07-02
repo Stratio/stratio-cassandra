@@ -13,34 +13,37 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.stratio.cassandra.index.schema;
+package com.stratio.cassandra.index;
 
 import java.util.Comparator;
-import java.util.List;
 
+import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.db.Row;
+
+import com.stratio.cassandra.index.query.Sorting;
 import com.stratio.cassandra.index.query.SortingField;
+import com.stratio.cassandra.index.schema.Cells;
+import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.index.util.ComparatorChain;
 
 /**
- * A {@link Cells} {@link Comparator} that uses a list of {@link SortingField}s.
+ * A {@link Comparator} for comparing {@link Row}s according to a certain {@link Sorting}.
  * 
  * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
-public class CellsComparator implements Comparator<Cells>
+public class RowsComparator implements Comparator<Row>
 {
+    private final CFMetaData metadata;
+    private final Schema schema;
     private final ComparatorChain<Cells> comparatorChain;
 
-    /**
-     * Returns a new {@link CellsComparator} for the specified {@link SortingField}s.
-     * 
-     * @param sortingFields
-     *            A list of {@link SortingField}s to be used in the comparison.
-     */
-    public CellsComparator(List<SortingField> sortingFields)
+    public RowsComparator(CFMetaData metadata, Schema schema, Sorting sorting)
     {
+        this.metadata = metadata;
+        this.schema = schema;
         comparatorChain = new ComparatorChain<>();
-        for (SortingField sortingField : sortingFields)
+        for (SortingField sortingField : sorting.getSortingFields())
         {
             Comparator<Cells> comparator = sortingField.comparator();
             comparatorChain.addComparator(comparator);
@@ -48,8 +51,11 @@ public class CellsComparator implements Comparator<Cells>
     }
 
     @Override
-    public int compare(Cells o1, Cells o2)
+    public int compare(Row row1, Row row2)
     {
-        return comparatorChain.compare(o1, o2);
+        Cells cells1 = schema.cells(metadata, row1);
+        Cells cells2 = schema.cells(metadata, row2);
+        return comparatorChain.compare(cells1, cells2);
     }
+
 }

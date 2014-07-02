@@ -15,7 +15,6 @@
  */
 package com.stratio.cassandra.index.query;
 
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
@@ -24,8 +23,6 @@ import org.apache.lucene.search.SortField;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
-import com.stratio.cassandra.index.schema.Cells;
-import com.stratio.cassandra.index.schema.CellsComparator;
 import com.stratio.cassandra.index.schema.Schema;
 
 /**
@@ -80,11 +77,6 @@ public class Sorting implements Iterable<SortingField>
             sortFields[i] = sortingFields.get(i).sortField(schema);
         }
         return new Sort(sortFields);
-    }
-
-    public Comparator<Cells> comparator()
-    {
-        return new CellsComparator(sortingFields);
     }
 
     @Override

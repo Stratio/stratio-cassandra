@@ -193,7 +193,7 @@ public class RowServiceWide extends RowService
         Float score = scoredDocument.getScore();
         ByteBuffer columnName = clusteringKeyMapper.name(clusteringKey, indexedColumnName);
         ByteBuffer columnValue = UTF8Type.instance.decompose(score.toString());
-        Column scoreColumn = new Column(columnName, columnValue);
+        Column scoreColumn = new Column(columnName, columnValue, timestamp);
 
         // Return new row with score column
         ColumnFamily decoratedCf = TreeMapBackedSortedColumns.factory.create(baseCfs.metadata);

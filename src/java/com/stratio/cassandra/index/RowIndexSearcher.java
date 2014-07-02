@@ -17,11 +17,13 @@ package com.stratio.cassandra.index;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
 import org.apache.cassandra.db.AbstractRangeCommand;
 import org.apache.cassandra.db.DataRange;
+import org.apache.cassandra.db.Merger;
 import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.filter.ExtendedFilter;
 import org.apache.cassandra.db.index.SecondaryIndexManager;
@@ -132,32 +134,6 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
     }
 
     /**
-     * {@inheritDoc}
-     */
-    @Override
-    public List<Row> combine(AbstractRangeCommand command, List<Row> rows)
-    {
-        try
-        {
-            Search search = search(command.rowFilter);
-            if (search.usesRelevanceOrSorting())
-            {
-                return rowService.combine(search, rows, command.limit());
-            }
-            else
-            {
-                return super.combine(command, rows);
-            }
-        }
-        catch (Exception e)
-        {
-            String message = String.format("Error while combining partial results: %s", e.getMessage());
-            Log.error(e, message);
-            throw new RuntimeException(message, e);
-        }
-    }
-
-    /**
      * Returns the {@link Search} contained in the specified list of {@link IndexExpression}s.
      * 
      * @param clause
@@ -210,6 +186,14 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
             }
         }
         return filteredExpressions;
+    }
+
+    @Override
+    public Merger merger(AbstractRangeCommand command, int limit)
+    {
+        Search search = search(command.rowFilter);
+        Comparator<Row> comparator = rowService.comparator(search, limit);
+        return new Merger(limit, comparator);
     }
 
     /**
