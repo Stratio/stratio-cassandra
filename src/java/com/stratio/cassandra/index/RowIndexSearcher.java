@@ -17,11 +17,13 @@ package com.stratio.cassandra.index;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
 import org.apache.cassandra.db.AbstractRangeCommand;
 import org.apache.cassandra.db.DataRange;
+import org.apache.cassandra.db.Merger;
 import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.filter.ExtendedFilter;
 import org.apache.cassandra.db.index.SecondaryIndexManager;
@@ -93,6 +95,9 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean isIndexing(List<IndexExpression> clause)
     {
@@ -108,6 +113,9 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         return false;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void validate(List<IndexExpression> clause)
     {
@@ -115,36 +123,23 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         search.validate(schema);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean requiresFullScan(AbstractRangeCommand command)
     {
         Search search = search(command.rowFilter);
-        return search.usesSorting();
+        return search.usesRelevanceOrSorting();
     }
 
-    @Override
-    public List<Row> combine(AbstractRangeCommand command, List<Row> rows)
-    {
-        try
-        {
-            Search search = search(command.rowFilter);
-            if (search.usesSorting())
-            {
-                return rowService.combine(search, rows, command.limit());
-            }
-            else
-            {
-                return super.combine(command, rows);
-            }
-        }
-        catch (Exception e)
-        {
-            String message = String.format("Error while combining partial results: %s", e.getMessage());
-            Log.error(e, message);
-            throw new RuntimeException(message, e);
-        }
-    }
-
+    /**
+     * Returns the {@link Search} contained in the specified list of {@link IndexExpression}s.
+     * 
+     * @param clause
+     *            A list of {@link IndexExpression}s.
+     * @return The {@link Search} contained in the specified list of {@link IndexExpression}s.
+     */
     private Search search(List<IndexExpression> clause)
     {
         IndexExpression indexedExpression = indexedExpression(clause);
@@ -152,6 +147,13 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         return Search.fromJson(json);
     }
 
+    /**
+     * Returns the {@link IndexExpression} relative to this index.
+     * 
+     * @param clause
+     *            A list of {@link IndexExpression}s.
+     * @return The {@link IndexExpression} relative to this index.
+     */
     private IndexExpression indexedExpression(List<IndexExpression> clause)
     {
         for (IndexExpression indexExpression : clause)
@@ -165,6 +167,13 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         return null;
     }
 
+    /**
+     * Returns the {@link IndexExpression} not relative to this index.
+     * 
+     * @param clause
+     *            A list of {@link IndexExpression}s.
+     * @return The {@link IndexExpression} not relative to this index.
+     */
     private List<IndexExpression> filteredExpressions(List<IndexExpression> clause)
     {
         List<IndexExpression> filteredExpressions = new ArrayList<>(clause.size());
@@ -179,6 +188,17 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         return filteredExpressions;
     }
 
+    @Override
+    public Merger merger(AbstractRangeCommand command, int limit)
+    {
+        Search search = search(command.rowFilter);
+        Comparator<Row> comparator = rowService.comparator(search, limit);
+        return new Merger(limit, comparator);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String toString()
     {

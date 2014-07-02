@@ -21,6 +21,7 @@ import java.util.Iterator;
 import java.util.Set;
 
 import org.apache.cassandra.config.ColumnDefinition;
+import org.apache.cassandra.db.Column;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DataRange;
@@ -28,8 +29,12 @@ import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.DeletionInfo;
 import org.apache.cassandra.db.RangeTombstone;
 import org.apache.cassandra.db.Row;
+import org.apache.cassandra.db.TreeMapBackedSortedColumns;
 import org.apache.cassandra.db.filter.QueryFilter;
 import org.apache.cassandra.db.filter.SliceQueryFilter;
+import org.apache.cassandra.db.marshal.UTF8Type;
+import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.utils.HeapAllocator;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
@@ -81,12 +86,14 @@ public class RowServiceWide extends RowService
         clusteringKeyMapper = ClusteringKeyMapper.instance(metadata);
         fullKeyMapper = FullKeyMapper.instance(metadata);
         clusteringPosition = metadata.clusteringKeyColumns().size();
-        
+
         luceneIndex.init(sort());
     }
 
     /**
      * {@inheritDoc}
+     * 
+     * These fields are the partition and clustering keys.
      */
     @Override
     public Set<String> fieldsToLoad()
@@ -142,7 +149,6 @@ public class RowServiceWide extends RowService
     @Override
     public Document document(Row row)
     {
-
         DecoratedKey partitionKey = row.key;
         ColumnFamily columnFamily = row.cf;
         ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(columnFamily);
@@ -151,7 +157,7 @@ public class RowServiceWide extends RowService
 
         tokenMapper.addFields(document, partitionKey);
         partitionKeyMapper.addFields(document, partitionKey);
-        schema.addFields(document, metadata, partitionKey, columnFamily);
+        schema.addFields(document, metadata, row);
         clusteringKeyMapper.addFields(document, clusteringKey);
         fullKeyMapper.addFields(document, partitionKey, clusteringKey);
 
@@ -170,13 +176,30 @@ public class RowServiceWide extends RowService
 
     /**
      * {@inheritDoc}
+     * 
+     * The {@link Row} is a logical one.
      */
     @Override
-    protected Row row(Document document, long timestamp)
+    protected Row row(ScoredDocument scoredDocument, long timestamp)
     {
+
+        // Extract row from document
+        Document document = scoredDocument.getDocument();
         DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
         ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(document);
-        return row(partitionKey, clusteringKey, timestamp);
+        Row row = row(partitionKey, clusteringKey, timestamp);
+
+        // Create score column from document score
+        Float score = scoredDocument.getScore();
+        ByteBuffer columnName = clusteringKeyMapper.name(clusteringKey, indexedColumnName);
+        ByteBuffer columnValue = UTF8Type.instance.decompose(score.toString());
+        Column scoreColumn = new Column(columnName, columnValue, timestamp);
+
+        // Return new row with score column
+        ColumnFamily decoratedCf = TreeMapBackedSortedColumns.factory.create(baseCfs.metadata);
+        decoratedCf.addColumn(scoreColumn);
+        decoratedCf.addAll(row.cf, HeapAllocator.instance);
+        return new Row(partitionKey, decoratedCf);
     }
 
     /**
@@ -202,6 +225,8 @@ public class RowServiceWide extends RowService
 
     /**
      * {@inheritDoc}
+     * 
+     * The {@link Filter} is based on {@link Token} first, then clustering key order.
      */
     @Override
     protected Sort sort()
@@ -213,6 +238,8 @@ public class RowServiceWide extends RowService
 
     /**
      * {@inheritDoc}
+     * 
+     * The {@link Filter} is based on a {@link Token} first, then clustering key range.
      */
     @Override
     protected Filter filter(DataRange dataRange)
@@ -240,6 +267,8 @@ public class RowServiceWide extends RowService
 
     /**
      * {@inheritDoc}
+     * 
+     * The {@link Term} is based on the partition and clustering keys.
      */
     @Override
     public Term identifyingTerm(Row row)
@@ -251,9 +280,11 @@ public class RowServiceWide extends RowService
 
     /**
      * {@inheritDoc}
+     * 
+     * The {@link ByteBuffer} is based on the partition and clustering keys.
      */
     @Override
-    public ByteBuffer getUniqueId(Document document)
+    public ByteBuffer identifyingByteBuffer(Document document)
     {
         DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
         ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(document);
@@ -262,13 +293,26 @@ public class RowServiceWide extends RowService
 
     /**
      * {@inheritDoc}
+     * 
+     * The {@link ByteBuffer} is based on the partition and clustering keys.
      */
     @Override
-    public ByteBuffer getUniqueId(Row row)
+    public ByteBuffer identifyingByteBuffer(Row row)
     {
         DecoratedKey partitionKey = row.key;
         ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(row.cf);
         return fullKeyMapper.byteBuffer(partitionKey, clusteringKey);
+    }
+
+    @Override
+    protected Float score(Row row)
+    {
+        ColumnFamily cf = row.cf;
+        ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(cf);
+        ByteBuffer columnName = clusteringKeyMapper.name(clusteringKey, indexedColumnName);
+        Column column = cf.getColumn(columnName);
+        ByteBuffer columnValue = column.value();
+        return Float.parseFloat(UTF8Type.instance.compose(columnValue));
     }
 
 }

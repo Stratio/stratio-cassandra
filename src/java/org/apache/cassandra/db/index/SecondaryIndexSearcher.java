@@ -18,9 +18,15 @@
 package org.apache.cassandra.db.index;
 
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.AbstractRangeCommand;
+import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.Merger;
+import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.filter.ExtendedFilter;
 import org.apache.cassandra.thrift.IndexExpression;
 import org.apache.cassandra.thrift.IndexOperator;
@@ -107,22 +113,9 @@ public abstract class SecondaryIndexSearcher
     {
         return false;
     }
-
-    /**
-     * Combines a list of cluster-wide collected {@link Row}s to satisfy the specified {@link AbstractRangeCommand}.
-     * This default implementation just truncates the provided list of rows according to the number of requested rows.
-     * 
-     * @param command
-     *            A {@link AbstractRangeCommand}.
-     * @param rows
-     *            A list of {@link Row}s collected by local instances of this index.
-     * @return The combination of the specified partial results according to the specified command.
-     */
-    public List<Row> combine(AbstractRangeCommand command, List<Row> rows)
+    
+    public Merger merger(AbstractRangeCommand command, int limit) 
     {
-        if (command.countCQL3Rows())
-            return rows;
-        else
-            return rows.size() > command.limit() ? rows.subList(0, command.limit()) : rows;
+        return new Merger(limit);
     }
 }

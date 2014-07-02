@@ -15,11 +15,17 @@
  */
 package com.stratio.cassandra.index.query;
 
+import java.nio.ByteBuffer;
+import java.util.Comparator;
+
+import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.lucene.search.SortField;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
+import com.stratio.cassandra.index.schema.Cell;
 import com.stratio.cassandra.index.schema.CellMapper;
+import com.stratio.cassandra.index.schema.Cells;
 import com.stratio.cassandra.index.schema.Schema;
 
 /**
@@ -76,6 +82,31 @@ public class SortingField
         {
             return cellMapper.sortField(field, reverse);
         }
+    }
+    
+    public Comparator<Cells> comparator() {
+        return new Comparator<Cells>() {
+            public int compare(Cells o1, Cells o2) {
+                
+                if (o1 == null)
+                    return o2 == null ? 0 : 1;
+                if (o2 == null)
+                    return -1;
+                
+                Cell cell1 = o1.getCell(field);
+                Cell cell2 = o2.getCell(field);
+                
+                if (cell1 == null)
+                    return cell2 == null ? 0 : 1 ;
+                if (cell2 == null)
+                    return -1;
+                
+                AbstractType<?> type = cell1.getType();
+                ByteBuffer value1 = cell1.getRawValue();
+                ByteBuffer value2 = cell2.getRawValue();
+                return reverse ? type.compare(value2, value1) : type.compare(value1, value2);
+            }
+        };
     }
 
     @Override
