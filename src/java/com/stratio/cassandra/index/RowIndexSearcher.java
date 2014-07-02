@@ -78,6 +78,8 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
     public List<Row> search(ExtendedFilter extendedFilter)
     {
         // Log.debug("Searching %s", extendedFilter);
+        long startTime = System.currentTimeMillis();
+        List<Row> result;
         try
         {
             long timestamp = extendedFilter.timestamp;
@@ -86,13 +88,16 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
             List<IndexExpression> clause = extendedFilter.getClause();
             List<IndexExpression> filteredExpressions = filteredExpressions(clause);
             Search search = search(clause);
-            return rowService.search(search, filteredExpressions, dataRange, limit, timestamp);
+            result = rowService.search(search, filteredExpressions, dataRange, limit, timestamp);
         }
         catch (Exception e)
         {
             Log.error(e, "Error while searching: %s", e.getMessage());
             return new ArrayList<>(0);
         }
+        long time = System.currentTimeMillis() - startTime;
+        Log.debug("Search time: %d ms", time);
+        return result;
     }
 
     /**

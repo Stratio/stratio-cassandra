@@ -294,7 +294,6 @@ public abstract class RowService
                                   final int limit,
                                   long timestamp)
     {
-        long startTime = System.currentTimeMillis();
         // Log.debug("Searching with search %s ", search);
 
         // Setup search arguments
@@ -339,11 +338,8 @@ public abstract class RowService
             // Iterate while there are still documents to read and we don't have enough rows
         } while (maybeMore && rows.size() < limit);
 
-        long queryTime = System.currentTimeMillis() - startTime;
-
-        Log.debug("Search time: %d ms", searchTime);
-        Log.debug("Collect time: %d ms", collectTime);
-        Log.debug("Query time: %d ms", queryTime);
+        Log.debug("Lucene time: %d ms", searchTime);
+        Log.debug("Cassandra time: %d ms", collectTime);
 
         return rows;
     }
