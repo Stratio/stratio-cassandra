@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Set;
@@ -68,7 +69,7 @@ public class RowServiceSimple extends RowService
      * @param columnDefinition
      *            The indexed column definition.
      */
-    public RowServiceSimple(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition)
+    public RowServiceSimple(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) throws IOException
     {
         super(baseCfs, columnDefinition);
 
@@ -93,7 +94,7 @@ public class RowServiceSimple extends RowService
      * {@inheritDoc}
      */
     @Override
-    public void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp)
+    public void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp) throws IOException
     {
         DeletionInfo deletionInfo = columnFamily.deletionInfo();
         DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(key);
@@ -129,7 +130,7 @@ public class RowServiceSimple extends RowService
      * {@inheritDoc}
      */
     @Override
-    public void deleteInner(DecoratedKey partitionKey)
+    public void deleteInner(DecoratedKey partitionKey) throws IOException
     {
         Term term = partitionKeyMapper.term(partitionKey);
         luceneIndex.delete(term);

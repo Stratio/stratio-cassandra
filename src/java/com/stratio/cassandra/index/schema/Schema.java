@@ -367,16 +367,9 @@ public class Schema
      *            A {@code String} containing the JSON representation of the {@link Schema} to be parsed.
      * @return The {@link Schema} contained in the specified JSON {@code String}.
      */
-    public static Schema fromJson(String json)
+    public static Schema fromJson(String json) throws IOException
     {
-        try
-        {
-            return JsonSerializer.fromString(json, Schema.class);
-        }
-        catch (IOException e)
-        {
-            throw new IllegalArgumentException("Schema unparseable: " + json, e);
-        }
+        return JsonSerializer.fromString(json, Schema.class);
     }
 
     @Override

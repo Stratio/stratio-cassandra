@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -94,13 +95,18 @@ public class RowIndex extends PerRowSecondaryIndex
             setup();
             Log.info("Initialized index %s", logName);
         }
+        catch (Exception e)
+        {
+            Log.error(e, "Error while initializing index %s", logName);
+            throw new RuntimeException(e);
+        }
         finally
         {
             lock.writeLock().unlock();
         }
     }
 
-    private void setup()
+    private void setup() throws IOException
     {
         // Load column family info
         secondaryIndexManager = baseCfs.indexManager;
@@ -233,10 +239,10 @@ public class RowIndex extends PerRowSecondaryIndex
             }
             Log.info("Removed index %s", logName);
         }
-        catch (RuntimeException e)
+        catch (Exception e)
         {
             Log.error(e, "Removing index %s", logName);
-            throw e;
+            throw new RuntimeException(e);
         }
         finally
         {
@@ -258,10 +264,10 @@ public class RowIndex extends PerRowSecondaryIndex
             }
             Log.info("Invalidated index %s", logName);
         }
-        catch (RuntimeException e)
+        catch (Exception e)
         {
             Log.error(e, "Invalidating index %s", logName);
-            throw e;
+            throw new RuntimeException(e);
         }
         finally
         {
@@ -282,10 +288,10 @@ public class RowIndex extends PerRowSecondaryIndex
             }
             Log.info("Truncated index %s", logName);
         }
-        catch (RuntimeException e)
+        catch (Exception e)
         {
             Log.error(e, "Truncating index %s", logName);
-            throw e;
+            throw new RuntimeException(e);
         }
         finally
         {
@@ -347,10 +353,10 @@ public class RowIndex extends PerRowSecondaryIndex
         {
             rowService.optimize();
         }
-        catch (RuntimeException e)
+        catch (Exception e)
         {
             Log.error(e, "Compacting index %s", logName);
-            throw e;
+            throw new RuntimeException(e);
         }
     }
 

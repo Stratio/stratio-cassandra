@@ -78,26 +78,28 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
     public List<Row> search(ExtendedFilter extendedFilter)
     {
         // Log.debug("Searching %s", extendedFilter);
-        long startTime = System.currentTimeMillis();
-        List<Row> result;
         try
         {
+            long startTime = System.currentTimeMillis();
+            
             long timestamp = extendedFilter.timestamp;
             int limit = extendedFilter.maxColumns();
             DataRange dataRange = extendedFilter.dataRange;
             List<IndexExpression> clause = extendedFilter.getClause();
             List<IndexExpression> filteredExpressions = filteredExpressions(clause);
             Search search = search(clause);
-            result = rowService.search(search, filteredExpressions, dataRange, limit, timestamp);
+            
+            List<Row> result = rowService.search(search, filteredExpressions, dataRange, limit, timestamp);
+
+            long time = System.currentTimeMillis() - startTime;
+            Log.debug("Search time: %d ms", time);
+            return result;
         }
         catch (Exception e)
         {
             Log.error(e, "Error while searching: %s", e.getMessage());
             return new ArrayList<>(0);
         }
-        long time = System.currentTimeMillis() - startTime;
-        Log.debug("Search time: %d ms", time);
-        return result;
     }
 
     /**
@@ -197,7 +199,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
     public Merger merger(AbstractRangeCommand command, int limit)
     {
         Search search = search(command.rowFilter);
-        Comparator<Row> comparator = rowService.comparator(search, limit);
+        Comparator<Row> comparator = rowService.comparator(search);
         return new Merger(limit, comparator);
     }
 

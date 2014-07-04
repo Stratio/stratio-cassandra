@@ -23,7 +23,7 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.util.Version;
 
 /**
- * Class for building Lucene's {@link org.apache.lucene.analysis.Analyzer}s. It uses an internal cache which associates
+ * Class for building Lucene's {@link Analyzer}s. It uses an internal cache which associates
  * analyzer class names with analyzers.
  * 
  * @author Andres de la Pena <adelapena@stratio.com>
@@ -36,12 +36,12 @@ public final class AnalyzerFactory
     private static Map<String, Analyzer> analyzers = new LinkedHashMap<String, Analyzer>();
 
     /**
-     * Returns the {@link org.apache.lucene.analysis.Analyzer} identified by the specified class name. The specified
-     * class must be in classpath. Benefits from cache.
+     * Returns the {@link Analyzer} identified by the specified class name. The specified class must be in classpath.
+     * Benefits from cache.
      * 
      * @param analyzerClassName
      *            The analyzer class name.
-     * @return The {@link org.apache.lucene.analysis.Analyzer} identified by the specified class name.
+     * @return The {@link Analyzer} identified by the specified class name.
      */
     public static Analyzer getAnalyzer(String analyzerClassName)
     {

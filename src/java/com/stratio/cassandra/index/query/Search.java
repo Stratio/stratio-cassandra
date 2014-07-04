@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.query;
 
+import org.apache.lucene.queries.ChainedFilter;
 import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.FilteredQuery;
@@ -23,6 +24,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
+import org.eclipse.jdt.core.dom.ReturnStatement;
 
 import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.index.util.JsonSerializer;
@@ -54,6 +56,9 @@ public class Search
      *            The {@link Condition} for querying, maybe {@code null} meaning no querying.
      * @param filterCondition
      *            The {@link Condition} for filtering, maybe {@code null} meaning no filtering.
+     * @param sorting
+     *            The {@link Sorting} for the query. Note that is the order in which the data will be read before
+     *            querying, not the order of the results after querying.
      */
     @JsonCreator
     public Search(@JsonProperty("query") Condition queryCondition,
@@ -110,38 +115,103 @@ public class Search
         return filterCondition;
     }
 
+    /**
+     * Returns the {@link Sorting}. Maybe {@code null} meaning no sorting.
+     * 
+     * @return The {@link Sorting}. Maybe {@code null} meaning no sorting.
+     */
     public Sorting getSorting()
     {
         return sorting;
     }
 
+    /**
+     * Returns the Lucene's {@link Query} represented by this querying {@link Condition} using the specified
+     * {@link Schema}. Maybe {@code null} meaning no querying.
+     * 
+     * @param schema
+     *            A {@link Schema}.
+     * @return The Lucene's {@link Query} represented by this querying {@link Condition} using {@code schema}.
+     */
     public Query query(Schema schema)
     {
         return queryCondition == null ? null : queryCondition.query(schema);
     }
 
+    /**
+     * Returns the Lucene's {@link Filter} represented by this filtering {@link Condition} using the specified
+     * {@link Schema}. Maybe {@code null} meaning no filtering.
+     * 
+     * @param schema
+     *            A {@link Schema}.
+     * @return The Lucene's {@link Filter} represented by this filtering {@link Condition} using {@code schema}.
+     */
     public Filter filter(Schema schema)
     {
         return filterCondition == null ? null : filterCondition.filter(schema);
     }
 
+    /**
+     * Returns the Lucene's {@link Sort} represented by this {@link Sorting} using the specified {@link Schema}. Maybe
+     * {@code null} meaning no sorting.
+     * 
+     * @param schema
+     *            A {@link Schema}.
+     * @return The Lucene's {@link Sort} represented by this {@link Sorting} using {@code schema}.
+     */
     public Sort sort(Schema schema)
     {
         return sorting == null ? null : sorting.sort(schema);
     }
 
     /**
+     * Returns the Lucene's {@link Filter} represented by this filtering {@link Condition} combined with the specified
+     * range {@link Filter} using the specified {@link Schema}. Maybe {@code null} meaning no filtering.
+     * 
+     * @param schema
+     *            A {@link Schema}.
+     * @param rangeFilter
+     *            An additional {@link Filter} to be used.
+     * @return The Lucene's {@link Sort} represented by this {@link Sorting} combined with {@code rangeFilter} using
+     *         {@code schema}.
+     */
+    public Filter filter(Schema schema, Filter rangeFilter)
+    {
+        Filter filter = filter(schema);
+        if (filter == null && rangeFilter == null)
+        {
+            return null;
+        }
+        else if (filter != null && rangeFilter == null)
+        {
+            return filter;
+        }
+        else if (filter == null && rangeFilter != null)
+        {
+            return rangeFilter;
+        }
+        else
+        {
+            Filter[] filters = new Filter[] { filter, rangeFilter };
+            return new ChainedFilter(filters, ChainedFilter.AND);
+        }
+    }
+
+    /**
      * Returns the Lucene's {@link Query} representation of this search. This {@link Query} include both the querying
-     * and filtering {@link Condition}s. If none of them is set, then a {@link MatchAllDocsQuery} is returned.
+     * and filtering {@link Condition}s. If none of them is set, then a {@link MatchAllDocsQuery} is returned, so it
+     * never {@link ReturnStatement} {@code null}.
      * 
      * @param schema
      *            The {@link Schema} to be used.
+     * @param rangeFilter
+     *            An additional {@link Filter} to be used.
      * @return The Lucene's {@link Query} representation of this search.
      */
-    public Query filteredQuery(Schema schema)
+    public Query filteredQuery(Schema schema, Filter rangeFilter)
     {
         Query query = query(schema);
-        Filter filter = filter(schema);
+        Filter filter = filter(schema, rangeFilter);
 
         if (query == null && filter == null)
         {
@@ -172,12 +242,11 @@ public class Search
     {
         try
         {
-            Search search = JsonSerializer.fromString(json, Search.class);
-            return search;
+            return JsonSerializer.fromString(json, Search.class);
         }
         catch (Exception e)
         {
-            String message = "Unparseable JSON index expression: " + e.getMessage();
+            String message = String.format("Unparseable JSON index expression: %s", e.getMessage());
             Log.error(e, message);
             throw new IllegalArgumentException(message, e);
         }
@@ -205,17 +274,16 @@ public class Search
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String toString()
     {
         StringBuilder builder = new StringBuilder();
-        builder.append("Search [query=");
+        builder.append("Search [queryCondition=");
         builder.append(queryCondition);
-        builder.append(", filter=");
+        builder.append(", filterCondition=");
         builder.append(filterCondition);
+        builder.append(", sorting=");
+        builder.append(sorting);
         builder.append("]");
         return builder.toString();
     }

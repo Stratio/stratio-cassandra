@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Comparator;
 import java.util.LinkedList;
@@ -126,7 +127,7 @@ public abstract class RowService
      *            The {@link ColumnDefinition} of the indexed column.
      * @return A new {@link RowService} for the specified {@link ColumnFamilyStore} and {@link ColumnDefinition}.
      */
-    public static RowService build(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition)
+    public static RowService build(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) throws IOException
     {
         int clusteringPosition = baseCfs.metadata.clusteringKeyColumns().size();
         if (clusteringPosition > 0)
@@ -156,6 +157,19 @@ public abstract class RowService
      */
     protected abstract Set<String> fieldsToLoad();
 
+    /**
+     * Indexes the logical {@link Row} identified by the specified key and column family using the specified time stamp.
+     * The must be read from the {@link ColumnFamilyStore} because it could exist previously having more columns than
+     * the specified ones. The specified {@link ColumnFamily} is used for determine the cluster key. This operation is
+     * performed asynchronously.
+     * 
+     * @param key
+     *            A partition key.
+     * @param columnFamily
+     *            A {@link ColumnFamily} with a single common cluster key.
+     * @param timestamp
+     *            The insertion time.
+     */
     protected void index(final ByteBuffer key, final ColumnFamily columnFamily, final long timestamp)
     {
         indexQueue.submitAsynchronous(key, new Runnable()
@@ -186,7 +200,7 @@ public abstract class RowService
      * @param timestamp
      *            The operation time stamp.
      */
-    protected abstract void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp);
+    protected abstract void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp) throws IOException;
 
     /**
      * Returns the {@link Document} represented by the specified {@link Row}. It's assumed that the {@link Row} is a
@@ -199,7 +213,7 @@ public abstract class RowService
     protected abstract Document document(Row row);
 
     /**
-     * Deletes the partition identified by the specified partition key.
+     * Deletes the partition identified by the specified partition key. This operation is performed asynchronously.
      * 
      * @param partitionKey
      *            The partition key identifying the partition to be deleted.
@@ -217,7 +231,7 @@ public abstract class RowService
                 }
                 catch (Exception e)
                 {
-                    Log.error(e, "Error while running deleting task");
+                    Log.error(e, "Error while running deletion task");
                 }
             }
         });
@@ -229,12 +243,12 @@ public abstract class RowService
      * @param partitionKey
      *            The partition key identifying the partition to be deleted.
      */
-    protected abstract void deleteInner(DecoratedKey partitionKey);
+    protected abstract void deleteInner(DecoratedKey partitionKey) throws IOException;
 
     /**
      * Deletes all the {@link Document}s.
      */
-    public final void truncate()
+    public final void truncate() throws IOException
     {
         luceneIndex.truncate();
     }
@@ -244,13 +258,13 @@ public abstract class RowService
      * 
      * @return
      */
-    public final void delete()
+    public final void delete() throws IOException
     {
         luceneIndex.drop();
     }
 
     /**
-     * Commits the pending changes.
+     * Commits the pending changes. This operation is performed asynchronously.
      */
     public final void commit()
     {
@@ -259,19 +273,17 @@ public abstract class RowService
             @Override
             public void run()
             {
-                luceneIndex.commit();
+                try
+                {
+                    luceneIndex.commit();
+                }
+                catch (Exception e)
+                {
+                    Log.error(e, "Error while running commit task");
+                }
             }
         });
     }
-
-    /**
-     * Returns the Cassandra rows satisfying {@code extendedFilter}. This rows are retrieved from the Cassandra storage
-     * engine.
-     * 
-     * @param extendedFilter
-     *            The filter to be satisfied.
-     * @return The Cassandra rows satisfying {@code extendedFilter}.
-     */
 
     /**
      * Returns the stored and indexed {@link Row}s satisfying the specified restrictions.
@@ -292,13 +304,13 @@ public abstract class RowService
                                   List<IndexExpression> filteredExpressions,
                                   DataRange dataRange,
                                   final int limit,
-                                  long timestamp)
+                                  long timestamp) throws IOException
     {
         // Log.debug("Searching with search %s ", search);
 
         // Setup search arguments
         Filter filter = cachedFilter(dataRange);
-        Query query = search.filteredQuery(schema);
+        Query query = search.filteredQuery(schema, filter);
         Sort sort = search.sort(schema);
 
         // Setup search pagination
@@ -315,7 +327,7 @@ public abstract class RowService
         {
             // Search rows identifiers in Lucene
             long searchStartTime = System.currentTimeMillis();
-            scoredDocuments = luceneIndex.search(query, filter, sort, lastDoc, pageSize, fieldsToLoad());
+            scoredDocuments = luceneIndex.search(query, sort, lastDoc, pageSize, fieldsToLoad());
             searchTime += System.currentTimeMillis() - searchStartTime;
 
             // Collect rows from Cassandra
@@ -438,7 +450,7 @@ public abstract class RowService
      * ignore deleted columns. The {@link Row} is retrieved from the storage engine, so it involves IO operations.
      * 
      * @param queryFilter
-     *            A query filter
+     *            A {@link QueryFilter}.
      * @param timestamp
      *            The time stamp to ignore deleted columns.
      * @return The CQL3 {@link Row} identified by the specified {@link QueryFilter}
@@ -544,22 +556,29 @@ public abstract class RowService
     protected abstract ByteBuffer identifyingByteBuffer(Row row);
 
     /**
+     * Returns the {@link Row} {@link Comparator} to be used for ordering the {@link Row}s obtained from the specified
+     * {@link Search}. This {@link Comparator} is useful for merging the partial results obtained from running the
+     * specified {@link Search} against several indexes.
      * 
      * @param search
-     * @param limit
-     * @return
+     *            A {@link Search}.
+     * @return The {@link Row} {@link Comparator} to be used for ordering the {@link Row}s obtained from the specified
+     *         {@link Search}.
      */
-    public Comparator<Row> comparator(Search search, int limit)
+    public Comparator<Row> comparator(Search search)
     {
         if (search.usesSorting())
+        // Sort with search itself
         {
             return new RowsComparator(metadata, schema, search.getSorting());
         }
         else if (search.usesRelevance())
+        // Sort with row's score
         {
             return scoredRowComparator;
         }
         else
+        // No sorting is needed
         {
             return null;
         }
@@ -575,9 +594,9 @@ public abstract class RowService
     protected abstract Float score(Row row);
 
     /**
-     * Optimizes the managed Lucene's index.
+     * Optimizes the managed Lucene's index. It can be a very heavy operation.
      */
-    public void optimize()
+    public void optimize() throws IOException
     {
         luceneIndex.optimize();
     }

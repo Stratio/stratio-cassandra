@@ -34,7 +34,6 @@ import org.apache.lucene.index.sorter.SortingMergePolicy;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.ControlledRealTimeReopenThread;
 import org.apache.lucene.search.FieldDoc;
-import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
@@ -113,51 +112,42 @@ public class LuceneIndex
      * @param sort
      *            The {@link Sort} to be used.
      */
-    public void init(Sort sort)
+    public void init(Sort sort) throws IOException
     {
         this.sort = sort;
-        try
+
+        // Get directory file
+        file = new File(path);
+
+        // Open or create directory
+        FSDirectory fsDirectory = FSDirectory.open(file);
+        directory = new NRTCachingDirectory(fsDirectory, maxMergeMB, maxCachedMB);
+
+        // Setup index writer
+        IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_48, analyzer);
+        config.setRAMBufferSizeMB(ramBufferMB);
+        config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
+        config.setUseCompoundFile(true);
+        config.setMergePolicy(new SortingMergePolicy(config.getMergePolicy(), sort));
+        indexWriter = new IndexWriter(directory, config);
+
+        // Setup NRT search
+        SearcherFactory searcherFactory = new SearcherFactory()
         {
-
-            // Get directory file
-            file = new File(path);
-
-            // Open or create directory
-            FSDirectory fsDirectory = FSDirectory.open(file);
-            directory = new NRTCachingDirectory(fsDirectory, maxMergeMB, maxCachedMB);
-
-            // Setup index writer
-            IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_48, analyzer);
-            config.setRAMBufferSizeMB(ramBufferMB);
-            config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
-            config.setUseCompoundFile(true);
-            config.setMergePolicy(new SortingMergePolicy(config.getMergePolicy(), sort));
-            indexWriter = new IndexWriter(directory, config);
-
-            // Setup NRT search
-            SearcherFactory searcherFactory = new SearcherFactory()
+            public IndexSearcher newSearcher(IndexReader reader) throws IOException
             {
-                public IndexSearcher newSearcher(IndexReader reader) throws IOException
-                {
-                    IndexSearcher searcher = new IndexSearcher(reader);
-                    searcher.setSimilarity(new NoIDFSimilarity());
-                    return searcher;
-                }
-            };
-            trackingIndexWriter = new TrackingIndexWriter(indexWriter);
-            searcherManager = new SearcherManager(indexWriter, true, searcherFactory);
-            searcherReopener = new ControlledRealTimeReopenThread<>(trackingIndexWriter,
-                                                                    searcherManager,
-                                                                    refreshSeconds,
-                                                                    refreshSeconds);
-            searcherReopener.start(); // Start the refresher thread
-
-        }
-        catch (IOException e)
-        {
-            Log.error(e, "Error initiating index");
-            throw new RuntimeException(e);
-        }
+                IndexSearcher searcher = new IndexSearcher(reader);
+                searcher.setSimilarity(new NoIDFSimilarity());
+                return searcher;
+            }
+        };
+        trackingIndexWriter = new TrackingIndexWriter(indexWriter);
+        searcherManager = new SearcherManager(indexWriter, true, searcherFactory);
+        searcherReopener = new ControlledRealTimeReopenThread<>(trackingIndexWriter,
+                                                                searcherManager,
+                                                                refreshSeconds,
+                                                                refreshSeconds);
+        searcherReopener.start(); // Start the refresher thread
     }
 
     /**
@@ -170,18 +160,10 @@ public class LuceneIndex
      * @param document
      *            The {@link Document} to be added.
      */
-    public void upsert(Term term, Document document)
+    public void upsert(Term term, Document document) throws IOException
     {
         // Log.debug("Updating document %s with term %s", document, term);
-        try
-        {
-            indexWriter.updateDocument(term, document);
-        }
-        catch (IOException e)
-        {
-            Log.error(e, "Error updating document");
-            throw new RuntimeException(e);
-        }
+        indexWriter.updateDocument(term, document);
     }
 
     /**
@@ -194,18 +176,10 @@ public class LuceneIndex
      * @param documents
      *            The {@link Document}s to be added.
      */
-    public void upsert(Term term, Iterable<Document> documents)
+    public void upsert(Term term, Iterable<Document> documents) throws IOException
     {
         // Log.debug("Updating documents %s with term %s", documents, term);
-        try
-        {
-            indexWriter.updateDocuments(term, documents);
-        }
-        catch (IOException e)
-        {
-            Log.error(e, "Error updating documents");
-            throw new RuntimeException(e);
-        }
+        indexWriter.updateDocuments(term, documents);
     }
 
     /**
@@ -214,18 +188,10 @@ public class LuceneIndex
      * @param term
      *            The {@link Term} to identify the documents to be deleted.
      */
-    public void delete(Term term)
+    public void delete(Term term) throws IOException
     {
         // Log.debug(String.format("Deleting by term %s", term));
-        try
-        {
-            indexWriter.deleteDocuments(term);
-        }
-        catch (IOException e)
-        {
-            Log.error(e, "Error deleting documents by term");
-            throw new RuntimeException(e);
-        }
+        indexWriter.deleteDocuments(term);
     }
 
     /**
@@ -234,52 +200,28 @@ public class LuceneIndex
      * @param query
      *            The {@link Query} to identify the documents to be deleted.
      */
-    public void delete(Query query)
+    public void delete(Query query) throws IOException
     {
         // Log.debug("Deleting by query %s", query);
-        try
-        {
-            indexWriter.deleteDocuments(query);
-        }
-        catch (IOException e)
-        {
-            Log.error(e, "Error deleting documents by query");
-            throw new RuntimeException(e);
-        }
+        indexWriter.deleteDocuments(query);
     }
 
     /**
      * Deletes all the {@link Document}s.
      */
-    public void truncate()
+    public void truncate() throws IOException
     {
         Log.info("Deleting all");
-        try
-        {
-            indexWriter.deleteAll();
-        }
-        catch (IOException e)
-        {
-            Log.error(e, "Error deleting all");
-            throw new RuntimeException(e);
-        }
+        indexWriter.deleteAll();
     }
 
     /**
      * Commits the pending changes.
      */
-    public void commit()
+    public void commit() throws IOException
     {
         Log.info("Committing");
-        try
-        {
-            indexWriter.commit();
-        }
-        catch (IOException e)
-        {
-            Log.error(e, "Error committing");
-            throw new RuntimeException(e);
-        }
+        indexWriter.commit();
     }
 
     /**
@@ -300,19 +242,11 @@ public class LuceneIndex
      * 
      * @return
      */
-    public void drop()
+    public void drop() throws IOException
     {
         Log.info("Removing");
-        try
-        {
-            close();
-            FileUtils.deleteRecursive(file);
-        }
-        catch (IOException e)
-        {
-            Log.error(e, "Error removing");
-            throw new RuntimeException(e);
-        }
+        close();
+        FileUtils.deleteRecursive(file);
     }
 
     /**
@@ -320,7 +254,7 @@ public class LuceneIndex
      * 
      * @return The total size of all index files currently cached in memory.
      */
-    public long getRAMSizeInBytes()
+    public long getRAMSizeInBytes() throws IOException
     {
         return indexWriter == null ? 0 : indexWriter.ramSizeInBytes();
     }
@@ -332,8 +266,6 @@ public class LuceneIndex
      * @param after
      * @param query
      *            The {@link Query} to search for.
-     * @param filter
-     *            The {@link Filter} to be applied.
      * @param sort
      *            The {@link Sort} to be applied.
      * @param after
@@ -345,14 +277,12 @@ public class LuceneIndex
      * @return The found documents, sorted according to the supplied {@link Sort} instance.
      */
     public List<ScoredDocument> search(Query query,
-                                       Filter filter,
                                        Sort sort,
                                        ScoredDocument after,
                                        Integer count,
-                                       Set<String> fieldsToLoad)
+                                       Set<String> fieldsToLoad) throws IOException
     {
         // Log.debug("Searching with query %s ", query);
-        // Log.debug("Searching with filter %s ", filter);
         // Log.debug("Searching with count %d", count);
         // Log.debug("Searching with sort %s", sort);
         // Log.debug("Searching with start %s", after == null ? null : after.getScoreDoc());
@@ -366,42 +296,34 @@ public class LuceneIndex
         {
             throw new IllegalArgumentException("Fields to load required");
         }
-
+        IndexSearcher searcher = searcherManager.acquire();
         try
         {
-            IndexSearcher searcher = searcherManager.acquire();
-            try
+
+            // Search
+            ScoreDoc start = after == null ? null : after.getScoreDoc();
+            TopDocs topDocs = topDocs(searcher, query, sort, start, count);
+            ScoreDoc[] scoreDocs = topDocs.scoreDocs;
+
+            // Collect the documents from query result
+            List<ScoredDocument> scoredDocuments = new ArrayList<>(scoreDocs.length);
+            for (ScoreDoc scoreDoc : scoreDocs)
             {
-
-                // Search
-                ScoreDoc start = after == null ? null : after.getScoreDoc();
-                TopDocs topDocs = topDocs(searcher, query, filter, sort, start, count);
-                ScoreDoc[] scoreDocs = topDocs.scoreDocs;
-
-                // Collect the documents from query result
-                List<ScoredDocument> scoredDocuments = new ArrayList<>(scoreDocs.length);
-                for (ScoreDoc scoreDoc : scoreDocs)
-                {
-                    Document document = searcher.doc(scoreDoc.doc, fieldsToLoad);
-                    ScoredDocument scoredDocument = new ScoredDocument(document, scoreDoc);
-                    scoredDocuments.add(scoredDocument);
-                    // Log.debug("Found %s", scoredDocument);
-                }
-
-                return scoredDocuments;
+                Document document = searcher.doc(scoreDoc.doc, fieldsToLoad);
+                ScoredDocument scoredDocument = new ScoredDocument(document, scoreDoc);
+                scoredDocuments.add(scoredDocument);
+                // Log.debug("Found %s", scoredDocument);
             }
-            finally
-            {
-                searcherManager.release(searcher);
-            }
+
+            return scoredDocuments;
         }
-        catch (IOException e)
+        finally
         {
-            throw new RuntimeException(e);
+            searcherManager.release(searcher);
         }
     }
 
-    private TopDocs topDocs(IndexSearcher searcher, Query query, Filter filter, Sort sort, ScoreDoc after, int count)
+    private TopDocs topDocs(IndexSearcher searcher, Query query, Sort sort, ScoreDoc after, int count)
             throws IOException
     {
         if (query == null)
@@ -411,55 +333,26 @@ public class LuceneIndex
             FieldDoc start = after == null ? null : (FieldDoc) after;
             TopFieldCollector tfc = TopFieldCollector.create(sort, count, start, false, false, false, false);
             Collector collector = new EarlyTerminatingSortingCollector(tfc, sort, count);
-            if (filter == null)
-            {
-                searcher.search(query, collector);
-            }
-            else
-            {
-                searcher.search(query, filter, collector);
-            }
+            searcher.search(query, collector);
             return tfc.topDocs();
         }
         else
         {
             query = query == null ? new MatchAllDocsQuery() : query;
-            if (filter == null)
+            if (sort == null)
             {
-                if (sort == null)
-                {
-                    return searcher.searchAfter(after, query, count);
-                }
-                else
-                {
-                    return searcher.searchAfter(after, query, count, sort);
-                }
+                return searcher.searchAfter(after, query, count);
             }
             else
             {
-                if (sort == null)
-                {
-                    return searcher.searchAfter(after, query, filter, count);
-                }
-                else
-                {
-                    return searcher.searchAfter(after, query, filter, count, sort);
-                }
+                return searcher.searchAfter(after, query, count, sort);
             }
         }
     }
 
-    public void optimize()
+    public void optimize() throws IOException
     {
-        try
-        {
-            indexWriter.forceMerge(1, true);
-            indexWriter.commit();
-        }
-        catch (IOException e)
-        {
-            Log.error(e, "Error while merging");
-            throw new RuntimeException(e);
-        }
+        indexWriter.forceMerge(1, true);
+        indexWriter.commit();
     }
 }
