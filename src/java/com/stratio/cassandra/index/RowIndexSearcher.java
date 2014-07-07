@@ -81,14 +81,14 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         try
         {
             long startTime = System.currentTimeMillis();
-            
+
             long timestamp = extendedFilter.timestamp;
             int limit = extendedFilter.maxColumns();
             DataRange dataRange = extendedFilter.dataRange;
             List<IndexExpression> clause = extendedFilter.getClause();
             List<IndexExpression> filteredExpressions = filteredExpressions(clause);
             Search search = search(clause);
-            
+
             List<Row> result = rowService.search(search, filteredExpressions, dataRange, limit, timestamp);
 
             long time = System.currentTimeMillis() - startTime;
@@ -138,6 +138,16 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
     {
         Search search = search(command.rowFilter);
         return search.usesRelevanceOrSorting();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isParallel(AbstractRangeCommand command)
+    {
+        Search search = search(command.rowFilter);
+        return search.isParallel();
     }
 
     /**

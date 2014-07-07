@@ -113,8 +113,20 @@ public abstract class SecondaryIndexSearcher
     {
         return false;
     }
-    
-    public Merger merger(AbstractRangeCommand command, int limit) 
+
+    /**
+     * Returns {@code true} if the specified {@link AbstractRangeCommand} must be performed in a parallel fashion,
+     * {@code false} otherwise. Note that this only is applicable when {@link #requiresFullScan(AbstractRangeCommand)}
+     * is {@code true}.
+     * 
+     * @return {@code true} if this search must be performed in a parallel fashion, {@code false} otherwise.
+     */
+    public boolean isParallel(AbstractRangeCommand command)
+    {
+        return false;
+    }
+
+    public Merger merger(AbstractRangeCommand command, int limit)
     {
         return new Merger(limit);
     }

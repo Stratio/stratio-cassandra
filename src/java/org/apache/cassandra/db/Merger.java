@@ -21,6 +21,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Class for merging range collected results.
@@ -34,6 +36,7 @@ public class Merger
     private final Comparator<Row> comparator;
 
     private List<Row> rows;
+    private Lock lock;
 
     /**
      * Returns a new {@link Merger} that collects all the inserted {@link Row}s sorted according to insertion order.
@@ -41,6 +44,7 @@ public class Merger
     public Merger()
     {
         this(null, null);
+        lock = new ReentrantLock();
     }
 
     /**
@@ -52,6 +56,7 @@ public class Merger
     public Merger(Integer limit)
     {
         this(limit, null);
+        lock = new ReentrantLock();
     }
 
     /**
@@ -66,6 +71,7 @@ public class Merger
     public Merger(Integer limit, Comparator<Row> comparator)
     {
         this.limit = limit;
+        lock = new ReentrantLock();
         this.comparator = comparator;
         if (limit == null)
             rows = new LinkedList<>();
@@ -78,13 +84,21 @@ public class Merger
      */
     public void merge()
     {
-        if (comparator != null)
+        lock.lock();
+        try
         {
-            Collections.sort(rows, comparator);
+            if (comparator != null)
+            {
+                Collections.sort(rows, comparator);
+            }
+            if (limit != null && rows.size() > limit)
+            {
+                rows.subList(0, limit);
+            }
         }
-        if (limit != null && rows.size() > limit)
+        finally
         {
-            rows.subList(0, limit);
+            lock.unlock();
         }
     }
 
@@ -96,7 +110,15 @@ public class Merger
      */
     public void add(Row row)
     {
-        rows.add(row);
+        lock.lock();
+        try
+        {
+            rows.add(row);
+        }
+        finally
+        {
+            lock.unlock();
+        }
     }
 
     /**
@@ -107,7 +129,15 @@ public class Merger
      */
     public void add(Collection<Row> rows)
     {
-        this.rows.addAll(rows);
+        lock.lock();
+        try
+        {
+            this.rows.addAll(rows);
+        }
+        finally
+        {
+            lock.unlock();
+        }
     }
 
     /**

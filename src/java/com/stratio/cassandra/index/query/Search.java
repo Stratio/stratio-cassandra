@@ -41,6 +41,8 @@ import com.stratio.cassandra.index.util.Log;
 public class Search
 {
 
+    private static final boolean DEFAULT_PARALLEL = false;
+
     /** The querying condition */
     private final Condition queryCondition;
 
@@ -48,6 +50,8 @@ public class Search
     private final Condition filterCondition;
 
     private final Sorting sorting;
+
+    private final Boolean parallel;
 
     /**
      * Returns a new {@link Search} composed by the specified querying and filtering conditions.
@@ -63,11 +67,13 @@ public class Search
     @JsonCreator
     public Search(@JsonProperty("query") Condition queryCondition,
                   @JsonProperty("filter") Condition filterCondition,
-                  @JsonProperty("sort") Sorting sorting)
+                  @JsonProperty("sort") Sorting sorting,
+                  @JsonProperty("parallel") Boolean parallel)
     {
         this.queryCondition = queryCondition;
         this.filterCondition = filterCondition;
         this.sorting = sorting;
+        this.parallel = parallel == null ? DEFAULT_PARALLEL : parallel;
     }
 
     /**
@@ -229,6 +235,17 @@ public class Search
         {
             return new FilteredQuery(query, filter);
         }
+    }
+
+    /**
+     * Returns {@code true} if this search must be performed in a parallel fashion, {@code false} otherwise. Note that
+     * this only is applicable for relevance or sorting searches.
+     * 
+     * @return {@code true} if this search must be performed in a parallel fashion, {@code false} otherwise.
+     */
+    public Boolean isParallel()
+    {
+        return parallel;
     }
 
     /**

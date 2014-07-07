@@ -53,9 +53,13 @@ public abstract class AbstractRangeCommand implements IReadCommand {
 		this.searcher = Keyspace.open(keyspace).getColumnFamilyStore(columnFamily).indexManager.searcher(rowFilter);
 	}
 
-	public boolean requiresFullScan() {
-		return searcher == null ? false : searcher.requiresFullScan(this);
-	}
+    public boolean requiresFullScan() {
+        return searcher == null ? false : searcher.requiresFullScan(this);
+    }
+
+    public boolean isParallel() {
+        return searcher == null ? false : searcher.isParallel(this);
+    }
     
     public Merger merger() 
     {
