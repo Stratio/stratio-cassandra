@@ -32,10 +32,10 @@ import org.apache.lucene.index.TrackingIndexWriter;
 import org.apache.lucene.index.sorter.EarlyTerminatingSortingCollector;
 import org.apache.lucene.index.sorter.SortingMergePolicy;
 import org.apache.lucene.search.Collector;
+import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.ControlledRealTimeReopenThread;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.SearcherFactory;
@@ -282,11 +282,6 @@ public class LuceneIndex
                                        Integer count,
                                        Set<String> fieldsToLoad) throws IOException
     {
-        // Log.debug("Searching with query %s ", query);
-        // Log.debug("Searching with count %d", count);
-        // Log.debug("Searching with sort %s", sort);
-        // Log.debug("Searching with start %s", after == null ? null : after.getScoreDoc());
-
         // Validate
         if (count == null || count < 0)
         {
@@ -326,10 +321,13 @@ public class LuceneIndex
     private TopDocs topDocs(IndexSearcher searcher, Query query, Sort sort, ScoreDoc after, int count)
             throws IOException
     {
-        if (query == null)
+        if (sort == null && query instanceof ConstantScoreQuery)
         {
-            query = new MatchAllDocsQuery();
-            sort = sort == null ? this.sort : sort;
+            sort = this.sort;
+        }
+
+        if (sort != null)
+        {
             FieldDoc start = after == null ? null : (FieldDoc) after;
             TopFieldCollector tfc = TopFieldCollector.create(sort, count, start, false, false, false, false);
             Collector collector = new EarlyTerminatingSortingCollector(tfc, sort, count);
@@ -338,15 +336,7 @@ public class LuceneIndex
         }
         else
         {
-            query = query == null ? new MatchAllDocsQuery() : query;
-            if (sort == null)
-            {
-                return searcher.searchAfter(after, query, count);
-            }
-            else
-            {
-                return searcher.searchAfter(after, query, count, sort);
-            }
+            return searcher.searchAfter(after, query, count);
         }
     }
 

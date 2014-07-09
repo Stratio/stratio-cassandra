@@ -221,7 +221,7 @@ public class Search
 
         if (query == null && filter == null)
         {
-            return new MatchAllDocsQuery();
+            return new ConstantScoreQuery(new MatchAllDocsQuery());
         }
         else if (query != null && filter == null)
         {

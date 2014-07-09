@@ -68,7 +68,6 @@ public abstract class RowService
     protected final Schema schema;
     protected final LuceneIndex luceneIndex;
     protected final FilterCache filterCache;
-    protected final Comparator<Row> scoredRowComparator;
 
     private static final int FILTERING_PAGE_SIZE = 1000;
 
@@ -106,16 +105,6 @@ public abstract class RowService
                                       schema.analyzer());
 
         indexQueue = new TaskQueue(config.getIndexingThreads(), config.getIndexingQueuesSize());
-
-        scoredRowComparator = new Comparator<Row>()
-        {
-            public int compare(Row r1, Row r2)
-            {
-                Float score1 = score(r1);
-                Float score2 = score(r2);
-                return score2.compareTo(score1);
-            }
-        };
     }
 
     /**
@@ -565,22 +554,22 @@ public abstract class RowService
      * @return The {@link Row} {@link Comparator} to be used for ordering the {@link Row}s obtained from the specified
      *         {@link Search}.
      */
-    public Comparator<Row> comparator(Search search)
+    public RowsComparator comparator(Search search)
     {
         if (search.usesSorting())
         // Sort with search itself
         {
-            return new RowsComparator(metadata, schema, search.getSorting());
+            return new RowsComparatorSorting(metadata, schema, search.getSorting());
         }
         else if (search.usesRelevance())
         // Sort with row's score
         {
-            return scoredRowComparator;
+            return new RowsComparatorScoring(this);
         }
         else
         // No sorting is needed
         {
-            return null;
+            return new RowsComparatorNatural(metadata);
         }
     }
 

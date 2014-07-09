@@ -18,14 +18,30 @@ package com.stratio.cassandra.index;
 import java.util.Comparator;
 
 import org.apache.cassandra.db.Row;
+import org.apache.cassandra.dht.IPartitioner;
 
 /**
- * A {@link Comparator} for comparing {@link Row}s according to a certain criterion.
+ * A {@link Comparator} for comparing {@link Row}s according to its {@link IPartitioner} order.
  * 
  * @author Andres de la Pena <adelapena@stratio.com>
  * 
  */
-public interface RowsComparator extends Comparator<Row>
+public class RowsComparatorScoring implements RowsComparator
 {
+
+    private final RowService rowService;
+
+    public RowsComparatorScoring(RowService rowService)
+    {
+        this.rowService = rowService;
+    }
+
+    @Override
+    public int compare(Row row1, Row row2)
+    {
+        Float score1 = rowService.score(row1);
+        Float score2 = rowService.score(row2);
+        return score2.compareTo(score1);
+    }
 
 }

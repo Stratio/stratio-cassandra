@@ -29,6 +29,8 @@ import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.NumericRangeFilter;
 import org.apache.lucene.search.SortField;
 
+import com.stratio.cassandra.index.util.Log;
+
 /**
  * {@link PartitionKeyMapper} to be used when {@link Murmur3Partitioner} is used. It indexes the token long value as a
  * Lucene's long field.
@@ -77,6 +79,7 @@ public class TokenMapperMurmur extends TokenMapper
         }
         boolean includeLower = startPosition.kind() == Kind.MIN_BOUND;
         boolean includeUpper = stopPosition.kind() == Kind.MAX_BOUND;
+        Log.debug("Querying %s %d %d %s", includeLower ? "[" : "{", start, stop, includeUpper ? "]" : "}");
         return NumericRangeFilter.newLongRange(FIELD_NAME, start, stop, includeLower, includeUpper);
     }
 
