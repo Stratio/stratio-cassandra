@@ -545,13 +545,13 @@ public abstract class RowService
     protected abstract ByteBuffer identifyingByteBuffer(Row row);
 
     /**
-     * Returns the {@link Row} {@link Comparator} to be used for ordering the {@link Row}s obtained from the specified
+     * Returns the {@link RowsComparator} to be used for ordering the {@link Row}s obtained from the specified
      * {@link Search}. This {@link Comparator} is useful for merging the partial results obtained from running the
      * specified {@link Search} against several indexes.
      * 
      * @param search
      *            A {@link Search}.
-     * @return The {@link Row} {@link Comparator} to be used for ordering the {@link Row}s obtained from the specified
+     * @return The {@link RowsComparator} to be used for ordering the {@link Row}s obtained from the specified
      *         {@link Search}.
      */
     public RowsComparator comparator(Search search)
