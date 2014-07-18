@@ -167,7 +167,7 @@ public class CellMapperFloatTest
         schema.getMapper("age");
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = IOException.class)
     public void testParseJSONInvalid() throws IOException
     {
         String json = "{fields:{age:{}}";
