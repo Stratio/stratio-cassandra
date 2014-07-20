@@ -15,7 +15,10 @@
  */
 package com.stratio.cassandra.index;
 
+import java.nio.ByteBuffer;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
 
 import com.stratio.cassandra.index.query.Sorting;
 import com.stratio.cassandra.index.query.SortingField;
@@ -23,6 +26,7 @@ import com.stratio.cassandra.index.schema.Cells;
 import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.index.util.ComparatorChain;
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Row;
 
 /**
@@ -35,6 +39,8 @@ public class RowsComparatorSorting implements RowsComparator
     private final CFMetaData metadata;
     private final Schema schema;
     private final ComparatorChain<Cells> comparatorChain;
+
+    private final Map<DecoratedKey, Cells> cellsCache;
 
     /**
      * @param metadata
@@ -54,6 +60,7 @@ public class RowsComparatorSorting implements RowsComparator
             Comparator<Cells> comparator = sortingField.comparator();
             comparatorChain.addComparator(comparator);
         }
+        cellsCache = new HashMap<>();
     }
 
     /**
@@ -67,8 +74,16 @@ public class RowsComparatorSorting implements RowsComparator
     @Override
     public int compare(Row row1, Row row2)
     {
-        Cells cells1 = schema.cells(metadata, row1);
-        Cells cells2 = schema.cells(metadata, row2);
+        Cells cells1 = cellsCache.get(row1.key);
+        if (cells1 == null) {
+            cells1 = schema.cells(metadata, row1);
+            cellsCache.put(row1.key, cells1);
+        }
+        Cells cells2 = cellsCache.get(row2.key);
+        if (cells2 == null) {
+            cells2 = schema.cells(metadata, row2);
+            cellsCache.put(row2.key, cells2);
+        }
         return comparatorChain.compare(cells1, cells2);
     }
 }
