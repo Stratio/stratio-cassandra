@@ -258,7 +258,7 @@ public class ClusteringKeyMapper {
 	 * Returns a Lucene's {@link Filter} for filtering documents/rows according to the column
 	 * tombstone range specified in {@code rangeTombstone}.
 	 * 
-	 * @param dataRange
+	 * @param rangeTombstone
 	 *            The data range containing the column tombstone range to be filtered.
 	 * @return A Lucene's {@link Filter} for filtering documents/rows according to the column
 	 *         tombstone range specified in {@code rangeTombstone}.

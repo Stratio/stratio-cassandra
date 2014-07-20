@@ -426,8 +426,8 @@ public abstract class RowService
      * Returns the {@link Row} identified by the specified {@link Document}, using the specified time stamp to ignore
      * deleted columns. The {@link Row} is retrieved from the storage engine, so it involves IO operations.
      * 
-     * @param document
-     *            A {@link Document}
+     * @param scoredDocument
+     *            A {@link ScoredDocument}
      * @param timestamp
      *            The time stamp to ignore deleted columns.
      * @return The {@link Row} identified by the specified {@link Document}

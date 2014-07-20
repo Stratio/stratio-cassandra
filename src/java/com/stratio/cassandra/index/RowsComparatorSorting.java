@@ -17,20 +17,18 @@ package com.stratio.cassandra.index;
 
 import java.util.Comparator;
 
-import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.db.Row;
-
 import com.stratio.cassandra.index.query.Sorting;
 import com.stratio.cassandra.index.query.SortingField;
 import com.stratio.cassandra.index.schema.Cells;
 import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.index.util.ComparatorChain;
+import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.db.Row;
 
 /**
  * A {@link Comparator} for comparing {@link Row}s according to a certain {@link Sorting}.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class RowsComparatorSorting implements RowsComparator
 {
@@ -38,6 +36,14 @@ public class RowsComparatorSorting implements RowsComparator
     private final Schema schema;
     private final ComparatorChain<Cells> comparatorChain;
 
+    /**
+     * @param metadata
+     *            The {@link CFMetaData} of the column family of the {@link Row}s to be compared.
+     * @param schema
+     *            The indexing {@link Schema} of the {@link Row}s to be compared.
+     * @param sorting
+     *            The {@link Sorting} inf which the {@link Row} comparison is based.
+     */
     public RowsComparatorSorting(CFMetaData metadata, Schema schema, Sorting sorting)
     {
         this.metadata = metadata;
@@ -50,6 +56,14 @@ public class RowsComparatorSorting implements RowsComparator
         }
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @param row1 A {@link Row}.
+     * @param row2 A {@link Row}.
+     * @return A negative integer, zero, or a positive integer as the first argument is less than, equal to, or greater
+     *         than the second according to a {@link Sorting}.
+     */
     @Override
     public int compare(Row row1, Row row2)
     {
@@ -57,5 +71,4 @@ public class RowsComparatorSorting implements RowsComparator
         Cells cells2 = schema.cells(metadata, row2);
         return comparatorChain.compare(cells1, cells2);
     }
-
 }
