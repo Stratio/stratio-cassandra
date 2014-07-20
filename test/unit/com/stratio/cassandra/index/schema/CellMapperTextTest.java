@@ -23,10 +23,6 @@ import org.apache.lucene.document.Field;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.stratio.cassandra.index.schema.CellMapper;
-import com.stratio.cassandra.index.schema.CellMapperText;
-import com.stratio.cassandra.index.schema.Schema;
-
 public class CellMapperTextTest
 {
 
