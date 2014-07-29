@@ -68,7 +68,6 @@ public class LuceneIndex
     private File file;
     private Directory directory;
     private IndexWriter indexWriter;
-    private TrackingIndexWriter trackingIndexWriter;
     private SearcherManager searcherManager;
     private ControlledRealTimeReopenThread<IndexSearcher> searcherReopener;
 
@@ -141,7 +140,7 @@ public class LuceneIndex
                 return searcher;
             }
         };
-        trackingIndexWriter = new TrackingIndexWriter(indexWriter);
+        TrackingIndexWriter trackingIndexWriter = new TrackingIndexWriter(indexWriter);
         searcherManager = new SearcherManager(indexWriter, true, searcherFactory);
         searcherReopener = new ControlledRealTimeReopenThread<>(trackingIndexWriter,
                                                                 searcherManager,
@@ -164,22 +163,6 @@ public class LuceneIndex
     {
         // Log.debug("Updating document %s with term %s", document, term);
         indexWriter.updateDocument(term, document);
-    }
-
-    /**
-     * Updates the specified {@link Document}s by first deleting the documents containing {@code Term} and then adding
-     * the new documents. The delete and then adds are atomic as seen by a reader on the same index (flush may happen
-     * only after the add).
-     * 
-     * @param term
-     *            The {@link Term} to identify the document(s) to be deleted.
-     * @param documents
-     *            The {@link Document}s to be added.
-     */
-    public void upsert(Term term, Iterable<Document> documents) throws IOException
-    {
-        // Log.debug("Updating documents %s with term %s", documents, term);
-        indexWriter.updateDocuments(term, documents);
     }
 
     /**
@@ -239,8 +222,6 @@ public class LuceneIndex
 
     /**
      * Closes and removes all the index files.
-     * 
-     * @return
      */
     public void drop() throws IOException
     {
@@ -250,26 +231,15 @@ public class LuceneIndex
     }
 
     /**
-     * Returns the total size of all index files currently cached in memory.
-     * 
-     * @return The total size of all index files currently cached in memory.
-     */
-    public long getRAMSizeInBytes() throws IOException
-    {
-        return indexWriter == null ? 0 : indexWriter.ramSizeInBytes();
-    }
-
-    /**
      * Finds the top {@code count} hits for {@code query}, applying {@code filter} if non-null, and sorting the hits by
      * the criteria in {@code sort}.
      * 
-     * @param after
      * @param query
      *            The {@link Query} to search for.
      * @param sort
      *            The {@link Sort} to be applied.
      * @param after
-     * 
+     *            The starting {@link com.stratio.cassandra.index.ScoredDocument}.
      * @param count
      *            Return only the top {@code count} results.
      * @param fieldsToLoad

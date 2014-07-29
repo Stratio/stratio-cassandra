@@ -25,7 +25,6 @@ import org.apache.lucene.search.Query;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.stratio.cassandra.index.query.PhraseCondition;
 import com.stratio.cassandra.index.schema.CellMapper;
 import com.stratio.cassandra.index.schema.CellMapperBoolean;
 import com.stratio.cassandra.index.schema.Schema;

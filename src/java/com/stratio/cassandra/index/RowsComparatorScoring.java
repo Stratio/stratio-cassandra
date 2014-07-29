@@ -16,7 +16,10 @@
 package com.stratio.cassandra.index;
 
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
 
+import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Row;
 import org.apache.cassandra.dht.IPartitioner;
 
@@ -30,17 +33,27 @@ public class RowsComparatorScoring implements RowsComparator
 {
 
     private final RowService rowService;
+    private final Map<DecoratedKey, Float> scoresCache;
 
     public RowsComparatorScoring(RowService rowService)
     {
         this.rowService = rowService;
+        scoresCache = new HashMap<>();
     }
 
     @Override
     public int compare(Row row1, Row row2)
     {
-        Float score1 = rowService.score(row1);
-        Float score2 = rowService.score(row2);
+        Float score1 = scoresCache.get(row1.key);
+        if (score1 == null) {
+            score1 = rowService.score(row1);
+            scoresCache.put(row1.key, score1);
+        }
+        Float score2 = scoresCache.get(row2.key);
+        if (score2 == null) {
+            score2 = rowService.score(row2);
+            scoresCache.put(row2.key, score2);
+        }
         return score2.compareTo(score1);
     }
 

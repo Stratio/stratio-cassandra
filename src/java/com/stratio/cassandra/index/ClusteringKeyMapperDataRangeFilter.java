@@ -130,12 +130,12 @@ public class ClusteringKeyMapperDataRangeFilter extends Filter
         AbstractType<?> type = clusteringKeyMapper.getType();
         boolean accepted = true;
         ByteBuffer start = columnSlice.start;
-        if (start != null && !ByteBufferUtils.isEmpty(start))
+        if (!ByteBufferUtils.isEmpty(start))
         {
-            accepted &= type.compare(start, key) <= 0;
+            accepted = type.compare(start, key) <= 0;
         }
         ByteBuffer finish = columnSlice.finish;
-        if (finish != null && !ByteBufferUtils.isEmpty(finish))
+        if (!ByteBufferUtils.isEmpty(finish))
         {
             accepted &= type.compare(finish, key) >= 0;
         }

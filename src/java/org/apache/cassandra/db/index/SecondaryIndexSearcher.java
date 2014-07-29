@@ -25,7 +25,6 @@ import java.util.Set;
 
 import org.apache.cassandra.db.AbstractRangeCommand;
 import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.Merger;
 import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.filter.ExtendedFilter;
 import org.apache.cassandra.thrift.IndexExpression;
@@ -105,29 +104,26 @@ public abstract class SecondaryIndexSearcher
      * Returns {@code true} if the specified {@link AbstractRangeCommand} requires a full scan of all the nodes,
      * {@code false} otherwise.
      * 
-     * @param command
-     *            A {@link AbstractRangeCommand}.
+     * @param clause
+     *            An {@link IndexExpression}.
      * @return {@code true} if the {@code command} requires a full scan, {@code false} otherwise.
      */
-    public boolean requiresFullScan(AbstractRangeCommand command)
+    public boolean requiresFullScan(List<IndexExpression> clause)
     {
         return false;
     }
 
     /**
-     * Returns {@code true} if the specified {@link AbstractRangeCommand} must be performed in a parallel fashion,
-     * {@code false} otherwise. Note that this only is applicable when {@link #requiresFullScan(AbstractRangeCommand)}
-     * is {@code true}.
-     * 
-     * @return {@code true} if this search must be performed in a parallel fashion, {@code false} otherwise.
+     * Combines the partial results of several local index queries.
+     *
+     * @param clause
+     *            An {@link IndexExpression}.
+     * @param rows
+     *            The partial results to be combined.
+     * @return The combination of the partial results.
      */
-    public boolean isParallel(AbstractRangeCommand command)
+    public List<Row> sort(List<IndexExpression> clause, List<Row> rows)
     {
-        return false;
-    }
-
-    public Merger merger(AbstractRangeCommand command, int limit)
-    {
-        return new Merger(limit);
+        return rows;
     }
 }

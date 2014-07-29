@@ -66,7 +66,7 @@ public class RowIndexConfig
     private final int indexingThreads;
     private final int indexingQueuesSize;
 
-    public RowIndexConfig(CFMetaData metadata, String indexName, Map<String, String> options)
+    public RowIndexConfig(CFMetaData metadata, Map<String, String> options)
     {
 
         // Setup refresh seconds

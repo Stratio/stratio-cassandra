@@ -20,6 +20,7 @@ import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.stratio.cassandra.index.util.Log;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.Column;
 import org.apache.cassandra.db.ColumnFamily;
@@ -55,12 +56,6 @@ public class RowServiceSimple extends RowService
         FIELDS_TO_LOAD.add(PartitionKeyMapper.FIELD_NAME);
     }
 
-    /** The partitioning token mapper */
-    private final TokenMapper tokenMapper;
-
-    /** The partitioning key mapper */
-    private final PartitionKeyMapper partitionKeyMapper;
-
     /**
      * Returns a new {@code RowServiceSimple} for manage simple rows.
      * 
@@ -72,9 +67,6 @@ public class RowServiceSimple extends RowService
     public RowServiceSimple(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) throws IOException
     {
         super(baseCfs, columnDefinition);
-
-        partitionKeyMapper = PartitionKeyMapper.instance(metadata);
-        tokenMapper = TokenMapper.instance(baseCfs);
 
         luceneIndex.init(sort());
     }
@@ -96,34 +88,32 @@ public class RowServiceSimple extends RowService
     @Override
     public void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp) throws IOException
     {
-        DeletionInfo deletionInfo = columnFamily.deletionInfo();
         DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(key);
-        Row row = row(partitionKey, timestamp);
-        if (row.cf.iterator().hasNext())
+
+        if (columnFamily.iterator().hasNext())
+        // Create or update row
         {
-            Document document = document(row);
-            Term term = identifyingTerm(row);
+            // Load row
+            Row row = row(partitionKey, timestamp);
+
+            // Create document from row
+            Document document = new Document();
+            tokenMapper.addFields(document, partitionKey);
+            partitionKeyMapper.addFields(document, partitionKey);
+            schema.addFields(document, metadata, row);
+
+            // Create document's identifying term for insert-update
+            Term term = partitionKeyMapper.term(partitionKey);
+
+            // Insert-update on Lucene
             luceneIndex.upsert(term, document);
         }
-        else if (deletionInfo != null)
+        else if (columnFamily.deletionInfo() != null)
+        // Deleting full row
         {
             Term term = partitionKeyMapper.term(partitionKey);
             luceneIndex.delete(term);
         }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Document document(Row row)
-    {
-        DecoratedKey partitionKey = row.key;
-        Document document = new Document();
-        tokenMapper.addFields(document, partitionKey);
-        partitionKeyMapper.addFields(document, partitionKey);
-        schema.addFields(document, metadata, row);
-        return document;
     }
 
     /**
@@ -199,42 +189,6 @@ public class RowServiceSimple extends RowService
     protected Filter filter(DataRange dataRange)
     {
         return tokenMapper.filter(dataRange);
-    }
-
-    /**
-     * {@inheritDoc}
-     * 
-     * The {@link Term} is based on the partition key.
-     */
-    @Override
-    protected Term identifyingTerm(Row row)
-    {
-        DecoratedKey partitionKey = row.key;
-        return partitionKeyMapper.term(partitionKey);
-    }
-
-    /**
-     * {@inheritDoc}
-     * 
-     * The {@link ByteBuffer} is based on the partition key.
-     */
-    @Override
-    protected ByteBuffer identifyingByteBuffer(Document document)
-    {
-        DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
-        return partitionKey.key;
-    }
-
-    /**
-     * {@inheritDoc}
-     * 
-     * The {@link ByteBuffer} is based on the partition key.
-     */
-    @Override
-    protected ByteBuffer identifyingByteBuffer(Row row)
-    {
-        DecoratedKey partitionKey = row.key;
-        return partitionKey.key;
     }
 
     /**

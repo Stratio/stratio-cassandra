@@ -79,13 +79,7 @@ public class ScoredDocument
     @Override
     public String toString()
     {
-        StringBuilder builder = new StringBuilder();
-        builder.append("ScoredDocument [scoreDoc=");
-        builder.append(scoreDoc);
-        builder.append(", document=");
-        builder.append(document);
-        builder.append("]");
-        return builder.toString();
+        return String.format("ScoredDocument [scoreDoc=%s, document=%s]", scoreDoc, document);
     }
 
 }

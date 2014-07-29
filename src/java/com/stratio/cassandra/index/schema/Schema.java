@@ -60,7 +60,7 @@ public class Schema
     /** The default Lucene's analyzer to be used if no other specified. */
     public static final Analyzer DEFAULT_ANALYZER = new StandardAnalyzer(Version.LUCENE_48);
 
-    /** The Lucene's {@link corg.apache.lucene.analysis.Analyzer}. */
+    /** The Lucene's {@link org.apache.lucene.analysis.Analyzer}. */
     private final Analyzer defaultAnalyzer;
 
     /** The per field Lucene's analyzer to be used. */
@@ -146,12 +146,8 @@ public class Schema
      * 
      * @param metadata
      *            The column family metadata
-     * @param partitionKey
-     *            A partition key.
-     * @param columnFamily
-     *            A column family.
-     * @param timestamp
-     *            The operation time stamp.
+     * @param row
+     *            A {@link Row}.
      * @return The cells contained in the specified columns.
      */
     public Cells cells(CFMetaData metadata, Row row)
@@ -227,13 +223,13 @@ public class Schema
      * @return The regular {@link Cell}s representing the CQL3 columns contained in the specified column family.
      */
     @SuppressWarnings("rawtypes")
-    private List<Cell> regularCells(CFMetaData metadata, ColumnFamily cf)
+    private List<Cell> regularCells(CFMetaData metadata, ColumnFamily columnFamily)
     {
 
         List<Cell> cells = new LinkedList<>();
 
         // Get row's cells iterator skipping clustering column
-        Iterator<Column> columnIterator = cf.iterator();
+        Iterator<Column> columnIterator = columnFamily.iterator();
         columnIterator.next();
 
         // Stuff for grouping collection cells (sets, lists and maps)
