@@ -65,8 +65,6 @@ public class RowServiceWide extends RowService
 
     private final int clusteringPosition;
 
-    private final TokenMapper tokenMapper;
-    private final PartitionKeyMapper partitionKeyMapper;
     private final ClusteringKeyMapper clusteringKeyMapper;
     private final FullKeyMapper fullKeyMapper;
 
@@ -82,8 +80,6 @@ public class RowServiceWide extends RowService
     {
         super(baseCfs, columnDefinition);
 
-        partitionKeyMapper = PartitionKeyMapper.instance(metadata);
-        tokenMapper = TokenMapper.instance(baseCfs);
         clusteringKeyMapper = ClusteringKeyMapper.instance(metadata);
         fullKeyMapper = FullKeyMapper.instance(metadata);
         clusteringPosition = metadata.clusteringKeyColumns().size();
@@ -116,9 +112,21 @@ public class RowServiceWide extends RowService
         {
             for (ByteBuffer clusteringKey : clusteringKeyMapper.byteBuffers(columnFamily))
             {
+                // Load row
                 Row row = row(partitionKey, clusteringKey, timestamp);
-                Document document = document(row);
-                Term term = identifyingTerm(row);
+
+                // Create document from row
+                Document document = new Document();
+                tokenMapper.addFields(document, partitionKey);
+                partitionKeyMapper.addFields(document, partitionKey);
+                clusteringKeyMapper.addFields(document, clusteringKey);
+                fullKeyMapper.addFields(document, partitionKey, clusteringKey);
+                schema.addFields(document, metadata, row);
+
+                // Create document's identifying term for insert-update
+                Term term = fullKeyMapper.term(partitionKey, clusteringKey);
+
+                // Insert-update on Lucene
                 luceneIndex.upsert(term, document);
             }
         }
@@ -142,27 +150,6 @@ public class RowServiceWide extends RowService
                 luceneIndex.delete(term);
             }
         }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Document document(Row row)
-    {
-        DecoratedKey partitionKey = row.key;
-        ColumnFamily columnFamily = row.cf;
-        ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(columnFamily);
-
-        Document document = new Document();
-
-        tokenMapper.addFields(document, partitionKey);
-        partitionKeyMapper.addFields(document, partitionKey);
-        schema.addFields(document, metadata, row);
-        clusteringKeyMapper.addFields(document, clusteringKey);
-        fullKeyMapper.addFields(document, partitionKey, clusteringKey);
-
-        return document;
     }
 
     /**
@@ -247,62 +234,23 @@ public class RowServiceWide extends RowService
     {
         Filter tokenFilter = tokenMapper.filter(dataRange);
         Filter clusteringKeyFilter = clusteringKeyMapper.filter(dataRange);
-        if (tokenFilter == null && clusteringKeyFilter == null)
+        if (tokenFilter == null)
         {
-            return null;
+            if (clusteringKeyFilter == null)
+            {
+                return null;
+            } else {
+                return clusteringKeyFilter;
+            }
+        } else {
+            if (clusteringKeyFilter == null)
+            {
+                return tokenFilter;
+            } else {
+                Filter[] filters = new Filter[] { tokenFilter, clusteringKeyFilter };
+                return new ChainedFilter(filters, ChainedFilter.AND);
+            }
         }
-        else if (tokenFilter != null && clusteringKeyFilter == null)
-        {
-            return tokenFilter;
-        }
-        else if (tokenFilter == null && clusteringKeyFilter != null)
-        {
-            return clusteringKeyFilter;
-        }
-        else
-        {
-            Filter[] filters = new Filter[] { tokenFilter, clusteringKeyFilter };
-            return new ChainedFilter(filters, ChainedFilter.AND);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     * 
-     * The {@link Term} is based on the partition and clustering keys.
-     */
-    @Override
-    public Term identifyingTerm(Row row)
-    {
-        DecoratedKey partitionKey = row.key;
-        ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(row.cf);
-        return fullKeyMapper.term(partitionKey, clusteringKey);
-    }
-
-    /**
-     * {@inheritDoc}
-     * 
-     * The {@link ByteBuffer} is based on the partition and clustering keys.
-     */
-    @Override
-    public ByteBuffer identifyingByteBuffer(Document document)
-    {
-        DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
-        ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(document);
-        return fullKeyMapper.byteBuffer(partitionKey, clusteringKey);
-    }
-
-    /**
-     * {@inheritDoc}
-     * 
-     * The {@link ByteBuffer} is based on the partition and clustering keys.
-     */
-    @Override
-    public ByteBuffer identifyingByteBuffer(Row row)
-    {
-        DecoratedKey partitionKey = row.key;
-        ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(row.cf);
-        return fullKeyMapper.byteBuffer(partitionKey, clusteringKey);
     }
 
     @Override

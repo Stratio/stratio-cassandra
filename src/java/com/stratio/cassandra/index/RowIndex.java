@@ -21,7 +21,6 @@ import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.ColumnFamilyStore;
@@ -45,7 +44,6 @@ public class RowIndex extends PerRowSecondaryIndex
 {
 
     private SecondaryIndexManager secondaryIndexManager;
-    private CFMetaData metadata;
     private ColumnDefinition columnDefinition;
 
     private String keyspaceName;
@@ -110,11 +108,10 @@ public class RowIndex extends PerRowSecondaryIndex
     {
         // Load column family info
         secondaryIndexManager = baseCfs.indexManager;
-        metadata = baseCfs.metadata;
         columnDefinition = columnDefs.iterator().next();
         indexName = columnDefinition.getIndexName();
-        keyspaceName = metadata.ksName;
-        tableName = metadata.cfName;
+        keyspaceName = baseCfs.metadata.ksName;
+        tableName = baseCfs.metadata.cfName;
         columnName = UTF8Type.instance.compose(columnDefinition.name);
         logName = String.format("%s.%s.%s", keyspaceName, tableName, indexName);
 
@@ -158,6 +155,7 @@ public class RowIndex extends PerRowSecondaryIndex
      * cleans up deleted columns from cassandra cleanup compaction
      * 
      * @param key
+     *            The partition key of the physical {@link org.apache.cassandra.db.Row} to be deleted.
      */
     @Override
     public void delete(DecoratedKey key)
@@ -195,9 +193,7 @@ public class RowIndex extends PerRowSecondaryIndex
             ColumnDefinition columnDefinition = columnDefs.iterator().next();
             if (baseCfs != null)
             {
-                new RowIndexConfig(baseCfs.metadata,
-                                   columnDefinition.getIndexName(),
-                                   columnDefinition.getIndexOptions());
+                new RowIndexConfig(baseCfs.metadata, columnDefinition.getIndexOptions());
                 Log.debug("Index options are valid");
             }
             else
@@ -363,17 +359,8 @@ public class RowIndex extends PerRowSecondaryIndex
     @Override
     public String toString()
     {
-        StringBuilder builder = new StringBuilder();
-        builder.append("RowIndex [index=");
-        builder.append(indexName);
-        builder.append(", keyspace=");
-        builder.append(keyspaceName);
-        builder.append(", table=");
-        builder.append(tableName);
-        builder.append(", column=");
-        builder.append(columnName);
-        builder.append("]");
-        return builder.toString();
+        return String.format("RowIndex [index=%s, keyspace=%s, table=%s, column=%s",
+                             indexName, keyspaceName, tableName, columnName);
     }
 
 }

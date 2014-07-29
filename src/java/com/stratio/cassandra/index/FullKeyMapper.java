@@ -78,26 +78,6 @@ public class FullKeyMapper
     }
 
     /**
-     * Returns the partition key type.
-     * 
-     * @return The partition key type.
-     */
-    public AbstractType<?> getPartitionKeyType()
-    {
-        return partitionKeyType;
-    }
-
-    /**
-     * Returns the clustering key type.
-     * 
-     * @return The clustering key type.
-     */
-    public AbstractType<?> getClusteringKeyType()
-    {
-        return clusteringKeyType;
-    }
-
-    /**
      * Returns the type of the full row key, which is a {@link CompositeType} composed by the partition key and the
      * clustering key.
      * 

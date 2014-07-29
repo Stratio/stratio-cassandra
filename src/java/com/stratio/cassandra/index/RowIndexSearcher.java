@@ -17,13 +17,12 @@ package com.stratio.cassandra.index;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
-import org.apache.cassandra.db.AbstractRangeCommand;
 import org.apache.cassandra.db.DataRange;
-import org.apache.cassandra.db.Merger;
 import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.filter.ExtendedFilter;
 import org.apache.cassandra.db.index.SecondaryIndexManager;
@@ -58,9 +57,13 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
      * Returns a new {@code RowIndexSearcher}.
      * 
      * @param indexManager
+     *            A 2i manger.
      * @param index
+     *            A {@link com.stratio.cassandra.index.RowIndex}.
      * @param columns
+     *            A set of {@link org.apache.cassandra.db.Column}s.
      * @param rowService
+     *            A {@link com.stratio.cassandra.index.RowService}.
      */
     public RowIndexSearcher(SecondaryIndexManager indexManager,
                             RowIndex index,
@@ -74,6 +77,9 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         indexedColumnName = index.getColumnDefinition().name;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<Row> search(ExtendedFilter extendedFilter)
     {
@@ -134,20 +140,10 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
      * {@inheritDoc}
      */
     @Override
-    public boolean requiresFullScan(AbstractRangeCommand command)
+    public boolean requiresFullScan(List<IndexExpression> clause)
     {
-        Search search = search(command.rowFilter);
+        Search search = search(clause);
         return search.usesRelevanceOrSorting();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isParallel(AbstractRangeCommand command)
-    {
-        Search search = search(command.rowFilter);
-        return search.isParallel();
     }
 
     /**
@@ -206,11 +202,12 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
     }
 
     @Override
-    public Merger merger(AbstractRangeCommand command, int limit)
+    public List<Row> sort(List<IndexExpression> clause, List<Row> rows)
     {
-        Search search = search(command.rowFilter);
+        Search search = search(clause);
         Comparator<Row> comparator = rowService.comparator(search);
-        return new Merger(limit, comparator);
+        Collections.sort(rows, comparator);
+        return rows;
     }
 
     /**
@@ -219,17 +216,11 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
     @Override
     public String toString()
     {
-        StringBuilder builder = new StringBuilder();
-        builder.append("RowIndexSearcher [index=");
-        builder.append(index.getIndexName());
-        builder.append(", keyspace=");
-        builder.append(index.getKeyspaceName());
-        builder.append(", table=");
-        builder.append(index.getTableName());
-        builder.append(", column=");
-        builder.append(index.getColumnName());
-        builder.append("]");
-        return builder.toString();
+        return String.format("RowIndexSearcher [index=%s, keyspace=%s, table=%s, column=%s]",
+                             index.getIndexName(),
+                             index.getKeyspaceName(),
+                             index.getTableName(),
+                             index.getColumnName());
     }
 
 }

@@ -109,8 +109,7 @@ public class ClusteringKeyMapper {
 			ByteBuffer component = components[i];
 			builder.add(component);
 		}
-		ByteBuffer bb = builder.build();
-		return bb;
+		return builder.build();
 	}
 
 	/**
@@ -128,8 +127,7 @@ public class ClusteringKeyMapper {
 			ByteBuffer component = components[i];
 			builder.add(component);
 		}
-		ByteBuffer bb = builder.buildAsEndOfRange();
-		return bb;
+		return builder.buildAsEndOfRange();
 	}
 
 	/**
@@ -137,6 +135,7 @@ public class ClusteringKeyMapper {
 	 * one.
 	 * 
 	 * @param columnFamily
+     *            A storage engine {@link org.apache.cassandra.db.ColumnFamily}.
 	 * @return The first clustering key of the specified column family.
 	 */
 	public ByteBuffer byteBuffer(ColumnFamily columnFamily) {
@@ -150,17 +149,17 @@ public class ClusteringKeyMapper {
 	 * Returns the common clustering keys of the specified column family.
 	 * 
 	 * @param columnFamily
+     *            A storage engine {@link org.apache.cassandra.db.ColumnFamily}.
 	 * @return The common clustering keys of the specified column family.
 	 */
 	public Set<ByteBuffer> byteBuffers(ColumnFamily columnFamily) {
 		Set<ByteBuffer> keys = new HashSet<>();
-		Iterator<Column> iterator = columnFamily.iterator();
-		while (iterator.hasNext()) {
-			Column column = iterator.next();
-			ByteBuffer columnName = column.name();
-			ByteBuffer clusteringKey = start(columnName);
-			keys.add(clusteringKey);
-		}
+        for (Column column : columnFamily)
+        {
+            ByteBuffer columnName = column.name();
+            ByteBuffer clusteringKey = start(columnName);
+            keys.add(clusteringKey);
+        }
 		return keys;
 	}
 
@@ -178,7 +177,8 @@ public class ClusteringKeyMapper {
 	public ByteBuffer name(ByteBuffer clusteringKey, ColumnIdentifier columnIdentifier) {
 		CompositeType.Builder builder = type.builder();
 		ByteBuffer[] components = ByteBufferUtils.split(clusteringKey, type);
-		for (int i = 0; i < clusteringPosition; i++) {
+		for (int i = 0; i < clusteringPosition; i++)
+        {
 			ByteBuffer component = components[i];
 			builder.add(component);
 		}

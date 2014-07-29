@@ -95,7 +95,7 @@ public class TokenMapperGenericSorter extends FieldComparator<BytesRef>
     public int compareBottom(int doc)
     {
         docTerms.get(doc, tempBR);
-        if (tempBR.length == 0 && docsWithField.get(doc) == false)
+        if (tempBR.length == 0 && !docsWithField.get(doc))
         {
             tempBR.bytes = MISSING_BYTES;
         }
@@ -125,7 +125,7 @@ public class TokenMapperGenericSorter extends FieldComparator<BytesRef>
             values[slot] = new BytesRef();
         }
         docTerms.get(doc, values[slot]);
-        if (values[slot].length == 0 && docsWithField.get(doc) == false)
+        if (values[slot].length == 0 && !docsWithField.get(doc))
         {
             values[slot].bytes = MISSING_BYTES;
         }
@@ -188,7 +188,7 @@ public class TokenMapperGenericSorter extends FieldComparator<BytesRef>
     public int compareTop(int doc)
     {
         docTerms.get(doc, tempBR);
-        if (tempBR.length == 0 && docsWithField.get(doc) == false)
+        if (tempBR.length == 0 && !docsWithField.get(doc))
         {
             tempBR.bytes = MISSING_BYTES;
         }

@@ -40,7 +40,6 @@ import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.thrift.IndexExpression;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
@@ -73,6 +72,12 @@ public abstract class RowService
 
     private TaskQueue indexQueue;
 
+    /** The partitioning token mapper */
+    protected final TokenMapper tokenMapper;
+
+    /** The partitioning key mapper */
+    protected final PartitionKeyMapper partitionKeyMapper;
+
     /**
      * Returns a new {@code RowService}.
      * 
@@ -89,9 +94,7 @@ public abstract class RowService
         nameType = (CompositeType) metadata.comparator;
         indexedColumnName = new ColumnIdentifier(columnDefinition.name, columnDefinition.getValidator());
 
-        RowIndexConfig config = new RowIndexConfig(metadata,
-                                                   columnDefinition.getIndexName(),
-                                                   columnDefinition.getIndexOptions());
+        RowIndexConfig config = new RowIndexConfig(metadata, columnDefinition.getIndexOptions());
 
         filterCache = config.getFilterCache();
 
@@ -105,6 +108,9 @@ public abstract class RowService
                                       schema.analyzer());
 
         indexQueue = new TaskQueue(config.getIndexingThreads(), config.getIndexingQueuesSize());
+
+        partitionKeyMapper = PartitionKeyMapper.instance();
+        tokenMapper = TokenMapper.instance(baseCfs);
     }
 
     /**
@@ -140,7 +146,7 @@ public abstract class RowService
     }
 
     /**
-     * Returns the names of the document fields to be loaded when reading a Lucene's index.
+     * Returns the names of the document fields to be loaded when reading a Lucene index.
      * 
      * @return The names of the document fields to be loaded.
      */
@@ -192,16 +198,6 @@ public abstract class RowService
     protected abstract void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp) throws IOException;
 
     /**
-     * Returns the {@link Document} represented by the specified {@link Row}. It's assumed that the {@link Row} is a
-     * CQL3 one, so its {@link ColumnFamily} musts contain one and only one clustering key.
-     * 
-     * @param row
-     *            A {@link Row}.
-     * @return The Lucene {@link Document} representing the specified {@link Row}.
-     */
-    protected abstract Document document(Row row);
-
-    /**
      * Deletes the partition identified by the specified partition key. This operation is performed asynchronously.
      * 
      * @param partitionKey
@@ -244,8 +240,6 @@ public abstract class RowService
 
     /**
      * Closes and removes all the index files.
-     * 
-     * @return
      */
     public final void delete() throws IOException
     {
@@ -279,7 +273,7 @@ public abstract class RowService
      * 
      * @param search
      *            The {@link Search} to be performed.
-     * @param filteredExpressions
+     * @param expressions
      *            A list of filtering {@link IndexExpression}s to be satisfied.
      * @param dataRange
      *            A {@link DataRange} to be satisfied.
@@ -290,7 +284,7 @@ public abstract class RowService
      * @return The {@link Row}s satisfying the specified restrictions.
      */
     public final List<Row> search(Search search,
-                                  List<IndexExpression> filteredExpressions,
+                                  List<IndexExpression> expressions,
                                   DataRange dataRange,
                                   final int limit,
                                   long timestamp) throws IOException
@@ -325,7 +319,7 @@ public abstract class RowService
             {
                 lastDoc = scoredDocument;
                 Row row = row(scoredDocument, timestamp);
-                if (row != null && accepted(row, filteredExpressions))
+                if (row != null && accepted(row, expressions))
                 {
                     rows.add(row);
                 }
@@ -516,33 +510,6 @@ public abstract class RowService
         }
         return filter;
     }
-
-    /**
-     * Returns a Lucene's {@link Term} to be used as the unique identifier of a row.
-     * 
-     * @param row
-     *            A {@link Row}.
-     * @return A Lucene's {@link Term} to be used as the unique identifier of a row.
-     */
-    protected abstract Term identifyingTerm(Row row);
-
-    /**
-     * Returns a {@link ByteBuffer} uniquely identifying the specified {@link Document}.
-     * 
-     * @param document
-     *            A {@link Document}
-     * @return A {@link ByteBuffer} uniquely identifying the specified {@link Document}.
-     */
-    protected abstract ByteBuffer identifyingByteBuffer(Document document);
-
-    /**
-     * Returns a {@link ByteBuffer} uniquely identifying the specified {@link Row}.
-     * 
-     * @param row
-     *            A {@link Row}
-     * @return A {@link ByteBuffer} uniquely identifying the specified {@link Row}.
-     */
-    protected abstract ByteBuffer identifyingByteBuffer(Row row);
 
     /**
      * Returns the {@link RowsComparator} to be used for ordering the {@link Row}s obtained from the specified
