@@ -17,10 +17,11 @@ package com.stratio.cassandra.index;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
-import org.apache.cassandra.db.AbstractRangeCommand;
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.filter.ExtendedFilter;
@@ -56,9 +57,13 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
      * Returns a new {@code RowIndexSearcher}.
      * 
      * @param indexManager
+     *            A 2i manger.
      * @param index
+     *            A {@link com.stratio.cassandra.index.RowIndex}.
      * @param columns
+     *            A set of {@link org.apache.cassandra.db.Column}s.
      * @param rowService
+     *            A {@link com.stratio.cassandra.index.RowService}.
      */
     public RowIndexSearcher(SecondaryIndexManager indexManager,
                             RowIndex index,
@@ -72,19 +77,29 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         indexedColumnName = index.getColumnDefinition().name;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<Row> search(ExtendedFilter extendedFilter)
     {
         // Log.debug("Searching %s", extendedFilter);
         try
         {
+            long startTime = System.currentTimeMillis();
+
             long timestamp = extendedFilter.timestamp;
             int limit = extendedFilter.maxColumns();
             DataRange dataRange = extendedFilter.dataRange;
             List<IndexExpression> clause = extendedFilter.getClause();
             List<IndexExpression> filteredExpressions = filteredExpressions(clause);
             Search search = search(clause);
-            return rowService.search(search, filteredExpressions, dataRange, limit, timestamp);
+
+            List<Row> result = rowService.search(search, filteredExpressions, dataRange, limit, timestamp);
+
+            long time = System.currentTimeMillis() - startTime;
+            Log.debug("Search time: %d ms", time);
+            return result;
         }
         catch (Exception e)
         {
@@ -93,6 +108,9 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean isIndexing(List<IndexExpression> clause)
     {
@@ -108,6 +126,9 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         return false;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void validate(List<IndexExpression> clause)
     {
@@ -115,36 +136,23 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         search.validate(schema);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public boolean requiresFullScan(AbstractRangeCommand command)
+    public boolean requiresFullScan(List<IndexExpression> clause)
     {
-        Search search = search(command.rowFilter);
-        return search.usesSorting();
+        Search search = search(clause);
+        return search.usesRelevanceOrSorting();
     }
 
-    @Override
-    public List<Row> combine(AbstractRangeCommand command, List<Row> rows)
-    {
-        try
-        {
-            Search search = search(command.rowFilter);
-            if (search.usesSorting())
-            {
-                return rowService.combine(search, rows, command.limit());
-            }
-            else
-            {
-                return super.combine(command, rows);
-            }
-        }
-        catch (Exception e)
-        {
-            String message = String.format("Error while combining partial results: %s", e.getMessage());
-            Log.error(e, message);
-            throw new RuntimeException(message, e);
-        }
-    }
-
+    /**
+     * Returns the {@link Search} contained in the specified list of {@link IndexExpression}s.
+     * 
+     * @param clause
+     *            A list of {@link IndexExpression}s.
+     * @return The {@link Search} contained in the specified list of {@link IndexExpression}s.
+     */
     private Search search(List<IndexExpression> clause)
     {
         IndexExpression indexedExpression = indexedExpression(clause);
@@ -152,6 +160,13 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         return Search.fromJson(json);
     }
 
+    /**
+     * Returns the {@link IndexExpression} relative to this index.
+     * 
+     * @param clause
+     *            A list of {@link IndexExpression}s.
+     * @return The {@link IndexExpression} relative to this index.
+     */
     private IndexExpression indexedExpression(List<IndexExpression> clause)
     {
         for (IndexExpression indexExpression : clause)
@@ -165,6 +180,13 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         return null;
     }
 
+    /**
+     * Returns the {@link IndexExpression} not relative to this index.
+     * 
+     * @param clause
+     *            A list of {@link IndexExpression}s.
+     * @return The {@link IndexExpression} not relative to this index.
+     */
     private List<IndexExpression> filteredExpressions(List<IndexExpression> clause)
     {
         List<IndexExpression> filteredExpressions = new ArrayList<>(clause.size());
@@ -180,19 +202,25 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
     }
 
     @Override
+    public List<Row> sort(List<IndexExpression> clause, List<Row> rows)
+    {
+        Search search = search(clause);
+        Comparator<Row> comparator = rowService.comparator(search);
+        Collections.sort(rows, comparator);
+        return rows;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public String toString()
     {
-        StringBuilder builder = new StringBuilder();
-        builder.append("RowIndexSearcher [index=");
-        builder.append(index.getIndexName());
-        builder.append(", keyspace=");
-        builder.append(index.getKeyspaceName());
-        builder.append(", table=");
-        builder.append(index.getTableName());
-        builder.append(", column=");
-        builder.append(index.getColumnName());
-        builder.append("]");
-        return builder.toString();
+        return String.format("RowIndexSearcher [index=%s, keyspace=%s, table=%s, column=%s]",
+                             index.getIndexName(),
+                             index.getKeyspaceName(),
+                             index.getTableName(),
+                             index.getColumnName());
     }
 
 }

@@ -23,10 +23,6 @@ import org.apache.lucene.document.Field;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.stratio.cassandra.index.schema.CellMapper;
-import com.stratio.cassandra.index.schema.CellMapperString;
-import com.stratio.cassandra.index.schema.Schema;
-
 public class CellMapperStringTest
 {
 
@@ -175,7 +171,7 @@ public class CellMapperStringTest
         schema.getMapper("age");
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = IOException.class)
     public void testParseJSONInvalid() throws IOException
     {
         String json = "{fields:{age:{}}";

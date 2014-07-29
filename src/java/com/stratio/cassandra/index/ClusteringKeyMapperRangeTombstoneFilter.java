@@ -100,7 +100,7 @@ public class ClusteringKeyMapperRangeTombstoneFilter extends Filter
             boolean accepted = true;
             if (min != null && !ByteBufferUtils.isEmpty(min))
             {
-                accepted &= columnNameType.compare(min, value) <= 0;
+                accepted = columnNameType.compare(min, value) <= 0;
             }
             if (max != null && !ByteBufferUtils.isEmpty(max))
             {

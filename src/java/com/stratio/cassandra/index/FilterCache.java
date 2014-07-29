@@ -162,11 +162,7 @@ public class FilterCache
                 return false;
             }
 
-            if (!Arrays.equals(slices, other.slices))
-            {
-                return false;
-            }
-            return true;
+            return Arrays.equals(slices, other.slices);
         }
 
     }

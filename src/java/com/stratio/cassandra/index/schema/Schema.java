@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -28,6 +29,7 @@ import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.Column;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CollectionType;
 import org.apache.cassandra.db.marshal.CompositeType;
@@ -58,7 +60,7 @@ public class Schema
     /** The default Lucene's analyzer to be used if no other specified. */
     public static final Analyzer DEFAULT_ANALYZER = new StandardAnalyzer(Version.LUCENE_48);
 
-    /** The Lucene's {@link corg.apache.lucene.analysis.Analyzer}. */
+    /** The Lucene's {@link org.apache.lucene.analysis.Analyzer}. */
     private final Analyzer defaultAnalyzer;
 
     /** The per field Lucene's analyzer to be used. */
@@ -144,20 +146,16 @@ public class Schema
      * 
      * @param metadata
      *            The column family metadata
-     * @param partitionKey
-     *            A partition key.
-     * @param columnFamily
-     *            A column family.
-     * @param timestamp
-     *            The operation time stamp.
+     * @param row
+     *            A {@link Row}.
      * @return The cells contained in the specified columns.
      */
-    public Cells cells(CFMetaData metadata, DecoratedKey partitionKey, ColumnFamily columnFamily)
+    public Cells cells(CFMetaData metadata, Row row)
     {
-        Cells cells = new Cells();
-        cells.addAll(partitionKeyCells(metadata, partitionKey));
-        cells.addAll(clusteringKeyCells(metadata, columnFamily));
-        cells.addAll(regularCells(metadata, columnFamily));
+        Cells cells = new Cells(row);
+        cells.addAll(partitionKeyCells(metadata, row.key));
+        cells.addAll(clusteringKeyCells(metadata, row.cf));
+        cells.addAll(regularCells(metadata, row.cf));
         return cells;
     }
 
@@ -170,9 +168,9 @@ public class Schema
      *            The partition key.
      * @return the {@link Cell}s representing the CQL3 cells contained in the specified partition key.
      */
-    private Cells partitionKeyCells(CFMetaData metadata, DecoratedKey partitionKey)
+    private List<Cell> partitionKeyCells(CFMetaData metadata, DecoratedKey partitionKey)
     {
-        Cells cells = new Cells();
+        List<Cell> cells = new LinkedList<>();
         AbstractType<?> rawKeyType = metadata.getKeyValidator();
         List<ColumnDefinition> columnDefinitions = metadata.partitionKeyColumns();
         for (ColumnDefinition columnDefinition : columnDefinitions)
@@ -197,9 +195,9 @@ public class Schema
      *            The column family.
      * @return The clustering key {@link Cell}s representing the CQL3 columns contained in the specified column family.
      */
-    private Cells clusteringKeyCells(CFMetaData metadata, ColumnFamily columnFamily)
+    private List<Cell> clusteringKeyCells(CFMetaData metadata, ColumnFamily columnFamily)
     {
-        Cells cells = new Cells();
+        List<Cell> cells = new LinkedList<>();
         ByteBuffer rawName = columnFamily.iterator().next().name();
         AbstractType<?> rawNameType = metadata.comparator;
         List<ColumnDefinition> columnDefinitions = metadata.clusteringKeyColumns();
@@ -225,13 +223,13 @@ public class Schema
      * @return The regular {@link Cell}s representing the CQL3 columns contained in the specified column family.
      */
     @SuppressWarnings("rawtypes")
-    private Cells regularCells(CFMetaData metadata, ColumnFamily cf)
+    private List<Cell> regularCells(CFMetaData metadata, ColumnFamily columnFamily)
     {
 
-        Cells cells = new Cells();
+        List<Cell> cells = new LinkedList<>();
 
         // Get row's cells iterator skipping clustering column
-        Iterator<Column> columnIterator = cf.iterator();
+        Iterator<Column> columnIterator = columnFamily.iterator();
         columnIterator.next();
 
         // Stuff for grouping collection cells (sets, lists and maps)
@@ -314,9 +312,9 @@ public class Schema
         return perFieldAnalyzer;
     }
 
-    public void addFields(Document document, CFMetaData metadata, DecoratedKey partitionKey, ColumnFamily columnFamily)
+    public void addFields(Document document, CFMetaData metadata, Row row)
     {
-        Cells cells = cells(metadata, partitionKey, columnFamily);
+        Cells cells = cells(metadata, row);
         for (Cell cell : cells)
         {
             String name = cell.getName();
@@ -365,16 +363,9 @@ public class Schema
      *            A {@code String} containing the JSON representation of the {@link Schema} to be parsed.
      * @return The {@link Schema} contained in the specified JSON {@code String}.
      */
-    public static Schema fromJson(String json)
+    public static Schema fromJson(String json) throws IOException
     {
-        try
-        {
-            return JsonSerializer.fromString(json, Schema.class);
-        }
-        catch (IOException e)
-        {
-            throw new IllegalArgumentException("Schema unparseable: " + json, e);
-        }
+        return JsonSerializer.fromString(json, Schema.class);
     }
 
     @Override

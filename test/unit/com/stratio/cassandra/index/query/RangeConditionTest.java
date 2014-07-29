@@ -25,7 +25,6 @@ import org.apache.lucene.search.TermRangeQuery;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.stratio.cassandra.index.query.RangeCondition;
 import com.stratio.cassandra.index.schema.CellMapper;
 import com.stratio.cassandra.index.schema.CellMapperBoolean;
 import com.stratio.cassandra.index.schema.CellMapperDouble;

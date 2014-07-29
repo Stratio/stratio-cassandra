@@ -20,6 +20,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.apache.cassandra.db.Row;
+
 /**
  * A sorted list of CQL3 logic {@link Cell}s.
  * 
@@ -31,13 +33,20 @@ public class Cells implements Iterable<Cell>
 
     /** The wrapped columns */
     private List<Cell> cells;
+    private final Row row;
 
     /**
      * Constructs an empty {@link Cell} list.
      */
-    Cells()
+    Cells(Row row)
     {
         this.cells = new LinkedList<>();
+        this.row = row;
+    }
+
+    public Row getRow()
+    {
+        return row;
     }
 
     /**

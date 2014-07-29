@@ -18,9 +18,14 @@
 package org.apache.cassandra.db.index;
 
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.AbstractRangeCommand;
+import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.filter.ExtendedFilter;
 import org.apache.cassandra.thrift.IndexExpression;
 import org.apache.cassandra.thrift.IndexOperator;
@@ -99,30 +104,26 @@ public abstract class SecondaryIndexSearcher
      * Returns {@code true} if the specified {@link AbstractRangeCommand} requires a full scan of all the nodes,
      * {@code false} otherwise.
      * 
-     * @param command
-     *            A {@link AbstractRangeCommand}.
+     * @param clause
+     *            An {@link IndexExpression}.
      * @return {@code true} if the {@code command} requires a full scan, {@code false} otherwise.
      */
-    public boolean requiresFullScan(AbstractRangeCommand command)
+    public boolean requiresFullScan(List<IndexExpression> clause)
     {
         return false;
     }
 
     /**
-     * Combines a list of cluster-wide collected {@link Row}s to satisfy the specified {@link AbstractRangeCommand}.
-     * This default implementation just truncates the provided list of rows according to the number of requested rows.
-     * 
-     * @param command
-     *            A {@link AbstractRangeCommand}.
+     * Combines the partial results of several local index queries.
+     *
+     * @param clause
+     *            An {@link IndexExpression}.
      * @param rows
-     *            A list of {@link Row}s collected by local instances of this index.
-     * @return The combination of the specified partial results according to the specified command.
+     *            The partial results to be combined.
+     * @return The combination of the partial results.
      */
-    public List<Row> combine(AbstractRangeCommand command, List<Row> rows)
+    public List<Row> sort(List<IndexExpression> clause, List<Row> rows)
     {
-        if (command.countCQL3Rows())
-            return rows;
-        else
-            return rows.size() > command.limit() ? rows.subList(0, command.limit()) : rows;
+        return rows;
     }
 }

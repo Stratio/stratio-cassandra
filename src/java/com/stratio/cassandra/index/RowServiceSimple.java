@@ -15,18 +15,25 @@
  */
 package com.stratio.cassandra.index;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.stratio.cassandra.index.util.Log;
 import org.apache.cassandra.config.ColumnDefinition;
+import org.apache.cassandra.db.Column;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.DeletionInfo;
 import org.apache.cassandra.db.Row;
+import org.apache.cassandra.db.TreeMapBackedSortedColumns;
 import org.apache.cassandra.db.filter.QueryFilter;
+import org.apache.cassandra.db.marshal.UTF8Type;
+import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.utils.HeapAllocator;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Filter;
@@ -49,12 +56,6 @@ public class RowServiceSimple extends RowService
         FIELDS_TO_LOAD.add(PartitionKeyMapper.FIELD_NAME);
     }
 
-    /** The partitioning token mapper */
-    private final TokenMapper tokenMapper;
-
-    /** The partitioning key mapper */
-    private final PartitionKeyMapper partitionKeyMapper;
-
     /**
      * Returns a new {@code RowServiceSimple} for manage simple rows.
      * 
@@ -63,18 +64,17 @@ public class RowServiceSimple extends RowService
      * @param columnDefinition
      *            The indexed column definition.
      */
-    public RowServiceSimple(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition)
+    public RowServiceSimple(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) throws IOException
     {
         super(baseCfs, columnDefinition);
-
-        partitionKeyMapper = PartitionKeyMapper.instance(metadata);
-        tokenMapper = TokenMapper.instance(baseCfs);
 
         luceneIndex.init(sort());
     }
 
     /**
      * {@inheritDoc}
+     * 
+     * These fields are just the partition key.
      */
     @Override
     public Set<String> fieldsToLoad()
@@ -86,18 +86,30 @@ public class RowServiceSimple extends RowService
      * {@inheritDoc}
      */
     @Override
-    public void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp)
+    public void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp) throws IOException
     {
-        DeletionInfo deletionInfo = columnFamily.deletionInfo();
         DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(key);
-        Row row = row(partitionKey, timestamp);
-        if (row.cf.iterator().hasNext())
+
+        if (columnFamily.iterator().hasNext())
+        // Create or update row
         {
-            Document document = document(row);
-            Term term = identifyingTerm(row);
+            // Load row
+            Row row = row(partitionKey, timestamp);
+
+            // Create document from row
+            Document document = new Document();
+            tokenMapper.addFields(document, partitionKey);
+            partitionKeyMapper.addFields(document, partitionKey);
+            schema.addFields(document, metadata, row);
+
+            // Create document's identifying term for insert-update
+            Term term = partitionKeyMapper.term(partitionKey);
+
+            // Insert-update on Lucene
             luceneIndex.upsert(term, document);
         }
-        else if (deletionInfo != null)
+        else if (columnFamily.deletionInfo() != null)
+        // Deleting full row
         {
             Term term = partitionKeyMapper.term(partitionKey);
             luceneIndex.delete(term);
@@ -108,22 +120,7 @@ public class RowServiceSimple extends RowService
      * {@inheritDoc}
      */
     @Override
-    public Document document(Row row)
-    {
-        DecoratedKey partitionKey = row.key;
-        ColumnFamily columnFamily = row.cf;
-        Document document = new Document();
-        tokenMapper.addFields(document, partitionKey);
-        partitionKeyMapper.addFields(document, partitionKey);
-        schema.addFields(document, metadata, partitionKey, columnFamily);
-        return document;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void deleteInner(DecoratedKey partitionKey)
+    public void deleteInner(DecoratedKey partitionKey) throws IOException
     {
         Term term = partitionKeyMapper.term(partitionKey);
         luceneIndex.delete(term);
@@ -131,12 +128,29 @@ public class RowServiceSimple extends RowService
 
     /**
      * {@inheritDoc}
+     * 
+     * The {@link Row} is a physical one.
      */
     @Override
-    protected Row row(Document document, long timestamp)
+    protected Row row(ScoredDocument scoredDocument, long timestamp)
     {
+
+        // Extract row from document
+        Document document = scoredDocument.getDocument();
         DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
-        return row(partitionKey, timestamp);
+        Row row = row(partitionKey, timestamp);
+
+        // Create score column from document score
+        Float score = scoredDocument.getScore();
+        ByteBuffer columnName = nameType.builder().add(indexedColumnName.key).build();
+        ByteBuffer columnValue = UTF8Type.instance.decompose(score.toString());
+        Column scoreColumn = new Column(columnName, columnValue, timestamp);
+
+        // Return new row with score column
+        ColumnFamily decoratedCf = TreeMapBackedSortedColumns.factory.create(baseCfs.metadata);
+        decoratedCf.addColumn(scoreColumn);
+        decoratedCf.addAll(row.cf, HeapAllocator.instance);
+        return new Row(partitionKey, decoratedCf);
     }
 
     /**
@@ -157,6 +171,8 @@ public class RowServiceSimple extends RowService
 
     /**
      * {@inheritDoc}
+     * 
+     * The {@link Filter} is based in {@link Token} order.
      */
     @Override
     protected Sort sort()
@@ -166,6 +182,8 @@ public class RowServiceSimple extends RowService
 
     /**
      * {@inheritDoc}
+     * 
+     * The {@link Filter} is based on a {@link Token} range.
      */
     @Override
     protected Filter filter(DataRange dataRange)
@@ -177,30 +195,13 @@ public class RowServiceSimple extends RowService
      * {@inheritDoc}
      */
     @Override
-    protected Term identifyingTerm(Row row)
+    protected Float score(Row row)
     {
-        DecoratedKey partitionKey = row.key;
-        return partitionKeyMapper.term(partitionKey);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    protected ByteBuffer getUniqueId(Document document)
-    {
-        DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
-        return partitionKey.key;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    protected ByteBuffer getUniqueId(Row row)
-    {
-        DecoratedKey partitionKey = row.key;
-        return partitionKey.key;
+        ColumnFamily cf = row.cf;
+        ByteBuffer columnName = nameType.builder().add(indexedColumnName.key).build();
+        Column column = cf.getColumn(columnName);
+        ByteBuffer columnValue = column.value();
+        return Float.parseFloat(UTF8Type.instance.compose(columnValue));
     }
 
 }

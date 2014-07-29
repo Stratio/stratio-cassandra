@@ -21,72 +21,64 @@ import java.util.List;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.filter.*;
-import org.apache.cassandra.db.index.SecondaryIndexSearcher;
+import org.apache.cassandra.db.index.*;
 import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.service.IReadCommand;
 import org.apache.cassandra.thrift.IndexExpression;
 
-public abstract class AbstractRangeCommand implements IReadCommand {
-	public final String keyspace;
-	public final String columnFamily;
-	public final long timestamp;
+public abstract class AbstractRangeCommand implements IReadCommand
+{
+    public final String keyspace;
+    public final String columnFamily;
+    public final long timestamp;
 
-	public final AbstractBounds<RowPosition> keyRange;
-	public final IDiskAtomFilter predicate;
-	public final List<IndexExpression> rowFilter;
+    public final AbstractBounds<RowPosition> keyRange;
+    public final IDiskAtomFilter predicate;
+    public final List<IndexExpression> rowFilter;
 
-	public final SecondaryIndexSearcher searcher;
+    public final SecondaryIndexSearcher searcher;
 
-	public AbstractRangeCommand(String keyspace,
-	                            String columnFamily,
-	                            long timestamp,
-	                            AbstractBounds<RowPosition> keyRange,
-	                            IDiskAtomFilter predicate,
-	                            List<IndexExpression> rowFilter) {
-		this.keyspace = keyspace;
-		this.columnFamily = columnFamily;
-		this.timestamp = timestamp;
-		this.keyRange = keyRange;
-		this.predicate = predicate;
-		this.rowFilter = rowFilter;
-		this.searcher = Keyspace.open(keyspace).getColumnFamilyStore(columnFamily).indexManager.searcher(rowFilter);
-	}
+    public AbstractRangeCommand(String keyspace, String columnFamily, long timestamp, AbstractBounds<RowPosition> keyRange, IDiskAtomFilter predicate, List<IndexExpression> rowFilter)
+    {
+        this.keyspace = keyspace;
+        this.columnFamily = columnFamily;
+        this.timestamp = timestamp;
+        this.keyRange = keyRange;
+        this.predicate = predicate;
+        this.rowFilter = rowFilter;
+        this.searcher = Keyspace.open(keyspace).getColumnFamilyStore(columnFamily).indexManager.searcher(rowFilter);
+    }
 
-	public boolean requiresFullScan() {
-		return searcher == null ? false : searcher.requiresFullScan(this);
-	}
+    public boolean requiresFullScan() {
+        return searcher == null ? false : searcher.requiresFullScan(rowFilter);
+    }
 
-	public List<Row> combine(List<Row> rows) {
-		if (searcher != null)
-			return searcher.combine(this, rows);
-		else if (countCQL3Rows())
-			return rows;
-		else
-			return trim(rows);
-	}
-	
-	public List<Row> trim(List<Row> rows) {
-		return rows.size() > limit() ? rows.subList(0, limit()) : rows;
-	}
+    public List<Row> combine(List<Row> rows)
+    {
+        return searcher == null ? trim(rows) : trim(searcher.sort(rowFilter, rows));
+    }
 
-	public String getKeyspace() {
-		return keyspace;
-	}
+    private List<Row> trim(List<Row> rows)
+    {
+        return rows.size() > limit() ? rows.subList(0, limit()) : rows;
+    }
 
-	public abstract MessageOut<? extends AbstractRangeCommand> createMessage();
+    public String getKeyspace()
+    {
+        return keyspace;
+    }
 
-	public abstract AbstractRangeCommand forSubRange(AbstractBounds<RowPosition> range);
+    public abstract MessageOut<? extends AbstractRangeCommand> createMessage();
+    public abstract AbstractRangeCommand forSubRange(AbstractBounds<RowPosition> range);
+    public abstract AbstractRangeCommand withUpdatedLimit(int newLimit);
 
-	public abstract AbstractRangeCommand withUpdatedLimit(int newLimit);
+    public abstract int limit();
+    public abstract boolean countCQL3Rows();
+    public abstract List<Row> executeLocally();
 
-	public abstract int limit();
-
-	public abstract boolean countCQL3Rows();
-
-	public abstract List<Row> executeLocally();
-
-	public long getTimeout() {
-		return DatabaseDescriptor.getRangeRpcTimeout();
-	}
+    public long getTimeout()
+    {
+        return DatabaseDescriptor.getRangeRpcTimeout();
+    }
 }

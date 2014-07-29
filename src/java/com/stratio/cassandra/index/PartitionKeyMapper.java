@@ -17,7 +17,6 @@ package com.stratio.cassandra.index;
 
 import java.nio.ByteBuffer;
 
-import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.dht.IPartitioner;
@@ -49,21 +48,19 @@ public class PartitionKeyMapper
     /**
      * Returns a new {@code PartitionKeyMapper} according to the specified column family meta data.
      */
-    private PartitionKeyMapper(CFMetaData metadata)
+    private PartitionKeyMapper()
     {
         partitioner = DatabaseDescriptor.getPartitioner();
     }
 
     /**
      * Returns a new {@code PartitionKeyMapper} according to the specified column family meta data.
-     * 
-     * @param metadata
-     *            The meta data of the indexed column family.
+     *
      * @return a new {@code PartitionKeyMapper} according to the specified column family meta data.
      */
-    public static PartitionKeyMapper instance(CFMetaData metadata)
+    public static PartitionKeyMapper instance()
     {
-        return new PartitionKeyMapper(metadata);
+        return new PartitionKeyMapper();
     }
 
     /**
@@ -107,11 +104,11 @@ public class PartitionKeyMapper
     }
 
     /**
-     * Returns the {@link DocoratedKey} contained in the specified Lucene's {@link Document}.
+     * Returns the {@link DecoratedKey} contained in the specified Lucene's {@link Document}.
      * 
      * @param document
      *            the {@link Document} containing the partition key to be get.
-     * @return The {@link DocoratedKey} contained in the specified Lucene's {@link Document}.
+     * @return The {@link DecoratedKey} contained in the specified Lucene's {@link Document}.
      */
     public DecoratedKey decoratedKey(Document document)
     {
