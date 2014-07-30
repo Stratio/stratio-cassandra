@@ -23,7 +23,6 @@ import java.util.*;
 import com.google.common.base.Objects;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
-import com.stratio.cassandra.index.util.Log;
 
 import org.github.jamm.MemoryMeter;
 import org.apache.cassandra.auth.Permission;
@@ -31,9 +30,8 @@ import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.transport.messages.ResultMessage;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.db.*;
-import org.apache.cassandra.db.context.CounterContext;
 import org.apache.cassandra.db.filter.*;
-import org.apache.cassandra.db.index.SecondaryIndexSearcher;
+import org.apache.cassandra.db.index.SecondaryIndexManager;
 import org.apache.cassandra.db.marshal.*;
 import org.apache.cassandra.dht.*;
 import org.apache.cassandra.exceptions.*;
@@ -363,25 +361,6 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
             return null;
 
         List<IndexExpression> expressions = getIndexExpressions(variables);
-        
-        // Perform secondary index validation
-        ColumnFamilyStore cfs = Keyspace.open(keyspace()).getColumnFamilyStore(columnFamily());
-        SecondaryIndexSearcher searcher = cfs.indexManager.searcher(expressions);
-        if (searcher != null) 
-        {
-        	try 
-        	{
-                searcher.validate(expressions);
-        	} 
-        	catch (Exception e) 
-        	{
-        		String exceptionMessage = e.getMessage();
-        		if (exceptionMessage != null && !exceptionMessage.trim().isEmpty())
-        			throw new InvalidRequestException("Invalid index expression: " + e.getMessage());
-        		else
-        			throw new InvalidRequestException("Invalid index expression");
-        	}
-        }
         
         // The LIMIT provided by the user is the number of CQL row he wants returned.
         // We want to have getRangeSlice to count the number of columns, not the number of keys.
@@ -1875,6 +1854,23 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
             // so far, 2i means that you've restricted a non static column, so the query is somewhat non-sensical.
             if (stmt.selectsOnlyStaticColumns)
                 throw new InvalidRequestException("Queries using 2ndary indexes don't support selecting only static columns");
+            
+            ColumnFamilyStore cfs = Keyspace.open(keyspace()).getColumnFamilyStore(columnFamily());
+            SecondaryIndexManager secondaryIndexManager = cfs.indexManager;
+            List<ByteBuffer> variables = QueryOptions.DEFAULT.getValues();
+            List<IndexExpression> indexExpressions = stmt.getIndexExpressions(variables);
+            try 
+            {
+                secondaryIndexManager.validateIndexSearchersForQuery(indexExpressions);
+            } 
+            catch (Exception e) 
+            {
+                String exceptionMessage = e.getMessage();
+                if (exceptionMessage != null && !exceptionMessage.trim().isEmpty())
+                    throw new InvalidRequestException("Invalid index expression: " + e.getMessage());
+                else
+                    throw new InvalidRequestException("Invalid index expression");
+            }
         }
 
         private void verifyOrderingIsAllowed(SelectStatement stmt) throws InvalidRequestException

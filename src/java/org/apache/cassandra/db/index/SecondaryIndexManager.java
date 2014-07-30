@@ -24,7 +24,6 @@ import java.util.concurrent.*;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.compaction.CompactionManager;
@@ -533,6 +532,51 @@ public class SecondaryIndexManager
             indexSearchers.add(getIndexForColumn(column.iterator().next()).createSecondaryIndexSearcher(column));
 
         return indexSearchers;
+    }
+    
+    /**
+     * Validates an union of expression index types. It will throw a {@link RuntimeException} if 
+     * any of the expressions in the provided clause is not valid for its index implementation.
+     * @param clause the query clause
+     */
+    public void validateIndexSearchersForQuery(List<IndexExpression> clause)
+    {
+        // Group index expressions by index type
+        Map<String, Set<IndexExpression>> groupByIndexType = new HashMap<>();
+        for (IndexExpression ix : clause)
+        {
+            SecondaryIndex index = getIndexForColumn(ix.column_name);
+
+            if (index == null)
+                continue;
+
+            Set<IndexExpression> expressions = groupByIndexType.get(index.getClass().getCanonicalName());
+
+            if (expressions == null)
+            {
+                expressions = new HashSet<>();
+                groupByIndexType.put(index.getClass().getCanonicalName(), expressions);
+            }
+
+            expressions.add(ix);
+        }
+
+        // Validate index expressions per index type
+        for (Set<IndexExpression> indexExpressions : groupByIndexType.values())
+        {
+            // Get columns
+            Set<ByteBuffer> columns = new HashSet<>(indexExpressions.size());
+            for (IndexExpression indexExpression : indexExpressions)
+                columns.add(indexExpression.column_name);
+            
+            // Build searcher for index type
+            SecondaryIndex secondaryIndex = getIndexForColumn(columns.iterator().next());
+            SecondaryIndexSearcher searcher = secondaryIndex.createSecondaryIndexSearcher(columns);
+            
+            // Validate each index expression
+            for (IndexExpression indexExpression : indexExpressions)
+                searcher.validate(indexExpression);
+        }
     }
     
     public SecondaryIndexSearcher searcher(List<IndexExpression> clause) {
