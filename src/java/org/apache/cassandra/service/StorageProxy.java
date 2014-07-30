@@ -487,7 +487,12 @@ public class StorageProxy implements StorageProxyMBean
                     List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(mutation.getKeyspaceName(), tk);
                     Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk, mutation.getKeyspaceName());
                     for (InetAddress target : Iterables.concat(naturalEndpoints, pendingEndpoints))
-                        submitHint((RowMutation) mutation, target, null);
+                    {
+                        // local writes can timeout, but cannot be dropped (see LocalMutationRunnable and
+                        // CASSANDRA-6510), so there is no need to hint or retry
+                        if (!target.equals(FBUtilities.getBroadcastAddress()) && shouldHint(target))
+                            submitHint((RowMutation) mutation, target, null);
+                    }
                 }
                 Tracing.trace("Wrote hint to satisfy CL.ANY after no replicas acknowledged the write");
             }
@@ -1077,8 +1082,18 @@ public class StorageProxy implements StorageProxyMBean
                     {
                         public void runMayThrow() throws OverloadedException
                         {
-                            // send mutation to other replica
-                            sendToHintedEndpoints(cm.makeReplicationMutation(), remotes, responseHandler, localDataCenter);
+                            // send the mutation to other replicas, if not null (see CASSANDRA-7144 for details)
+                            RowMutation replicationMutation = cm.makeReplicationMutation();
+                            if (replicationMutation != null)
+                            {
+                                sendToHintedEndpoints(replicationMutation, remotes, responseHandler, localDataCenter);
+                            }
+                            else
+                            {
+                                // simulate the rest of the responses to avoid the timeout
+                                for (int i = 0; i < remotes.size(); i++)
+                                    responseHandler.response(null);
+                            }
                         }
                     });
                 }

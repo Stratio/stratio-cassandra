@@ -124,7 +124,10 @@ HISTORY_DIR = os.path.expanduser(os.path.join('~', '.cassandra'))
 CONFIG_FILE = os.path.join(HISTORY_DIR, 'cqlshrc')
 HISTORY = os.path.join(HISTORY_DIR, 'cqlsh_history')
 if not os.path.exists(HISTORY_DIR):
-    os.mkdir(HISTORY_DIR)
+    try:
+        os.mkdir(HISTORY_DIR)
+    except OSError:
+        print '\nWarning: Cannot create directory at `%s`. Command history will not be saved.\n' % HISTORY_DIR
 
 OLD_CONFIG_FILE = os.path.expanduser(os.path.join('~', '.cqlshrc'))
 if os.path.exists(OLD_CONFIG_FILE):
@@ -524,6 +527,8 @@ class Shell(cmd.Cmd):
         self.empty_lines = 0
         self.statement_error = False
         self.single_statement = single_statement
+        # see CASSANDRA-7399
+        cql.cqltypes.CompositeType.cql_parameterized_type = classmethod(lambda cls: "'%s'" % cls.cass_parameterized_type_with(cls.subtypes, True))
 
     def set_expanded_cql_version(self, ver):
         ver, vertuple = full_cql_version(ver)
@@ -718,7 +723,7 @@ class Shell(cmd.Cmd):
 
     def set_continue_prompt(self):
         if self.empty_lines >=3:
-            self.set_prompt("Statements are terminated with a ';'.  You can press CTRL-C to cancel an imcomplete statement.")
+            self.set_prompt("Statements are terminated with a ';'.  You can press CTRL-C to cancel an incomplete statement.")
             self.empty_lines = 0
             return
         if self.current_keyspace is None:
@@ -726,7 +731,7 @@ class Shell(cmd.Cmd):
         else:
             spaces = ' ' * len(str(self.current_keyspace))
             self.set_prompt(self.keyspace_continue_prompt % spaces)
-        self.empty_lines += 1
+        self.empty_lines = self.empty_lines + 1 if not self.lastcmd else 0
 
     @contextmanager
     def prepare_loop(self):
@@ -752,9 +757,11 @@ class Shell(cmd.Cmd):
 
     def get_input_line(self, prompt=''):
         if self.tty:
-            line = raw_input(prompt) + '\n'
+            self.lastcmd = raw_input(prompt)
+            line = self.lastcmd + '\n'
         else:
-            line = self.stdin.readline()
+            self.lastcmd = self.stdin.readline()
+            line = self.lastcmd
             if not len(line):
                 raise EOFError
         self.lineno += 1
@@ -1136,10 +1143,10 @@ class Shell(cmd.Cmd):
 
         out.write("  PRIMARY KEY (")
         partkeynames = self.cql_protect_names(layout.partition_key_columns)
-        if len(partkeynames) > 1:
-            partkey = "(%s)" % ', '.join(partkeynames)
-        else:
-            partkey = partkeynames[0]
+
+        # Changed to put parenthesis around one or more partition keys in CASSANDRA-7274
+        partkey = "(%s)" % ', '.join(partkeynames)
+
         pk_parts = [partkey] + self.cql_protect_names(layout.clustering_key_columns)
         out.write(', '.join(pk_parts) + ')')
 

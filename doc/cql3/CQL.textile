@@ -1,6 +1,6 @@
 <link rel="StyleSheet" href="CQL.css" type="text/css" media="screen">
 
-h1. Cassandra Query Language (CQL) v3.1.5
+h1. Cassandra Query Language (CQL) v3.1.7
 
 
  <span id="tableOfContents">
@@ -335,16 +335,17 @@ h4(#compactionOptions). @compaction@ options
 
 The @compaction@ property must at least define the @'class'@ sub-option, that defines the compaction strategy class to use. The default supported class are @'SizeTieredCompactionStrategy'@ and @'LeveledCompactionStrategy'@. Custom strategy can be provided by specifying the full class name as a "string constant":#constants. The rest of the sub-options depends on the chosen class. The sub-options supported by the default classes are:
 
-|_. option                        |_. supported compaction strategy |_. default |_. description |
-| @enabled@                       | _all_                           | true      | A boolean denoting whether compaction should be enabled or not.|
-| @tombstone_threshold@           | _all_                           | 0.2       | A ratio such that if a sstable has more than this ratio of gcable tombstones over all contained columns, the sstable will be compacted (with no other sstables) for the purpose of purging those tombstones. |
-| @tombstone_compaction_interval@ | _all_                           | 1 day     | The minimum time to wait after an sstable creation time before considering it for "tombstone compaction", where "tombstone compaction" is the compaction triggered if the sstable has more gcable tombstones than @tombstone_threshold@. |
-| @min_sstable_size@              | SizeTieredCompactionStrategy    | 50MB      | The size tiered strategy groups SSTables to compact in buckets. A bucket groups SSTables that differs from less than 50% in size.  However, for small sizes, this would result in a bucketing that is too fine grained. @min_sstable_size@ defines a size threshold (in bytes) below which all SSTables belong to one unique bucket|
-| @min_threshold@                 | SizeTieredCompactionStrategy    | 4         | Minimum number of SSTables needed to start a minor compaction.|
-| @max_threshold@                 | SizeTieredCompactionStrategy    | 32        | Maximum number of SSTables processed by one minor compaction.|
-| @bucket_low@                    | SizeTieredCompactionStrategy    | 0.5       | Size tiered consider sstables to be within the same bucket if their size is within [average_size * @bucket_low@, average_size * @bucket_high@ ] (i.e the default groups sstable whose sizes diverges by at most 50%)|
-| @bucket_high@                   | SizeTieredCompactionStrategy    | 1.5       | Size tiered consider sstables to be within the same bucket if their size is within [average_size * @bucket_low@, average_size * @bucket_high@ ] (i.e the default groups sstable whose sizes diverges by at most 50%).|
-| @sstable_size_in_mb@            | LeveledCompactionStrategy       | 5MB       | The target size (in MB) for sstables in the leveled strategy. Note that while sstable sizes should stay less or equal to @sstable_size_in_mb@, it is possible to exceptionally have a larger sstable as during compaction, data for a given partition key are never split into 2 sstables|
+|_. option                         |_. supported compaction strategy |_. default |_. description |
+| @enabled@                        | _all_                           | true      | A boolean denoting whether compaction should be enabled or not.|
+| @tombstone_threshold@            | _all_                           | 0.2       | A ratio such that if a sstable has more than this ratio of gcable tombstones over all contained columns, the sstable will be compacted (with no other sstables) for the purpose of purging those tombstones. |
+| @tombstone_compaction_interval@  | _all_                           | 1 day     | The minimum time to wait after an sstable creation time before considering it for "tombstone compaction", where "tombstone compaction" is the compaction triggered if the sstable has more gcable tombstones than @tombstone_threshold@. |
+| @unchecked_tombstone_compaction@ | _all_                           | false    | Setting this to true enables more aggressive tombstone compactions - single sstable tombstone compactions will run without checking how likely it is that they will be successful. |
+| @min_sstable_size@               | SizeTieredCompactionStrategy    | 50MB      | The size tiered strategy groups SSTables to compact in buckets. A bucket groups SSTables that differs from less than 50% in size.  However, for small sizes, this would result in a bucketing that is too fine grained. @min_sstable_size@ defines a size threshold (in bytes) below which all SSTables belong to one unique bucket|
+| @min_threshold@                  | SizeTieredCompactionStrategy    | 4         | Minimum number of SSTables needed to start a minor compaction.|
+| @max_threshold@                  | SizeTieredCompactionStrategy    | 32        | Maximum number of SSTables processed by one minor compaction.|
+| @bucket_low@                     | SizeTieredCompactionStrategy    | 0.5       | Size tiered consider sstables to be within the same bucket if their size is within [average_size * @bucket_low@, average_size * @bucket_high@ ] (i.e the default groups sstable whose sizes diverges by at most 50%)|
+| @bucket_high@                    | SizeTieredCompactionStrategy    | 1.5       | Size tiered consider sstables to be within the same bucket if their size is within [average_size * @bucket_low@, average_size * @bucket_high@ ] (i.e the default groups sstable whose sizes diverges by at most 50%).|
+| @sstable_size_in_mb@             | LeveledCompactionStrategy       | 5MB       | The target size (in MB) for sstables in the leveled strategy. Note that while sstable sizes should stay less or equal to @sstable_size_in_mb@, it is possible to exceptionally have a larger sstable as during compaction, data for a given partition key are never split into 2 sstables|
 
 
 For the @compression@ property, the following default sub-options are available:
@@ -666,13 +667,15 @@ bc(syntax)..
 <where-clause> ::= <relation> ( AND <relation> )*
 
 <relation> ::= <identifier> <op> <term>
-             | '(' <identifier> (',' <identifier>)* ')' <op> '(' <term> (',' <term>)* ')'
+             | '(' <identifier> (',' <identifier>)* ')' <op> <term-tuple>
              | <identifier> IN '(' ( <term> ( ',' <term>)* )? ')'
+             | '(' <identifier> (',' <identifier>)* ')' IN '(' ( <term-tuple> ( ',' <term-tuple>)* )? ')'
              | TOKEN '(' <identifier> ( ',' <identifer>)* ')' <op> <term>
 
 <op> ::= '=' | '<' | '>' | '<=' | '>='
 <order-by> ::= <ordering> ( ',' <odering> )*
 <ordering> ::= <identifer> ( ASC | DESC )?
+<term-tuple> ::= '(' <term> (',' <term>)* ')'
 p. 
 __Sample:__
 
@@ -739,7 +742,7 @@ SELECT * FROM posts WHERE token(userid) > token('tom') AND token(userid) < token
 
 Moreover, the @IN@ relation is only allowed on the last column of the partition key and on the last column of the full primary key.
 
-It is also possible to "group" @CLUSTERING COLUMNS@ together in a relation, for instance:
+It is also possible to "group" @CLUSTERING COLUMNS@ together in a relation using the tuple notation. For instance:
 
 bc(sample). 
 SELECT * FROM posts WHERE userid='john doe' AND (blog_title, posted_at) > ('John''s Blog', '2012-01-01')
@@ -748,6 +751,11 @@ will request all rows that sorts after the one having "John's Blog" as @blog_til
 
 bc(sample). 
 SELECT * FROM posts WHERE userid='john doe' AND blog_title > 'John''s Blog' AND posted_at > '2012-01-01'
+
+The tuple notation may also be used for @IN@ clauses on @CLUSTERING COLUMNS@:
+
+bc(sample). 
+SELECT * FROM posts WHERE userid='john doe' AND (blog_title, posted_at) IN (('John''s Blog', '2012-01-01), ('Extreme Chess', '2014-06-01'))
 
 h4(#selectOrderBy). @<order-by>@
 
@@ -1163,15 +1171,19 @@ h2(#changes). Changes
 
 The following describes the addition/changes brought for each version of CQL.
 
+h3. 3.1.7
+
+* @SELECT@ statements now support selecting multiple rows in a single partition using an @IN@ clause on combinations of clustering columns.  See "SELECT WHERE":#selectWhere clauses.
+* @IF NOT EXISTS@ and @IF EXISTS@ syntax is now supported by @CREATE USER@ and @DROP USER@ statmenets, respectively.
+
 h3. 3.1.6
 
 * A new "@uuid@ method":#uuidFun has been added.
 * Support for @DELETE ... IF EXISTS@ syntax.
 
-
 h3. 3.1.5
 
-* It is now possible to group clustering columns in a relatiion, see "SELECT Where clauses":#selectWhere.
+* It is now possible to group clustering columns in a relatiion, see "SELECT WHERE":#selectWhere clauses.
 * Added support for @STATIC@ columns, see "static in CREATE TABLE":#createTableStatic.
 
 h3. 3.1.4
