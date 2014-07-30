@@ -130,10 +130,10 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
      * {@inheritDoc}
      */
     @Override
-    public void validate(List<IndexExpression> clause)
+    public void validate(IndexExpression indexExpression)
     {
-        Search search = search(clause);
-        search.validate(schema);
+        String json = UTF8Type.instance.compose(indexExpression.value);
+        Search.fromJson(json).validate(schema);
     }
 
     /**

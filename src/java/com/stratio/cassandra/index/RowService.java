@@ -68,6 +68,7 @@ public abstract class RowService
     protected final LuceneIndex luceneIndex;
     protected final FilterCache filterCache;
 
+    private static final int MAX_PAGE_SIZE = 100000;
     private static final int FILTERING_PAGE_SIZE = 1000;
 
     private TaskQueue indexQueue;
@@ -304,7 +305,7 @@ public abstract class RowService
 
         // Paginate search collecting documents
         List<ScoredDocument> scoredDocuments;
-        int pageSize = limit;
+        int pageSize = Math.min(limit, MAX_PAGE_SIZE);
         boolean maybeMore;
         do
         {
