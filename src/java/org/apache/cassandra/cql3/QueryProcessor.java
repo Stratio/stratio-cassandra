@@ -43,7 +43,7 @@ import org.apache.cassandra.utils.SemanticVersion;
 
 public class QueryProcessor implements QueryHandler
 {
-    public static final SemanticVersion CQL_VERSION = new SemanticVersion("3.1.6");
+    public static final SemanticVersion CQL_VERSION = new SemanticVersion("3.1.7");
 
     public static final QueryProcessor instance = new QueryProcessor();
 
@@ -205,7 +205,7 @@ public class QueryProcessor implements QueryHandler
             state.setKeyspace(Keyspace.SYSTEM_KS);
             CQLStatement statement = getStatement(query, state).statement;
             statement.validate(state);
-            ResultMessage result = statement.executeInternal(qState);
+            ResultMessage result = statement.executeInternal(qState, QueryOptions.DEFAULT);
             if (result instanceof ResultMessage.Rows)
                 return new UntypedResultSet(((ResultMessage.Rows)result).result);
             else
@@ -316,8 +316,7 @@ public class QueryProcessor implements QueryHandler
         batch.checkAccess(clientState);
         batch.validate(clientState);
 
-        batch.executeWithPerStatementVariables(options.getConsistency(), queryState, options.getValues());
-        return new ResultMessage.Void();
+        return batch.executeWithPerStatementVariables(options.getConsistency(), queryState, options.getValues());
     }
 
     public static ParsedStatement.Prepared getStatement(String queryStr, ClientState clientState)
