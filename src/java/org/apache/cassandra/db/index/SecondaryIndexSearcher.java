@@ -90,13 +90,13 @@ public abstract class SecondaryIndexSearcher
     }
 
     /**
-     * Validates the specified {@link IndexExpression} clause. It will throw a {@link RuntimeException} if the provided
+     * Validates the specified {@link IndexExpression}. It will throw a {@link RuntimeException} if the provided
      * clause is not valid for the index implementation.
      * 
-     * @param clause
+     * @param indexExpression
      *            An {@link IndexExpression} to be validated
      */
-    public void validate(List<IndexExpression> clause)
+    public void validate(IndexExpression indexExpression)
     {
     }
 

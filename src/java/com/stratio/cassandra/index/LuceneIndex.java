@@ -299,7 +299,7 @@ public class LuceneIndex
         if (sort != null)
         {
             FieldDoc start = after == null ? null : (FieldDoc) after;
-            TopFieldCollector tfc = TopFieldCollector.create(sort, count, start, false, false, false, false);
+            TopFieldCollector tfc = TopFieldCollector.create(sort, count, start, true, false, false, false);
             Collector collector = new EarlyTerminatingSortingCollector(tfc, sort, count);
             searcher.search(query, collector);
             return tfc.topDocs();

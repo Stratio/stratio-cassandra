@@ -1531,7 +1531,7 @@ public class NodeCmd
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,SSS");
             writer.append(sdf.format(new Date()) + ": " + cmdLine + "\n");
         }
-        catch (IOException ioe)
+        catch (IOException | IOError ioe)
         {
             //quietly ignore any errors about not being able to write out history
         }
@@ -1658,6 +1658,9 @@ public class NodeCmd
                     boolean primaryRange = cmd.hasOption(PRIMARY_RANGE_OPT.left);
                     Collection<String> dataCenters = null;
                     Collection<String> hosts = null;
+
+                    if (primaryRange && (localDC || specificDC || specificHosts))
+                        throw new RuntimeException("Primary range repair should be performed on all nodes in the cluster.");
 
                     if (specificDC)
                         dataCenters = Arrays.asList(cmd.getOptionValue(DC_REPAIR_OPT.left).split(","));

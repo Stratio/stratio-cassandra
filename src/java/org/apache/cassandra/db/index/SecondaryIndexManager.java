@@ -24,7 +24,6 @@ import java.util.concurrent.*;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.compaction.CompactionManager;
@@ -535,6 +534,51 @@ public class SecondaryIndexManager
         return indexSearchers;
     }
     
+    /**
+     * Validates an union of expression index types. It will throw a {@link RuntimeException} if 
+     * any of the expressions in the provided clause is not valid for its index implementation.
+     * @param clause the query clause
+     */
+    public void validateIndexSearchersForQuery(List<IndexExpression> clause)
+    {
+        // Group index expressions by index type
+        Map<String, Set<IndexExpression>> groupByIndexType = new HashMap<>();
+        for (IndexExpression ix : clause)
+        {
+            SecondaryIndex index = getIndexForColumn(ix.column_name);
+
+            if (index == null)
+                continue;
+
+            Set<IndexExpression> expressions = groupByIndexType.get(index.getClass().getCanonicalName());
+
+            if (expressions == null)
+            {
+                expressions = new HashSet<>();
+                groupByIndexType.put(index.getClass().getCanonicalName(), expressions);
+            }
+
+            expressions.add(ix);
+        }
+
+        // Validate index expressions per index type
+        for (Set<IndexExpression> indexExpressions : groupByIndexType.values())
+        {
+            // Get columns
+            Set<ByteBuffer> columns = new HashSet<>(indexExpressions.size());
+            for (IndexExpression indexExpression : indexExpressions)
+                columns.add(indexExpression.column_name);
+            
+            // Build searcher for index type
+            SecondaryIndex secondaryIndex = getIndexForColumn(columns.iterator().next());
+            SecondaryIndexSearcher searcher = secondaryIndex.createSecondaryIndexSearcher(columns);
+            
+            // Validate each index expression
+            for (IndexExpression indexExpression : indexExpressions)
+                searcher.validate(indexExpression);
+        }
+    }
+    
     public SecondaryIndexSearcher searcher(List<IndexExpression> clause) {
     	List<SecondaryIndexSearcher> indexSearchers = getIndexSearchersForQuery(clause);
 
@@ -646,7 +690,14 @@ public class SecondaryIndexManager
                     // where the row is invisible to both queries (the opposite seems preferable); see CASSANDRA-5540
                     if (!column.isMarkedForDelete(System.currentTimeMillis()))
                         ((PerColumnSecondaryIndex) index).insert(key.key, column);
-                    ((PerColumnSecondaryIndex) index).delete(key.key, oldColumn);
+
+                    // Usually we want to delete the old value from the index, except when
+                    // name/value/timestamp are all equal, but the columns themselves
+                    // are not (as is the case when overwriting expiring columns with
+                    // identical values and ttl) Then, we don't want to delete as the
+                    // tombstone will hide the new value we just inserted; see CASSANDRA-7268
+                    if (shouldCleanupOldValue(oldColumn, column))
+                        ((PerColumnSecondaryIndex) index).delete(key.key, oldColumn);
                 }
             }
         }
@@ -665,6 +716,22 @@ public class SecondaryIndexManager
         {
             for (SecondaryIndex index : rowLevelIndexMap.values())
                 ((PerRowSecondaryIndex) index).index(key.key, cf);
+        }
+
+        private boolean shouldCleanupOldValue(Column oldColumn, Column newColumn)
+        {
+            // If any one of name/value/timestamp are different, then we
+            // should delete from the index. If not, then we can infer that
+            // at least one of the columns is an ExpiringColumn and that the
+            // difference is in the expiry time. In this case, we don't want to
+            // delete the old value from the index as the tombstone we insert
+            // will just hide the inserted value.
+            // Completely identical columns (including expiring columns with
+            // identical ttl & localExpirationTime) will not get this far due
+            // to the oldColumn.equals(newColumn) in StandardUpdater.update
+            return !oldColumn.name().equals(newColumn.name())
+                || !oldColumn.value().equals(newColumn.value())
+                || oldColumn.timestamp() != newColumn.timestamp();
         }
     }
 }
