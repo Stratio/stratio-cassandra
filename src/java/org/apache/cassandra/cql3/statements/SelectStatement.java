@@ -1865,11 +1865,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
             } 
             catch (Exception e) 
             {
-                String exceptionMessage = e.getMessage();
-                if (exceptionMessage != null && !exceptionMessage.trim().isEmpty())
-                    throw new InvalidRequestException("Invalid index expression: " + e.getMessage());
-                else
-                    throw new InvalidRequestException("Invalid index expression");
+                throw new InvalidRequestException("Invalid index expression: " + e.getMessage());
             }
         }
 
