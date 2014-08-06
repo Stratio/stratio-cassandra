@@ -60,24 +60,24 @@ Syntax
 ------
 
 ~~~~ {prettyprint lang-meta}
-CREATE CUSTOM INDEX (IF NOT EXISTS)? \<index_name>
-                                  ON \<table_name> ( \<magic_column> )
+CREATE CUSTOM INDEX (IF NOT EXISTS)? <index_name>
+                                  ON <table_name> ( <magic_column> )
                                USING 'org.apache.cassandra.db.index.stratio.RowIndex'
-                        WITH OPTIONS = \<options>
+                        WITH OPTIONS = <options>
 ~~~~
 
 where:
 
--   \<magic_column> is the name of a text column that does not contain any data and will be used to show the scoring for each resulting row of a query,
--   \<options> is a JSON object:
+-   &lt;magic_column> is the name of a text column that does not contain any data and will be used to show the scoring for each resulting row of a query,
+-   &lt;options> is a JSON object:
 
 ~~~~ {prettyprint lang-meta}
-\<options> := { ('refresh_seconds'    : '\<int_value>',)?
-               ('num_cached_filters' : '\<int_value>',)?
-               ('ram_buffer_mb'      : '\<int_value>',)?
-               ('max_merge_mb'       : '\<int_value>',)?
-               ('max_cached_mb'      : '\<int_value>',)?
-               'schema'              : '\<schema_definition>'};
+<options> := { ('refresh_seconds'    : '<int_value>',)?
+               ('num_cached_filters' : '<int_value>',)?
+               ('ram_buffer_mb'      : '<int_value>',)?
+               ('max_merge_mb'       : '<int_value>',)?
+               ('max_cached_mb'      : '<int_value>',)?
+               'schema'              : '<schema_definition>'};
 ~~~~
 
 Options, except “schema”, take a positive integer value enclosed in single quotes:
@@ -90,17 +90,17 @@ Options, except “schema”, take a positive integer value enclosed in single q
 -   **schema**: see below
 
 ~~~~ {prettyprint lang-meta}
-\<schema_definition> := {
-    (default_analyzer : "\<analyzer_class_name>",)?
-    fields : { \<field_definition> (, \<field_definition>)* }
+<schema_definition> := {
+    (default_analyzer : "<analyzer_class_name>",)?
+    fields : { <field_definition> (, <field_definition>)* }
 }
 ~~~~
 
 Where default_analyzer defaults to ‘org.apache.lucene.analysis.standard.StandardAnalyzer’.
 
 ~~~~ {prettyprint lang-meta}
-\<field_definition> := {
-    type : "\<field_type>" (, \<option> : "\<value>")*
+<field_definition> := {
+    type : "<field_type>" (, <option> : "<value>")*
 }
 ~~~~
 
@@ -200,28 +200,28 @@ Queries
 Syntax:
 
 ~~~~ {prettyprint lang-meta}
-SELECT ( \<fields> | * )
-FROM \<table_name>
-WHERE \<magic_column> = '{ (   query  : \<query>  )?
-                          ( , filter : \<filter> )?
-                          ( , sort   : \<sort>   )?
+SELECT ( <fields> | * )
+FROM <table_name>
+WHERE <magic_column> = '{ (   query  : <query>  )?
+                          ( , filter : <filter> )?
+                          ( , sort   : <sort>   )?
                         }';
 ~~~~
 
-where \<query\> and \<filter\> are a JSON object:
+where &lt;query> and &lt;filter> are a JSON object:
 
 ~~~~ {prettyprint lang-meta}
-\<query> := { type : \<type> (, \<option> : ( \<value> | \<value_list> ) )+ }
+<query> := { type : <type> (, <option> : ( <value> | <value_list> ) )+ }
 ~~~~
 
-and \<sort\> is another JSON object:
+and &lt;sort> is another JSON object:
 
 ~~~~ {prettyprint lang-meta}
-    \<sort> := { fields : \<sort_field> (, \<sort_field> )* }
-    \<sort_field> := { field : \<field> (, reverse : \<reverse> )? }
+    <sort> := { fields : <sort_field> (, <sort_field> )* }
+    <sort_field> := { field : <field> (, reverse : <reverse> )? }
 ~~~~
 
-When searching by \<query\>, results are returned ***sorted by descending relevance*** without pagination. The results will be located in the column ‘stratio_relevance’.
+When searching by &lt;query>, results are returned ***sorted by descending relevance*** without pagination. The results will be located in the column ‘stratio_relevance’.
 
 Filter types and options are the same as the query ones. The difference with queries is that filters have no effect on scoring.
 
@@ -299,7 +299,7 @@ In addition to the options described in the table, all query types have a “**b
 <li><strong>lower</strong> (default = $-\infty$ for number): lower bound of the range.</li>
 <li><strong>include_lower</strong> (default = false): if the left value is included in the results (>=)</li>
 <li><strong>upper</strong> (default = $+\infty$ for number): upper bound of the range.</li>
-<li><strong>include_upper</strong> (default = false): if the right value is included in the results (\<=).</li>
+<li><strong>include_upper</strong> (default = false): if the right value is included in the results (&lt;=).</li>
 </ul></td>
 </tr>
 <tr class="odd">
@@ -327,12 +327,12 @@ Boolean query
 Syntax:
 
 ~~~~ {prettyprint lang-meta}
-SELECT ( \<fields> | * )
-FROM \<table>
-WHERE \<magic_column> = '{ query : {
+SELECT ( <fields> | * )
+FROM <table>
+WHERE <magic_column> = '{ query : {
                            type : "boolean",
-                           ( not: \<query_list> , )?
-                           ( must | should ) : \<query_list> }}';
+                           ( not: <query_list> , )?
+                           ( must | should ) : <query_list> }}';
 ~~~~
 
 where:
@@ -379,22 +379,22 @@ Fuzzy query
 Syntax:
 
 ~~~~ {prettyprint lang-meta}
-SELECT ( \<fields> | * )
-FROM \<table>
-WHERE \<magic_column> = '{ query : {
+SELECT ( <fields> | * )
+FROM <table>
+WHERE <magic_column> = '{ query : {
                             type  : "fuzzy",
-                            field : \<fieldname> ,
-                            value : \<value>
-                            (, max_edits     : \<max_edits> )?
-                            (, prefix_length : \<prefix_length> )?
-                            (, max_expansions: \<max_expansion> )?
-                            (, transpositions: \<transposition> )?
+                            field : <fieldname> ,
+                            value : <value>
+                            (, max_edits     : <max_edits> )?
+                            (, prefix_length : <prefix_length> )?
+                            (, max_expansions: <max_expansion> )?
+                            (, transpositions: <transposition> )?
                           }}';
 ~~~~
 
 where:
 
--   **max_edits** (default = 2): a integer value between 0 and 2. Will return rows which distance from \<value\> to \<field\> content has a distance of at most \<max_edits\>. Distance will be interpreted according to the value of “transpositions”.
+-   **max_edits** (default = 2): a integer value between 0 and 2. Will return rows which distance from &lt;value> to &lt;field> content has a distance of at most &lt;max_edits>. Distance will be interpreted according to the value of “transpositions”.
 -   **prefix_length** (default = 0): an integer value being the length of the common non-fuzzy prefix
 -   **max_expansions** (default = 50): an integer for the maximum number of terms to match
 -   **transpositions** (default = true): if transpositions should be treated as a primitive edit operation ([Damerau-Levenshtein distance](http://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance "Wikipedia article on Damerau-Levenshtein Distance")). When false, comparisons will implement the classic [Levenshtein distance](http://en.wikipedia.org/wiki/Levenshtein_distance "Wikipedia article on Levenshtein Distance").
@@ -426,12 +426,12 @@ Match query
 Syntax:
 
 ~~~~ {prettyprint lang-meta}
-SELECT ( \<fields> | * )
-FROM \<table>
-WHERE \<magic_column> = '{ query : {
+SELECT ( <fields> | * )
+FROM <table>
+WHERE <magic_column> = '{ query : {
                             type  : "match",
-                            field : \<fieldname> ,
-                            value : \<value> }}';
+                            field : <fieldname> ,
+                            value : <value> }}';
 ~~~~
 
 Example 1: will return rows where name matches “Alicia”
@@ -470,13 +470,13 @@ Phrase query
 Syntax:
 
 ~~~~ {prettyprint lang-meta}
-SELECT ( \<fields> | * )
-FROM \<table>
-WHERE \<magic_column> = '{ query : {
+SELECT ( <fields> | * )
+FROM <table>
+WHERE <magic_column> = '{ query : {
                             type  :"phrase",
-                            field : \<fieldname> ,
-                            values : \<value_list>
-                            (, slop : \<slop> )?
+                            field : <fieldname> ,
+                            values : <value_list>
+                            (, slop : <slop> )?
                         }}';
 ~~~~
 
@@ -512,12 +512,12 @@ Prefix query
 Syntax:
 
 ~~~~ {prettyprint lang-meta}
-SELECT ( \<fields> | * )
-FROM \<table>
-WHERE \<magic_column> = '{ query : {
+SELECT ( <fields> | * )
+FROM <table>
+WHERE <magic_column> = '{ query : {
                             type  : "prefix",
-                            field : \<fieldname> ,
-                            value : \<value> }}';
+                            field : <fieldname> ,
+                            value : <value> }}';
 ~~~~
 
 Example: will return rows where “phrase” contains a word starting with “lu”. If the column is indexed as “text” and uses an analyzer, words ignored by the analyzer will not be retrieved.
@@ -539,9 +539,9 @@ Syntax:
 SELECT * FROM test.users
 WHERE stratio_col = '{query : {
                         type    : "range",
-                        field   : \<fieldname>
-                        (, lower : \<min> , include_lower : \<min_included> )?
-                        (, upper : \<max> , include_upper : \<max_included> )?
+                        field   : <fieldname>
+                        (, lower : <min> , include_lower : <min_included> )?
+                        (, upper : <max> , include_upper : <max_included> )?
                      }}';
 ~~~~
 
@@ -615,8 +615,8 @@ Syntax:
 SELECT * FROM test.users
 WHERE stratio_col = '{query : {
                         type  : "regexp",
-                        field : \<fieldname>,
-                        value : \<regexp>
+                        field : <fieldname>,
+                        value : <regexp>
                      }}';
 ~~~~
 
@@ -643,8 +643,8 @@ Syntax:
 SELECT * FROM test.users
 WHERE stratio_col = '{query : {
                         type    : "wildcard" ,
-                        field   : \<fieldname> ,
-                        value   : \<wildcard_exp>
+                        field   : <fieldname> ,
+                        value   : <wildcard_exp>
                      }}';
 ~~~~
 
@@ -778,19 +778,19 @@ CQL to Field type
             range</td>
     </tr>
     <tr>
-        <td>list\<T></td>
+        <td>list&lt;T></td>
         <td>A collection of one or more ordered elements</td>
         <td>Type of list elements</td>
         <td><em>see element type</em></td>
     </tr>
     <tr>
-        <td>map\<K,V></td>
+        <td>map&lt;K,V></td>
         <td>A JSON-style array of literals: { literal : literal, literal : literal … }</td>
         <td>Type of values</td>
         <td><em>see element type</em></td>
     </tr>
     <tr>
-        <td>set\<T></td>
+        <td>set&lt;T></td>
         <td>A collection of one or more elements</td>
         <td>Type of set elements</td>
         <td><em>see element type</em></td>
