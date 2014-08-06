@@ -155,12 +155,15 @@ Field definition options depend on the field type. Details and default values ar
     </tbody>
 </table>
 
-Note that Cassandra allows one custom index per table. On the other hand, Cassandra does not allow a modify operation on indexes. To modify an index it needs to be deleted first and created again.
+Note that Cassandra allows one custom index per table. On the other hand, Cassandra does not allow a modify 
+operation on indexes. To modify an index it needs to be deleted first and created again.
 
 Example
 -------
 
-This code below and the one for creating the corresponding keyspace and table is available in a CQL script that can be sourced from the Cassandra shell: [test-users-create.cql](http://docs.openstratio.org/resources/cql-scripts/test-users-create.cql "Download CQL script for creating keyspace, table and index").
+This code below and the one for creating the corresponding keyspace and table is available in a CQL script that 
+can be sourced from the Cassandra shell: 
+[test-users-create.cql](resources/test-users-create.cql "Download CQL script for creating keyspace, table and index").
 
 ~~~~ {prettyprint lang-meta}
 CREATE CUSTOM INDEX IF NOT EXISTS users_index
@@ -229,7 +232,7 @@ Sort option is used to specify the order in which the indexed rows will be trave
 
 If no query or sorting options are specified then the results are returned in the Cassandra’s natural order, which is defined by the partitioner and the column name comparator.
 
-Types of query and their options are summarized in the table below. Details for each of them are available in individual sections and the examples can be downloaded as a CQL script: [extended-search-examples.cql](http://docs.openstratio.org/resources/cql-scripts/extended-search-examples.cql "Download CQL script of examples").
+Types of query and their options are summarized in the table below. Details for each of them are available in individual sections and the examples can be downloaded as a CQL script: [extended-search-examples.cql](resources/extended-search-examples.cql "Download CQL script of examples").
 
 In addition to the options described in the table, all query types have a “**boost**” option that acts as a weight on the resulting score.
 
