@@ -59,26 +59,26 @@ Index Creation
 Syntax
 ------
 
-~~~~ {prettyprint lang-meta}
+```sql
 CREATE CUSTOM INDEX (IF NOT EXISTS)? <index_name>
                                   ON <table_name> ( <magic_column> )
                                USING 'org.apache.cassandra.db.index.stratio.RowIndex'
                         WITH OPTIONS = <options>
-~~~~
+```
 
 where:
 
 -   &lt;magic_column> is the name of a text column that does not contain any data and will be used to show the scoring for each resulting row of a query,
 -   &lt;options> is a JSON object:
 
-~~~~ {prettyprint lang-meta}
+```sql
 <options> := { ('refresh_seconds'    : '<int_value>',)?
                ('num_cached_filters' : '<int_value>',)?
                ('ram_buffer_mb'      : '<int_value>',)?
                ('max_merge_mb'       : '<int_value>',)?
                ('max_cached_mb'      : '<int_value>',)?
                'schema'              : '<schema_definition>'};
-~~~~
+```
 
 Options, except “schema”, take a positive integer value enclosed in single quotes:
 
@@ -89,20 +89,20 @@ Options, except “schema”, take a positive integer value enclosed in single q
 -   **max_cached_mb**: defaults to ’30′.
 -   **schema**: see below
 
-~~~~ {prettyprint lang-meta}
+```sql
 <schema_definition> := {
     (default_analyzer : "<analyzer_class_name>",)?
     fields : { <field_definition> (, <field_definition>)* }
 }
-~~~~
+```
 
 Where default_analyzer defaults to ‘org.apache.lucene.analysis.standard.StandardAnalyzer’.
 
-~~~~ {prettyprint lang-meta}
+```sql
 <field_definition> := {
     type : "<field_type>" (, <option> : "<value>")*
 }
-~~~~
+```
 
 Field definition options depend on the field type. Details and default values are listed in the table below.
 
@@ -165,7 +165,7 @@ This code below and the one for creating the corresponding keyspace and table is
 can be sourced from the Cassandra shell: 
 [test-users-create.cql](resources/test-users-create.cql "Download CQL script for creating keyspace, table and index").
 
-~~~~ {prettyprint lang-meta}
+```sql
 CREATE CUSTOM INDEX IF NOT EXISTS users_index
 ON test.users (stratio_col)
 USING 'org.apache.cassandra.db.index.stratio.RowIndex'
@@ -195,34 +195,34 @@ WITH OPTIONS = {
         }
     }'
 };
-~~~~
+```
 
 Queries
 =======
 
 Syntax:
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT ( <fields> | * )
 FROM <table_name>
 WHERE <magic_column> = '{ (   query  : <query>  )?
                           ( , filter : <filter> )?
                           ( , sort   : <sort>   )?
                         }';
-~~~~
+```
 
 where &lt;query> and &lt;filter> are a JSON object:
 
-~~~~ {prettyprint lang-meta}
+```sql
 <query> := { type : <type> (, <option> : ( <value> | <value_list> ) )+ }
-~~~~
+```
 
 and &lt;sort> is another JSON object:
 
-~~~~ {prettyprint lang-meta}
+```sql
     <sort> := { fields : <sort_field> (, <sort_field> )* }
     <sort_field> := { field : <field> (, reverse : <reverse> )? }
-~~~~
+```
 
 When searching by &lt;query>, results are returned ***sorted by descending relevance*** without pagination. The results will be located in the column ‘stratio_relevance’.
 
@@ -329,14 +329,14 @@ Boolean query
 
 Syntax:
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT ( <fields> | * )
 FROM <table>
 WHERE <magic_column> = '{ query : {
                            type : "boolean",
                            ( not: <query_list> , )?
                            ( must | should ) : <query_list> }}';
-~~~~
+```
 
 where:
 
@@ -348,40 +348,40 @@ Since "not" will be applied to the results of a "must" or "should" condition, it
 
 Example 1: will return rows where name ends with “a” AND food starts with “tu”
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT * FROM test.users
 WHERE stratio_col = '{query : {
                         type : "boolean",
                         must : [{type : "wildcard", field : "name", value : "*a"},
                                 {type : "wildcard", field : "food", value : "tu*"}]}}';
-~~~~
+```
 
 Example 2: will return rows where food starts with “tu” but name does not end with “a”
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT * FROM test.users
 WHERE stratio_col = '{query : {
                         type : "boolean",
                         not  : [{type : "wildcard", field : "name", value : "*a"}],
                         must : [{type : "wildcard", field : "food", value : "tu*"}]}}';
-~~~~
+```
 
 Example 3: will return rows where name ends with “a” or food starts with “tu”
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT * FROM test.users
 WHERE stratio_col = '{query : {
                         type   : "boolean",
                         should : [{type : "wildcard", field : "name", value : "*a"},
                                   {type : "wildcard", field : "food", value : "tu*"}]}}';
-~~~~
+```
 
 Fuzzy query
 -----------
 
 Syntax:
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT ( <fields> | * )
 FROM <table>
 WHERE <magic_column> = '{ query : {
@@ -393,7 +393,7 @@ WHERE <magic_column> = '{ query : {
                             (, max_expansions: <max_expansion> )?
                             (, transpositions: <transposition> )?
                           }}';
-~~~~
+```
 
 where:
 
@@ -404,75 +404,75 @@ where:
 
 Example 1: will return any rows where “phrase” contains a word that differs in one edit operation from “puma”, such as “pumas”.
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT * FROM test.users
 WHERE stratio_col = '{query : { type      : "fuzzy",
                                 field     : "phrase",
                                 value     : "puma",
                                 max_edits : 1 }}';
-~~~~
+```
 
 Example 2: same as example 1 but will limit the results to rows where phrase contains a word that starts with “pu”.
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT * FROM test.users
 WHERE stratio_col = '{query : { type          : "fuzzy",
                                 field         : "phrase",
                                 value         : "puma",
                                 max_edits     : 1,
                                 prefix_length : 2 }}';
-~~~~
+```
 
 Match query
 -----------
 
 Syntax:
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT ( <fields> | * )
 FROM <table>
 WHERE <magic_column> = '{ query : {
                             type  : "match",
                             field : <fieldname> ,
                             value : <value> }}';
-~~~~
+```
 
 Example 1: will return rows where name matches “Alicia”
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT * FROM test.users
 WHERE stratio_col = '{query : {
                         type  : "match",
                         field : "name",
                         value : "Alicia" }}';
-~~~~
+```
 
 Example 2: will return rows where phrase contains “mancha”
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT * FROM test.users
 WHERE stratio_col = '{query : {
                         type  : "match",
                         field : "phrase",
                         value : "mancha" }}';
-~~~~
+```
 
 Example 3: will return rows where date matches “2014/01/01″
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT * FROM test.users
 WHERE stratio_col = '{query : {
                         type  : "match",
                         field : "date",
                         value : "2014/01/01" }}';
-~~~~
+```
 
 Phrase query
 ------------
 
 Syntax:
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT ( <fields> | * )
 FROM <table>
 WHERE <magic_column> = '{ query : {
@@ -481,7 +481,7 @@ WHERE <magic_column> = '{ query : {
                             values : <value_list>
                             (, slop : <slop> )?
                         }}';
-~~~~
+```
 
 where:
 
@@ -490,55 +490,55 @@ where:
 
 Example 1: will return rows where “phrase” contains the word “camisa” followed by the word “manchada”.
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT * FROM test.users
 WHERE stratio_col = '{query : {
                         type   : "phrase",
                         field  : "phrase",
                         values : ["camisa", "manchada"] }}';
-~~~~
+```
 
 Example 2: will return rows where “phrase” contains the word “mancha” followed by the word “camisa” having 0 to 2 words in between.
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT * FROM test.users
 WHERE stratio_col = '{query : {
                         type   : "phrase",
                         field  : "phrase",
                         values : ["mancha", "camisa"],
                         slop   : 2 }}';
-~~~~
+```
 
 Prefix query
 ------------
 
 Syntax:
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT ( <fields> | * )
 FROM <table>
 WHERE <magic_column> = '{ query : {
                             type  : "prefix",
                             field : <fieldname> ,
                             value : <value> }}';
-~~~~
+```
 
 Example: will return rows where “phrase” contains a word starting with “lu”. If the column is indexed as “text” and uses an analyzer, words ignored by the analyzer will not be retrieved.
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT * FROM test.users
 WHERE stratio_col = '{query : {
                         type          : "prefix",
                         field         : "phrase",
                         value         : "lu" }}';
-~~~~
+```
 
 Range query
 -----------
 
 Syntax:
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT * FROM test.users
 WHERE stratio_col = '{query : {
                         type    : "range",
@@ -546,7 +546,7 @@ WHERE stratio_col = '{query : {
                         (, lower : <min> , include_lower : <min_included> )?
                         (, upper : <max> , include_upper : <max_included> )?
                      }}';
-~~~~
+```
 
 where:
 
@@ -563,29 +563,29 @@ both are omitted than all rows will be returned.
 
 Example 1: will return rows where $age \\in [1,+\\infty)$
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT * FROM test.users
 WHERE stratio_col = '{query : {
                         type          : "range",
                         field         : "age",
                         lower         : 1,
                         include_lower : true }}';
-~~~~
+```
 
 Example 2: will return rows where $age \\in (-\\infty,0]$
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT * FROM test.users
 WHERE stratio_col = '{query : {
                         type          : "range",
                         field         : "age",
                         upper         : 0,
                         include_upper : true }}';
-~~~~
+```
 
 Example 3: will return rows where $age \\in [-1,1]$
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT * FROM test.users
 WHERE stratio_col = '{query : {
                         type          : "range",
@@ -594,11 +594,11 @@ WHERE stratio_col = '{query : {
                         upper         : 1,
                         include_lower : true,
                         include_upper : true }}';
-~~~~
+```
 
 Example 4: will return rows where $date \\ge \\text"2014/01/01" \\land date \\le \\text"2014/01/02"$
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT * FROM test.users
 WHERE stratio_col = '{query : {
                         type          : "range",
@@ -607,21 +607,21 @@ WHERE stratio_col = '{query : {
                         upper         : "2014/01/02",
                         include_lower : true,
                         include_upper : true }}';
-~~~~
+```
 
 Regexp query
 ------------
 
 Syntax:
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT * FROM test.users
 WHERE stratio_col = '{query : {
                         type  : "regexp",
                         field : <fieldname>,
                         value : <regexp>
                      }}';
-~~~~
+```
 
 where:
 
@@ -629,27 +629,27 @@ where:
 
 Example: will return rows where name contains a word that starts with “p” and a vowel repeated twice (e.g. “pape”).
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT * FROM test.users
 WHERE stratio_col = '{query : {
                         type  : "regexp",
                         field : "name",
                         value : "[J][aeiou]{2}.*" }}';
-~~~~
+```
 
 Wildcard query
 --------------
 
 Syntax:
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT * FROM test.users
 WHERE stratio_col = '{query : {
                         type    : "wildcard" ,
                         field   : <fieldname> ,
                         value   : <wildcard_exp>
                      }}';
-~~~~
+```
 
 where:
 
@@ -657,13 +657,13 @@ where:
 
 Example: will return rows where food starts with or is “tu”.
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT * FROM test.users
 WHERE stratio_col = '{query : {
                         type  : "wildcard",
                         field : "food",
                         value : "tu*" }}';
-~~~~
+```
 
 Other Interesting Queries
 =========================
@@ -675,12 +675,12 @@ The token function allows computing the token for a given partition key. The pri
 
 Example: will retrieve rows which tokens are greater than (‘Alicia’, ‘female’) and then test them against the match condition.
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT name,gender
   FROM test.users
  WHERE stratio_col='{filter : {type : "match", field : "food", value : "chips"}}'
    AND token(name, gender) > token('Alicia', 'female');
-~~~~
+```
 
 Server Side Filtering
 ---------------------
@@ -689,12 +689,12 @@ By default, CQL does not allow selecting queries to filter on non-indexed column
 
 Example: will retrieve rows where name starts with “J” and number is greater than 10. Note that number is not part of any index, custom or secondary.
 
-~~~~ {prettyprint lang-meta}
+```sql
 SELECT name, number
   FROM test.users
  WHERE stratio_col = '{query : {type : "wildcard", field : "name", value: "J*"}}'
    AND number > 10 ALLOW FILTERING;
-~~~~
+```
 
 Datatypes Mapping
 =================
