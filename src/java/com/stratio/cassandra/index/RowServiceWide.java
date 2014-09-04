@@ -104,7 +104,6 @@ public class RowServiceWide extends RowService
     @Override
     public void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp) throws IOException
     {
-
         DeletionInfo deletionInfo = columnFamily.deletionInfo();
         DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(key);
 
@@ -170,7 +169,6 @@ public class RowServiceWide extends RowService
     @Override
     protected Row row(ScoredDocument scoredDocument, long timestamp)
     {
-
         // Extract row from document
         Document document = scoredDocument.getDocument();
         DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
@@ -239,14 +237,20 @@ public class RowServiceWide extends RowService
             if (clusteringKeyFilter == null)
             {
                 return null;
-            } else {
+            }
+            else
+            {
                 return clusteringKeyFilter;
             }
-        } else {
+        }
+        else
+        {
             if (clusteringKeyFilter == null)
             {
                 return tokenFilter;
-            } else {
+            }
+            else
+            {
                 Filter[] filters = new Filter[] { tokenFilter, clusteringKeyFilter };
                 return new ChainedFilter(filters, ChainedFilter.AND);
             }
