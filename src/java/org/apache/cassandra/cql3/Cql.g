@@ -229,6 +229,7 @@ cqlStatement returns [ParsedStatement stmt]
     | st22=listUsersStatement          { $stmt = st22; }
     | st23=createTriggerStatement      { $stmt = st23; }
     | st24=dropTriggerStatement        { $stmt = st24; }
+    | st25=calculateSplitsStatement    { $stmt = st25; }
     ;
 
 /*
@@ -553,6 +554,12 @@ createTriggerStatement returns [CreateTriggerStatement expr]
 dropTriggerStatement returns [DropTriggerStatement expr]
     : K_DROP K_TRIGGER (name=IDENT) K_ON cf=columnFamilyName
       { $expr = new DropTriggerStatement(cf, $name.text); }
+    ;
+    
+calculateSplitsStatement returns [CalculateSplitsStatement expr]
+    @init { Integer splitSize = null; }
+    : K_CALCULATE K_SPLITS K_FROM cf=columnFamilyName K_ESTIMATING rows=INTEGER { splitSize= Integer.parseInt($rows.text);}
+      { $expr = new CalculateSplitsStatement(cf, splitSize); }
     ;
 
 /**
@@ -1062,6 +1069,8 @@ unreserved_function_keyword returns [String str]
         | K_TRIGGER
         | K_DISTINCT
         | K_STATIC
+        | K_SPLITS
+        | K_ESTIMATING
         ) { $str = $k.text; }
     | t=native_type { $str = t.toString(); }
     ;
@@ -1166,6 +1175,10 @@ K_INFINITY:    I N F I N I T Y;
 
 K_TRIGGER:     T R I G G E R;
 K_STATIC:      S T A T I C;
+
+K_CALCULATE:   C A L C U L A T E;
+K_SPLITS:      S P L I T S;
+K_ESTIMATING:  E S T I M A T I N G;
 
 // Case-insensitive alpha characters
 fragment A: ('a'|'A');

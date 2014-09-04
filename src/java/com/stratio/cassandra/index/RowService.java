@@ -68,6 +68,7 @@ public abstract class RowService
     protected final LuceneIndex luceneIndex;
     protected final FilterCache filterCache;
 
+    /** The max number of rows to be read per iteration */
     private static final int MAX_PAGE_SIZE = 100000;
     private static final int FILTERING_PAGE_SIZE = 1000;
 
@@ -302,6 +303,7 @@ public abstract class RowService
         ScoredDocument lastDoc = null; // The last search result
         long searchTime = 0;
         long collectTime = 0;
+        int numPages = 0;
 
         // Paginate search collecting documents
         List<ScoredDocument> scoredDocuments;
@@ -330,12 +332,14 @@ public abstract class RowService
             // Setup next iteration
             maybeMore = scoredDocuments.size() == pageSize;
             pageSize = Math.max(FILTERING_PAGE_SIZE, rows.size() - limit);
+            numPages++;
 
             // Iterate while there are still documents to read and we don't have enough rows
         } while (maybeMore && rows.size() < limit);
 
         Log.debug("Lucene time: %d ms", searchTime);
         Log.debug("Cassandra time: %d ms", collectTime);
+        Log.debug("Collected %d rows in %d pages", rows.size(), numPages);
 
         return rows;
     }
@@ -539,6 +543,11 @@ public abstract class RowService
         {
             return new RowsComparatorNatural(metadata);
         }
+    }
+    
+    public RowsComparator naturalComparator() 
+    {
+        return new RowsComparatorNatural(metadata);
     }
 
     /**

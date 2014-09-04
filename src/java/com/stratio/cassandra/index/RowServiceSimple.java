@@ -65,7 +65,6 @@ public class RowServiceSimple extends RowService
     public RowServiceSimple(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) throws IOException
     {
         super(baseCfs, columnDefinition);
-
         luceneIndex.init(sort());
     }
 
@@ -132,7 +131,6 @@ public class RowServiceSimple extends RowService
     @Override
     protected Row row(ScoredDocument scoredDocument, long timestamp)
     {
-
         // Extract row from document
         Document document = scoredDocument.getDocument();
         DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
@@ -199,7 +197,8 @@ public class RowServiceSimple extends RowService
         ByteBuffer columnName = nameType.builder().add(indexedColumnName.key).build();
         Column column = cf.getColumn(columnName);
         ByteBuffer columnValue = column.value();
-        return Float.parseFloat(UTF8Type.instance.compose(columnValue));
+        String stringValue = UTF8Type.instance.compose(columnValue);
+        return Float.parseFloat(stringValue);
     }
 
 }
