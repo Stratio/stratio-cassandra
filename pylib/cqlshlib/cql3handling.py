@@ -53,11 +53,12 @@ class Cql3ParsingRuleSet(CqlParsingRuleSet):
         'keyspace', 'schema', 'columnfamily', 'table', 'index', 'on', 'drop',
         'primary', 'into', 'values', 'timestamp', 'ttl', 'alter', 'add', 'type',
         'compact', 'storage', 'order', 'by', 'asc', 'desc', 'clustering',
-        'token', 'writetime', 'map', 'list', 'to', 'custom', 'if', 'not'
+        'token', 'writetime', 'map', 'list', 'to', 'custom', 'if', 'not',
+        'calculate', 'splits', 'estimating'
     ))
 
     unreserved_keywords = set((
-        'key', 'clustering', 'ttl', 'compact', 'storage', 'type', 'values', 'custom', 'exists'
+        'key', 'clustering', 'ttl', 'compact', 'storage', 'type', 'values', 'custom', 'exists', 'splits', 'estimating'
     ))
 
     columnfamily_layout_options = (
@@ -241,6 +242,7 @@ JUNK ::= /([ \t\r\f\v]+|(--|[/][/])[^\n\r]*([\n\r]|$)|[/][*].*?[*][/])/ ;
                   | <schemaChangeStatement>
                   | <authenticationStatement>
                   | <authorizationStatement>
+                  | <calculateStatement>
                   ;
 
 <dataChangeStatement> ::= <insertStatement>
@@ -970,6 +972,9 @@ syntax_rules += r'''
                | <unreservedKeyword>;
 
 <dropIndexStatement> ::= "DROP" "INDEX" ("IF" "EXISTS")? idx=<indexName>
+                       ;
+
+<calculateStatement> ::= "CALCULATE" "SPLITS" "FROM" cf=<columnFamilyName> "ESTIMATING"  <wholenumber>
                        ;
 '''
 

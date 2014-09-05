@@ -183,6 +183,14 @@ class CQLHelpTopics(object):
         TRUNCATE accepts a single argument for the table name, and permanently
         removes all data from it.
         """
+        
+    def help_calculate_splits(self):
+        print """
+        CALCULATE SPLITS FROM <tablename> ESTIMATING <splitsize>;
+
+        CALCULATE SPLITS returns a list of data splits. Each split is composed 
+        by a token ranges and its endpoints.
+        """
 
     def help_create(self):
         print """
