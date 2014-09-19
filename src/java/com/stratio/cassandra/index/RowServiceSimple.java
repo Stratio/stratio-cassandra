@@ -199,7 +199,9 @@ public class RowServiceSimple extends RowService
         ByteBuffer columnName = nameType.builder().add(indexedColumnName.key).build();
         Column column = cf.getColumn(columnName);
         ByteBuffer columnValue = column.value();
-        return Float.parseFloat(UTF8Type.instance.compose(columnValue));
+        String stringValue = UTF8Type.instance.compose(columnValue);
+        return Float.parseFloat(stringValue);
+
     }
 
 }
