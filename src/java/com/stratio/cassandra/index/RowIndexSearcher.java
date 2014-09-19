@@ -224,7 +224,6 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         Log.debug("Sorted %d rows to %d with comparator %s in %d ms", startSize, endSize, comparatorName, endTime);
         
         return result;
-
     }
 
     /**

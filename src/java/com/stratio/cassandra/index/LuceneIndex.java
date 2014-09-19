@@ -208,7 +208,7 @@ public class LuceneIndex
     }
 
     /**
-     * Commits all changes to an index, waits for pending merges to complete, and closes all associated resources.
+     * Commits all changes to the index, waits for pending merges to complete, and closes all associated resources.
      */
     public void close() throws IOException
     {
@@ -221,7 +221,7 @@ public class LuceneIndex
     }
 
     /**
-     * Closes and removes all the index files.
+     * Closes the index and removes all its files.
      */
     public void drop() throws IOException
     {
@@ -264,7 +264,6 @@ public class LuceneIndex
         IndexSearcher searcher = searcherManager.acquire();
         try
         {
-
             // Search
             ScoreDoc start = after == null ? null : after.getScoreDoc();
             TopDocs topDocs = topDocs(searcher, query, sort, start, count);
@@ -291,6 +290,7 @@ public class LuceneIndex
     private TopDocs topDocs(IndexSearcher searcher, Query query, Sort sort, ScoreDoc after, int count)
             throws IOException
     {
+        // Use default sort if the query doesn't use relevance
         if (sort == null && query instanceof ConstantScoreQuery)
         {
             sort = this.sort;
@@ -310,6 +310,12 @@ public class LuceneIndex
         }
     }
 
+    /**
+     * Optimizes the index forcing merge segments leaving one single segment. This operation blocks until all merging
+     * completes.
+     * 
+     * @throws IOException
+     */
     public void optimize() throws IOException
     {
         indexWriter.forceMerge(1, true);
