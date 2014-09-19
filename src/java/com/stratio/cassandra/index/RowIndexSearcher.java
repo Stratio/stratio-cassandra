@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.Row;
@@ -204,10 +205,25 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
     @Override
     public List<Row> sort(List<IndexExpression> clause, List<Row> rows)
     {
+        int startSize = rows.size();
+        long startTime = System.currentTimeMillis();
+        
+        // Remove duplicates
+        TreeSet<Row> set = new TreeSet<>(rowService.naturalComparator());
+        set.addAll(rows);
+        List<Row> result = new ArrayList<>(set);
+        
+        // Sort
         Search search = search(clause);
         Comparator<Row> comparator = rowService.comparator(search);
-        Collections.sort(rows, comparator);
-        return rows;
+        Collections.sort(result, comparator);        
+        String comparatorName = comparator.getClass().getSimpleName();
+        int endSize = result.size();
+        long endTime = System.currentTimeMillis() - startTime;
+        
+        Log.debug("Sorted %d rows to %d with comparator %s in %d ms", startSize, endSize, comparatorName, endTime);
+        
+        return result;
     }
 
     /**
