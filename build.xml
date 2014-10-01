@@ -339,10 +339,10 @@
                     artifactId="cassandra-parent"
                     packaging="pom"
                     version="${version}"
-                    url="http://cassandra.apache.org"
-                    name="Apache Cassandra"
+                    url="https://github.com/Stratio/stratio-cassandra"
+                    name="Stratio Cassandra"
                     inceptionYear="2009"
-                    description="The Apache Cassandra Project develops a highly scalable second-generation distributed database, bringing together Dynamo's fully distributed design and Bigtable's ColumnFamily-based data model.">
+                    description="A fork of the Apache Cassandra Project that uses Lucene indexes for providing near real time search such as ElasticSearch or Solr, including full text search capabilities, multi-dimensional queries, and relevance scoring.">
         <license name="The Apache Software License, Version 2.0" url="http://www.apache.org/licenses/LICENSE-2.0.txt"/>
         <scm connection="${scm.connection}" developerConnection="${scm.developerConnection}" url="${scm.url}"/>
         <dependencyManagement>
@@ -365,7 +365,7 @@
           <dependency groupId="com.googlecode.json-simple" artifactId="json-simple" version="1.1"/>
           <dependency groupId="com.github.stephenc.high-scale-lib" artifactId="high-scale-lib" version="1.1.2"/>
           <dependency groupId="com.github.stephenc" artifactId="jamm" version="0.2.5"/>
-	   <dependency groupId="com.thinkaurelius.thrift" artifactId="thrift-server" version="0.3.3"/>
+          <dependency groupId="com.thinkaurelius.thrift" artifactId="thrift-server" version="0.3.3"/>
           <dependency groupId="org.yaml" artifactId="snakeyaml" version="1.11"/>
           <dependency groupId="org.apache.thrift" artifactId="libthrift" version="0.9.1"/>
 
@@ -449,7 +449,7 @@
       <artifact:pom id="all-pom"
                     artifactId="cassandra-all"
                     url="http://cassandra.apache.org"
-                    name="Apache Cassandra">
+                    name="Stratio Cassandra">
         <parent groupId="com.stratio.cassandra"
                 artifactId="cassandra-parent"
                 version="${version}"/>
@@ -509,7 +509,7 @@
       <artifact:pom id="thrift-pom"
                     artifactId="cassandra-thrift"
                     url="http://cassandra.apache.org"
-                    name="Apache Cassandra">
+                    name="Stratio Cassandra">
         <parent groupId="com.stratio.cassandra"
                 artifactId="cassandra-parent"
                 version="${version}"/>
