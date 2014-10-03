@@ -43,7 +43,7 @@ import java.util.Set;
 import java.util.Collection;
 import java.util.concurrent.*;
 
-public class PendingRangeCalculatorService extends PendingRangeCalculatorServiceMBean
+public class PendingRangeCalculatorService
 {
     public static final PendingRangeCalculatorService instance = new PendingRangeCalculatorService();
 
@@ -122,7 +122,7 @@ public class PendingRangeCalculatorService extends PendingRangeCalculatorService
         BiMultiValMap<Token, InetAddress> bootstrapTokens = tm.getBootstrapTokens();
         Set<InetAddress> leavingEndpoints = tm.getLeavingEndpoints();
 
-        if (bootstrapTokens.isEmpty() && leavingEndpoints.isEmpty() && tm.getMovingEndpoints().isEmpty() && tm.getRelocatingRanges().isEmpty())
+        if (bootstrapTokens.isEmpty() && leavingEndpoints.isEmpty() && tm.getMovingEndpoints().isEmpty())
         {
             if (logger.isDebugEnabled())
                 logger.debug("No bootstrapping, leaving or moving nodes, and no relocating tokens -> empty pending ranges for {}", keyspaceName);
@@ -142,9 +142,10 @@ public class PendingRangeCalculatorService extends PendingRangeCalculatorService
 
         // for each of those ranges, find what new nodes will be responsible for the range when
         // all leaving nodes are gone.
+        TokenMetadata metadata = tm.cloneOnlyTokenMap(); // don't do this in the loop! #7758
         for (Range<Token> range : affectedRanges)
         {
-            Set<InetAddress> currentEndpoints = ImmutableSet.copyOf(strategy.calculateNaturalEndpoints(range.right, tm.cloneOnlyTokenMap()));
+            Set<InetAddress> currentEndpoints = ImmutableSet.copyOf(strategy.calculateNaturalEndpoints(range.right, metadata));
             Set<InetAddress> newEndpoints = ImmutableSet.copyOf(strategy.calculateNaturalEndpoints(range.right, allLeftMetadata));
             pendingRanges.putAll(range, Sets.difference(newEndpoints, currentEndpoints));
         }
@@ -181,20 +182,6 @@ public class PendingRangeCalculatorService extends PendingRangeCalculatorService
             {
                 pendingRanges.put(range, endpoint);
             }
-
-            allLeftMetadata.removeEndpoint(endpoint);
-        }
-
-        // Ranges being relocated.
-        for (Map.Entry<Token, InetAddress> relocating : tm.getRelocatingRanges().entrySet())
-        {
-            InetAddress endpoint = relocating.getValue(); // address of the moving node
-            Token token = relocating.getKey();
-
-            allLeftMetadata.updateNormalToken(token, endpoint);
-
-            for (Range<Token> range : strategy.getAddressRanges(allLeftMetadata).get(endpoint))
-                pendingRanges.put(range, endpoint);
 
             allLeftMetadata.removeEndpoint(endpoint);
         }

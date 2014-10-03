@@ -18,17 +18,10 @@
 package org.apache.cassandra.db.index;
 
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
-import org.apache.cassandra.db.AbstractRangeCommand;
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.Row;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.filter.ExtendedFilter;
-import org.apache.cassandra.thrift.IndexExpression;
-import org.apache.cassandra.thrift.IndexOperator;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
 
@@ -45,14 +38,31 @@ public abstract class SecondaryIndexSearcher
         this.baseCfs = indexManager.baseCfs;
     }
 
+    public SecondaryIndex highestSelectivityIndex(List<IndexExpression> clause)
+    {
+        System.out.println("highestSelectivityIndex for" + clause);
+        IndexExpression expr = highestSelectivityPredicate(clause);
+        System.out.println("highestSelectivityIndex with expr " + expr);
+        return expr == null ? null : indexManager.getIndexForColumn(expr.column);
+    }
+
     public abstract List<Row> search(ExtendedFilter filter);
 
     /**
-     * @return true this index is able to handle given clauses.
+     * @return true this index is able to handle the given index expressions.
      */
-    public boolean isIndexing(List<IndexExpression> clause)
+    public boolean canHandleIndexClause(List<IndexExpression> clause)
     {
-        return highestSelectivityPredicate(clause) != null;
+        for (IndexExpression expression : clause)
+        {
+            if (!columns.contains(expression.column) || !expression.operator.allowsIndexQuery())
+                continue;
+
+            SecondaryIndex index = indexManager.getIndexForColumn(expression.column);
+            if (index != null && index.getIndexCfs() != null)
+                return true;
+        }
+        return false;
     }
 
     protected IndexExpression highestSelectivityPredicate(List<IndexExpression> clause)
@@ -64,11 +74,11 @@ public abstract class SecondaryIndexSearcher
         for (IndexExpression expression : clause)
         {
             // skip columns belonging to a different index type
-            if (!columns.contains(expression.column_name))
+            if (!columns.contains(expression.column))
                 continue;
 
-            SecondaryIndex index = indexManager.getIndexForColumn(expression.column_name);
-            if (index == null || index.getIndexCfs() == null || expression.op != IndexOperator.EQ)
+            SecondaryIndex index = indexManager.getIndexForColumn(expression.column);
+            if (index == null || index.getIndexCfs() == null || !expression.operator.allowsIndexQuery())
                 continue;
             int columns = index.getIndexCfs().getMeanColumns();
             candidates.put(index, columns);
@@ -83,8 +93,7 @@ public abstract class SecondaryIndexSearcher
             Tracing.trace("No applicable indexes found");
         else
             Tracing.trace("Candidate index mean cardinalities are {}. Scanning with {}.",
-                          FBUtilities.toString(candidates), indexManager.getIndexForColumn(best.column_name)
-                                  .getIndexName());
+                          FBUtilities.toString(candidates), indexManager.getIndexForColumn(best.column).getIndexName());
 
         return best;
     }
@@ -92,7 +101,7 @@ public abstract class SecondaryIndexSearcher
     /**
      * Validates the specified {@link IndexExpression}. It will throw a {@link RuntimeException} if the provided
      * clause is not valid for the index implementation.
-     * 
+     *
      * @param indexExpression
      *            An {@link IndexExpression} to be validated
      */
@@ -103,7 +112,7 @@ public abstract class SecondaryIndexSearcher
     /**
      * Returns {@code true} if the specified {@link AbstractRangeCommand} requires a full scan of all the nodes,
      * {@code false} otherwise.
-     * 
+     *
      * @param clause
      *            An {@link IndexExpression}.
      * @return {@code true} if the {@code command} requires a full scan, {@code false} otherwise.

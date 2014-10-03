@@ -21,7 +21,7 @@ import org.apache.lucene.search.RegexpQuery;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
-import com.stratio.cassandra.index.schema.CellMapper;
+import com.stratio.cassandra.index.schema.ColumnMapper;
 import com.stratio.cassandra.index.schema.Schema;
 
 /**
@@ -102,8 +102,8 @@ public class RegexpCondition extends Condition
             throw new IllegalArgumentException("Field value required");
         }
 
-        CellMapper<?> cellMapper = schema.getMapper(field);
-        Class<?> clazz = cellMapper.baseClass();
+        ColumnMapper<?> columnMapper = schema.getMapper(field);
+        Class<?> clazz = columnMapper.baseClass();
         Query query;
         if (clazz == String.class)
         {

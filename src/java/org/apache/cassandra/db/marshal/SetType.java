@@ -20,12 +20,11 @@ package org.apache.cassandra.db.marshal;
 import java.nio.ByteBuffer;
 import java.util.*;
 
-import org.apache.cassandra.db.Column;
+import org.apache.cassandra.db.Cell;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.exceptions.SyntaxException;
 import org.apache.cassandra.serializers.TypeSerializer;
 import org.apache.cassandra.serializers.SetSerializer;
-import org.apache.cassandra.utils.Pair;
 
 public class SetType<T> extends CollectionType<Set<T>>
 {
@@ -78,9 +77,14 @@ public class SetType<T> extends CollectionType<Set<T>>
         return ListType.compareListOrSet(elements, o1, o2);
     }
 
-    public TypeSerializer<Set<T>> getSerializer()
+    public SetSerializer<T> getSerializer()
     {
         return serializer;
+    }
+
+    public boolean isByteOrderComparable()
+    {
+        return elements.isByteOrderComparable();
     }
 
     protected void appendToStringBuilder(StringBuilder sb)
@@ -88,17 +92,11 @@ public class SetType<T> extends CollectionType<Set<T>>
         sb.append(getClass().getName()).append(TypeParser.stringifyTypeParameters(Collections.<AbstractType<?>>singletonList(elements)));
     }
 
-    public ByteBuffer serialize(List<Pair<ByteBuffer, Column>> columns)
+    public List<ByteBuffer> serializedValues(List<Cell> cells)
     {
-        columns = enforceLimit(columns);
-
-        List<ByteBuffer> bbs = new ArrayList<ByteBuffer>(columns.size());
-        int size = 0;
-        for (Pair<ByteBuffer, Column> p : columns)
-        {
-            bbs.add(p.left);
-            size += 2 + p.left.remaining();
-        }
-        return pack(bbs, columns.size(), size);
+        List<ByteBuffer> bbs = new ArrayList<ByteBuffer>(cells.size());
+        for (Cell c : cells)
+            bbs.add(c.name().collectionElement());
+        return bbs;
     }
 }

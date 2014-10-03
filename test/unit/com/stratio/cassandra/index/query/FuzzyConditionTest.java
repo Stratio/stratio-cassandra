@@ -23,8 +23,8 @@ import org.apache.lucene.search.Query;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.stratio.cassandra.index.schema.CellMapper;
-import com.stratio.cassandra.index.schema.CellMapperBoolean;
+import com.stratio.cassandra.index.schema.ColumnMapper;
+import com.stratio.cassandra.index.schema.ColumnMapperBoolean;
 import com.stratio.cassandra.index.schema.Schema;
 
 public class FuzzyConditionTest
@@ -34,8 +34,8 @@ public class FuzzyConditionTest
     public void testFuzzyQuery()
     {
 
-        Map<String, CellMapper<?>> map = new HashMap<>();
-        map.put("name", new CellMapperBoolean());
+        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        map.put("name", new ColumnMapperBoolean());
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
         FuzzyCondition fuzzyCondition = new FuzzyCondition(0.5f, "name", "tr", 1, 2, 49, true);

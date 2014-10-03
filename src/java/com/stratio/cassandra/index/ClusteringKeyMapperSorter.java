@@ -16,8 +16,10 @@
 package com.stratio.cassandra.index;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
+import org.apache.cassandra.db.composites.CellName;
+import org.apache.cassandra.db.composites.CellNameType;
+import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.lucene.index.AtomicReaderContext;
 import org.apache.lucene.index.BinaryDocValues;
@@ -210,9 +212,9 @@ public class ClusteringKeyMapperSorter extends FieldComparator<BytesRef>
      */
     private int compare(BytesRef fieldValue1, BytesRef fieldValue2)
     {
-        ByteBuffer bb1 = clusteringKeyMapper.byteBuffer(fieldValue1);
-        ByteBuffer bb2 = clusteringKeyMapper.byteBuffer(fieldValue2);
-        AbstractType<?> type = clusteringKeyMapper.getType();
+        CellName bb1 = clusteringKeyMapper.cellName(fieldValue1);
+        CellName bb2 = clusteringKeyMapper.cellName(fieldValue2);
+        CellNameType type = clusteringKeyMapper.getType();
         return type.compare(bb1, bb2);
     }
 }

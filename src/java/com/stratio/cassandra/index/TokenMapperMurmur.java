@@ -54,7 +54,7 @@ public class TokenMapperMurmur extends TokenMapper
     @Override
     public void addFields(Document document, DecoratedKey partitionKey)
     {
-        Long value = (Long) partitionKey.token.token;
+        Long value = (Long) partitionKey.getToken().token;
         Field tokenField = new LongField(FIELD_NAME, value, Store.NO);
         document.add(tokenField);
     }

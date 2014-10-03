@@ -30,6 +30,10 @@ cassandra_bin="$CASSANDRA_HOME/build/classes/main"
 cassandra_bin="$cassandra_bin:$CASSANDRA_HOME/build/classes/thrift"
 #cassandra_bin="$cassandra_home/build/cassandra.jar"
 
+# the default location for commitlogs, sstables, and saved caches
+# if not set in cassandra.yaml
+cassandra_storagedir="$CASSANDRA_HOME/data"
+
 # JAVA_HOME can optionally be set here
 #JAVA_HOME=/usr/local/jdk6
 
@@ -44,5 +48,5 @@ done
 if [ "$JVM_VENDOR" != "OpenJDK" -o "$JVM_VERSION" \> "1.6.0" ] \
       || [ "$JVM_VERSION" = "1.6.0" -a "$JVM_PATCH_VERSION" -ge 23 ]
 then
-    JAVA_AGENT="$JAVA_AGENT -javaagent:$CASSANDRA_HOME/lib/jamm-0.2.5.jar"
+    JAVA_AGENT="$JAVA_AGENT -javaagent:$CASSANDRA_HOME/lib/jamm-0.2.6.jar"
 fi

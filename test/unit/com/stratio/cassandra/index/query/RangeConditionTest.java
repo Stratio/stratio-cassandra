@@ -18,6 +18,7 @@ package com.stratio.cassandra.index.query;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.stratio.cassandra.index.schema.*;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.search.NumericRangeQuery;
 import org.apache.lucene.search.Query;
@@ -25,14 +26,7 @@ import org.apache.lucene.search.TermRangeQuery;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.stratio.cassandra.index.schema.CellMapper;
-import com.stratio.cassandra.index.schema.CellMapperBoolean;
-import com.stratio.cassandra.index.schema.CellMapperDouble;
-import com.stratio.cassandra.index.schema.CellMapperFloat;
-import com.stratio.cassandra.index.schema.CellMapperInet;
-import com.stratio.cassandra.index.schema.CellMapperInteger;
-import com.stratio.cassandra.index.schema.CellMapperLong;
-import com.stratio.cassandra.index.schema.Schema;
+import com.stratio.cassandra.index.schema.ColumnMapper;
 
 public class RangeConditionTest
 {
@@ -41,8 +35,8 @@ public class RangeConditionTest
     public void testStringClose()
     {
 
-        Map<String, CellMapper<?>> map = new HashMap<>();
-        map.put("name", new CellMapperBoolean());
+        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        map.put("name", new ColumnMapperBoolean());
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
         RangeCondition rangeCondition = new RangeCondition(0.5f, "name", "alpha", "beta", true, true);
@@ -62,8 +56,8 @@ public class RangeConditionTest
     public void testStringOpen()
     {
 
-        Map<String, CellMapper<?>> map = new HashMap<>();
-        map.put("name", new CellMapperBoolean());
+        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        map.put("name", new ColumnMapperBoolean());
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
         RangeCondition rangeCondition = new RangeCondition(0.5f, "name", "alpha", null, true, false);
@@ -84,8 +78,8 @@ public class RangeConditionTest
     public void testIntegerClose()
     {
 
-        Map<String, CellMapper<?>> map = new HashMap<>();
-        map.put("name", new CellMapperInteger(1f));
+        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        map.put("name", new ColumnMapperInteger(1f));
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
         RangeCondition rangeCondition = new RangeCondition(0.5f, "name", 42, 43, false, false);
@@ -105,8 +99,8 @@ public class RangeConditionTest
     public void testIntegerOpen()
     {
 
-        Map<String, CellMapper<?>> map = new HashMap<>();
-        map.put("name", new CellMapperInteger(1f));
+        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        map.put("name", new ColumnMapperInteger(1f));
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
         RangeCondition rangeCondition = new RangeCondition(0.5f, "name", 42, null, true, false);
@@ -126,8 +120,8 @@ public class RangeConditionTest
     public void testLongClose()
     {
 
-        Map<String, CellMapper<?>> map = new HashMap<>();
-        map.put("name", new CellMapperLong(1f));
+        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        map.put("name", new ColumnMapperLong(1f));
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
         RangeCondition rangeCondition = new RangeCondition(0.5f, "name", 42L, 43, false, false);
@@ -147,8 +141,8 @@ public class RangeConditionTest
     public void testLongOpen()
     {
 
-        Map<String, CellMapper<?>> map = new HashMap<>();
-        map.put("name", new CellMapperLong(1f));
+        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        map.put("name", new ColumnMapperLong(1f));
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
         RangeCondition rangeCondition = new RangeCondition(0.5f, "name", 42f, null, true, false);
@@ -168,8 +162,8 @@ public class RangeConditionTest
     public void testFloatClose()
     {
 
-        Map<String, CellMapper<?>> map = new HashMap<>();
-        map.put("name", new CellMapperFloat(1f));
+        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        map.put("name", new ColumnMapperFloat(1f));
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
         RangeCondition rangeCondition = new RangeCondition(0.5f, "name", 42.42D, 43.42F, false, false);
@@ -189,8 +183,8 @@ public class RangeConditionTest
     public void testFloatOpen()
     {
 
-        Map<String, CellMapper<?>> map = new HashMap<>();
-        map.put("name", new CellMapperFloat(1f));
+        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        map.put("name", new ColumnMapperFloat(1f));
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
         RangeCondition rangeCondition = new RangeCondition(0.5f, "name", 42.42f, null, true, false);
@@ -210,8 +204,8 @@ public class RangeConditionTest
     public void testDoubleClose()
     {
 
-        Map<String, CellMapper<?>> map = new HashMap<>();
-        map.put("name", new CellMapperDouble(1f));
+        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        map.put("name", new ColumnMapperDouble(1f));
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
         RangeCondition rangeCondition = new RangeCondition(0.5f, "name", 42.42D, 43.42D, false, false);
@@ -231,8 +225,8 @@ public class RangeConditionTest
     public void testDoubleOpen()
     {
 
-        Map<String, CellMapper<?>> map = new HashMap<>();
-        map.put("name", new CellMapperDouble(1f));
+        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        map.put("name", new ColumnMapperDouble(1f));
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
         RangeCondition rangeCondition = new RangeCondition(0.5f, "name", 42.42D, null, true, false);
@@ -252,8 +246,8 @@ public class RangeConditionTest
     public void testInetV4()
     {
 
-        Map<String, CellMapper<?>> map = new HashMap<>();
-        map.put("name", new CellMapperInet());
+        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        map.put("name", new ColumnMapperInet());
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
         RangeCondition rangeCondition = new RangeCondition(0.5f, "name", "192.168.0.01", "192.168.0.045", true, true);
@@ -273,8 +267,8 @@ public class RangeConditionTest
     public void testInetV6()
     {
 
-        Map<String, CellMapper<?>> map = new HashMap<>();
-        map.put("name", new CellMapperInet());
+        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        map.put("name", new ColumnMapperInet());
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
         RangeCondition rangeCondition = new RangeCondition(0.5f, "name", "2001:DB8:2de::e13", "2001:DB8:02de::e23",

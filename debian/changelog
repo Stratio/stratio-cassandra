@@ -1,20 +1,62 @@
-cassandra (2.0.9) unstable; urgency=medium
+cassandra (2.1.0) unstable; urgency=medium
 
   * New release
 
- -- Sylvain Lebresne <slebresne@apache.org>  Thu, 26 Jun 2014 10:30:22 +0200
+ -- Sylvain Lebresne <slebresne@apache.org>  Sun, 07 Sep 2014 15:21:41 +0200
 
-cassandra (2.0.8) unstable; urgency=medium
+cassandra (2.1.0~rc7) unstable; urgency=medium
 
-  * New release
+  * New RC release
 
- -- Sylvain Lebresne <slebresne@apache.org>  Tue, 06 May 2014 10:28:46 +0200
+ -- Sylvain Lebresne <slebresne@apache.org>  Thu, 28 Aug 2014 16:32:12 +0200
 
-cassandra (2.0.7) unstable; urgency=low
+cassandra (2.1.0~rc6) unstable; urgency=medium
 
-  * New release
+  * New RC release
 
- -- Sylvain Lebresne <slebresne@apache.org>  Mon, 14 Apr 2014 16:42:09 +0200
+ -- Sylvain Lebresne <slebresne@apache.org>  Sat, 09 Aug 2014 13:46:39 +0200
+
+cassandra (2.1.0~rc5) unstable; urgency=medium
+
+  * New RC release
+
+ -- Sylvain Lebresne <slebresne@apache.org>  Sat, 02 Aug 2014 13:45:54 +0200
+
+cassandra (2.1.0~rc4) unstable; urgency=medium
+
+  * New RC release
+
+ -- Eric Evans <eevans@apache.org>  Fri, 18 Jul 2014 13:40:48 -0500
+
+cassandra (2.1.0~rc3) unstable; urgency=medium
+
+  * New RC release
+
+ -- Sylvain Lebresne <slebresne@apache.org>  Tue, 08 Jul 2014 14:04:10 +0200
+
+cassandra (2.1.0~rc2) unstable; urgency=medium
+
+  * New RC release
+
+ -- Sylvain Lebresne <slebresne@apache.org>  Mon, 23 Jun 2014 18:14:29 +0200
+
+cassandra (2.1.0~rc1) unstable; urgency=medium
+
+  * New RC release
+
+ -- Sylvain Lebresne <slebresne@apache.org>  Fri, 30 May 2014 17:25:14 +0200
+
+cassandra (2.1.0~beta2) unstable; urgency=medium
+
+  * New beta release
+
+ -- Sylvain Lebresne <slebresne@apache.org>  Thu, 01 May 2014 16:39:21 +0200
+
+cassandra (2.1.0~beta1) unstable; urgency=low
+
+  * New beta release
+
+ -- Sylvain Lebresne <slebresne@apache.org>  Mon, 17 Feb 2014 16:50:33 +0100
 
 cassandra (2.0.6) unstable; urgency=low
 

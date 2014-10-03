@@ -22,20 +22,14 @@ import java.util.Iterator;
 import java.util.Set;
 
 import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.db.Column;
-import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.DataRange;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.DeletionInfo;
-import org.apache.cassandra.db.RangeTombstone;
-import org.apache.cassandra.db.Row;
-import org.apache.cassandra.db.TreeMapBackedSortedColumns;
+import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.composites.CellName;
+import org.apache.cassandra.db.composites.Composite;
+import org.apache.cassandra.db.filter.ColumnSlice;
 import org.apache.cassandra.db.filter.QueryFilter;
 import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.dht.Token;
-import org.apache.cassandra.utils.HeapAllocator;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
@@ -63,8 +57,6 @@ public class RowServiceWide extends RowService
         FIELDS_TO_LOAD.add(ClusteringKeyMapper.FIELD_NAME);
     }
 
-    private final int clusteringPosition;
-
     private final ClusteringKeyMapper clusteringKeyMapper;
     private final FullKeyMapper fullKeyMapper;
 
@@ -82,7 +74,6 @@ public class RowServiceWide extends RowService
 
         clusteringKeyMapper = ClusteringKeyMapper.instance(metadata);
         fullKeyMapper = FullKeyMapper.instance(metadata);
-        clusteringPosition = metadata.clusteringKeyColumns().size();
 
         luceneIndex.init(sort());
     }
@@ -104,27 +95,26 @@ public class RowServiceWide extends RowService
     @Override
     public void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp) throws IOException
     {
-
         DeletionInfo deletionInfo = columnFamily.deletionInfo();
         DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(key);
 
         if (columnFamily.iterator().hasNext())
         {
-            for (ByteBuffer clusteringKey : clusteringKeyMapper.byteBuffers(columnFamily))
+            for (CellName cellName : clusteringKeyMapper.cellNames(columnFamily))
             {
                 // Load row
-                Row row = row(partitionKey, clusteringKey, timestamp);
+                Row row = row(partitionKey, cellName, timestamp);
 
                 // Create document from row
                 Document document = new Document();
                 tokenMapper.addFields(document, partitionKey);
                 partitionKeyMapper.addFields(document, partitionKey);
-                clusteringKeyMapper.addFields(document, clusteringKey);
-                fullKeyMapper.addFields(document, partitionKey, clusteringKey);
+                clusteringKeyMapper.addFields(document, cellName);
+                fullKeyMapper.addFields(document, partitionKey, cellName);
                 schema.addFields(document, metadata, row);
 
                 // Create document's identifying term for insert-update
-                Term term = fullKeyMapper.term(partitionKey, clusteringKey);
+                Term term = fullKeyMapper.term(partitionKey, cellName);
 
                 // Insert-update on Lucene
                 luceneIndex.upsert(term, document);
@@ -168,25 +158,24 @@ public class RowServiceWide extends RowService
      * The {@link Row} is a logical one.
      */
     @Override
-    protected Row row(ScoredDocument scoredDocument, long timestamp)
+    protected Row row(ScoredDocument scoredDocument, long timestamp) throws IOException
     {
 
         // Extract row from document
         Document document = scoredDocument.getDocument();
         DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
-        ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(document);
+        CellName clusteringKey = clusteringKeyMapper.cellName(document);
         Row row = row(partitionKey, clusteringKey, timestamp);
 
         // Create score column from document score
         Float score = scoredDocument.getScore();
-        ByteBuffer columnName = clusteringKeyMapper.name(clusteringKey, indexedColumnName);
-        ByteBuffer columnValue = UTF8Type.instance.decompose(score.toString());
-        Column scoreColumn = new Column(columnName, columnValue, timestamp);
+        ByteBuffer cellValue = UTF8Type.instance.decompose(score.toString());
+        CellName cellName = clusteringKeyMapper.makeCellName(clusteringKey, columnDefinition);
 
         // Return new row with score column
-        ColumnFamily decoratedCf = TreeMapBackedSortedColumns.factory.create(baseCfs.metadata);
-        decoratedCf.addColumn(scoreColumn);
-        decoratedCf.addAll(row.cf, HeapAllocator.instance);
+        ColumnFamily decoratedCf = ArrayBackedSortedColumns.factory.create(baseCfs.metadata);
+        decoratedCf.addColumn(cellName, cellValue, timestamp);
+        decoratedCf.addAll(row.cf);
         return new Row(partitionKey, decoratedCf);
     }
 
@@ -202,11 +191,10 @@ public class RowServiceWide extends RowService
      *            The time stamp to ignore deleted columns.
      * @return The CQL3 {@link Row} identified by the specified key pair.
      */
-    private Row row(DecoratedKey partitionKey, ByteBuffer clusteringKey, long timestamp)
+    private Row row(DecoratedKey partitionKey, Composite clusteringKey, long timestamp)
     {
-        ByteBuffer start = clusteringKeyMapper.start(clusteringKey);
-        ByteBuffer stop = clusteringKeyMapper.stop(clusteringKey);
-        SliceQueryFilter dataFilter = new SliceQueryFilter(start, stop, false, Integer.MAX_VALUE, clusteringPosition);
+        ColumnSlice slice = clusteringKey.slice();
+        SliceQueryFilter dataFilter = new SliceQueryFilter(slice, false, Integer.MAX_VALUE);
         QueryFilter queryFilter = new QueryFilter(partitionKey, baseCfs.name, dataFilter, timestamp);
         return row(queryFilter, timestamp);
     }
@@ -257,11 +245,11 @@ public class RowServiceWide extends RowService
     protected Float score(Row row)
     {
         ColumnFamily cf = row.cf;
-        ByteBuffer clusteringKey = clusteringKeyMapper.byteBuffer(cf);
-        ByteBuffer columnName = clusteringKeyMapper.name(clusteringKey, indexedColumnName);
-        Column column = cf.getColumn(columnName);
-        ByteBuffer columnValue = column.value();
-        return Float.parseFloat(UTF8Type.instance.compose(columnValue));
+        CellName clusteringKey = clusteringKeyMapper.cellNames(cf).iterator().next();
+        CellName cellName = clusteringKeyMapper.makeCellName(clusteringKey, columnDefinition);
+        Cell cell = cf.getColumn(cellName);
+        String value = UTF8Type.instance.compose(cell.value());
+        return Float.parseFloat(value);
     }
 
 }

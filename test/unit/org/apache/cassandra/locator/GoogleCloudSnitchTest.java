@@ -52,6 +52,7 @@ public class GoogleCloudSnitchTest
     {
         SchemaLoader.mkdirs();
         SchemaLoader.cleanup();
+        Keyspace.setInitialized();
         StorageService.instance.initServer(0);
     }
 

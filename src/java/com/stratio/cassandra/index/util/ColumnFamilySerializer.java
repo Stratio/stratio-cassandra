@@ -18,11 +18,11 @@ package com.stratio.cassandra.index.util;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
 import org.apache.cassandra.db.ColumnFamily;
+import org.apache.cassandra.io.util.DataOutputStreamPlus;
 import org.apache.cassandra.net.MessagingService;
 
 /**
@@ -49,10 +49,9 @@ public class ColumnFamilySerializer
     {
         int size = (int) cfs.serializedSize(columnFamily, VERSION);
         ByteArrayOutputStream os = new ByteArrayOutputStream(size);
-        DataOutputStream dos = new DataOutputStream(os);
+        DataOutputStreamPlus dos = new DataOutputStreamPlus(os);
         cfs.serialize(columnFamily, dos, VERSION);
-        byte[] bytes = os.toByteArray();
-        return bytes;
+        return os.toByteArray();
     }
 
     /**

@@ -21,7 +21,7 @@ import java.net.InetAddress;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -41,7 +41,7 @@ import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.utils.FBUtilities;
-import org.apache.cassandra.utils.SimpleCondition;
+import org.apache.cassandra.utils.concurrent.SimpleCondition;
 
 public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessage>
 {
@@ -54,7 +54,9 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
     final List<InetAddress> endpoints;
     private final IReadCommand command;
     private final ConsistencyLevel consistencyLevel;
-    private final AtomicInteger received = new AtomicInteger(0);
+    private static final AtomicIntegerFieldUpdater<ReadCallback> recievedUpdater
+            = AtomicIntegerFieldUpdater.newUpdater(ReadCallback.class, "received");
+    private volatile int received = 0;
     private final Keyspace keyspace; // TODO push this into ConsistencyLevel?
 
     /**
@@ -98,7 +100,8 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
         if (!await(command.getTimeout(), TimeUnit.MILLISECONDS))
         {
             // Same as for writes, see AbstractWriteResponseHandler
-            ReadTimeoutException ex = new ReadTimeoutException(consistencyLevel, received.get(), blockfor, resolver.isDataPresent());
+            ReadTimeoutException ex = new ReadTimeoutException(consistencyLevel, received, blockfor, resolver.isDataPresent());
+
             if (logger.isDebugEnabled())
                 logger.debug("Read timeout: {}", ex.toString());
             throw ex;
@@ -111,8 +114,8 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
     {
         resolver.preprocess(message);
         int n = waitingFor(message)
-              ? received.incrementAndGet()
-              : received.get();
+              ? recievedUpdater.incrementAndGet(this)
+              : received;
         if (n >= blockfor && resolver.isDataPresent())
         {
             condition.signalAll();
@@ -138,7 +141,7 @@ public class ReadCallback<TMessage, TResolved> implements IAsyncCallback<TMessag
      */
     public int getReceivedCount()
     {
-        return received.get();
+        return received;
     }
 
     public void response(TMessage result)

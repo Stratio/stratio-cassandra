@@ -153,7 +153,7 @@ public class QueryPagers
                 {
                     List<Row> rows = pager.fetchPage(pageSize);
                     ColumnFamily cf = rows.isEmpty() ? null : rows.get(0).cf;
-                    return cf == null ? EmptyColumns.factory.create(cfs.metadata) : cf;
+                    return cf == null ? ArrayBackedSortedColumns.factory.create(cfs.metadata) : cf;
                 }
                 catch (Exception e)
                 {
@@ -182,7 +182,7 @@ public class QueryPagers
         SliceFromReadCommand command = new SliceFromReadCommand(keyspace, key, columnFamily, now, filter);
         final SliceQueryPager pager = new SliceQueryPager(command, consistencyLevel, false);
 
-        ColumnCounter counter = filter.columnCounter(Schema.instance.getComparator(keyspace, columnFamily), now);
+        ColumnCounter counter = filter.columnCounter(Schema.instance.getCFMetaData(keyspace, columnFamily).comparator, now);
         while (!pager.isExhausted())
         {
             List<Row> next = pager.fetchPage(pageSize);

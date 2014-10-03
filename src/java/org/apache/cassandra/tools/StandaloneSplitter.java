@@ -25,14 +25,11 @@ import java.util.*;
 import org.apache.commons.cli.*;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.Keyspace;
-import org.apache.cassandra.db.compaction.LeveledManifest;
 import org.apache.cassandra.db.compaction.SSTableSplitter;
 import org.apache.cassandra.io.sstable.*;
-import org.apache.cassandra.service.CassandraDaemon;
 import org.apache.cassandra.utils.Pair;
 
 import static org.apache.cassandra.tools.BulkLoader.CmdLineOptions;
@@ -40,11 +37,6 @@ import static org.apache.cassandra.tools.BulkLoader.CmdLineOptions;
 public class StandaloneSplitter
 {
     public static final int DEFAULT_SSTABLE_SIZE = 50;
-
-    static
-    {
-        CassandraDaemon.initLog4j();
-    }
 
     private static final String TOOL_NAME = "sstablessplit";
     private static final String VERBOSE_OPTION = "verbose";
@@ -148,10 +140,6 @@ public class StandaloneSplitter
                 try
                 {
                     new SSTableSplitter(cfs, sstable, options.sizeInMB).split();
-
-                    // Remove the sstable
-                    sstable.markObsolete();
-                    sstable.releaseReference();
                 }
                 catch (Exception e)
                 {

@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.query;
 
+import com.stratio.cassandra.index.schema.ColumnMapper;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.FuzzyQuery;
@@ -23,7 +24,6 @@ import org.apache.lucene.util.automaton.LevenshteinAutomata;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
-import com.stratio.cassandra.index.schema.CellMapper;
 import com.stratio.cassandra.index.schema.Schema;
 
 /**
@@ -183,8 +183,8 @@ public class FuzzyCondition extends Condition
             throw new IllegalArgumentException("max_expansions must be positive.");
         }
 
-        CellMapper<?> cellMapper = schema.getMapper(field);
-        Class<?> clazz = cellMapper.baseClass();
+        ColumnMapper<?> columnMapper = schema.getMapper(field);
+        Class<?> clazz = columnMapper.baseClass();
         if (clazz == String.class)
         {
             String analyzedValue = analyze(field, value, schema.analyzer());

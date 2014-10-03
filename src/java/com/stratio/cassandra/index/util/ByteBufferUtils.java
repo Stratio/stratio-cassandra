@@ -172,13 +172,13 @@ public class ByteBufferUtils
     }
 
     /**
-     * Returns a {@code String} representation of {@link byteBuffer} validated by {@link type}.
+     * Returns a {@code String} representation of {@code byteBuffer} validated by {@code type}.
      * 
      * @param byteBuffer
      *            the {@link java.nio.ByteBuffer} to be converted to {@code String}.
      * @param type
      *            {@link AbstractType} of {@code byteBuffer}.
-     * @return a {@code String} representation of {@link byteBuffer} validated by {@link type}.
+     * @return a {@code String} representation of {@code byteBuffer} validated by {@code type}.
      */
     public static String toString(ByteBuffer byteBuffer, AbstractType<?> type)
     {

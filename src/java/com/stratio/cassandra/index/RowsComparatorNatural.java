@@ -20,9 +20,10 @@ import java.util.Comparator;
 import java.util.Iterator;
 
 import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.db.Column;
+import org.apache.cassandra.db.Cell;
 import org.apache.cassandra.db.Row;
-import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.composites.CellName;
+import org.apache.cassandra.db.composites.CellNameType;
 import org.apache.cassandra.dht.Token;
 
 import com.stratio.cassandra.index.util.ComparatorChain;
@@ -36,7 +37,7 @@ import com.stratio.cassandra.index.util.ComparatorChain;
 public class RowsComparatorNatural implements RowsComparator
 {
 
-    private final AbstractType<?> nameType;
+    private final CellNameType nameType;
 
     private final ComparatorChain<Row> comparatorChain;
 
@@ -51,8 +52,8 @@ public class RowsComparatorNatural implements RowsComparator
             @SuppressWarnings({ "unchecked", "rawtypes" })
             public int compare(Row row1, Row row2)
             {
-                Token t1 = row1.key.token;
-                Token t2 = row2.key.token;
+                Token t1 = row1.key.getToken();
+                Token t2 = row2.key.getToken();
                 return t1.compareTo(t2);
             }
         });
@@ -61,10 +62,10 @@ public class RowsComparatorNatural implements RowsComparator
             @Override
             public int compare(Row row1, Row row2)
             {
-                Iterator<Column> i1 = row1.cf.iterator();
-                Iterator<Column> i2 = row2.cf.iterator();
-                ByteBuffer name1 = i1.hasNext() ? i1.next().name() : null;
-                ByteBuffer name2 = i2.hasNext() ? i2.next().name() : null;
+                Iterator<Cell> i1 = row1.cf.iterator();
+                Iterator<Cell> i2 = row2.cf.iterator();
+                CellName name1 = i1.hasNext() ? i1.next().name() : null;
+                CellName name2 = i2.hasNext() ? i2.next().name() : null;
                 return nameType.compare(name1, name2);
             }
         });

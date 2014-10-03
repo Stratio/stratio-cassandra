@@ -17,6 +17,7 @@ package com.stratio.cassandra.index.query;
 
 import java.util.List;
 
+import com.stratio.cassandra.index.schema.ColumnMapper;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.PhraseQuery;
@@ -24,7 +25,6 @@ import org.apache.lucene.search.Query;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
-import com.stratio.cassandra.index.schema.CellMapper;
 import com.stratio.cassandra.index.schema.Schema;
 
 /**
@@ -127,8 +127,8 @@ public class PhraseCondition extends Condition
             throw new IllegalArgumentException("Slop must be positive");
         }
 
-        CellMapper<?> cellMapper = schema.getMapper(field);
-        Class<?> clazz = cellMapper.baseClass();
+        ColumnMapper<?> columnMapper = schema.getMapper(field);
+        Class<?> clazz = columnMapper.baseClass();
         if (clazz == String.class)
         {
             Analyzer analyzer = schema.analyzer();
@@ -153,7 +153,7 @@ public class PhraseCondition extends Condition
         }
         else
         {
-            String message = String.format("Unsupported query %s for mapper %s", this, cellMapper);
+            String message = String.format("Unsupported query %s for mapper %s", this, columnMapper);
             throw new UnsupportedOperationException(message);
         }
     }

@@ -17,19 +17,16 @@ package com.stratio.cassandra.index.schema;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.db.Column;
-import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.Row;
+import org.apache.cassandra.cql3.CQL3Row;
+import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.composites.CellName;
+import org.apache.cassandra.db.composites.CellNameType;
+import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CollectionType;
 import org.apache.cassandra.db.marshal.CompositeType;
@@ -66,24 +63,24 @@ public class Schema
     /** The per field Lucene's analyzer to be used. */
     private final PerFieldAnalyzerWrapper perFieldAnalyzer;
 
-    /** The cell mappers. */
-    private Map<String, CellMapper<?>> cellMappers;
+    /** The column mappers. */
+    private Map<String, ColumnMapper<?>> columnMappers;
 
     /**
      * Builds a new {@code ColumnsMapper} for the specified analyzer and cell mappers.
      * 
      * @param analyzerClassName
      *            The name of the class of the analyzer to be used.
-     * @param cellMappers
-     *            The {@link Cell} mappers to be used.
+     * @param columnMappers
+     *            The {@link Column} mappers to be used.
      */
     @JsonCreator
     public Schema(@JsonProperty("default_analyzer") String analyzerClassName,
-                  @JsonProperty("fields") Map<String, CellMapper<?>> cellMappers)
+                  @JsonProperty("fields") Map<String, ColumnMapper<?>> columnMappers)
     {
 
         // Copy lower cased mappers
-        this.cellMappers = cellMappers;
+        this.columnMappers = columnMappers;
 
         // Setup default analyzer
         if (analyzerClassName == null)
@@ -97,10 +94,10 @@ public class Schema
 
         // Setup per field analyzer
         Map<String, Analyzer> analyzers = new HashMap<>();
-        for (Entry<String, CellMapper<?>> entry : cellMappers.entrySet())
+        for (Entry<String, ColumnMapper<?>> entry : columnMappers.entrySet())
         {
             String name = entry.getKey();
-            CellMapper<?> mapper = entry.getValue();
+            ColumnMapper<?> mapper = entry.getValue();
             Analyzer fieldAnalyzer = mapper.analyzer();
             if (fieldAnalyzer != null)
             {
@@ -120,11 +117,11 @@ public class Schema
      */
     public void validate(CFMetaData metadata) throws ConfigurationException
     {
-        for (Entry<String, CellMapper<?>> entry : cellMappers.entrySet())
+        for (Entry<String, ColumnMapper<?>> entry : columnMappers.entrySet())
         {
 
             String name = entry.getKey();
-            CellMapper<?> cellMapper = entry.getValue();
+            ColumnMapper<?> columnMapper = entry.getValue();
             ByteBuffer columnName = UTF8Type.instance.decompose(name);
 
             ColumnDefinition columnDefinition = metadata.getColumnDefinition(columnName);
@@ -133,8 +130,8 @@ public class Schema
                 throw new RuntimeException("No column definition for mapper " + name);
             }
 
-            AbstractType<?> type = columnDefinition.getValidator();
-            if (!cellMapper.supports(type))
+            AbstractType<?> type = columnDefinition.type;
+            if (!columnMapper.supports(type))
             {
                 throw new RuntimeException("Not supported type for mapper " + name);
             }
@@ -142,7 +139,7 @@ public class Schema
     }
 
     /**
-     * Returns all the {@link Cell}s representing the CQL3 columns contained in the specified column family.
+     * Returns all the {@link Column}s representing the CQL3 columns contained in the specified column family.
      * 
      * @param metadata
      *            The column family metadata
@@ -150,156 +147,152 @@ public class Schema
      *            A {@link Row}.
      * @return The cells contained in the specified columns.
      */
-    public Cells cells(CFMetaData metadata, Row row)
+    public Columns cells(CFMetaData metadata, Row row)
     {
-        Cells cells = new Cells(row);
-        cells.addAll(partitionKeyCells(metadata, row.key));
-        cells.addAll(clusteringKeyCells(metadata, row.cf));
-        cells.addAll(regularCells(metadata, row.cf));
-        return cells;
+        Columns columns = new Columns(row);
+        columns.addAll(partitionKeyCells(metadata, row.key));
+        columns.addAll(clusteringKeyCells(metadata, row.cf));
+        columns.addAll(regularCells(metadata, row.cf));
+        return columns;
     }
 
     /**
-     * Returns the {@link Cell}s representing the CQL3 cells contained in the specified partition key.
+     * Returns the {@link Column}s representing the CQL3 cells contained in the specified partition key.
      * 
      * @param metadata
      *            The indexed column family meta data.
      * @param partitionKey
      *            The partition key.
-     * @return the {@link Cell}s representing the CQL3 cells contained in the specified partition key.
+     * @return the {@link Column}s representing the CQL3 cells contained in the specified partition key.
      */
-    private List<Cell> partitionKeyCells(CFMetaData metadata, DecoratedKey partitionKey)
+    private List<Column> partitionKeyCells(CFMetaData metadata, DecoratedKey partitionKey)
     {
-        List<Cell> cells = new LinkedList<>();
+        List<Column> columns = new LinkedList<>();
         AbstractType<?> rawKeyType = metadata.getKeyValidator();
         List<ColumnDefinition> columnDefinitions = metadata.partitionKeyColumns();
         for (ColumnDefinition columnDefinition : columnDefinitions)
         {
-            String name = UTF8Type.instance.compose(columnDefinition.name);
-            ByteBuffer[] components = ByteBufferUtils.split(partitionKey.key, rawKeyType);
-            int position = position(columnDefinition);
+            String name = columnDefinition.name.toString();
+            ByteBuffer[] components = ByteBufferUtils.split(partitionKey.getKey(), rawKeyType);
+            int position = columnDefinition.position();
             ByteBuffer value = components[position];
             AbstractType<?> valueType = rawKeyType.getComponents().get(position);
-            cells.add(CellMapper.cell(name, value, valueType));
+            columns.add(ColumnMapper.cell(name, value, valueType));
         }
-        return cells;
+        return columns;
     }
 
     /**
-     * Returns the clustering key {@link Cell}s representing the CQL3 cells contained in the specified column family.
-     * The clustering key, if exists, is contained in each {@link Cell} of {@code columnFamily}.
+     * Returns the clustering key {@link Column}s representing the CQL3 cells contained in the specified column family.
+     * The clustering key, if exists, is contained in each {@link Column} of {@code columnFamily}.
      * 
      * @param metadata
      *            The indexed column family meta data.
      * @param columnFamily
      *            The column family.
-     * @return The clustering key {@link Cell}s representing the CQL3 columns contained in the specified column family.
+     * @return The clustering key {@link Column}s representing the CQL3 columns contained in the specified column family.
      */
-    private List<Cell> clusteringKeyCells(CFMetaData metadata, ColumnFamily columnFamily)
+    private List<Column> clusteringKeyCells(CFMetaData metadata, ColumnFamily columnFamily)
     {
-        List<Cell> cells = new LinkedList<>();
-        ByteBuffer rawName = columnFamily.iterator().next().name();
-        AbstractType<?> rawNameType = metadata.comparator;
-        List<ColumnDefinition> columnDefinitions = metadata.clusteringKeyColumns();
-        for (ColumnDefinition columnDefinition : columnDefinitions)
-        {
-            String name = UTF8Type.instance.compose(columnDefinition.name);
-            ByteBuffer[] components = ByteBufferUtils.split(rawName, rawNameType);
-            int position = position(columnDefinition);
-            ByteBuffer value = components[position];
-            AbstractType<?> valueType = rawNameType.getComponents().get(position);
-            cells.add(CellMapper.cell(name, value, valueType));
+        int numClusteringColumns = metadata.clusteringColumns().size();
+        List<Column> columns = new ArrayList<>(numClusteringColumns);
+
+        for (Cell cell : columnFamily) {
+            CellName cellName = cell.name();
+            for (int i = 0; i < numClusteringColumns; i++) {
+                ByteBuffer value = cellName.get(i);
+                ColumnDefinition columnDefinition = metadata.clusteringColumns().get(i);
+                String name = columnDefinition.name.toString();
+                AbstractType<?> valueType = columnDefinition.type;
+                columns.add(ColumnMapper.cell(name, value, valueType));
+                System.out.println("ADDING CLUSTERING CELL "  + name);
+            }
         }
-        return cells;
+        return columns;
     }
 
     /**
-     * Returns the regular {@link Cell}s representing the CQL3 columns contained in the specified column family.
+     * Returns the regular {@link Column}s representing the CQL3 columns contained in the specified column family.
      * 
      * @param metadata
      *            The indexed column family meta data.
      * @param columnFamily
      *            The column family.
-     * @return The regular {@link Cell}s representing the CQL3 columns contained in the specified column family.
+     * @return The regular {@link Column}s representing the CQL3 columns contained in the specified column family.
      */
     @SuppressWarnings("rawtypes")
-    private List<Cell> regularCells(CFMetaData metadata, ColumnFamily columnFamily)
+    private List<Column> regularCells(CFMetaData metadata, ColumnFamily columnFamily)
     {
 
-        List<Cell> cells = new LinkedList<>();
+        List<Column> columns = new LinkedList<>();
 
-        // Get row's cells iterator skipping clustering column
-        Iterator<Column> columnIterator = columnFamily.iterator();
-        columnIterator.next();
+//        // Get row's cells iterator skipping clustering column
+//        Iterator<Cell> cellIterator = columnFamily.iterator();
+//        cellIterator.next();
+//
+//        // Stuff for grouping collection cells (sets, lists and maps)
+//        String name = null;
+//        CollectionType collectionType = null;
+//
+//        // int clusteringPosition = metadata.getCfDef().columns.size();
+//        int clusteringPosition = metadata.allColumns().size();
+//        CellNameType nameType = (CellNameType) metadata.comparator;
+//
+//        while (cellIterator.hasNext())
+//        {
+//
+//            Cell cell = cellIterator.next();
+//
+//            ByteBuffer columnName = cell.name().toByteBuffer();
+//            ByteBuffer columnValue = cell.value();
+//
+//            ByteBuffer[] columnNameComponents = nameType.split(columnName);
+//            ByteBuffer columnSimpleName = columnNameComponents[clusteringPosition];
+//
+//            ColumnDefinition columnDefinition = metadata.getColumnDefinition(columnSimpleName);
+//            final AbstractType<?> valueType = columnDefinition.getValidator();
+//            int position = columnDefinition.position();
+//
+//            name = UTF8Type.instance.compose(columnDefinition.name);
+//
+//            if (valueType.isCollection())
+//            {
+//                collectionType = (CollectionType<?>) valueType;
+//                switch (collectionType.kind)
+//                {
+//                case SET:
+//                {
+//                    AbstractType<?> type = collectionType.nameComparator();
+//                    ByteBuffer value = ByteBufferUtils.split(column.name(), nameType)[position + 1];
+//                    columns.add(ColumnMapper.cell(name, value, type));
+//                    break;
+//                }
+//                case LIST:
+//                {
+//                    AbstractType<?> type = collectionType.valueComparator();
+//                    ByteBuffer value = column.value();
+//                    columns.add(ColumnMapper.cell(name, value, type));
+//                    break;
+//                }
+//                case MAP:
+//                {
+//                    AbstractType<?> type = collectionType.valueComparator();
+//                    AbstractType<?> keyType = collectionType.nameComparator();
+//                    ByteBuffer keyValue = ByteBufferUtils.split(column.name(), nameType)[position + 1];
+//                    ByteBuffer value = column.value();
+//                    String nameSufix = keyType.compose(keyValue).toString();
+//                    columns.add(ColumnMapper.cell(name, nameSufix, value, type));
+//                    break;
+//                }
+//                }
+//            }
+//            else
+//            {
+//                columns.add(ColumnMapper.cell(name, columnValue, valueType));
+//            }
+//        }
 
-        // Stuff for grouping collection cells (sets, lists and maps)
-        String name = null;
-        CollectionType collectionType = null;
-
-        // int clusteringPosition = metadata.getCfDef().columns.size();
-        int clusteringPosition = metadata.getCfDef().clusteringColumnsCount();
-        CompositeType nameType = (CompositeType) metadata.comparator;
-
-        while (columnIterator.hasNext())
-        {
-
-            Column column = columnIterator.next();
-
-            ByteBuffer columnName = column.name();
-            ByteBuffer columnValue = column.value();
-
-            ByteBuffer[] columnNameComponents = nameType.split(columnName);
-            ByteBuffer columnSimpleName = columnNameComponents[clusteringPosition];
-
-            ColumnDefinition columnDefinition = metadata.getColumnDefinition(columnSimpleName);
-            final AbstractType<?> valueType = columnDefinition.getValidator();
-            int position = position(columnDefinition);
-
-            name = UTF8Type.instance.compose(columnDefinition.name);
-
-            if (valueType.isCollection())
-            {
-                collectionType = (CollectionType<?>) valueType;
-                switch (collectionType.kind)
-                {
-                case SET:
-                {
-                    AbstractType<?> type = collectionType.nameComparator();
-                    ByteBuffer value = ByteBufferUtils.split(column.name(), nameType)[position + 1];
-                    cells.add(CellMapper.cell(name, value, type));
-                    break;
-                }
-                case LIST:
-                {
-                    AbstractType<?> type = collectionType.valueComparator();
-                    ByteBuffer value = column.value();
-                    cells.add(CellMapper.cell(name, value, type));
-                    break;
-                }
-                case MAP:
-                {
-                    AbstractType<?> type = collectionType.valueComparator();
-                    AbstractType<?> keyType = collectionType.nameComparator();
-                    ByteBuffer keyValue = ByteBufferUtils.split(column.name(), nameType)[position + 1];
-                    ByteBuffer value = column.value();
-                    String nameSufix = keyType.compose(keyValue).toString();
-                    cells.add(CellMapper.cell(name, nameSufix, value, type));
-                    break;
-                }
-                }
-            }
-            else
-            {
-                cells.add(CellMapper.cell(name, columnValue, valueType));
-            }
-        }
-
-        return cells;
-    }
-
-    private static int position(ColumnDefinition cd)
-    {
-        return cd.componentIndex == null ? 0 : cd.componentIndex;
+        return columns;
     }
 
     /**
@@ -314,25 +307,25 @@ public class Schema
 
     public void addFields(Document document, CFMetaData metadata, Row row)
     {
-        Cells cells = cells(metadata, row);
-        for (Cell cell : cells)
+        Columns columns = cells(metadata, row);
+        for (Column column : columns)
         {
-            String name = cell.getName();
-            String fieldName = cell.getFieldName();
-            Object value = cell.getValue();
-            CellMapper<?> cellMapper = cellMappers.get(name);
-            if (cellMapper != null)
+            String name = column.getName();
+            String fieldName = column.getFieldName();
+            Object value = column.getValue();
+            ColumnMapper<?> columnMapper = columnMappers.get(name);
+            if (columnMapper != null)
             {
-                Field field = cellMapper.field(fieldName, value);
+                Field field = columnMapper.field(fieldName, value);
                 document.add(field);
             }
         }
     }
 
-    public CellMapper<?> getMapper(String field)
+    public ColumnMapper<?> getMapper(String field)
     {
-        CellMapper<?> cellMapper = cellMappers.get(field);
-        if (cellMapper == null)
+        ColumnMapper<?> columnMapper = columnMappers.get(field);
+        if (columnMapper == null)
         {
             String[] components = field.split("\\.");
             if (components.length < 2)
@@ -352,7 +345,7 @@ public class Schema
         }
         else
         {
-            return cellMapper;
+            return columnMapper;
         }
     }
 
@@ -376,8 +369,8 @@ public class Schema
         builder.append(defaultAnalyzer);
         builder.append(", perFieldAnalyzer=");
         builder.append(perFieldAnalyzer);
-        builder.append(", cellMappers=");
-        builder.append(cellMappers);
+        builder.append(", columnMappers=");
+        builder.append(columnMappers);
         builder.append("]");
         return builder.toString();
     }

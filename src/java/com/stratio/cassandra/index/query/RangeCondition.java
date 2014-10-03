@@ -21,7 +21,7 @@ import org.apache.lucene.search.TermRangeQuery;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
-import com.stratio.cassandra.index.schema.CellMapper;
+import com.stratio.cassandra.index.schema.ColumnMapper;
 import com.stratio.cassandra.index.schema.Schema;
 
 /**
@@ -148,13 +148,13 @@ public class RangeCondition extends Condition
             throw new IllegalArgumentException("Field name required");
         }
 
-        CellMapper<?> cellMapper = schema.getMapper(field);
-        Class<?> clazz = cellMapper.baseClass();
+        ColumnMapper<?> columnMapper = schema.getMapper(field);
+        Class<?> clazz = columnMapper.baseClass();
         Query query;
         if (clazz == String.class)
         {
-            String lower = (String) cellMapper.queryValue(field, this.lower);
-            String upper = (String) cellMapper.queryValue(field, this.upper);
+            String lower = (String) columnMapper.queryValue(field, this.lower);
+            String upper = (String) columnMapper.queryValue(field, this.upper);
             if (lower != null)
             {
                 lower = analyze(field, lower, schema.analyzer());
@@ -167,26 +167,26 @@ public class RangeCondition extends Condition
         }
         else if (clazz == Integer.class)
         {
-            Integer lower = (Integer) cellMapper.queryValue(field, this.lower);
-            Integer upper = (Integer) cellMapper.queryValue(field, this.upper);
+            Integer lower = (Integer) columnMapper.queryValue(field, this.lower);
+            Integer upper = (Integer) columnMapper.queryValue(field, this.upper);
             query = NumericRangeQuery.newIntRange(field, lower, upper, includeLower, includeUpper);
         }
         else if (clazz == Long.class)
         {
-            Long lower = (Long) cellMapper.queryValue(field, this.lower);
-            Long upper = (Long) cellMapper.queryValue(field, this.upper);
+            Long lower = (Long) columnMapper.queryValue(field, this.lower);
+            Long upper = (Long) columnMapper.queryValue(field, this.upper);
             query = NumericRangeQuery.newLongRange(field, lower, upper, includeLower, includeUpper);
         }
         else if (clazz == Float.class)
         {
-            Float lower = (Float) cellMapper.queryValue(field, this.lower);
-            Float upper = (Float) cellMapper.queryValue(field, this.upper);
+            Float lower = (Float) columnMapper.queryValue(field, this.lower);
+            Float upper = (Float) columnMapper.queryValue(field, this.upper);
             query = NumericRangeQuery.newFloatRange(field, lower, upper, includeLower, includeUpper);
         }
         else if (clazz == Double.class)
         {
-            Double lower = (Double) cellMapper.queryValue(field, this.lower);
-            Double upper = (Double) cellMapper.queryValue(field, this.upper);
+            Double lower = (Double) columnMapper.queryValue(field, this.lower);
+            Double upper = (Double) columnMapper.queryValue(field, this.upper);
             query = NumericRangeQuery.newDoubleRange(field, lower, upper, includeLower, includeUpper);
         }
         else

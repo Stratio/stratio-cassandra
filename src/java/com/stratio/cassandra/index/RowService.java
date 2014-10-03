@@ -25,28 +25,19 @@ import java.util.Set;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.cql3.ColumnIdentifier;
-import org.apache.cassandra.db.Column;
-import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.DataRange;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.Row;
-import org.apache.cassandra.db.RowPosition;
-import org.apache.cassandra.db.TreeMapBackedSortedColumns;
+import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.composites.CellNameType;
 import org.apache.cassandra.db.filter.QueryFilter;
 import org.apache.cassandra.db.marshal.AbstractType;
-import org.apache.cassandra.db.marshal.CompositeType;
-import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.dht.AbstractBounds;
-import org.apache.cassandra.thrift.IndexExpression;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 
 import com.stratio.cassandra.index.query.Search;
-import com.stratio.cassandra.index.schema.Cell;
-import com.stratio.cassandra.index.schema.Cells;
+import com.stratio.cassandra.index.schema.Column;
+import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.index.util.Log;
 import com.stratio.cassandra.index.util.TaskQueue;
@@ -61,8 +52,9 @@ public abstract class RowService
 {
 
     protected final ColumnFamilyStore baseCfs;
+    protected final ColumnDefinition columnDefinition;
     protected final CFMetaData metadata;
-    protected final CompositeType nameType;
+    protected final CellNameType nameType;
     protected final ColumnIdentifier indexedColumnName;
     protected final Schema schema;
     protected final LuceneIndex luceneIndex;
@@ -92,9 +84,10 @@ public abstract class RowService
     {
 
         this.baseCfs = baseCfs;
+        this.columnDefinition = columnDefinition;
         metadata = baseCfs.metadata;
-        nameType = (CompositeType) metadata.comparator;
-        indexedColumnName = new ColumnIdentifier(columnDefinition.name, columnDefinition.getValidator());
+        nameType = metadata.comparator;
+        indexedColumnName = columnDefinition.name;
 
         RowIndexConfig config = new RowIndexConfig(metadata, columnDefinition.getIndexOptions());
 
@@ -126,7 +119,7 @@ public abstract class RowService
      */
     public static RowService build(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) throws IOException
     {
-        int clusteringPosition = baseCfs.metadata.clusteringKeyColumns().size();
+        int clusteringPosition = baseCfs.metadata.clusteringColumns().size();
         if (clusteringPosition > 0)
         {
             return new RowServiceWide(baseCfs, columnDefinition);
@@ -286,7 +279,7 @@ public abstract class RowService
      * @return The {@link Row}s satisfying the specified restrictions.
      */
     public final List<Row> search(Search search,
-                                  List<IndexExpression> expressions,
+                                  List<org.apache.cassandra.db.IndexExpression> expressions,
                                   DataRange dataRange,
                                   final int limit,
                                   long timestamp) throws IOException
@@ -359,10 +352,10 @@ public abstract class RowService
     {
         if (!expressions.isEmpty())
         {
-            Cells cells = schema.cells(metadata, row);
+            Columns columns = schema.cells(metadata, row);
             for (IndexExpression expression : expressions)
             {
-                if (!accepted(cells, expression))
+                if (!accepted(columns, expression))
                 {
                     return false;
                 }
@@ -372,39 +365,39 @@ public abstract class RowService
     }
 
     /**
-     * Returns {@code true} if the specified {@link Cells} satisfies the the specified {@link IndexExpression},
+     * Returns {@code true} if the specified {@link com.stratio.cassandra.index.schema.Columns} satisfies the the specified {@link IndexExpression},
      * {@code false} otherwise.
      * 
-     * @param cells
-     *            A {@link Cells}
+     * @param columns
+     *            A {@link com.stratio.cassandra.index.schema.Columns}
      * @param expression
      *            A {@link IndexExpression}s to be satisfied by {@code cells}.
-     * @return {@code true} if the specified {@link Cells} satisfies the the specified {@link IndexExpression},
+     * @return {@code true} if the specified {@link com.stratio.cassandra.index.schema.Columns} satisfies the the specified {@link IndexExpression},
      *         {@code false} otherwise.
      */
-    private boolean accepted(Cells cells, IndexExpression expression)
+    private boolean accepted(Columns columns, IndexExpression expression)
     {
 
         ByteBuffer expectedValue = expression.value;
 
-        ColumnDefinition def = metadata.getColumnDefinition(expression.column_name);
-        String name = UTF8Type.instance.compose(def.name);
+        ColumnDefinition def = metadata.getColumnDefinition(expression.column);
+        String name = def.name.toString();
 
-        Cell cell = cells.getCell(name);
-        if (cell == null)
+        Column column = columns.getCell(name);
+        if (column == null)
         {
             return false;
         }
 
-        ByteBuffer actualValue = cell.getRawValue();
+        ByteBuffer actualValue = column.getRawValue();
         if (actualValue == null)
         {
             return false;
         }
 
-        AbstractType<?> validator = def.getValidator();
+        AbstractType<?> validator = def.type;
         int comparison = validator.compare(actualValue, expectedValue);
-        switch (expression.op)
+        switch (expression.operator)
         {
         case EQ:
             return comparison == 0;
@@ -431,7 +424,7 @@ public abstract class RowService
      *            The time stamp to ignore deleted columns.
      * @return The {@link Row} identified by the specified {@link Document}
      */
-    protected abstract Row row(ScoredDocument scoredDocument, long timestamp);
+    protected abstract Row row(ScoredDocument scoredDocument, long timestamp) throws IOException;
 
     /**
      * Returns the CQL3 {@link Row} identified by the specified {@link QueryFilter}, using the specified time stamp to
@@ -450,12 +443,12 @@ public abstract class RowService
         ColumnFamily columnFamily = baseCfs.getColumnFamily(queryFilter);
 
         // Remove deleted column families
-        ColumnFamily cleanColumnFamily = TreeMapBackedSortedColumns.factory.create(baseCfs.metadata);
-        for (Column column : columnFamily)
+        ColumnFamily cleanColumnFamily = ArrayBackedSortedColumns.factory.create(baseCfs.metadata);
+        for (Cell cell : columnFamily)
         {
-            if (!column.isMarkedForDelete(timestamp))
+            if (cell.isLive(timestamp))
             {
-                cleanColumnFamily.addColumn(column);
+                cleanColumnFamily.addColumn(cell);
             }
         }
 
@@ -565,6 +558,11 @@ public abstract class RowService
     public void optimize() throws IOException
     {
         luceneIndex.optimize();
+    }
+
+    public long getIndexSize() throws IOException
+    {
+        return luceneIndex.getNumDocs();
     }
 
 }

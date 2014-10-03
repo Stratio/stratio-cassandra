@@ -27,15 +27,15 @@ import java.util.*;
 
 import com.google.common.collect.Iterables;
 
+import org.apache.cassandra.db.Cell;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.exceptions.SyntaxException;
 import org.apache.cassandra.auth.IAuthenticator;
 import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.cql3.CFDefinition;
-import org.apache.cassandra.cql3.ColumnIdentifier;
-import org.apache.cassandra.db.Column;
+import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.marshal.*;
 import org.apache.cassandra.db.marshal.AbstractCompositeType.CompositeComponent;
+import org.apache.cassandra.serializers.CollectionSerializer;
 import org.apache.cassandra.hadoop.*;
 import org.apache.cassandra.thrift.*;
 import org.apache.cassandra.utils.ByteBufferUtil;
@@ -84,7 +84,7 @@ public abstract class AbstractCassandraStorage extends LoadFunc implements Store
 
     public final static String PARTITION_FILTER_SIGNATURE = "cassandra.partition.filter";
 
-    protected static final Logger logger = LoggerFactory.getLogger(AbstractCassandraStorage.class);
+    private static final Logger logger = LoggerFactory.getLogger(AbstractCassandraStorage.class);
 
     protected String username;
     protected String password;
@@ -119,27 +119,26 @@ public abstract class AbstractCassandraStorage extends LoadFunc implements Store
     }
 
     /** convert a column to a tuple */
-    protected Tuple columnToTuple(Column col, CfInfo cfInfo, AbstractType comparator) throws IOException
+    protected Tuple columnToTuple(Cell col, CfInfo cfInfo, AbstractType comparator) throws IOException
     {
         CfDef cfDef = cfInfo.cfDef;
         Tuple pair = TupleFactory.getInstance().newTuple(2);
 
+        ByteBuffer colName = col.name().toByteBuffer();
+
         // name
         if(comparator instanceof AbstractCompositeType)
-            setTupleValue(pair, 0, composeComposite((AbstractCompositeType)comparator,col.name()));
+            setTupleValue(pair, 0, composeComposite((AbstractCompositeType)comparator,colName));
         else
-            setTupleValue(pair, 0, cassandraToObj(comparator, col.name()));
+            setTupleValue(pair, 0, cassandraToObj(comparator, colName));
 
         // value
         Map<ByteBuffer,AbstractType> validators = getValidatorMap(cfDef);
-        ByteBuffer colName;
         if (cfInfo.cql3Table && !cfInfo.compactCqlTable)
         {
-            ByteBuffer[] names = ((AbstractCompositeType) parseType(cfDef.comparator_type)).split(col.name());
+            ByteBuffer[] names = ((AbstractCompositeType) parseType(cfDef.comparator_type)).split(colName);
             colName = names[names.length-1];
         }
-        else
-            colName = col.name();
         if (validators.get(colName) == null)
         {
             Map<MarshallerType, AbstractType> marshallers = getDefaultMarshallers(cfDef);
@@ -433,8 +432,10 @@ public abstract class AbstractCassandraStorage extends LoadFunc implements Store
         {
             ByteBuffer buffer = objToBB(sub);
             serialized.add(buffer);
-        }      
-        return CollectionType.pack(serialized, objects.size());
+        }
+        // NOTE: using protocol v1 serialization format for collections so as to not break
+        // compatibility. Not sure if that's the right thing.
+        return CollectionSerializer.pack(serialized, objects.size(), 1);
     }
 
     private ByteBuffer objToMapBB(List<Object> objects)
@@ -449,7 +450,9 @@ public abstract class AbstractCassandraStorage extends LoadFunc implements Store
                 serialized.add(buffer);
             }
         } 
-        return CollectionType.pack(serialized, objects.size());
+        // NOTE: using protocol v1 serialization format for collections so as to not break
+        // compatibility. Not sure if that's the right thing.
+        return CollectionSerializer.pack(serialized, objects.size(), 1);
     }
 
     private ByteBuffer objToCompositeBB(List<Object> objects)
@@ -478,6 +481,10 @@ public abstract class AbstractCassandraStorage extends LoadFunc implements Store
     public void cleanupOnFailure(String failure, Job job)
     {
     }
+
+    public void cleanupOnSuccess(String location, Job job) throws IOException {
+    }
+
 
     /** Methods to get the column family schema from Cassandra */
     protected void initSchema(String signature) throws IOException
@@ -674,12 +681,12 @@ public abstract class AbstractCassandraStorage extends LoadFunc implements Store
                 return columnDefs;
 
             // otherwise for CqlStorage, check metadata for classic thrift tables
-            CFDefinition cfDefinition = getCfDefinition(keyspace, column_family, client);
-            for (CFDefinition.Name column : Iterables.concat(cfDefinition.staticColumns(), cfDefinition.regularColumns()))
+            CFMetaData cfm = getCFMetaData(keyspace, column_family, client);
+            for (ColumnDefinition def : cfm.regularAndStaticColumns())
             {
                 ColumnDef cDef = new ColumnDef();
-                String columnName = column.name.toString();
-                String type = column.type.toString();
+                String columnName = def.name.toString();
+                String type = def.type.toString();
                 logger.debug("name: {}, type: {} ", columnName, type);
                 cDef.name = ByteBufferUtil.bytes(columnName);
                 cDef.validation_class = type;
@@ -687,14 +694,14 @@ public abstract class AbstractCassandraStorage extends LoadFunc implements Store
             }
             // we may not need to include the value column for compact tables as we 
             // could have already processed it as schema_columnfamilies.value_alias
-            if (columnDefs.size() == 0 && includeCompactValueColumn)
+            if (columnDefs.size() == 0 && includeCompactValueColumn && cfm.compactValueColumn() != null)
             {
-                String value = cfDefinition.compactValue() != null ? cfDefinition.compactValue().toString() : null;
-                if ("value".equals(value))
+                ColumnDefinition def = cfm.compactValueColumn();
+                if ("value".equals(def.name.toString()))
                 {
                     ColumnDef cDef = new ColumnDef();
-                    cDef.name = ByteBufferUtil.bytes(value);
-                    cDef.validation_class = cfDefinition.compactValue().type.toString();
+                    cDef.name = def.name.bytes;
+                    cDef.validation_class = def.type.toString();
                     columnDefs.add(cDef);
                 }
             }
@@ -760,8 +767,8 @@ public abstract class AbstractCassandraStorage extends LoadFunc implements Store
         return indexes;
     }
 
-    /** get CFDefinition of a column family */
-    protected CFDefinition getCfDefinition(String ks, String cf, Cassandra.Client client)
+    /** get CFMetaData of a column family */
+    protected CFMetaData getCFMetaData(String ks, String cf, Cassandra.Client client)
             throws NotFoundException,
             InvalidRequestException,
             TException,
@@ -772,7 +779,7 @@ public abstract class AbstractCassandraStorage extends LoadFunc implements Store
         for (CfDef cfDef : ksDef.cf_defs)
         {
             if (cfDef.name.equalsIgnoreCase(cf))
-                return new CFDefinition(CFMetaData.fromThrift(cfDef));
+                return CFMetaData.fromThrift(cfDef);
         }
         return null;
     }
@@ -781,11 +788,18 @@ public abstract class AbstractCassandraStorage extends LoadFunc implements Store
     {
         if (validator instanceof DecimalType || validator instanceof InetAddressType)
             return validator.getString(value);
-        else
-            return validator.compose(value);
+
+        if (validator instanceof CollectionType)
+        {
+            // For CollectionType, the compose() method assumes the v3 protocol format of collection, which
+            // is not correct here since we query using the CQL-over-thrift interface which use the pre-v3 format
+            return ((CollectionSerializer)validator.getSerializer()).deserializeForNativeProtocol(value, 1);
+        }
+
+        return validator.compose(value);
     }
 
-    protected class CfInfo
+    protected static class CfInfo
     {
         boolean compactCqlTable = false;
         boolean cql3Table = false;

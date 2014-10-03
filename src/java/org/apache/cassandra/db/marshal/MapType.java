@@ -20,9 +20,10 @@ package org.apache.cassandra.db.marshal;
 import java.nio.ByteBuffer;
 import java.util.*;
 
-import org.apache.cassandra.db.Column;
+import org.apache.cassandra.db.Cell;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.exceptions.SyntaxException;
+import org.apache.cassandra.serializers.CollectionSerializer;
 import org.apache.cassandra.serializers.TypeSerializer;
 import org.apache.cassandra.serializers.MapSerializer;
 import org.apache.cassandra.utils.Pair;
@@ -80,27 +81,25 @@ public class MapType<K, V> extends CollectionType<Map<K, V>>
     public int compare(ByteBuffer o1, ByteBuffer o2)
     {
         // Note that this is only used if the collection is inside an UDT
-        if (o1 == null || !o1.hasRemaining())
-            return o2 == null || !o2.hasRemaining() ? 0 : -1;
-        if (o2 == null || !o2.hasRemaining())
-            return 1;
+        if (!o1.hasRemaining() || !o2.hasRemaining())
+            return o1.hasRemaining() ? 1 : o2.hasRemaining() ? -1 : 0;
 
         ByteBuffer bb1 = o1.duplicate();
         ByteBuffer bb2 = o2.duplicate();
 
-        int size1 = ByteBufferUtil.readShortLength(bb1);
-        int size2 = ByteBufferUtil.readShortLength(bb2);
+        int size1 = CollectionSerializer.readCollectionSize(bb1, 3);
+        int size2 = CollectionSerializer.readCollectionSize(bb2, 3);
 
         for (int i = 0; i < Math.min(size1, size2); i++)
         {
-            ByteBuffer k1 = ByteBufferUtil.readBytesWithShortLength(bb1);
-            ByteBuffer k2 = ByteBufferUtil.readBytesWithShortLength(bb2);
+            ByteBuffer k1 = CollectionSerializer.readValue(bb1, 3);
+            ByteBuffer k2 = CollectionSerializer.readValue(bb2, 3);
             int cmp = keys.compare(k1, k2);
             if (cmp != 0)
                 return cmp;
 
-            ByteBuffer v1 = ByteBufferUtil.readBytesWithShortLength(bb1);
-            ByteBuffer v2 = ByteBufferUtil.readBytesWithShortLength(bb2);
+            ByteBuffer v1 = CollectionSerializer.readValue(bb1, 3);
+            ByteBuffer v2 = CollectionSerializer.readValue(bb2, 3);
             cmp = values.compare(v1, v2);
             if (cmp != 0)
                 return cmp;
@@ -110,9 +109,14 @@ public class MapType<K, V> extends CollectionType<Map<K, V>>
     }
 
     @Override
-    public TypeSerializer<Map<K, V>> getSerializer()
+    public MapSerializer<K, V> getSerializer()
     {
         return serializer;
+    }
+
+    public boolean isByteOrderComparable()
+    {
+        return keys.isByteOrderComparable();
     }
 
     protected void appendToStringBuilder(StringBuilder sb)
@@ -120,21 +124,14 @@ public class MapType<K, V> extends CollectionType<Map<K, V>>
         sb.append(getClass().getName()).append(TypeParser.stringifyTypeParameters(Arrays.asList(keys, values)));
     }
 
-    /**
-     * Creates the same output than serialize, but from the internal representation.
-     */
-    public ByteBuffer serialize(List<Pair<ByteBuffer, Column>> columns)
+    public List<ByteBuffer> serializedValues(List<Cell> cells)
     {
-        columns = enforceLimit(columns);
-
-        List<ByteBuffer> bbs = new ArrayList<ByteBuffer>(2 * columns.size());
-        int size = 0;
-        for (Pair<ByteBuffer, Column> p : columns)
+        List<ByteBuffer> bbs = new ArrayList<ByteBuffer>(cells.size() * 2);
+        for (Cell c : cells)
         {
-            bbs.add(p.left);
-            bbs.add(p.right.value());
-            size += 4 + p.left.remaining() + p.right.value().remaining();
+            bbs.add(c.name().collectionElement());
+            bbs.add(c.value());
         }
-        return pack(bbs, columns.size(), size);
+        return bbs;
     }
 }

@@ -20,13 +20,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.stratio.cassandra.index.schema.ColumnMapper;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.search.Query;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.stratio.cassandra.index.schema.CellMapper;
-import com.stratio.cassandra.index.schema.CellMapperBoolean;
+import com.stratio.cassandra.index.schema.ColumnMapperBoolean;
 import com.stratio.cassandra.index.schema.Schema;
 
 public class PhraseConditionTest
@@ -36,8 +36,8 @@ public class PhraseConditionTest
     public void testPhraseQuery()
     {
 
-        Map<String, CellMapper<?>> map = new HashMap<>();
-        map.put("name", new CellMapperBoolean());
+        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        map.put("name", new ColumnMapperBoolean());
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
         List<String> values = new ArrayList<>();

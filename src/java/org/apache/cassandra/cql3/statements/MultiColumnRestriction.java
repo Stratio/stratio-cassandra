@@ -18,6 +18,7 @@
 package org.apache.cassandra.cql3.statements;
 
 import org.apache.cassandra.cql3.AbstractMarker;
+import org.apache.cassandra.cql3.QueryOptions;
 import org.apache.cassandra.cql3.Term;
 import org.apache.cassandra.cql3.Tuples;
 import org.apache.cassandra.exceptions.InvalidRequestException;
@@ -40,16 +41,16 @@ public interface MultiColumnRestriction extends Restriction
             return true;
         }
 
-        public List<ByteBuffer> values(List<ByteBuffer> variables) throws InvalidRequestException
+        public List<ByteBuffer> values(QueryOptions options) throws InvalidRequestException
         {
-            Tuples.Value t = (Tuples.Value)value.bind(variables);
+            Tuples.Value t = (Tuples.Value)value.bind(options);
             return t.getElements();
         }
     }
 
     public interface IN extends MultiColumnRestriction
     {
-        public List<List<ByteBuffer>> splitValues(List<ByteBuffer> variables) throws InvalidRequestException;
+        public List<List<ByteBuffer>> splitValues(QueryOptions options) throws InvalidRequestException;
     }
 
     /**
@@ -68,12 +69,12 @@ public interface MultiColumnRestriction extends Restriction
             return true;
         }
 
-        public List<List<ByteBuffer>> splitValues(List<ByteBuffer> variables) throws InvalidRequestException
+        public List<List<ByteBuffer>> splitValues(QueryOptions options) throws InvalidRequestException
         {
             List<List<ByteBuffer>> buffers = new ArrayList<>(values.size());
             for (Term value : values)
             {
-                Term.MultiItemTerminal term = (Term.MultiItemTerminal)value.bind(variables);
+                Term.MultiItemTerminal term = (Term.MultiItemTerminal)value.bind(options);
                 buffers.add(term.getElements());
             }
             return buffers;
@@ -96,9 +97,10 @@ public interface MultiColumnRestriction extends Restriction
             return true;
         }
 
-        public List<List<ByteBuffer>> splitValues(List<ByteBuffer> variables) throws InvalidRequestException
+        public List<List<ByteBuffer>> splitValues(QueryOptions options) throws InvalidRequestException
         {
-            Tuples.InValue inValue = ((Tuples.InMarker) marker).bind(variables);
+            Tuples.InMarker inMarker = (Tuples.InMarker)marker;
+            Tuples.InValue inValue = inMarker.bind(options);
             if (inValue == null)
                 throw new InvalidRequestException("Invalid null value for IN restriction");
             return inValue.getSplitValues();
@@ -117,7 +119,7 @@ public interface MultiColumnRestriction extends Restriction
             return true;
         }
 
-        public ByteBuffer bound(Bound b, List<ByteBuffer> variables) throws InvalidRequestException
+        public ByteBuffer bound(Bound b, QueryOptions options) throws InvalidRequestException
         {
             throw new UnsupportedOperationException("Multicolumn slice restrictions do not support bound()");
         }
@@ -126,9 +128,9 @@ public interface MultiColumnRestriction extends Restriction
          * Similar to bounds(), but returns one ByteBuffer per-component in the bound instead of a single
          * ByteBuffer to represent the entire bound.
          */
-        public List<ByteBuffer> componentBounds(Bound b, List<ByteBuffer> variables) throws InvalidRequestException
+        public List<ByteBuffer> componentBounds(Bound b, QueryOptions options) throws InvalidRequestException
         {
-            Tuples.Value value = (Tuples.Value)bounds[b.idx].bind(variables);
+            Tuples.Value value = (Tuples.Value)bounds[b.idx].bind(options);
             return value.getElements();
         }
     }

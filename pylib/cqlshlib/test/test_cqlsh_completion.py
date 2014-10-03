@@ -33,11 +33,11 @@ TAB = '\t'
 # isn't coming
 COMPLETION_RESPONSE_TIME = 0.5
 
-completion_separation_re = re.compile(r'\s\s+')
+completion_separation_re = re.compile(r'\s+')
 
 class CqlshCompletionCase(BaseTestCase):
     def setUp(self):
-        self.cqlsh_runner = testrun_cqlsh(cqlver=self.cqlver, env={'COLUMNS': '100000'})
+        self.cqlsh_runner = testrun_cqlsh(cqlver=cqlsh.DEFAULT_CQLVER, env={'COLUMNS': '100000'})
         self.cqlsh = self.cqlsh_runner.__enter__()
 
     def tearDown(self):
@@ -56,6 +56,7 @@ class CqlshCompletionCase(BaseTestCase):
         self.cqlsh.send(inputstring)
         self.cqlsh.send(TAB)
         completed = self.cqlsh.read_up_to_timeout(COMPLETION_RESPONSE_TIME)
+        completed = completed.replace(' \b', '')
         self.assertEqual(completed[:len(inputstring)], inputstring)
         completed = completed[len(inputstring):]
         completed = completed.replace(BEL, '')
@@ -91,7 +92,7 @@ class CqlshCompletionCase(BaseTestCase):
         return self.module.CqlRuleSet.replication_strategies
 
 class TestCqlshCompletion(CqlshCompletionCase):
-    cqlver = '3.1.0'
+    cqlver = '3.1.6'
     module = cqlsh.cql3handling
 
     def test_complete_on_empty_string(self):
@@ -176,7 +177,7 @@ class TestCqlshCompletion(CqlshCompletionCase):
     def test_complete_in_string_literals(self):
         # would be great if we could get a space after this sort of completion,
         # but readline really wants to make things difficult for us
-        self.trycompletions('insert into system."NodeId', 'Info"')
+        self.trycompletions('insert into system."Index', 'Info"')
         self.trycompletions('USE "', choices=('system', self.cqlsh.keyspace),
                             other_choices_ok=True)
         self.trycompletions("create keyspace blah with replication = {'class': 'Sim",

@@ -35,22 +35,22 @@ public class RemoveColumnFamilyTest extends SchemaLoader
     {
         Keyspace keyspace = Keyspace.open("Keyspace1");
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Standard1");
-        RowMutation rm;
+        Mutation rm;
         DecoratedKey dk = Util.dk("key1");
 
         // add data
-        rm = new RowMutation("Keyspace1", dk.key);
-        rm.add("Standard1", ByteBufferUtil.bytes("Column1"), ByteBufferUtil.bytes("asdf"), 0);
+        rm = new Mutation("Keyspace1", dk.getKey());
+        rm.add("Standard1", Util.cellname("Column1"), ByteBufferUtil.bytes("asdf"), 0);
         rm.apply();
 
         // remove
-        rm = new RowMutation("Keyspace1", dk.key);
+        rm = new Mutation("Keyspace1", dk.getKey());
         rm.delete("Standard1", 1);
         rm.apply();
 
         ColumnFamily retrieved = store.getColumnFamily(QueryFilter.getIdentityFilter(dk, "Standard1", System.currentTimeMillis()));
         assert retrieved.isMarkedForDelete();
-        assertNull(retrieved.getColumn(ByteBufferUtil.bytes("Column1")));
+        assertNull(retrieved.getColumn(Util.cellname("Column1")));
         assertNull(Util.cloneAndRemoveDeleted(retrieved, Integer.MAX_VALUE));
     }
 }

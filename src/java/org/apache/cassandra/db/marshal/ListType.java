@@ -20,12 +20,12 @@ package org.apache.cassandra.db.marshal;
 import java.nio.ByteBuffer;
 import java.util.*;
 
-import org.apache.cassandra.db.Column;
+import org.apache.cassandra.db.Cell;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.exceptions.SyntaxException;
+import org.apache.cassandra.serializers.CollectionSerializer;
 import org.apache.cassandra.serializers.TypeSerializer;
 import org.apache.cassandra.serializers.ListSerializer;
-import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class ListType<T> extends CollectionType<List<T>>
@@ -73,7 +73,7 @@ public class ListType<T> extends CollectionType<List<T>>
         return elements;
     }
 
-    public TypeSerializer<List<T>> getSerializer()
+    public ListSerializer<T> getSerializer()
     {
         return serializer;
     }
@@ -87,21 +87,19 @@ public class ListType<T> extends CollectionType<List<T>>
     static int compareListOrSet(AbstractType<?> elementsComparator, ByteBuffer o1, ByteBuffer o2)
     {
         // Note that this is only used if the collection is inside an UDT
-        if (o1 == null || !o1.hasRemaining())
-            return o2 == null || !o2.hasRemaining() ? 0 : -1;
-        if (o2 == null || !o2.hasRemaining())
-            return 1;
+        if (!o1.hasRemaining() || !o2.hasRemaining())
+            return o1.hasRemaining() ? 1 : o2.hasRemaining() ? -1 : 0;
 
         ByteBuffer bb1 = o1.duplicate();
         ByteBuffer bb2 = o2.duplicate();
 
-        int size1 = ByteBufferUtil.readShortLength(bb1);
-        int size2 = ByteBufferUtil.readShortLength(bb2);
+        int size1 = CollectionSerializer.readCollectionSize(bb1, 3);
+        int size2 = CollectionSerializer.readCollectionSize(bb2, 3);
 
         for (int i = 0; i < Math.min(size1, size2); i++)
         {
-            ByteBuffer v1 = ByteBufferUtil.readBytesWithShortLength(bb1);
-            ByteBuffer v2 = ByteBufferUtil.readBytesWithShortLength(bb2);
+            ByteBuffer v1 = CollectionSerializer.readValue(bb1, 3);
+            ByteBuffer v2 = CollectionSerializer.readValue(bb2, 3);
             int cmp = elementsComparator.compare(v1, v2);
             if (cmp != 0)
                 return cmp;
@@ -115,17 +113,11 @@ public class ListType<T> extends CollectionType<List<T>>
         sb.append(getClass().getName()).append(TypeParser.stringifyTypeParameters(Collections.<AbstractType<?>>singletonList(elements)));
     }
 
-    public ByteBuffer serialize(List<Pair<ByteBuffer, Column>> columns)
+    public List<ByteBuffer> serializedValues(List<Cell> cells)
     {
-        columns = enforceLimit(columns);
-
-        List<ByteBuffer> bbs = new ArrayList<ByteBuffer>(columns.size());
-        int size = 0;
-        for (Pair<ByteBuffer, Column> p : columns)
-        {
-            bbs.add(p.right.value());
-            size += 2 + p.right.value().remaining();
-        }
-        return pack(bbs, columns.size(), size);
+        List<ByteBuffer> bbs = new ArrayList<ByteBuffer>(cells.size());
+        for (Cell c : cells)
+            bbs.add(c.value());
+        return bbs;
     }
 }

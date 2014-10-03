@@ -18,17 +18,16 @@
 package org.apache.cassandra.transport.messages;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 import com.google.common.collect.ImmutableMap;
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.buffer.ChannelBuffers;
+import io.netty.buffer.ByteBuf;
 
 import org.apache.cassandra.cql3.CQLStatement;
 import org.apache.cassandra.cql3.QueryHandler;
 import org.apache.cassandra.cql3.QueryOptions;
+import org.apache.cassandra.cql3.statements.ParsedStatement;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.exceptions.PreparedQueryNotFoundException;
 import org.apache.cassandra.service.QueryState;
@@ -41,7 +40,7 @@ public class ExecuteMessage extends Message.Request
 {
     public static final Message.Codec<ExecuteMessage> codec = new Message.Codec<ExecuteMessage>()
     {
-        public ExecuteMessage decode(ChannelBuffer body, int version)
+        public ExecuteMessage decode(ByteBuf body, int version)
         {
             byte[] id = CBUtil.readBytes(body);
             if (version == 1)
@@ -56,7 +55,7 @@ public class ExecuteMessage extends Message.Request
             }
         }
 
-        public void encode(ExecuteMessage msg, ChannelBuffer dest, int version)
+        public void encode(ExecuteMessage msg, ByteBuf dest, int version)
         {
             CBUtil.writeBytes(msg.statementId.bytes, dest);
             if (version == 1)
@@ -102,10 +101,12 @@ public class ExecuteMessage extends Message.Request
         try
         {
             QueryHandler handler = state.getClientState().getCQLQueryHandler();
-            CQLStatement statement = handler.getPrepared(statementId);
-
-            if (statement == null)
+            ParsedStatement.Prepared prepared = handler.getPrepared(statementId);
+            if (prepared == null)
                 throw new PreparedQueryNotFoundException(statementId);
+
+            options.prepare(prepared.boundNames);
+            CQLStatement statement = prepared.statement;
 
             if (options.getPageSize() == 0)
                 throw new ProtocolException("The page size cannot be 0");

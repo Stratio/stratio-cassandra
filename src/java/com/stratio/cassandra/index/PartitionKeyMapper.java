@@ -19,6 +19,7 @@ import java.nio.ByteBuffer;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -73,7 +74,7 @@ public class PartitionKeyMapper
      */
     public void addFields(Document document, DecoratedKey partitionKey)
     {
-        String serializedKey = ByteBufferUtils.toString(partitionKey.key);
+        String serializedKey = ByteBufferUtils.toString(partitionKey.getKey());
         Field field = new StringField(FIELD_NAME, serializedKey, Store.YES);
         document.add(field);
     }
@@ -87,7 +88,7 @@ public class PartitionKeyMapper
      */
     public Term term(DecoratedKey partitionKey)
     {
-        String serializedKey = ByteBufferUtils.toString(partitionKey.key);
+        String serializedKey = ByteBufferUtils.toString(partitionKey.getKey());
         return new Term(FIELD_NAME, serializedKey);
     }
 

@@ -161,7 +161,7 @@ public class LuceneIndex
      */
     public void upsert(Term term, Document document) throws IOException
     {
-        // Log.debug("Updating document %s with term %s", document, term);
+        Log.debug("Updating document %s with term %s", document, term);
         indexWriter.updateDocument(term, document);
     }
 
@@ -173,7 +173,7 @@ public class LuceneIndex
      */
     public void delete(Term term) throws IOException
     {
-        // Log.debug(String.format("Deleting by term %s", term));
+        Log.debug(String.format("Deleting by term %s", term));
         indexWriter.deleteDocuments(term);
     }
 
@@ -276,7 +276,7 @@ public class LuceneIndex
                 Document document = searcher.doc(scoreDoc.doc, fieldsToLoad);
                 ScoredDocument scoredDocument = new ScoredDocument(document, scoreDoc);
                 scoredDocuments.add(scoredDocument);
-                // Log.debug("Found %s", scoredDocument);
+                Log.debug("Found %s", scoredDocument);
             }
 
             return scoredDocuments;
@@ -320,5 +320,18 @@ public class LuceneIndex
     {
         indexWriter.forceMerge(1, true);
         indexWriter.commit();
+    }
+
+    public long getNumDocs() throws IOException
+    {
+        IndexSearcher searcher = searcherManager.acquire();
+        try
+        {
+            return searcher.getIndexReader().numDocs();
+        }
+        finally
+        {
+            searcherManager.release(searcher);
+        }
     }
 }

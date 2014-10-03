@@ -19,6 +19,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.apache.cassandra.db.DataRange;
+import org.apache.cassandra.db.composites.CellName;
+import org.apache.cassandra.db.composites.CellNameType;
+import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.filter.ColumnSlice;
 import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.db.marshal.AbstractType;
@@ -91,7 +94,8 @@ public class ClusteringKeyMapperDataRangeFilter extends Filter
 
         while (bytesRef != null)
         {
-            ByteBuffer value = clusteringKeyMapper.byteBuffer(bytesRef);
+            CellName value = clusteringKeyMapper.cellName(bytesRef);
+//            ByteBuffer value = clusteringKeyMapper.byteBuffer(bytesRef);
             boolean accepted = true;
 
             for (ColumnSlice columnSlice : sliceQueryFilter.slices)
@@ -117,7 +121,7 @@ public class ClusteringKeyMapperDataRangeFilter extends Filter
     /**
      * Returns {@code true} if the specified clustering key is inside the specified column slice, {@code false}
      * otherwise.
-     * 
+     *
      * @param key
      *            The clustering key to be checked.
      * @param columnSlice
@@ -125,17 +129,17 @@ public class ClusteringKeyMapperDataRangeFilter extends Filter
      * @return {@code true} if the specified clustering key is inside the specified column slice, {@code false}
      *         otherwise.
      */
-    private boolean isInSlice(ByteBuffer key, ColumnSlice columnSlice)
+    private boolean isInSlice(Composite key, ColumnSlice columnSlice)
     {
-        AbstractType<?> type = clusteringKeyMapper.getType();
+        CellNameType type = clusteringKeyMapper.getType();
         boolean accepted = true;
-        ByteBuffer start = columnSlice.start;
-        if (!ByteBufferUtils.isEmpty(start))
+        Composite start = columnSlice.start;
+        if (!start.isEmpty())
         {
             accepted = type.compare(start, key) <= 0;
         }
-        ByteBuffer finish = columnSlice.finish;
-        if (!ByteBufferUtils.isEmpty(finish))
+        Composite finish = columnSlice.finish;
+        if (!finish.isEmpty())
         {
             accepted &= type.compare(finish, key) >= 0;
         }

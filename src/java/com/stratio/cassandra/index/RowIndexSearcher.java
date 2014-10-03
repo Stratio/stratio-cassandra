@@ -29,14 +29,15 @@ import org.apache.cassandra.db.filter.ExtendedFilter;
 import org.apache.cassandra.db.index.SecondaryIndexManager;
 import org.apache.cassandra.db.index.SecondaryIndexSearcher;
 import org.apache.cassandra.db.marshal.UTF8Type;
-import org.apache.cassandra.thrift.IndexExpression;
-import org.apache.cassandra.thrift.IndexOperator;
+import org.apache.cassandra.db.IndexExpression;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.stratio.cassandra.index.query.Search;
 import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.index.util.Log;
+
+import static org.apache.cassandra.db.IndexExpression.Operator.EQ;
 
 /**
  * A {@link SecondaryIndexSearcher} for {@link RowIndex}.
@@ -62,7 +63,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
      * @param index
      *            A {@link com.stratio.cassandra.index.RowIndex}.
      * @param columns
-     *            A set of {@link org.apache.cassandra.db.Column}s.
+     *            A set of columns.
      * @param rowService
      *            A {@link com.stratio.cassandra.index.RowService}.
      */
@@ -75,7 +76,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         this.index = index;
         this.rowService = rowService;
         schema = rowService.getSchema();
-        indexedColumnName = index.getColumnDefinition().name;
+        indexedColumnName = index.getColumnDefinition().name.bytes;
     }
 
     /**
@@ -113,18 +114,38 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
      * {@inheritDoc}
      */
     @Override
-    public boolean isIndexing(List<IndexExpression> clause)
+    public boolean canHandleIndexClause(List<IndexExpression> clause)
     {
         for (IndexExpression expression : clause)
         {
-            ByteBuffer columnName = expression.column_name;
+            ByteBuffer columnName = expression.column;
             boolean sameName = indexedColumnName.equals(columnName);
-            if (expression.op.equals(IndexOperator.EQ) && sameName)
+            if (expression.operator.equals(EQ) && sameName)
             {
                 return true;
             }
         }
         return false;
+    }
+
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public IndexExpression highestSelectivityPredicate(List<IndexExpression> clause)
+    {
+        for (IndexExpression expression : clause)
+        {
+            ByteBuffer columnName = expression.column;
+            boolean sameName = indexedColumnName.equals(columnName);
+            if (expression.operator.equals(EQ) && sameName)
+            {
+                return expression;
+            }
+        }
+        return null;
     }
 
     /**
@@ -172,7 +193,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
     {
         for (IndexExpression indexExpression : clause)
         {
-            ByteBuffer columnName = indexExpression.column_name;
+            ByteBuffer columnName = indexExpression.column;
             if (indexedColumnName.equals(columnName))
             {
                 return indexExpression;
@@ -193,7 +214,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         List<IndexExpression> filteredExpressions = new ArrayList<>(clause.size());
         for (IndexExpression ie : clause)
         {
-            ByteBuffer columnName = ie.column_name;
+            ByteBuffer columnName = ie.column;
             if (!indexedColumnName.equals(columnName))
             {
                 filteredExpressions.add(ie);

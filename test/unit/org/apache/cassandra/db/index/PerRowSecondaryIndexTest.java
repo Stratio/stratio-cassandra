@@ -18,7 +18,6 @@
 package org.apache.cassandra.db.index;
 
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Set;
@@ -27,15 +26,20 @@ import org.junit.Before;
 import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
+import org.apache.cassandra.Util;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.Cell;
+import org.apache.cassandra.db.ColumnFamily;
+import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.db.Mutation;
+import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.filter.QueryFilter;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.concurrent.OpOrder;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class PerRowSecondaryIndexTest extends SchemaLoader
 {
@@ -53,63 +57,61 @@ public class PerRowSecondaryIndexTest extends SchemaLoader
     }
 
     @Test
-    public void testIndexInsertAndUpdate() throws IOException
+    public void testIndexInsertAndUpdate()
     {
         // create a row then test that the configured index instance was able to read the row
-        RowMutation rm;
-        rm = new RowMutation("PerRowSecondaryIndex", ByteBufferUtil.bytes("k1"));
-        rm.add("Indexed1", ByteBufferUtil.bytes("indexed"), ByteBufferUtil.bytes("foo"), 1);
+        Mutation rm;
+        rm = new Mutation("PerRowSecondaryIndex", ByteBufferUtil.bytes("k1"));
+        rm.add("Indexed1", Util.cellname("indexed"), ByteBufferUtil.bytes("foo"), 1);
         rm.apply();
 
         ColumnFamily indexedRow = PerRowSecondaryIndexTest.TestIndex.LAST_INDEXED_ROW;
         assertNotNull(indexedRow);
-        assertEquals(ByteBufferUtil.bytes("foo"), indexedRow.getColumn(ByteBufferUtil.bytes("indexed")).value());
+        assertEquals(ByteBufferUtil.bytes("foo"), indexedRow.getColumn(Util.cellname("indexed")).value());
 
         // update the row and verify what was indexed
-        rm = new RowMutation("PerRowSecondaryIndex", ByteBufferUtil.bytes("k1"));
-        rm.add("Indexed1", ByteBufferUtil.bytes("indexed"), ByteBufferUtil.bytes("bar"), 2);
+        rm = new Mutation("PerRowSecondaryIndex", ByteBufferUtil.bytes("k1"));
+        rm.add("Indexed1", Util.cellname("indexed"), ByteBufferUtil.bytes("bar"), 2);
         rm.apply();
 
         indexedRow = PerRowSecondaryIndexTest.TestIndex.LAST_INDEXED_ROW;
         assertNotNull(indexedRow);
-        assertEquals(ByteBufferUtil.bytes("bar"), indexedRow.getColumn(ByteBufferUtil.bytes("indexed")).value());
+        assertEquals(ByteBufferUtil.bytes("bar"), indexedRow.getColumn(Util.cellname("indexed")).value());
         assertTrue(Arrays.equals("k1".getBytes(), PerRowSecondaryIndexTest.TestIndex.LAST_INDEXED_KEY.array()));
     }
 
     @Test
-    public void testColumnDelete() throws IOException
+    public void testColumnDelete()
     {
         // issue a column delete and test that the configured index instance was notified to update
-        RowMutation rm;
-        rm = new RowMutation("PerRowSecondaryIndex", ByteBufferUtil.bytes("k2"));
-        rm.delete("Indexed1", ByteBufferUtil.bytes("indexed"), 1);
+        Mutation rm;
+        rm = new Mutation("PerRowSecondaryIndex", ByteBufferUtil.bytes("k2"));
+        rm.delete("Indexed1", Util.cellname("indexed"), 1);
         rm.apply();
 
         ColumnFamily indexedRow = PerRowSecondaryIndexTest.TestIndex.LAST_INDEXED_ROW;
         assertNotNull(indexedRow);
 
-        for (Column column : indexedRow.getSortedColumns())
-        {
-            assertTrue(column.isMarkedForDelete(System.currentTimeMillis()));
-        }
+        for (Cell cell : indexedRow.getSortedColumns())
+            assertFalse(cell.isLive());
+
         assertTrue(Arrays.equals("k2".getBytes(), PerRowSecondaryIndexTest.TestIndex.LAST_INDEXED_KEY.array()));
     }
 
     @Test
-    public void testRowDelete() throws IOException
+    public void testRowDelete()
     {
         // issue a row level delete and test that the configured index instance was notified to update
-        RowMutation rm;
-        rm = new RowMutation("PerRowSecondaryIndex", ByteBufferUtil.bytes("k3"));
+        Mutation rm;
+        rm = new Mutation("PerRowSecondaryIndex", ByteBufferUtil.bytes("k3"));
         rm.delete("Indexed1", 1);
         rm.apply();
 
         ColumnFamily indexedRow = PerRowSecondaryIndexTest.TestIndex.LAST_INDEXED_ROW;
         assertNotNull(indexedRow);
-        for (Column column : indexedRow.getSortedColumns())
-        {
-            assertTrue(column.isMarkedForDelete(System.currentTimeMillis()));
-        }
+        for (Cell cell : indexedRow.getSortedColumns())
+            assertFalse(cell.isLive());
+
         assertTrue(Arrays.equals("k3".getBytes(), PerRowSecondaryIndexTest.TestIndex.LAST_INDEXED_KEY.array()));
     }
 
@@ -130,12 +132,12 @@ public class PerRowSecondaryIndexTest extends SchemaLoader
             QueryFilter filter = QueryFilter.getIdentityFilter(DatabaseDescriptor.getPartitioner().decorateKey(rowKey),
                                                                baseCfs.getColumnFamilyName(),
                                                                System.currentTimeMillis());
-            LAST_INDEXED_ROW = baseCfs.getColumnFamily(filter);
+            LAST_INDEXED_ROW = cf;
             LAST_INDEXED_KEY = rowKey;
         }
 
         @Override
-        public void delete(DecoratedKey key)
+        public void delete(DecoratedKey key, OpOrder.Group opGroup)
         {
         }
 
@@ -172,15 +174,15 @@ public class PerRowSecondaryIndexTest extends SchemaLoader
         }
 
         @Override
-        public long getLiveSize()
-        {
-            return 0;
-        }
-
-        @Override
         public ColumnFamilyStore getIndexCfs()
         {
             return null;
+        }
+
+        @Override
+        public boolean indexes(CellName name)
+        {
+            return true;
         }
 
         @Override
@@ -196,6 +198,11 @@ public class PerRowSecondaryIndexTest extends SchemaLoader
         @Override
         public void truncateBlocking(long truncatedAt)
         {
+        }
+
+        @Override
+        public long estimateResultRows() {
+            return 0;
         }
     }
 }

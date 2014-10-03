@@ -60,21 +60,21 @@ import org.apache.thrift.transport.TTransport;
  *
  * @see CqlOutputFormat
  */
-final class CqlRecordWriter extends AbstractColumnFamilyRecordWriter<Map<String, ByteBuffer>, List<ByteBuffer>>
+class CqlRecordWriter extends AbstractColumnFamilyRecordWriter<Map<String, ByteBuffer>, List<ByteBuffer>>
 {
     private static final Logger logger = LoggerFactory.getLogger(CqlRecordWriter.class);
 
     // handles for clients for each range running in the threadpool
-    private final Map<InetAddress, RangeClient> clients;
+    protected final Map<InetAddress, RangeClient> clients;
 
     // host to prepared statement id mappings
-    private ConcurrentHashMap<Cassandra.Client, Integer> preparedStatements = new ConcurrentHashMap<Cassandra.Client, Integer>();
+    protected final ConcurrentHashMap<Cassandra.Client, Integer> preparedStatements = new ConcurrentHashMap<Cassandra.Client, Integer>();
 
-    private final String cql;
+    protected final String cql;
 
-    private AbstractType<?> keyValidator;
-    private String [] partitionKeyColumns;
-    private List<String> clusterColumns;
+    protected AbstractType<?> keyValidator;
+    protected String [] partitionKeyColumns;
+    protected List<String> clusterColumns;
 
     /**
      * Upon construction, obtain the map that this writer will use to collect
@@ -279,6 +279,9 @@ final class CqlRecordWriter extends AbstractColumnFamilyRecordWriter<Map<String,
                     }
                 }
             }
+
+            // close all our connections once we are done.
+            closeInternal();
         }
 
         /** get prepared statement id from cache, otherwise prepare it from Cassandra server*/
@@ -345,7 +348,7 @@ final class CqlRecordWriter extends AbstractColumnFamilyRecordWriter<Map<String,
         
         Column rawPartitionKeys = result.rows.get(0).columns.get(1);
         String keyString = ByteBufferUtil.string(ByteBuffer.wrap(rawPartitionKeys.getValue()));
-        logger.debug("partition keys: " + keyString);
+        logger.debug("partition keys: {}", keyString);
 
         List<String> keys = FBUtilities.fromJsonList(keyString);
         partitionKeyColumns = new String[keys.size()];
@@ -359,7 +362,7 @@ final class CqlRecordWriter extends AbstractColumnFamilyRecordWriter<Map<String,
         Column rawClusterColumns = result.rows.get(0).columns.get(2);
         String clusterColumnString = ByteBufferUtil.string(ByteBuffer.wrap(rawClusterColumns.getValue()));
 
-        logger.debug("cluster columns: " + clusterColumnString);
+        logger.debug("cluster columns: {}", clusterColumnString);
         clusterColumns = FBUtilities.fromJsonList(clusterColumnString);
     }
 

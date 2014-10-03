@@ -31,6 +31,7 @@ import static org.junit.Assert.fail;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.composites.*;
 import org.apache.cassandra.db.filter.QueryFilter;
 import org.apache.cassandra.utils.*;
 
@@ -172,7 +173,7 @@ public class DynamicCompositeTypeTest extends SchemaLoader
         ByteBuffer cname5 = createDynamicCompositeKey("test2", uuids[1], 42, false);
 
         ByteBuffer key = ByteBufferUtil.bytes("k");
-        RowMutation rm = new RowMutation("Keyspace1", key);
+        Mutation rm = new Mutation("Keyspace1", key);
         addColumn(rm, cname5);
         addColumn(rm, cname1);
         addColumn(rm, cname4);
@@ -182,13 +183,13 @@ public class DynamicCompositeTypeTest extends SchemaLoader
 
         ColumnFamily cf = cfs.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("k"), cfName, System.currentTimeMillis()));
 
-        Iterator<Column> iter = cf.getSortedColumns().iterator();
+        Iterator<Cell> iter = cf.getSortedColumns().iterator();
 
-        assert iter.next().name().equals(cname1);
-        assert iter.next().name().equals(cname2);
-        assert iter.next().name().equals(cname3);
-        assert iter.next().name().equals(cname4);
-        assert iter.next().name().equals(cname5);
+        assert iter.next().name().toByteBuffer().equals(cname1);
+        assert iter.next().name().toByteBuffer().equals(cname2);
+        assert iter.next().name().toByteBuffer().equals(cname3);
+        assert iter.next().name().toByteBuffer().equals(cname4);
+        assert iter.next().name().toByteBuffer().equals(cname5);
     }
 
     @Test
@@ -229,9 +230,9 @@ public class DynamicCompositeTypeTest extends SchemaLoader
         assert !TypeParser.parse("DynamicCompositeType(a => BytesType)").isCompatibleWith(TypeParser.parse("DynamicCompositeType(a => BytesType, b => AsciiType)"));
     }
 
-    private void addColumn(RowMutation rm, ByteBuffer cname)
+    private void addColumn(Mutation rm, ByteBuffer cname)
     {
-        rm.add(cfName, cname, ByteBufferUtil.EMPTY_BYTE_BUFFER, 0);
+        rm.add(cfName, CellNames.simpleDense(cname), ByteBufferUtil.EMPTY_BYTE_BUFFER, 0);
     }
 
     private ByteBuffer createDynamicCompositeKey(String s, UUID uuid, int i, boolean lastIsOne)

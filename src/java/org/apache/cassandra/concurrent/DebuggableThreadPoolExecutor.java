@@ -138,6 +138,11 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
                       : new TraceSessionWrapper<Object>(command, state));
     }
 
+    public void maybeExecuteImmediately(Runnable command)
+    {
+        execute(command);
+    }
+
     // execute does not call newTaskFor
     @Override
     public void execute(Runnable command)
@@ -172,6 +177,12 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
     {
         super.afterExecute(r, t);
 
+        maybeResetTraceSessionWrapper(r);
+        logExceptionsAfterExecute(r, t);
+    }
+
+    protected static void maybeResetTraceSessionWrapper(Runnable r)
+    {
         if (r instanceof TraceSessionWrapper)
         {
             TraceSessionWrapper tsw = (TraceSessionWrapper) r;
@@ -179,8 +190,6 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
             // and if left this thread might start tracing unrelated tasks
             tsw.reset();
         }
-        
-        logExceptionsAfterExecute(r, t);
     }
 
     @Override

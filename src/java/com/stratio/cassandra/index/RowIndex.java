@@ -25,13 +25,14 @@ import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.index.PerRowSecondaryIndex;
 import org.apache.cassandra.db.index.SecondaryIndexManager;
 import org.apache.cassandra.db.index.SecondaryIndexSearcher;
-import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.exceptions.ConfigurationException;
 
 import com.stratio.cassandra.index.util.Log;
+import org.apache.cassandra.utils.concurrent.OpOrder;
 
 /**
  * A {@link PerRowSecondaryIndex} that uses Apache Lucene as backend. It allows, among others, multi-comun and full-text
@@ -112,7 +113,7 @@ public class RowIndex extends PerRowSecondaryIndex
         indexName = columnDefinition.getIndexName();
         keyspaceName = baseCfs.metadata.ksName;
         tableName = baseCfs.metadata.cfName;
-        columnName = UTF8Type.instance.compose(columnDefinition.name);
+        columnName = columnDefinition.name.toString();
         logName = String.format("%s.%s.%s", keyspaceName, tableName, indexName);
 
         // Build row mapper
@@ -130,7 +131,7 @@ public class RowIndex extends PerRowSecondaryIndex
     @Override
     public void index(ByteBuffer key, ColumnFamily columnFamily)
     {
-        // Log.debug("Indexing row %s in index %s", key, logName);
+        Log.debug("Indexing row %s in index %s", key, logName);
         lock.readLock().lock();
         try
         {
@@ -158,7 +159,7 @@ public class RowIndex extends PerRowSecondaryIndex
      *            The partition key of the physical {@link org.apache.cassandra.db.Row} to be deleted.
      */
     @Override
-    public void delete(DecoratedKey key)
+    public void delete(DecoratedKey key, OpOrder.Group opGroup)
     {
         Log.debug("Removing row %s from index %s", key, logName);
         lock.writeLock().lock();
@@ -179,7 +180,7 @@ public class RowIndex extends PerRowSecondaryIndex
     }
 
     @Override
-    public boolean indexes(ByteBuffer cellName)
+    public boolean indexes(CellName cellName)
     {
         return true;
     }
@@ -210,9 +211,16 @@ public class RowIndex extends PerRowSecondaryIndex
     }
 
     @Override
-    public long getLiveSize()
+    public long estimateResultRows()
     {
-        return 0;
+        try {
+            return rowService.getIndexSize();
+        }
+        catch (Exception e)
+        {
+            Log.error(e, "Estimating row results for index %s", logName);
+            throw new RuntimeException(e);
+        }
     }
 
     @Override

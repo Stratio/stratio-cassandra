@@ -51,8 +51,16 @@ public class SSTableDeletingTask implements Runnable
     public SSTableDeletingTask(SSTableReader referent)
     {
         this.referent = referent;
-        this.desc = referent.descriptor;
-        this.components = referent.components;
+        if (referent.isOpenEarly)
+        {
+            this.desc = referent.descriptor.asType(Descriptor.Type.TEMPLINK);
+            this.components = Sets.newHashSet(Component.DATA, Component.PRIMARY_INDEX);
+        }
+        else
+        {
+            this.desc = referent.descriptor;
+            this.components = referent.components;
+        }
         this.size = referent.bytesOnDisk();
     }
 
@@ -78,7 +86,7 @@ public class SSTableDeletingTask implements Runnable
         File datafile = new File(desc.filenameFor(Component.DATA));
         if (!datafile.delete())
         {
-            logger.error("Unable to delete " + datafile + " (it will be removed on server restart; we'll also retry after GC)");
+            logger.error("Unable to delete {} (it will be removed on server restart; we'll also retry after GC)", datafile);
             failedTasks.add(this);
             return;
         }

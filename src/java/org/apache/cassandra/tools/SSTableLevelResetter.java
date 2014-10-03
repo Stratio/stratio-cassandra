@@ -22,12 +22,14 @@ import java.io.PrintStream;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.cassandra.db.Directories;
-import org.apache.cassandra.db.compaction.LeveledManifest;
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.Descriptor;
-import org.apache.cassandra.io.sstable.SSTableMetadata;
-import org.apache.cassandra.utils.Pair;
+import org.apache.cassandra.io.sstable.metadata.MetadataType;
+import org.apache.cassandra.io.sstable.metadata.StatsMetadata;
 
 /**
  * Reset level to 0 on a given set of sstables
@@ -55,25 +57,54 @@ public class SSTableLevelResetter
             System.exit(1);
         }
 
-        String keyspace = args[1];
-        String columnfamily = args[2];
-        Directories directories = Directories.create(keyspace, columnfamily);
-        boolean foundSSTable = false;
-        for (Map.Entry<Descriptor, Set<Component>> sstable : directories.sstableLister().list().entrySet())
+        // TODO several daemon threads will run from here.
+        // So we have to explicitly call System.exit.
+        try
         {
-            if (sstable.getValue().contains(Component.STATS))
+            // load keyspace descriptions.
+            DatabaseDescriptor.loadSchemas();
+
+            String keyspaceName = args[1];
+            String columnfamily = args[2];
+            // validate columnfamily
+            if (Schema.instance.getCFMetaData(keyspaceName, columnfamily) == null)
             {
-                foundSSTable = true;
-                Descriptor descriptor = sstable.getKey();
-                Pair<SSTableMetadata, Set<Integer>> metadata = SSTableMetadata.serializer.deserialize(descriptor);
-                out.println("Changing level from " + metadata.left.sstableLevel + " to 0 on " + descriptor.filenameFor(Component.DATA));
-                LeveledManifest.mutateLevel(metadata, descriptor, descriptor.filenameFor(Component.STATS), 0);
+                System.err.println("ColumnFamily not found: " + keyspaceName + "/" + columnfamily);
+                System.exit(1);
+            }
+
+            Keyspace keyspace = Keyspace.openWithoutSSTables(keyspaceName);
+            ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(columnfamily);
+            boolean foundSSTable = false;
+            for (Map.Entry<Descriptor, Set<Component>> sstable : cfs.directories.sstableLister().list().entrySet())
+            {
+                if (sstable.getValue().contains(Component.STATS))
+                {
+                    foundSSTable = true;
+                    Descriptor descriptor = sstable.getKey();
+                    StatsMetadata metadata = (StatsMetadata) descriptor.getMetadataSerializer().deserialize(descriptor, MetadataType.STATS);
+                    if (metadata.sstableLevel > 0)
+                    {
+                        out.println("Changing level from " + metadata.sstableLevel + " to 0 on " + descriptor.filenameFor(Component.DATA));
+                        descriptor.getMetadataSerializer().mutateLevel(descriptor, 0);
+                    }
+                    else
+                    {
+                        out.println("Skipped " + descriptor.filenameFor(Component.DATA) + " since it is already on level 0");
+                    }
+                }
+            }
+
+            if (!foundSSTable)
+            {
+                out.println("Found no sstables, did you give the correct keyspace/columnfamily?");
             }
         }
-
-        if (!foundSSTable)
+        catch (Throwable e)
         {
-            out.println("Found no sstables, did you give the correct keyspace/columnfamily?");
+            e.printStackTrace();
+            System.exit(1);
         }
+        System.exit(0);
     }
 }

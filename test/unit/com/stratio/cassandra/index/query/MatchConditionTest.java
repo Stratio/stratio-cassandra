@@ -18,6 +18,7 @@ package com.stratio.cassandra.index.query;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.stratio.cassandra.index.schema.*;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.search.NumericRangeQuery;
 import org.apache.lucene.search.Query;
@@ -25,15 +26,7 @@ import org.apache.lucene.search.TermQuery;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.stratio.cassandra.index.schema.CellMapper;
-import com.stratio.cassandra.index.schema.CellMapperBlob;
-import com.stratio.cassandra.index.schema.CellMapperDouble;
-import com.stratio.cassandra.index.schema.CellMapperFloat;
-import com.stratio.cassandra.index.schema.CellMapperInet;
-import com.stratio.cassandra.index.schema.CellMapperInteger;
-import com.stratio.cassandra.index.schema.CellMapperLong;
-import com.stratio.cassandra.index.schema.CellMapperString;
-import com.stratio.cassandra.index.schema.Schema;
+import com.stratio.cassandra.index.schema.ColumnMapperInet;
 
 public class MatchConditionTest
 {
@@ -42,8 +35,8 @@ public class MatchConditionTest
     public void testString()
     {
 
-        Map<String, CellMapper<?>> map = new HashMap<>();
-        map.put("name", new CellMapperString());
+        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        map.put("name", new ColumnMapperString());
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
         MatchCondition matchCondition = new MatchCondition(0.5f, "name", "casa");
@@ -59,8 +52,8 @@ public class MatchConditionTest
     public void testInteger()
     {
 
-        Map<String, CellMapper<?>> map = new HashMap<>();
-        map.put("name", new CellMapperInteger(1f));
+        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        map.put("name", new ColumnMapperInteger(1f));
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
         MatchCondition matchCondition = new MatchCondition(0.5f, "name", 42);
@@ -79,8 +72,8 @@ public class MatchConditionTest
     public void testLong()
     {
 
-        Map<String, CellMapper<?>> map = new HashMap<>();
-        map.put("name", new CellMapperLong(1f));
+        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        map.put("name", new ColumnMapperLong(1f));
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
         MatchCondition matchCondition = new MatchCondition(0.5f, "name", 42L);
@@ -99,8 +92,8 @@ public class MatchConditionTest
     public void testFloat()
     {
 
-        Map<String, CellMapper<?>> map = new HashMap<>();
-        map.put("name", new CellMapperFloat(1f));
+        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        map.put("name", new ColumnMapperFloat(1f));
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
         MatchCondition matchCondition = new MatchCondition(0.5f, "name", 42.42F);
@@ -119,8 +112,8 @@ public class MatchConditionTest
     public void testDouble()
     {
 
-        Map<String, CellMapper<?>> map = new HashMap<>();
-        map.put("name", new CellMapperDouble(1f));
+        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        map.put("name", new ColumnMapperDouble(1f));
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
         MatchCondition matchCondition = new MatchCondition(0.5f, "name", 42.42D);
@@ -139,8 +132,8 @@ public class MatchConditionTest
     public void testBlob()
     {
 
-        Map<String, CellMapper<?>> map = new HashMap<>();
-        map.put("name", new CellMapperBlob());
+        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        map.put("name", new ColumnMapperBlob());
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
         MatchCondition matchCondition = new MatchCondition(0.5f, "name", "0Fa1");
@@ -156,8 +149,8 @@ public class MatchConditionTest
     public void testInetV4()
     {
 
-        Map<String, CellMapper<?>> map = new HashMap<>();
-        map.put("name", new CellMapperInet());
+        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        map.put("name", new ColumnMapperInet());
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
         MatchCondition matchCondition = new MatchCondition(0.5f, "name", "192.168.0.01");
@@ -173,8 +166,8 @@ public class MatchConditionTest
     public void testInetV6()
     {
 
-        Map<String, CellMapper<?>> map = new HashMap<>();
-        map.put("name", new CellMapperInet());
+        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        map.put("name", new ColumnMapperInet());
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
         MatchCondition matchCondition = new MatchCondition(0.5f, "name", "2001:DB8:2de::0e13");

@@ -25,7 +25,6 @@ import org.apache.cassandra.db.index.*;
 import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.service.IReadCommand;
-import org.apache.cassandra.thrift.IndexExpression;
 
 public abstract class AbstractRangeCommand implements IReadCommand
 {

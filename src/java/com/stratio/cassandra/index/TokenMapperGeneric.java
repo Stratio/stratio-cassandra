@@ -69,7 +69,7 @@ public class TokenMapperGeneric extends TokenMapper
     @SuppressWarnings("unchecked")
     public void addFields(Document document, DecoratedKey partitionKey)
     {
-        ByteBuffer bb = factory.toByteArray(partitionKey.token);
+        ByteBuffer bb = factory.toByteArray(partitionKey.getToken());
         String serialized = ByteBufferUtils.toString(bb);
         Field field = new StringField(FIELD_NAME, serialized, Store.YES);
         document.add(field);

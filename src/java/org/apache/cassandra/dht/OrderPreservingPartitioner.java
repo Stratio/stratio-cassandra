@@ -23,6 +23,7 @@ import java.nio.charset.CharacterCodingException;
 import java.util.*;
 
 import org.apache.cassandra.config.*;
+import org.apache.cassandra.db.BufferDecoratedKey;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.UTF8Type;
@@ -31,6 +32,7 @@ import org.apache.cassandra.gms.VersionedValue;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.ObjectSizes;
 import org.apache.cassandra.utils.Pair;
 
 public class OrderPreservingPartitioner extends AbstractPartitioner<StringToken>
@@ -39,9 +41,11 @@ public class OrderPreservingPartitioner extends AbstractPartitioner<StringToken>
 
     public static final BigInteger CHAR_MASK = new BigInteger("65535");
 
+    private static final long EMPTY_SIZE = ObjectSizes.measure(MINIMUM);
+
     public DecoratedKey decorateKey(ByteBuffer key)
     {
-        return new DecoratedKey(getToken(key), key);
+        return new BufferDecoratedKey(getToken(key), key);
     }
 
     public StringToken midpoint(Token ltoken, Token rtoken)
@@ -169,6 +173,11 @@ public class OrderPreservingPartitioner extends AbstractPartitioner<StringToken>
         return new StringToken(skey);
     }
 
+    public long getHeapSizeOf(StringToken token)
+    {
+        return EMPTY_SIZE + ObjectSizes.sizeOf(token.token);
+    }
+
     public Map<Token, Float> describeOwnership(List<Token> sortedTokens)
     {
         // allTokens will contain the count and be returned, sorted_ranges is shorthand for token<->token math.
@@ -191,7 +200,7 @@ public class OrderPreservingPartitioner extends AbstractPartitioner<StringToken>
                 for (Range<Token> r : sortedRanges)
                 {
                     // Looping over every KS:CF:Range, get the splits size and add it to the count
-                    allTokens.put(r.right, allTokens.get(r.right) + StorageService.instance.getSplits(ks, cfmd.cfName, r, cfmd.getIndexInterval(), cfmd).size());
+                    allTokens.put(r.right, allTokens.get(r.right) + StorageService.instance.getSplits(ks, cfmd.cfName, r, cfmd.getMinIndexInterval()).size());
                 }
             }
         }

@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.query;
 
+import com.stratio.cassandra.index.schema.ColumnMapper;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.NumericRangeQuery;
 import org.apache.lucene.search.Query;
@@ -22,7 +23,6 @@ import org.apache.lucene.search.TermQuery;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
-import com.stratio.cassandra.index.schema.CellMapper;
 import com.stratio.cassandra.index.schema.Schema;
 
 /**
@@ -97,12 +97,12 @@ public class MatchCondition extends Condition
             throw new IllegalArgumentException("Field value required");
         }
 
-        CellMapper<?> cellMapper = schema.getMapper(field);
-        Class<?> clazz = cellMapper.baseClass();
+        ColumnMapper<?> columnMapper = schema.getMapper(field);
+        Class<?> clazz = columnMapper.baseClass();
         Query query;
         if (clazz == String.class)
         {
-            String value = (String) cellMapper.queryValue(field, this.value);
+            String value = (String) columnMapper.queryValue(field, this.value);
             String analyzedValue = analyze(field, value, schema.analyzer());
             if (analyzedValue == null)
             {
@@ -113,22 +113,22 @@ public class MatchCondition extends Condition
         }
         else if (clazz == Integer.class)
         {
-            Integer value = (Integer) cellMapper.queryValue(field, this.value);
+            Integer value = (Integer) columnMapper.queryValue(field, this.value);
             query = NumericRangeQuery.newIntRange(field, value, value, true, true);
         }
         else if (clazz == Long.class)
         {
-            Long value = (Long) cellMapper.queryValue(field, this.value);
+            Long value = (Long) columnMapper.queryValue(field, this.value);
             query = NumericRangeQuery.newLongRange(field, value, value, true, true);
         }
         else if (clazz == Float.class)
         {
-            Float value = (Float) cellMapper.queryValue(field, this.value);
+            Float value = (Float) columnMapper.queryValue(field, this.value);
             query = NumericRangeQuery.newFloatRange(field, value, value, true, true);
         }
         else if (clazz == Double.class)
         {
-            Double value = (Double) cellMapper.queryValue(field, this.value);
+            Double value = (Double) columnMapper.queryValue(field, this.value);
             query = NumericRangeQuery.newDoubleRange(field, value, value, true, true);
         }
         else

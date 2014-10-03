@@ -18,18 +18,20 @@
 */
 package org.apache.cassandra.db;
 
-import java.nio.ByteBuffer;
 import java.util.*;
 
 import org.junit.Test;
 import static org.junit.Assert.*;
 
+import org.apache.cassandra.Util;
+import org.apache.cassandra.db.composites.*;
 import org.apache.cassandra.db.marshal.IntegerType;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class RangeTombstoneListTest
 {
-    private static final Comparator<ByteBuffer> cmp = IntegerType.instance;
+    private static final Comparator<Composite> cmp = new SimpleDenseCellNameType(IntegerType.instance);
+    private static final Random rand = new Random();
 
     @Test
     public void sortedAdditionTest()
@@ -111,7 +113,7 @@ public class RangeTombstoneListTest
         l2.add(rt(4, 10, 12L));
         l2.add(rt(0, 8, 25L));
 
-        assertEquals(25L, l2.search(b(8)).markedForDeleteAt);
+        assertEquals(25L, l2.searchDeletionTime(b(8)).markedForDeleteAt);
     }
 
     @Test
@@ -158,9 +160,9 @@ public class RangeTombstoneListTest
         l.add(rt(1, 4, 2));
         l.add(rt(4, 10, 5));
 
-        assertEquals(2, l.search(b(3)).markedForDeleteAt);
-        assertEquals(5, l.search(b(4)).markedForDeleteAt);
-        assertEquals(5, l.search(b(8)).markedForDeleteAt);
+        assertEquals(2, l.searchDeletionTime(b(3)).markedForDeleteAt);
+        assertEquals(5, l.searchDeletionTime(b(4)).markedForDeleteAt);
+        assertEquals(5, l.searchDeletionTime(b(8)).markedForDeleteAt);
         assertEquals(3, l.size());
     }
 
@@ -174,30 +176,24 @@ public class RangeTombstoneListTest
         l.add(rt(14, 15, 3));
         l.add(rt(15, 17, 6));
 
-        assertEquals(null, l.search(b(-1)));
+        assertEquals(null, l.searchDeletionTime(b(-1)));
 
-        assertEquals(5, l.search(b(0)).markedForDeleteAt);
-        assertEquals(5, l.search(b(3)).markedForDeleteAt);
-        assertEquals(5, l.search(b(4)).markedForDeleteAt);
+        assertEquals(5, l.searchDeletionTime(b(0)).markedForDeleteAt);
+        assertEquals(5, l.searchDeletionTime(b(3)).markedForDeleteAt);
+        assertEquals(5, l.searchDeletionTime(b(4)).markedForDeleteAt);
 
-        assertEquals(2, l.search(b(5)).markedForDeleteAt);
+        assertEquals(2, l.searchDeletionTime(b(5)).markedForDeleteAt);
 
-        assertEquals(null, l.search(b(7)));
+        assertEquals(null, l.searchDeletionTime(b(7)));
 
-        assertEquals(3, l.search(b(14)).markedForDeleteAt);
+        assertEquals(3, l.searchDeletionTime(b(14)).markedForDeleteAt);
 
-        assertEquals(6, l.search(b(15)).markedForDeleteAt);
-        assertEquals(null, l.search(b(18)));
+        assertEquals(6, l.searchDeletionTime(b(15)).markedForDeleteAt);
+        assertEquals(null, l.searchDeletionTime(b(18)));
     }
 
     @Test
     public void addAllTest()
-    {
-        //addAllTest(false);
-        addAllTest(true);
-    }
-
-    private void addAllTest(boolean doMerge)
     {
         RangeTombstoneList l1 = new RangeTombstoneList(cmp, 0);
         l1.add(rt(0, 4, 5));
@@ -295,9 +291,87 @@ public class RangeTombstoneListTest
         assertEquals(6, l.maxMarkedAt());
     }
 
+    private RangeTombstoneList makeRandom(int size, int maxItSize, int maxItDistance, int maxMarkedAt)
+    {
+        RangeTombstoneList l = new RangeTombstoneList(cmp, size);
+
+        int prevStart = -1;
+        int prevEnd = 0;
+        for (int i = 0; i < size; i++)
+        {
+            int nextStart = prevEnd + rand.nextInt(maxItDistance);
+            int nextEnd = nextStart + rand.nextInt(maxItSize);
+
+            // We can have an interval [x, x], but not 2 consecutives ones for the same x
+            if (nextEnd == nextStart && prevEnd == prevStart && prevEnd == nextStart)
+                nextEnd += 1 + rand.nextInt(maxItDistance);
+
+            l.add(rt(nextStart, nextEnd, rand.nextInt(maxMarkedAt)));
+
+            prevStart = nextStart;
+            prevEnd = nextEnd;
+        }
+        return l;
+    }
+
+    @Test
+    public void addAllRandomTest() throws Throwable
+    {
+        int TEST_COUNT = 1000;
+        int MAX_LIST_SIZE = 50;
+
+        int MAX_IT_SIZE = 20;
+        int MAX_IT_DISTANCE = 10;
+        int MAX_MARKEDAT = 10;
+
+        for (int i = 0; i < TEST_COUNT; i++)
+        {
+            RangeTombstoneList l1 = makeRandom(rand.nextInt(MAX_LIST_SIZE) + 1, rand.nextInt(MAX_IT_SIZE) + 1, rand.nextInt(MAX_IT_DISTANCE) + 1, rand.nextInt(MAX_MARKEDAT) + 1);
+            RangeTombstoneList l2 = makeRandom(rand.nextInt(MAX_LIST_SIZE) + 1, rand.nextInt(MAX_IT_SIZE) + 1, rand.nextInt(MAX_IT_DISTANCE) + 1, rand.nextInt(MAX_MARKEDAT) + 1);
+
+            RangeTombstoneList l1Initial = l1.copy();
+
+            try
+            {
+                // We generate the list randomly, so "all" we check is that the resulting range tombstone list looks valid.
+                l1.addAll(l2);
+                assertValid(l1);
+            }
+            catch (Throwable e)
+            {
+                System.out.println("Error merging:");
+                System.out.println(" l1: " + toString(l1Initial));
+                System.out.println(" l2: " + toString(l2));
+                throw e;
+            }
+        }
+    }
+
     private static void assertRT(RangeTombstone expected, RangeTombstone actual)
     {
         assertEquals(String.format("Expected %s but got %s", toString(expected), toString(actual)), expected, actual);
+    }
+
+    private static void assertValid(RangeTombstoneList l)
+    {
+        // We check that ranges are in the right order and that we never have something
+        // like ...[x, x][x, x] ...
+        int prevStart = -2;
+        int prevEnd = -1;
+        for (RangeTombstone rt : l)
+        {
+            int curStart = i(rt.min);
+            int curEnd = i(rt.max);
+
+            assertTrue("Invalid " + toString(l), prevEnd <= curStart);
+            assertTrue("Invalid " + toString(l), curStart <= curEnd);
+
+            if (curStart == curEnd && prevEnd == curStart)
+                assertTrue("Invalid " + toString(l), prevStart != prevEnd);
+
+            prevStart = curStart;
+            prevEnd = curEnd;
+        }
     }
 
     private static String toString(RangeTombstone rt)
@@ -305,14 +379,23 @@ public class RangeTombstoneListTest
         return String.format("[%d, %d]@%d", i(rt.min), i(rt.max), rt.data.markedForDeleteAt);
     }
 
-    private static ByteBuffer b(int i)
+    private static String toString(RangeTombstoneList l)
     {
-        return ByteBufferUtil.bytes(i);
+        StringBuilder sb = new StringBuilder();
+        sb.append("{");
+        for (RangeTombstone rt : l)
+            sb.append(" ").append(toString(rt));
+        return sb.append(" }").toString();
     }
 
-    private static int i(ByteBuffer bb)
+    private static Composite b(int i)
     {
-        return ByteBufferUtil.toInt(bb);
+        return Util.cellname(i);
+    }
+
+    private static int i(Composite c)
+    {
+        return ByteBufferUtil.toInt(c.toByteBuffer());
     }
 
     private static RangeTombstone rt(int start, int end, long tstamp)

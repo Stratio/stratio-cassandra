@@ -18,17 +18,14 @@ package com.stratio.cassandra.index.query;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.stratio.cassandra.index.schema.*;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.Query;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.stratio.cassandra.index.schema.CellMapper;
-import com.stratio.cassandra.index.schema.CellMapperInet;
-import com.stratio.cassandra.index.schema.CellMapperInteger;
-import com.stratio.cassandra.index.schema.CellMapperString;
-import com.stratio.cassandra.index.schema.Schema;
+import com.stratio.cassandra.index.schema.ColumnMapper;
 
 public class PrefixConditionTest
 {
@@ -37,8 +34,8 @@ public class PrefixConditionTest
     public void testString()
     {
 
-        Map<String, CellMapper<?>> map = new HashMap<>();
-        map.put("name", new CellMapperString());
+        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        map.put("name", new ColumnMapperString());
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
         PrefixCondition prefixCondition = new PrefixCondition(0.5f, "name", "tr");
@@ -56,8 +53,8 @@ public class PrefixConditionTest
     public void testInteger()
     {
 
-        Map<String, CellMapper<?>> map = new HashMap<>();
-        map.put("name", new CellMapperInteger(1f));
+        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        map.put("name", new ColumnMapperInteger(1f));
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
         PrefixCondition prefixCondition = new PrefixCondition(0.5f, "name", "2*");
@@ -68,8 +65,8 @@ public class PrefixConditionTest
     public void testInetV4()
     {
 
-        Map<String, CellMapper<?>> map = new HashMap<>();
-        map.put("name", new CellMapperInet());
+        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        map.put("name", new ColumnMapperInet());
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
         PrefixCondition wildcardCondition = new PrefixCondition(0.5f, "name", "192.168.");
@@ -87,8 +84,8 @@ public class PrefixConditionTest
     public void testInetV6()
     {
 
-        Map<String, CellMapper<?>> map = new HashMap<>();
-        map.put("name", new CellMapperInet());
+        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        map.put("name", new ColumnMapperInet());
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
         PrefixCondition wildcardCondition = new PrefixCondition(0.5f, "name", "2001:db8:2de:0:0:0:0:e");

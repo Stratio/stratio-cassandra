@@ -24,49 +24,176 @@ import java.util.*;
 
 import com.google.common.collect.AbstractIterator;
 
+import org.apache.cassandra.cql3.statements.SelectStatement;
 import org.apache.cassandra.db.marshal.*;
-import org.apache.cassandra.cql3.ResultSet;
+import org.apache.cassandra.exceptions.*;
+import org.apache.cassandra.service.pager.QueryPager;
 
 /** a utility for doing internal cql-based queries */
-public class UntypedResultSet implements Iterable<UntypedResultSet.Row>
+public abstract class UntypedResultSet implements Iterable<UntypedResultSet.Row>
 {
-    private final ResultSet cqlRows;
-
-    public UntypedResultSet(ResultSet cqlRows)
+    public static UntypedResultSet create(ResultSet rs)
     {
-        this.cqlRows = cqlRows;
+        return new FromResultSet(rs);
+    }
+
+    public static UntypedResultSet create(List<Map<String, ByteBuffer>> results)
+    {
+        return new FromResultList(results);
+    }
+
+    public static UntypedResultSet create(SelectStatement select, QueryPager pager, int pageSize)
+    {
+        return new FromPager(select, pager, pageSize);
     }
 
     public boolean isEmpty()
     {
-        return cqlRows.size() == 0;
+        return size() == 0;
     }
 
-    public int size()
-    {
-        return cqlRows.size();
-    }
+    public abstract int size();
+    public abstract Row one();
 
-    public Row one()
-    {
-        if (cqlRows.rows.size() != 1)
-            throw new IllegalStateException("One row required, " + cqlRows.rows.size() + " found");
-        return new Row(cqlRows.metadata.names, cqlRows.rows.get(0));
-    }
+    // No implemented by all subclasses, but we use it when we know it's there (for tests)
+    public abstract List<ColumnSpecification> metadata();
 
-    public Iterator<Row> iterator()
+    private static class FromResultSet extends UntypedResultSet
     {
-        return new AbstractIterator<Row>()
+        private final ResultSet cqlRows;
+
+        private FromResultSet(ResultSet cqlRows)
         {
-            Iterator<List<ByteBuffer>> iter = cqlRows.rows.iterator();
+            this.cqlRows = cqlRows;
+        }
 
-            protected Row computeNext()
+        public int size()
+        {
+            return cqlRows.size();
+        }
+
+        public Row one()
+        {
+            if (cqlRows.rows.size() != 1)
+                throw new IllegalStateException("One row required, " + cqlRows.rows.size() + " found");
+            return new Row(cqlRows.metadata.names, cqlRows.rows.get(0));
+        }
+
+        public Iterator<Row> iterator()
+        {
+            return new AbstractIterator<Row>()
             {
-                if (!iter.hasNext())
-                    return endOfData();
-                return new Row(cqlRows.metadata.names, iter.next());
-            }
-        };
+                Iterator<List<ByteBuffer>> iter = cqlRows.rows.iterator();
+
+                protected Row computeNext()
+                {
+                    if (!iter.hasNext())
+                        return endOfData();
+                    return new Row(cqlRows.metadata.names, iter.next());
+                }
+            };
+        }
+
+        public List<ColumnSpecification> metadata()
+        {
+            return cqlRows.metadata.names;
+        }
+    }
+
+    private static class FromResultList extends UntypedResultSet
+    {
+        private final List<Map<String, ByteBuffer>> cqlRows;
+
+        private FromResultList(List<Map<String, ByteBuffer>> cqlRows)
+        {
+            this.cqlRows = cqlRows;
+        }
+
+        public int size()
+        {
+            return cqlRows.size();
+        }
+
+        public Row one()
+        {
+            if (cqlRows.size() != 1)
+                throw new IllegalStateException("One row required, " + cqlRows.size() + " found");
+            return new Row(cqlRows.get(0));
+        }
+
+        public Iterator<Row> iterator()
+        {
+            return new AbstractIterator<Row>()
+            {
+                Iterator<Map<String, ByteBuffer>> iter = cqlRows.iterator();
+
+                protected Row computeNext()
+                {
+                    if (!iter.hasNext())
+                        return endOfData();
+                    return new Row(iter.next());
+                }
+            };
+        }
+
+        public List<ColumnSpecification> metadata()
+        {
+            throw new UnsupportedOperationException();
+        }
+    }
+
+    private static class FromPager extends UntypedResultSet
+    {
+        private final SelectStatement select;
+        private final QueryPager pager;
+        private final int pageSize;
+        private final List<ColumnSpecification> metadata;
+
+        private FromPager(SelectStatement select, QueryPager pager, int pageSize)
+        {
+            this.select = select;
+            this.pager = pager;
+            this.pageSize = pageSize;
+            this.metadata = select.getResultMetadata().names;
+        }
+
+        public int size()
+        {
+            throw new UnsupportedOperationException();
+        }
+
+        public Row one()
+        {
+            throw new UnsupportedOperationException();
+        }
+
+        public Iterator<Row> iterator()
+        {
+            return new AbstractIterator<Row>()
+            {
+                private Iterator<List<ByteBuffer>> currentPage;
+
+                protected Row computeNext()
+                {
+                    try {
+                        while (currentPage == null || !currentPage.hasNext())
+                        {
+                            if (pager.isExhausted())
+                                return endOfData();
+                            currentPage = select.process(pager.fetchPage(pageSize)).rows.iterator();
+                        }
+                        return new Row(metadata, currentPage.next());
+                    } catch (RequestValidationException | RequestExecutionException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            };
+        }
+
+        public List<ColumnSpecification> metadata()
+        {
+            return metadata;
+        }
     }
 
     public static class Row
@@ -83,7 +210,7 @@ public class UntypedResultSet implements Iterable<UntypedResultSet.Row>
         {
             this.columns.addAll(names);
             for (int i = 0; i < names.size(); i++)
-                data.put(names.get(i).toString(), columns.get(i));
+                data.put(names.get(i).name.toString(), columns.get(i));
         }
 
         public boolean has(String column)

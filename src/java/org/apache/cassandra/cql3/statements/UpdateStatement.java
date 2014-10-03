@@ -22,7 +22,9 @@ import java.util.*;
 
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.Pair;
@@ -33,11 +35,11 @@ import org.apache.cassandra.utils.Pair;
  */
 public class UpdateStatement extends ModificationStatement
 {
-    private static final Operation setToEmptyOperation = new Constants.Setter(null, new Constants.Value(ByteBufferUtil.EMPTY_BYTE_BUFFER));
+    private static final Constants.Value EMPTY = new Constants.Value(ByteBufferUtil.EMPTY_BYTE_BUFFER);
 
-    private UpdateStatement(StatementType type, CFMetaData cfm, Attributes attrs)
+    private UpdateStatement(StatementType type, int boundTerms, CFMetaData cfm, Attributes attrs)
     {
-        super(type, cfm, attrs);
+        super(type, boundTerms, cfm, attrs);
     }
 
     public boolean requireFullClusteringKey()
@@ -45,11 +47,9 @@ public class UpdateStatement extends ModificationStatement
         return true;
     }
 
-    public void addUpdateForKey(ColumnFamily cf, ByteBuffer key, ColumnNameBuilder builder, UpdateParameters params)
+    public void addUpdateForKey(ColumnFamily cf, ByteBuffer key, Composite prefix, UpdateParameters params)
     throws InvalidRequestException
     {
-        CFDefinition cfDef = cfm.getCfDef();
-
         // Inserting the CQL row marker (see #4361)
         // We always need to insert a marker for INSERT, because of the following situation:
         //   CREATE TABLE t ( k int PRIMARY KEY, c text );
@@ -63,40 +63,38 @@ public class UpdateStatement extends ModificationStatement
         // clause which is inintuitive (#6782)
         //
         // We never insert markers for Super CF as this would confuse the thrift side.
-        if (type == StatementType.INSERT && cfDef.isComposite && !cfDef.isCompact && !cfm.isSuper())
-        {
-            ByteBuffer name = builder.copy().add(ByteBufferUtil.EMPTY_BYTE_BUFFER).build();
-            cf.addColumn(params.makeColumn(name, ByteBufferUtil.EMPTY_BYTE_BUFFER));
-        }
+        if (type == StatementType.INSERT && cfm.isCQL3Table() && !prefix.isStatic())
+            cf.addColumn(params.makeColumn(cfm.comparator.rowMarker(prefix), ByteBufferUtil.EMPTY_BYTE_BUFFER));
 
         List<Operation> updates = getOperations();
 
-        if (cfDef.isCompact)
+        if (cfm.comparator.isDense())
         {
-            if (builder.componentCount() == 0)
-                throw new InvalidRequestException(String.format("Missing PRIMARY KEY part %s", cfDef.clusteringColumns().iterator().next()));
+            if (prefix.isEmpty())
+                throw new InvalidRequestException(String.format("Missing PRIMARY KEY part %s", cfm.clusteringColumns().iterator().next()));
 
-            if (cfDef.compactValue() == null)
+            // An empty name for the compact value is what we use to recognize the case where there is not column
+            // outside the PK, see CreateStatement.
+            if (!cfm.compactValueColumn().name.bytes.hasRemaining())
             {
-                // compact + no compact value implies there is no column outside the PK. So no operation could
-                // have passed through validation
+                // There is no column outside the PK. So no operation could have passed through validation
                 assert updates.isEmpty();
-                setToEmptyOperation.execute(key, cf, builder.copy(), params);
+                new Constants.Setter(cfm.compactValueColumn(), EMPTY).execute(key, cf, prefix, params);
             }
             else
             {
-                // compact means we don't have a row marker, so don't accept to set only the PK. See CASSANDRA-5648.
+                // dense means we don't have a row marker, so don't accept to set only the PK. See CASSANDRA-5648.
                 if (updates.isEmpty())
-                    throw new InvalidRequestException(String.format("Column %s is mandatory for this COMPACT STORAGE table", cfDef.compactValue()));
+                    throw new InvalidRequestException(String.format("Column %s is mandatory for this COMPACT STORAGE table", cfm.compactValueColumn().name));
 
                 for (Operation update : updates)
-                    update.execute(key, cf, builder.copy(), params);
+                    update.execute(key, cf, prefix, params);
             }
         }
         else
         {
             for (Operation update : updates)
-                update.execute(key, cf, builder.copy(), params);
+                update.execute(key, cf, prefix, params);
         }
     }
 
@@ -123,9 +121,9 @@ public class UpdateStatement extends ModificationStatement
             this.columnValues = columnValues;
         }
 
-        protected ModificationStatement prepareInternal(CFDefinition cfDef, VariableSpecifications boundNames, Attributes attrs) throws InvalidRequestException
+        protected ModificationStatement prepareInternal(CFMetaData cfm, VariableSpecifications boundNames, Attributes attrs) throws InvalidRequestException
         {
-            UpdateStatement stmt = new UpdateStatement(ModificationStatement.StatementType.INSERT, cfDef.cfm, attrs);
+            UpdateStatement stmt = new UpdateStatement(ModificationStatement.StatementType.INSERT,boundNames.size(), cfm, attrs);
 
             // Created from an INSERT
             if (stmt.isCounter())
@@ -137,28 +135,26 @@ public class UpdateStatement extends ModificationStatement
 
             for (int i = 0; i < columnNames.size(); i++)
             {
-                CFDefinition.Name name = cfDef.get(columnNames.get(i));
-                if (name == null)
+                ColumnDefinition def = cfm.getColumnDefinition(columnNames.get(i));
+                if (def == null)
                     throw new InvalidRequestException(String.format("Unknown identifier %s", columnNames.get(i)));
 
                 for (int j = 0; j < i; j++)
-                    if (name.name.equals(columnNames.get(j)))
-                        throw new InvalidRequestException(String.format("Multiple definitions found for column %s", name));
+                    if (def.name.equals(columnNames.get(j)))
+                        throw new InvalidRequestException(String.format("Multiple definitions found for column %s", def.name));
 
                 Term.Raw value = columnValues.get(i);
 
-                switch (name.kind)
+                switch (def.kind)
                 {
-                    case KEY_ALIAS:
-                    case COLUMN_ALIAS:
-                        Term t = value.prepare(name);
+                    case PARTITION_KEY:
+                    case CLUSTERING_COLUMN:
+                        Term t = value.prepare(keyspace(), def);
                         t.collectMarkerSpecification(boundNames);
-                        stmt.addKeyValue(name, t);
+                        stmt.addKeyValue(def, t);
                         break;
-                    case VALUE_ALIAS:
-                    case COLUMN_METADATA:
-                    case STATIC:
-                        Operation operation = new Operation.SetValue(value).prepare(name);
+                    default:
+                        Operation operation = new Operation.SetValue(value).prepare(keyspace(), def);
                         operation.collectMarkerSpecification(boundNames);
                         stmt.addOperation(operation);
                         break;
@@ -194,27 +190,25 @@ public class UpdateStatement extends ModificationStatement
             this.whereClause = whereClause;
         }
 
-        protected ModificationStatement prepareInternal(CFDefinition cfDef, VariableSpecifications boundNames, Attributes attrs) throws InvalidRequestException
+        protected ModificationStatement prepareInternal(CFMetaData cfm, VariableSpecifications boundNames, Attributes attrs) throws InvalidRequestException
         {
-            UpdateStatement stmt = new UpdateStatement(ModificationStatement.StatementType.UPDATE, cfDef.cfm, attrs);
+            UpdateStatement stmt = new UpdateStatement(ModificationStatement.StatementType.UPDATE, boundNames.size(), cfm, attrs);
 
             for (Pair<ColumnIdentifier, Operation.RawUpdate> entry : updates)
             {
-                CFDefinition.Name name = cfDef.get(entry.left);
-                if (name == null)
+                ColumnDefinition def = cfm.getColumnDefinition(entry.left);
+                if (def == null)
                     throw new InvalidRequestException(String.format("Unknown identifier %s", entry.left));
 
-                Operation operation = entry.right.prepare(name);
+                Operation operation = entry.right.prepare(keyspace(), def);
                 operation.collectMarkerSpecification(boundNames);
 
-                switch (name.kind)
+                switch (def.kind)
                 {
-                    case KEY_ALIAS:
-                    case COLUMN_ALIAS:
+                    case PARTITION_KEY:
+                    case CLUSTERING_COLUMN:
                         throw new InvalidRequestException(String.format("PRIMARY KEY part %s found in SET part", entry.left));
-                    case VALUE_ALIAS:
-                    case COLUMN_METADATA:
-                    case STATIC:
+                    default:
                         stmt.addOperation(operation);
                         break;
                 }

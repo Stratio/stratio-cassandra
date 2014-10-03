@@ -22,6 +22,9 @@ import java.util.StringTokenizer;
 
 import com.google.common.base.Objects;
 
+import org.apache.cassandra.io.sstable.metadata.IMetadataSerializer;
+import org.apache.cassandra.io.sstable.metadata.LegacyMetadataSerializer;
+import org.apache.cassandra.io.sstable.metadata.MetadataSerializer;
 import org.apache.cassandra.utils.Pair;
 
 import static org.apache.cassandra.io.sstable.Component.separator;
@@ -44,9 +47,8 @@ public class Descriptor
     public static class Version
     {
         // This needs to be at the begining for initialization sake
-        public static final String current_version = "jb";
+        public static final String current_version = "ka";
 
-        // ic (1.2.5): omits per-row bloom filter of column names
         // ja (2.0.0): super columns are serialized as composites (note that there is no real format change,
         //               this is mostly a marker to know if we should expect super columns or not. We do need
         //               a major version bump however, because we should not allow streaming of super columns
@@ -57,31 +59,33 @@ public class Descriptor
         //             tracks max/min column values (according to comparator)
         // jb (2.0.1): switch from crc32 to adler32 for compression checksums
         //             checksum the compressed data
+        // ka (2.1.0): new Statistics.db file format
+        //             index summaries can be downsampled and the sampling level is persisted
+        //             switch uncompressed checksums to adler32
+        //             tracks presense of legacy (local and remote) counter shards
 
         public static final Version CURRENT = new Version(current_version);
 
         private final String version;
 
         public final boolean isLatestVersion;
-        public final boolean hasSuperColumns;
-        public final boolean tracksMaxLocalDeletionTime;
-        public final boolean hasBloomFilterFPChance;
-        public final boolean offHeapSummaries;
-        public final boolean hasRowSizeAndColumnCount;
-        public final boolean tracksMaxMinColumnNames;
         public final boolean hasPostCompressionAdlerChecksums;
+        public final boolean hasSamplingLevel;
+        public final boolean newStatsFile;
+        public final boolean hasAllAdlerChecksums;
+        public final boolean hasRepairedAt;
+        public final boolean tracksLegacyCounterShards;
 
         public Version(String version)
         {
             this.version = version;
-            tracksMaxLocalDeletionTime = version.compareTo("ja") >= 0;
             isLatestVersion = version.compareTo(current_version) == 0;
-            hasSuperColumns = version.compareTo("ja") < 0;
-            hasBloomFilterFPChance = version.compareTo("ja") >= 0;
-            offHeapSummaries = version.compareTo("ja") >= 0;
-            hasRowSizeAndColumnCount = version.compareTo("ja") < 0;
-            tracksMaxMinColumnNames = version.compareTo("ja") >= 0;
             hasPostCompressionAdlerChecksums = version.compareTo("jb") >= 0;
+            hasSamplingLevel = version.compareTo("ka") >= 0;
+            newStatsFile = version.compareTo("ka") >= 0;
+            hasAllAdlerChecksums = version.compareTo("ka") >= 0;
+            hasRepairedAt = version.compareTo("ka") >= 0;
+            tracksLegacyCounterShards = version.compareTo("ka") >= 0;
         }
 
         /**
@@ -96,12 +100,7 @@ public class Descriptor
 
         public boolean isCompatible()
         {
-            return version.compareTo("ic") >= 0 && version.charAt(0) <= CURRENT.version.charAt(0);
-        }
-
-        public boolean isStreamCompatible()
-        {
-            return isCompatible() && version.charAt(0) >= 'j';
+            return version.compareTo("ja") >= 0 && version.charAt(0) <= CURRENT.version.charAt(0);
         }
 
         @Override
@@ -113,11 +112,7 @@ public class Descriptor
         @Override
         public boolean equals(Object o)
         {
-            if (o == this)
-                return true;
-            if (!(o instanceof Version))
-                return false;
-            return version.equals(((Version)o).version);
+            return o == this || o instanceof Version && version.equals(((Version) o).version);
         }
 
         @Override
@@ -127,29 +122,41 @@ public class Descriptor
         }
     }
 
+    public static enum Type
+    {
+        TEMP("tmp", true), TEMPLINK("tmplink", true), FINAL(null, false);
+        public final boolean isTemporary;
+        public final String marker;
+        Type(String marker, boolean isTemporary)
+        {
+            this.isTemporary = isTemporary;
+            this.marker = marker;
+        }
+    }
+
     public final File directory;
     /** version has the following format: <code>[a-z]+</code> */
     public final Version version;
     public final String ksname;
     public final String cfname;
     public final int generation;
-    public final boolean temporary;
+    public final Type type;
     private final int hashCode;
 
     /**
      * A descriptor that assumes CURRENT_VERSION.
      */
-    public Descriptor(File directory, String ksname, String cfname, int generation, boolean temp)
+    public Descriptor(File directory, String ksname, String cfname, int generation, Type temp)
     {
         this(Version.CURRENT, directory, ksname, cfname, generation, temp);
     }
 
-    public Descriptor(String version, File directory, String ksname, String cfname, int generation, boolean temp)
+    public Descriptor(String version, File directory, String ksname, String cfname, int generation, Type temp)
     {
         this(new Version(version), directory, ksname, cfname, generation, temp);
     }
 
-    public Descriptor(Version version, File directory, String ksname, String cfname, int generation, boolean temp)
+    public Descriptor(Version version, File directory, String ksname, String cfname, int generation, Type temp)
     {
         assert version != null && directory != null && ksname != null && cfname != null;
         this.version = version;
@@ -157,13 +164,13 @@ public class Descriptor
         this.ksname = ksname;
         this.cfname = cfname;
         this.generation = generation;
-        temporary = temp;
+        type = temp;
         hashCode = Objects.hashCode(directory, generation, ksname, cfname, temp);
     }
 
     public Descriptor withGeneration(int newGeneration)
     {
-        return new Descriptor(version, directory, ksname, cfname, newGeneration, temporary);
+        return new Descriptor(version, directory, ksname, cfname, newGeneration, type);
     }
 
     public String filenameFor(Component component)
@@ -175,12 +182,25 @@ public class Descriptor
     {
         StringBuilder buff = new StringBuilder();
         buff.append(directory).append(File.separatorChar);
+        appendFileName(buff);
+        return buff.toString();
+    }
+
+    private void appendFileName(StringBuilder buff)
+    {
         buff.append(ksname).append(separator);
         buff.append(cfname).append(separator);
-        if (temporary)
-            buff.append(SSTable.TEMPFILE_MARKER).append(separator);
+        if (type.isTemporary)
+            buff.append(type.marker).append(separator);
         buff.append(version).append(separator);
         buff.append(generation);
+    }
+
+    public String relativeFilenameFor(Component component)
+    {
+        final StringBuilder buff = new StringBuilder();
+        appendFileName(buff);
+        buff.append(separator).append(component.name());
         return buff.toString();
     }
 
@@ -236,15 +256,20 @@ public class Descriptor
 
         // optional temporary marker
         nexttok = st.nextToken();
-        boolean temporary = false;
-        if (nexttok.equals(SSTable.TEMPFILE_MARKER))
+        Type type = Type.FINAL;
+        if (nexttok.equals(Type.TEMP.marker))
         {
-            temporary = true;
+            type = Type.TEMP;
+            nexttok = st.nextToken();
+        }
+        else if (nexttok.equals(Type.TEMPLINK.marker))
+        {
+            type = Type.TEMPLINK;
             nexttok = st.nextToken();
         }
 
         if (!Version.validate(nexttok))
-            throw new UnsupportedOperationException("SSTable " + name + " is too old to open.  Upgrade to 1.2.5 first, and run upgradesstables");
+            throw new UnsupportedOperationException("SSTable " + name + " is too old to open.  Upgrade to 2.0 first, and run upgradesstables");
         Version version = new Version(nexttok);
 
         nexttok = st.nextToken();
@@ -255,16 +280,24 @@ public class Descriptor
         if (!skipComponent)
             component = st.nextToken();
         directory = directory != null ? directory : new File(".");
-        return Pair.create(new Descriptor(version, directory, ksname, cfname, generation, temporary), component);
+        return Pair.create(new Descriptor(version, directory, ksname, cfname, generation, type), component);
     }
 
     /**
-     * @param temporary temporary flag
+     * @param type temporary flag
      * @return A clone of this descriptor with the given 'temporary' status.
      */
-    public Descriptor asTemporary(boolean temporary)
+    public Descriptor asType(Type type)
     {
-        return new Descriptor(version, directory, ksname, cfname, generation, temporary);
+        return new Descriptor(version, directory, ksname, cfname, generation, type);
+    }
+
+    public IMetadataSerializer getMetadataSerializer()
+    {
+        if (version.newStatsFile)
+            return new MetadataSerializer();
+        else
+            return new LegacyMetadataSerializer();
     }
 
     /**
@@ -273,17 +306,6 @@ public class Descriptor
     public boolean isCompatible()
     {
         return version.isCompatible();
-    }
-
-    /**
-     * @return true if the current Cassandra version can stream the given sstable version
-     * from another node.  This is stricter than opening it locally [isCompatible] because
-     * streaming needs to rebuild all the non-data components, and it only knows how to write
-     * the latest version.
-     */
-    public boolean isStreamCompatible()
-    {
-        return version.isStreamCompatible();
     }
 
     @Override
@@ -300,7 +322,11 @@ public class Descriptor
         if (!(o instanceof Descriptor))
             return false;
         Descriptor that = (Descriptor)o;
-        return that.directory.equals(this.directory) && that.generation == this.generation && that.ksname.equals(this.ksname) && that.cfname.equals(this.cfname) && that.temporary == this.temporary;
+        return that.directory.equals(this.directory)
+                       && that.generation == this.generation
+                       && that.ksname.equals(this.ksname)
+                       && that.cfname.equals(this.cfname)
+                       && that.type == this.type;
     }
 
     @Override

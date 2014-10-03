@@ -18,27 +18,27 @@
 */
 package org.apache.cassandra.config;
 
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
 import org.apache.cassandra.OrderedJUnit4ClassRunner;
 import org.apache.cassandra.SchemaLoader;
+import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.service.MigrationManager;
 
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
-import static org.junit.Assert.*;
-
-
-import java.io.IOException;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 @RunWith(OrderedJUnit4ClassRunner.class)
 public class DatabaseDescriptorTest
 {
     @Test
-    public void testCFMetaDataSerialization() throws IOException, ConfigurationException, InvalidRequestException
+    public void testCFMetaDataSerialization() throws ConfigurationException, InvalidRequestException
     {
         // test serialization of all defined test CFs.
         for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
@@ -46,21 +46,21 @@ public class DatabaseDescriptorTest
             for (CFMetaData cfm : Schema.instance.getKeyspaceMetaData(keyspaceName).values())
             {
                 CFMetaData cfmDupe = CFMetaData.fromThrift(cfm.toThrift());
-                assert cfmDupe != null;
-                assert cfmDupe.equals(cfm);
+                assertNotNull(cfmDupe);
+                assertEquals(cfm, cfmDupe);
             }
         }
     }
 
     @Test
-    public void testKSMetaDataSerialization() throws IOException, ConfigurationException
+    public void testKSMetaDataSerialization() throws ConfigurationException
     {
         for (KSMetaData ksm : Schema.instance.getKeyspaceDefinitions())
         {
             // Not testing round-trip on the KsDef via serDe() because maps
             KSMetaData ksmDupe = KSMetaData.fromThrift(ksm.toThrift());
-            assert ksmDupe != null;
-            assert ksmDupe.equals(ksm);
+            assertNotNull(ksmDupe);
+            assertEquals(ksm, ksmDupe);
         }
     }
 
@@ -70,9 +70,10 @@ public class DatabaseDescriptorTest
     {
         SchemaLoader.cleanupAndLeaveDirs();
         DatabaseDescriptor.loadSchemas();
-        assert Schema.instance.getNonSystemKeyspaces().size() == 0;
+        assertEquals(0, Schema.instance.getNonSystemKeyspaces().size());
 
         Gossiper.instance.start((int)(System.currentTimeMillis() / 1000));
+        Keyspace.setInitialized();
 
         try
         {
@@ -80,19 +81,19 @@ public class DatabaseDescriptorTest
             MigrationManager.announceNewKeyspace(KSMetaData.testMetadata("ks0", SimpleStrategy.class, KSMetaData.optsWithRF(3)));
             MigrationManager.announceNewKeyspace(KSMetaData.testMetadata("ks1", SimpleStrategy.class, KSMetaData.optsWithRF(3)));
 
-            assert Schema.instance.getKSMetaData("ks0") != null;
-            assert Schema.instance.getKSMetaData("ks1") != null;
+            assertNotNull(Schema.instance.getKSMetaData("ks0"));
+            assertNotNull(Schema.instance.getKSMetaData("ks1"));
 
             Schema.instance.clearKeyspaceDefinition(Schema.instance.getKSMetaData("ks0"));
             Schema.instance.clearKeyspaceDefinition(Schema.instance.getKSMetaData("ks1"));
 
-            assert Schema.instance.getKSMetaData("ks0") == null;
-            assert Schema.instance.getKSMetaData("ks1") == null;
+            assertNull(Schema.instance.getKSMetaData("ks0"));
+            assertNull(Schema.instance.getKSMetaData("ks1"));
 
             DatabaseDescriptor.loadSchemas();
 
-            assert Schema.instance.getKSMetaData("ks0") != null;
-            assert Schema.instance.getKSMetaData("ks1") != null;
+            assertNotNull(Schema.instance.getKSMetaData("ks0"));
+            assertNotNull(Schema.instance.getKSMetaData("ks1"));
         }
         finally
         {
@@ -106,6 +107,7 @@ public class DatabaseDescriptorTest
         // By default, we should load from the yaml
         Config config = DatabaseDescriptor.loadConfig();
         assertEquals("Test Cluster", config.cluster_name);
+        Keyspace.setInitialized();
 
         // Now try custom loader
         ConfigurationLoader testLoader = new TestLoader();

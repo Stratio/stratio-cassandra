@@ -18,14 +18,19 @@
 package org.apache.cassandra.db.index;
 
 import java.nio.ByteBuffer;
+import java.util.concurrent.Future;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.*;
-import org.apache.cassandra.db.marshal.*;
-import org.apache.cassandra.dht.*;
-import org.apache.cassandra.thrift.IndexExpression;
+import org.apache.cassandra.db.composites.CellName;
+import org.apache.cassandra.db.composites.CellNameType;
+import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.dht.LocalPartitioner;
+import org.apache.cassandra.dht.LocalToken;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.concurrent.OpOrder;
 
 /**
  * Implements a secondary index for a column family using a second column family
@@ -47,17 +52,34 @@ public abstract class AbstractSimplePerColumnSecondaryIndex extends PerColumnSec
 
         columnDef = columnDefs.iterator().next();
 
-        AbstractType indexComparator = SecondaryIndex.getIndexComparator(baseCfs.metadata, columnDef);
+        CellNameType indexComparator = SecondaryIndex.getIndexComparator(baseCfs.metadata, columnDef);
         CFMetaData indexedCfMetadata = CFMetaData.newIndexMetadata(baseCfs.metadata, columnDef, indexComparator);
         indexCfs = ColumnFamilyStore.createColumnFamilyStore(baseCfs.keyspace,
                                                              indexedCfMetadata.cfName,
-                                                             new LocalPartitioner(columnDef.getValidator()),
+                                                             new LocalPartitioner(getIndexKeyComparator()),
                                                              indexedCfMetadata);
     }
 
-    protected abstract ByteBuffer makeIndexColumnName(ByteBuffer rowKey, Column column);
+    protected AbstractType<?> getIndexKeyComparator()
+    {
+        return columnDef.type;
+    }
 
-    protected abstract ByteBuffer getIndexedValue(ByteBuffer rowKey, Column column);
+    @Override
+    public DecoratedKey getIndexKeyFor(ByteBuffer value)
+    {
+        return new BufferDecoratedKey(new LocalToken(getIndexKeyComparator(), value), value);
+    }
+
+    @Override
+    String indexTypeForGrouping()
+    {
+        return "_internal_";
+    }
+
+    protected abstract CellName makeIndexColumnName(ByteBuffer rowKey, Cell cell);
+
+    protected abstract ByteBuffer getIndexedValue(ByteBuffer rowKey, Cell cell);
 
     protected abstract AbstractType getExpressionComparator();
 
@@ -65,51 +87,52 @@ public abstract class AbstractSimplePerColumnSecondaryIndex extends PerColumnSec
     {
         return String.format("'%s.%s %s %s'",
                              baseCfs.name,
-                             getExpressionComparator().getString(expr.column_name),
-                             expr.op,
-                             baseCfs.metadata.getColumnDefinition(expr.column_name).getValidator().getString(expr.value));
+                             getExpressionComparator().getString(expr.column),
+                             expr.operator,
+                             baseCfs.metadata.getColumnDefinition(expr.column).type.getString(expr.value));
     }
 
-    public void delete(ByteBuffer rowKey, Column column)
+    public void delete(ByteBuffer rowKey, Cell cell, OpOrder.Group opGroup)
     {
-        if (column.isMarkedForDelete(System.currentTimeMillis()))
+        if (!cell.isLive())
             return;
 
-        DecoratedKey valueKey = getIndexKeyFor(getIndexedValue(rowKey, column));
+        DecoratedKey valueKey = getIndexKeyFor(getIndexedValue(rowKey, cell));
         int localDeletionTime = (int) (System.currentTimeMillis() / 1000);
-        ColumnFamily cfi = ArrayBackedSortedColumns.factory.create(indexCfs.metadata);
-        ByteBuffer name = makeIndexColumnName(rowKey, column);
-        assert name.remaining() > 0 && name.remaining() <= Column.MAX_NAME_LENGTH : name.remaining();
-        cfi.addTombstone(name, localDeletionTime, column.timestamp());
-        indexCfs.apply(valueKey, cfi, SecondaryIndexManager.nullUpdater);
+        ColumnFamily cfi = ArrayBackedSortedColumns.factory.create(indexCfs.metadata, false, 1);
+        cfi.addTombstone(makeIndexColumnName(rowKey, cell), localDeletionTime, cell.timestamp());
+        indexCfs.apply(valueKey, cfi, SecondaryIndexManager.nullUpdater, opGroup, null);
         if (logger.isDebugEnabled())
             logger.debug("removed index entry for cleaned-up value {}:{}", valueKey, cfi);
     }
 
-    public void insert(ByteBuffer rowKey, Column column)
+    public void insert(ByteBuffer rowKey, Cell cell, OpOrder.Group opGroup)
     {
-        DecoratedKey valueKey = getIndexKeyFor(getIndexedValue(rowKey, column));
-        ColumnFamily cfi = ArrayBackedSortedColumns.factory.create(indexCfs.metadata);
-        ByteBuffer name = makeIndexColumnName(rowKey, column);
-        assert name.remaining() > 0 && name.remaining() <= Column.MAX_NAME_LENGTH : name.remaining();
-        if (column instanceof ExpiringColumn)
+        DecoratedKey valueKey = getIndexKeyFor(getIndexedValue(rowKey, cell));
+        ColumnFamily cfi = ArrayBackedSortedColumns.factory.create(indexCfs.metadata, false, 1);
+        CellName name = makeIndexColumnName(rowKey, cell);
+        if (cell instanceof ExpiringCell)
         {
-            ExpiringColumn ec = (ExpiringColumn)column;
-            cfi.addColumn(new ExpiringColumn(name, ByteBufferUtil.EMPTY_BYTE_BUFFER, ec.timestamp(), ec.getTimeToLive(), ec.getLocalDeletionTime()));
+            ExpiringCell ec = (ExpiringCell) cell;
+            cfi.addColumn(new BufferExpiringCell(name, ByteBufferUtil.EMPTY_BYTE_BUFFER, ec.timestamp(), ec.getTimeToLive(), ec.getLocalDeletionTime()));
         }
         else
         {
-            cfi.addColumn(new Column(name, ByteBufferUtil.EMPTY_BYTE_BUFFER, column.timestamp()));
+            cfi.addColumn(new BufferCell(name, ByteBufferUtil.EMPTY_BYTE_BUFFER, cell.timestamp()));
         }
         if (logger.isDebugEnabled())
-            logger.debug("applying index row {} in {}", indexCfs.metadata.getKeyValidator().getString(valueKey.key), cfi);
+            logger.debug("applying index row {} in {}", indexCfs.metadata.getKeyValidator().getString(valueKey.getKey()), cfi);
 
-        indexCfs.apply(valueKey, cfi, SecondaryIndexManager.nullUpdater);
+        indexCfs.apply(valueKey, cfi, SecondaryIndexManager.nullUpdater, opGroup, null);
     }
 
-    public void update(ByteBuffer rowKey, Column col)
+    public void update(ByteBuffer rowKey, Cell oldCol, Cell col, OpOrder.Group opGroup)
     {
-        insert(rowKey, col);
+        // insert the new value before removing the old one, so we never have a period
+        // where the row is invisible to both queries (the opposite seems preferable); see CASSANDRA-5540                    
+        insert(rowKey, col, opGroup);
+        if (SecondaryIndexManager.shouldCleanupOldValue(oldCol, col))
+            delete(rowKey, oldCol, opGroup);
     }
 
     public void removeIndex(ByteBuffer columnName)
@@ -119,7 +142,13 @@ public abstract class AbstractSimplePerColumnSecondaryIndex extends PerColumnSec
 
     public void forceBlockingFlush()
     {
-        indexCfs.forceBlockingFlush();
+        Future<?> wait;
+        // we synchronise on the baseCfs to make sure we are ordered correctly with other flushes to the base CFS
+        synchronized (baseCfs.getDataTracker())
+        {
+            wait = indexCfs.forceFlush();
+        }
+        FBUtilities.waitOnFuture(wait);
     }
 
     public void invalidate()
@@ -142,14 +171,14 @@ public abstract class AbstractSimplePerColumnSecondaryIndex extends PerColumnSec
         return indexCfs.name;
     }
 
-    public long getLiveSize()
-    {
-        return indexCfs.getMemtableDataSize();
-    }
-
     public void reload()
     {
         indexCfs.metadata.reloadSecondaryIndexMetadata(baseCfs.metadata);
         indexCfs.reload();
     }
+    
+    public long estimateResultRows()
+    {
+        return getIndexCfs().getMeanColumns();
+    } 
 }

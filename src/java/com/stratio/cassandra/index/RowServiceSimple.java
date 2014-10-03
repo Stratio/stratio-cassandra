@@ -21,17 +21,11 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.db.Column;
-import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.DataRange;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.Row;
-import org.apache.cassandra.db.TreeMapBackedSortedColumns;
+import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.filter.QueryFilter;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.dht.Token;
-import org.apache.cassandra.utils.HeapAllocator;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Filter;
@@ -138,16 +132,15 @@ public class RowServiceSimple extends RowService
         DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
         Row row = row(partitionKey, timestamp);
 
-        // Create score column from document score
+        // Create score cell from document score
         Float score = scoredDocument.getScore();
-        ByteBuffer columnName = nameType.builder().add(indexedColumnName.key).build();
-        ByteBuffer columnValue = UTF8Type.instance.decompose(score.toString());
-        Column scoreColumn = new Column(columnName, columnValue, timestamp);
+        ByteBuffer cellValue = UTF8Type.instance.decompose(score.toString());
+        CellName cellName = (CellName) nameType.builder().add(indexedColumnName.bytes).build();
 
-        // Return new row with score column
-        ColumnFamily decoratedCf = TreeMapBackedSortedColumns.factory.create(baseCfs.metadata);
-        decoratedCf.addColumn(scoreColumn);
-        decoratedCf.addAll(row.cf, HeapAllocator.instance);
+        // Return new row with score cell
+        ColumnFamily decoratedCf = ArrayBackedSortedColumns.factory.create(baseCfs.metadata);
+        decoratedCf.addColumn(cellName, cellValue, timestamp);
+        decoratedCf.addAll(row.cf);
         return new Row(partitionKey, decoratedCf);
     }
 
@@ -196,8 +189,8 @@ public class RowServiceSimple extends RowService
     protected Float score(Row row)
     {
         ColumnFamily cf = row.cf;
-        ByteBuffer columnName = nameType.builder().add(indexedColumnName.key).build();
-        Column column = cf.getColumn(columnName);
+        CellName cellName = (CellName) nameType.builder().add(indexedColumnName.bytes).build();
+        Cell column = cf.getColumn(cellName);
         ByteBuffer columnValue = column.value();
         String stringValue = UTF8Type.instance.compose(columnValue);
         return Float.parseFloat(stringValue);
