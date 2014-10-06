@@ -291,22 +291,19 @@ public class LuceneIndex
             throws IOException
     {
         // Use default sort if the query doesn't use relevance
-        if (sort == null && query instanceof ConstantScoreQuery)
+        if (sort == null)
         {
-            sort = this.sort;
-        }
-
-        if (sort != null)
-        {
-            FieldDoc start = after == null ? null : (FieldDoc) after;
-            TopFieldCollector tfc = TopFieldCollector.create(sort, count, start, true, false, false, false);
-            Collector collector = new EarlyTerminatingSortingCollector(tfc, sort, count);
-            searcher.search(query, collector);
-            return tfc.topDocs();
-        }
-        else
-        {
-            return searcher.searchAfter(after, query, count);
+            if (query instanceof  ConstantScoreQuery) {
+                FieldDoc start = after == null ? null : (FieldDoc) after;
+                TopFieldCollector tfc = TopFieldCollector.create(this.sort, count, start, true, false, false, false);
+                Collector collector = new EarlyTerminatingSortingCollector(tfc, this.sort, count);
+                searcher.search(query, collector);
+                return tfc.topDocs();
+            } else {
+                return searcher.searchAfter(after, query, count);
+            }
+        } else {
+            return searcher.searchAfter(after, query, count, sort);
         }
     }
 

@@ -237,6 +237,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         // Sort
         Search search = search(clause);
         Comparator<Row> comparator = rowService.comparator(search);
+        Log.debug("SORTING RESULTS WITH " + comparator);
         Collections.sort(result, comparator);        
         String comparatorName = comparator.getClass().getSimpleName();
         int endSize = result.size();

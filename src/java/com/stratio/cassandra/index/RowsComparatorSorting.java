@@ -39,8 +39,6 @@ public class RowsComparatorSorting implements RowsComparator
     private final Schema schema;
     private final ComparatorChain<Columns> comparatorChain;
 
-    private final Map<DecoratedKey, Columns> cellsCache;
-
     /**
      * @param metadata
      *            The {@link CFMetaData} of the column family of the {@link Row}s to be compared.
@@ -59,7 +57,6 @@ public class RowsComparatorSorting implements RowsComparator
             Comparator<Columns> comparator = sortingField.comparator();
             comparatorChain.addComparator(comparator);
         }
-        cellsCache = new HashMap<>();
     }
 
     /**
@@ -73,16 +70,8 @@ public class RowsComparatorSorting implements RowsComparator
     @Override
     public int compare(Row row1, Row row2)
     {
-        Columns columns1 = cellsCache.get(row1.key);
-        if (columns1 == null) {
-            columns1 = schema.cells(metadata, row1);
-            cellsCache.put(row1.key, columns1);
-        }
-        Columns columns2 = cellsCache.get(row2.key);
-        if (columns2 == null) {
-            columns2 = schema.cells(metadata, row2);
-            cellsCache.put(row2.key, columns2);
-        }
+        Columns columns1 = schema.cells(metadata, row1);
+        Columns columns2 = schema.cells(metadata, row2);
         return comparatorChain.compare(columns1, columns2);
     }
 }

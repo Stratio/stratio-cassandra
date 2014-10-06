@@ -63,12 +63,12 @@ public abstract class ColumnMapper<BASE>
         this.supportedTypes = supportedTypes;
     }
 
-    public static Column cell(String name, ByteBuffer value, AbstractType<?> type)
+    public static Column column(String name, ByteBuffer value, AbstractType<?> type)
     {
         return new Column(name, value, type);
     }
 
-    public static Column cell(String name, String nameSufix, ByteBuffer value, AbstractType<?> type)
+    public static Column column(String name, String nameSufix, ByteBuffer value, AbstractType<?> type)
     {
         return new Column(name, nameSufix, value, type);
     }

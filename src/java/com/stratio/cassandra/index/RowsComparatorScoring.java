@@ -15,45 +15,36 @@
  */
 package com.stratio.cassandra.index;
 
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
-
-import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Row;
-import org.apache.cassandra.dht.IPartitioner;
+
+import java.util.Comparator;
 
 /**
- * A {@link Comparator} for comparing {@link Row}s according to its {@link IPartitioner} order.
- * 
+ * A {@link Comparator} for comparing {@link Row}s according to its Lucene scoring.
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
-public class RowsComparatorScoring implements RowsComparator
-{
+public class RowsComparatorScoring implements RowsComparator {
 
+    /** The used {@link com.stratio.cassandra.index.RowService}. */
     private final RowService rowService;
-    private final Map<DecoratedKey, Float> scoresCache;
 
-    public RowsComparatorScoring(RowService rowService)
-    {
+    /**
+     * Returns a new {@link Comparator} for comparing {@link Row}s according to its Lucene scoring.
+     *
+     * @param rowService The used {@link com.stratio.cassandra.index.RowService}.
+     */
+    public RowsComparatorScoring(RowService rowService) {
         this.rowService = rowService;
-        scoresCache = new HashMap<>();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public int compare(Row row1, Row row2)
-    {
-        Float score1 = scoresCache.get(row1.key);
-        if (score1 == null) {
-            score1 = rowService.score(row1);
-            scoresCache.put(row1.key, score1);
-        }
-        Float score2 = scoresCache.get(row2.key);
-        if (score2 == null) {
-            score2 = rowService.score(row2);
-            scoresCache.put(row2.key, score2);
-        }
+    public int compare(Row row1, Row row2) {
+        Float score1 = rowService.score(row1);
+        Float score2 = rowService.score(row2);
         return score2.compareTo(score1);
     }
 

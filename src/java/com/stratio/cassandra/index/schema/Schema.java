@@ -20,16 +20,13 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.Map.Entry;
 
+import com.stratio.cassandra.index.util.Log;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.cql3.CQL3Row;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellName;
-import org.apache.cassandra.db.composites.CellNameType;
-import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CollectionType;
-import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.lucene.analysis.Analyzer;
@@ -177,7 +174,7 @@ public class Schema
             int position = columnDefinition.position();
             ByteBuffer value = components[position];
             AbstractType<?> valueType = rawKeyType.getComponents().get(position);
-            columns.add(ColumnMapper.cell(name, value, valueType));
+            columns.add(ColumnMapper.column(name, value, valueType));
         }
         return columns;
     }
@@ -197,16 +194,14 @@ public class Schema
         int numClusteringColumns = metadata.clusteringColumns().size();
         List<Column> columns = new ArrayList<>(numClusteringColumns);
 
-        for (Cell cell : columnFamily) {
-            CellName cellName = cell.name();
-            for (int i = 0; i < numClusteringColumns; i++) {
-                ByteBuffer value = cellName.get(i);
-                ColumnDefinition columnDefinition = metadata.clusteringColumns().get(i);
-                String name = columnDefinition.name.toString();
-                AbstractType<?> valueType = columnDefinition.type;
-                columns.add(ColumnMapper.cell(name, value, valueType));
-                System.out.println("ADDING CLUSTERING CELL "  + name);
-            }
+        Cell cell = columnFamily.iterator().next();
+        CellName cellName = cell.name();
+        for (int i = 0; i < numClusteringColumns; i++) {
+            ByteBuffer value = cellName.get(i);
+            ColumnDefinition columnDefinition = metadata.clusteringColumns().get(i);
+            String name = columnDefinition.name.toString();
+            AbstractType<?> valueType = columnDefinition.type;
+            columns.add(ColumnMapper.column(name, value, valueType));
         }
         return columns;
     }
@@ -223,74 +218,62 @@ public class Schema
     @SuppressWarnings("rawtypes")
     private List<Column> regularCells(CFMetaData metadata, ColumnFamily columnFamily)
     {
-
         List<Column> columns = new LinkedList<>();
 
-//        // Get row's cells iterator skipping clustering column
-//        Iterator<Cell> cellIterator = columnFamily.iterator();
-//        cellIterator.next();
-//
-//        // Stuff for grouping collection cells (sets, lists and maps)
-//        String name = null;
-//        CollectionType collectionType = null;
-//
-//        // int clusteringPosition = metadata.getCfDef().columns.size();
-//        int clusteringPosition = metadata.allColumns().size();
-//        CellNameType nameType = (CellNameType) metadata.comparator;
-//
-//        while (cellIterator.hasNext())
-//        {
-//
-//            Cell cell = cellIterator.next();
-//
-//            ByteBuffer columnName = cell.name().toByteBuffer();
-//            ByteBuffer columnValue = cell.value();
-//
-//            ByteBuffer[] columnNameComponents = nameType.split(columnName);
-//            ByteBuffer columnSimpleName = columnNameComponents[clusteringPosition];
-//
-//            ColumnDefinition columnDefinition = metadata.getColumnDefinition(columnSimpleName);
-//            final AbstractType<?> valueType = columnDefinition.getValidator();
-//            int position = columnDefinition.position();
-//
-//            name = UTF8Type.instance.compose(columnDefinition.name);
-//
-//            if (valueType.isCollection())
-//            {
-//                collectionType = (CollectionType<?>) valueType;
-//                switch (collectionType.kind)
-//                {
-//                case SET:
-//                {
-//                    AbstractType<?> type = collectionType.nameComparator();
-//                    ByteBuffer value = ByteBufferUtils.split(column.name(), nameType)[position + 1];
-//                    columns.add(ColumnMapper.cell(name, value, type));
-//                    break;
-//                }
-//                case LIST:
-//                {
-//                    AbstractType<?> type = collectionType.valueComparator();
-//                    ByteBuffer value = column.value();
-//                    columns.add(ColumnMapper.cell(name, value, type));
-//                    break;
-//                }
-//                case MAP:
-//                {
-//                    AbstractType<?> type = collectionType.valueComparator();
-//                    AbstractType<?> keyType = collectionType.nameComparator();
-//                    ByteBuffer keyValue = ByteBufferUtils.split(column.name(), nameType)[position + 1];
-//                    ByteBuffer value = column.value();
-//                    String nameSufix = keyType.compose(keyValue).toString();
-//                    columns.add(ColumnMapper.cell(name, nameSufix, value, type));
-//                    break;
-//                }
-//                }
-//            }
-//            else
-//            {
-//                columns.add(ColumnMapper.cell(name, columnValue, valueType));
-//            }
-//        }
+        // Get row's cells iterator skipping clustering column
+        Iterator<Cell> cellIterator = columnFamily.iterator();
+        cellIterator.next();
+
+        // Stuff for grouping collection cells (sets, lists and maps)
+        String name;
+        CollectionType collectionType;
+
+        while (cellIterator.hasNext())
+        {
+            Cell cell = cellIterator.next();
+            CellName cellName = cell.name();
+            ColumnDefinition columnDefinition = metadata.getColumnDefinition(cellName);
+
+            AbstractType<?> valueType = columnDefinition.type;
+
+            ByteBuffer cellValue = cell.value();
+
+            name = cellName.cql3ColumnName(metadata).toString();
+
+            if (valueType.isCollection())
+            {
+                collectionType = (CollectionType<?>) valueType;
+                switch (collectionType.kind)
+                {
+                case SET:
+                {
+                    AbstractType<?> type = collectionType.nameComparator();
+                    ByteBuffer value = cellName.collectionElement();
+                    columns.add(ColumnMapper.column(name, value, type));
+                    break;
+                }
+                case LIST:
+                {
+                    AbstractType<?> type = collectionType.valueComparator();
+                    columns.add(ColumnMapper.column(name, cellValue, type));
+                    break;
+                }
+                case MAP:
+                {
+                    AbstractType<?> type = collectionType.valueComparator();
+                    ByteBuffer keyValue = cellName.collectionElement();
+                    AbstractType<?> keyType = collectionType.nameComparator();
+                    String nameSufix = keyType.compose(keyValue).toString();
+                    columns.add(ColumnMapper.column(name, nameSufix, cellValue, type));
+                    break;
+                }
+                }
+            }
+            else
+            {
+                columns.add(ColumnMapper.column(name, cellValue, valueType));
+            }
+        }
 
         return columns;
     }
@@ -312,6 +295,7 @@ public class Schema
         {
             String name = column.getName();
             String fieldName = column.getFieldName();
+            Log.debug(" -> ADDING FIELD " + fieldName);
             Object value = column.getValue();
             ColumnMapper<?> columnMapper = columnMappers.get(name);
             if (columnMapper != null)

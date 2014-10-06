@@ -21,8 +21,11 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
+import com.stratio.cassandra.index.util.ByteBufferUtils;
+import com.stratio.cassandra.index.util.Log;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.composites.CBuilder;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.filter.ColumnSlice;
@@ -30,6 +33,7 @@ import org.apache.cassandra.db.filter.QueryFilter;
 import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
@@ -160,7 +164,6 @@ public class RowServiceWide extends RowService
     @Override
     protected Row row(ScoredDocument scoredDocument, long timestamp) throws IOException
     {
-
         // Extract row from document
         Document document = scoredDocument.getDocument();
         DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
@@ -191,9 +194,11 @@ public class RowServiceWide extends RowService
      *            The time stamp to ignore deleted columns.
      * @return The CQL3 {@link Row} identified by the specified key pair.
      */
-    private Row row(DecoratedKey partitionKey, Composite clusteringKey, long timestamp)
+    private Row row(DecoratedKey partitionKey, CellName clusteringKey, long timestamp)
     {
-        ColumnSlice slice = clusteringKey.slice();
+        Composite start = clusteringKeyMapper.start(clusteringKey);
+        Composite end = clusteringKeyMapper.end(clusteringKey);
+        ColumnSlice slice = new ColumnSlice(start, end);
         SliceQueryFilter dataFilter = new SliceQueryFilter(slice, false, Integer.MAX_VALUE);
         QueryFilter queryFilter = new QueryFilter(partitionKey, baseCfs.name, dataFilter, timestamp);
         return row(queryFilter, timestamp);
