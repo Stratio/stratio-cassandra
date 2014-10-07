@@ -36,6 +36,7 @@ import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.filter.*;
+import org.apache.cassandra.db.index.SecondaryIndexManager;
 import org.apache.cassandra.db.marshal.*;
 import org.apache.cassandra.dht.*;
 import org.apache.cassandra.exceptions.*;
@@ -1081,6 +1082,14 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
                 expressions.add(new IndexExpression(def.name.bytes, IndexExpression.Operator.EQ, value));
             }
         }
+
+        if (usesSecondaryIndexing)
+        {
+            ColumnFamilyStore cfs = Keyspace.open(keyspace()).getColumnFamilyStore(columnFamily());
+            SecondaryIndexManager secondaryIndexManager = cfs.indexManager;
+            secondaryIndexManager.validateIndexSearchersForQuery(expressions);
+        }
+
         return expressions;
     }
 

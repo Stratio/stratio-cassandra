@@ -16,7 +16,6 @@
 package com.stratio.cassandra.index;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.composites.CellName;
@@ -24,7 +23,6 @@ import org.apache.cassandra.db.composites.CellNameType;
 import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.filter.ColumnSlice;
 import org.apache.cassandra.db.filter.SliceQueryFilter;
-import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.lucene.index.AtomicReader;
 import org.apache.lucene.index.AtomicReaderContext;
@@ -37,8 +35,6 @@ import org.apache.lucene.search.Filter;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.OpenBitSet;
-
-import com.stratio.cassandra.index.util.ByteBufferUtils;
 
 /**
  * {@link Filter} that filters documents which clustering key field satisfies a certain {@link DataRange}. This means

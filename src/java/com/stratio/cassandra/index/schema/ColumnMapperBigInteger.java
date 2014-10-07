@@ -24,6 +24,7 @@ import org.apache.cassandra.db.marshal.IntegerType;
 import org.apache.cassandra.db.marshal.LongType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
@@ -143,12 +144,9 @@ public class ColumnMapperBigInteger extends ColumnMapper<String>
     }
 
     @Override
-    public String toString()
-    {
-        StringBuilder builder = new StringBuilder();
-        builder.append(getClass().getSimpleName());
-        builder.append(" []");
-        return builder.toString();
+    public String toString() {
+        return new ToStringBuilder(this)
+                .append("digits", digits)
+                .toString();
     }
-
 }

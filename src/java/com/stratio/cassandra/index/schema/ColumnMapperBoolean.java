@@ -19,6 +19,7 @@ import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.BooleanType;
 import org.apache.cassandra.db.marshal.UTF8Type;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
@@ -111,12 +112,8 @@ public class ColumnMapperBoolean extends ColumnMapper<String>
     }
 
     @Override
-    public String toString()
-    {
-        StringBuilder builder = new StringBuilder();
-        builder.append(getClass().getSimpleName());
-        builder.append(" []");
-        return builder.toString();
+    public String toString() {
+        return new ToStringBuilder(this).toString();
     }
 
 }

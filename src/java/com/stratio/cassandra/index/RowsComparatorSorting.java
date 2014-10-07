@@ -16,8 +16,6 @@
 package com.stratio.cassandra.index;
 
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
 
 import com.stratio.cassandra.index.query.Sorting;
 import com.stratio.cassandra.index.query.SortingField;
@@ -25,7 +23,6 @@ import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.index.util.ComparatorChain;
 import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Row;
 
 /**

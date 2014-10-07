@@ -15,7 +15,6 @@
  */
 package com.stratio.cassandra.index;
 
-import java.nio.ByteBuffer;
 import java.util.Comparator;
 import java.util.Iterator;
 

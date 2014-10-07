@@ -19,7 +19,6 @@ import java.nio.ByteBuffer;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
