@@ -15,20 +15,21 @@
  */
 package com.stratio.cassandra.index.schema;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.*;
-import java.util.Map.Entry;
-
-import com.stratio.cassandra.index.util.Log;
+import com.stratio.cassandra.index.AnalyzerFactory;
+import com.stratio.cassandra.index.util.ByteBufferUtils;
+import com.stratio.cassandra.index.util.JsonSerializer;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.Cell;
+import org.apache.cassandra.db.ColumnFamily;
+import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CollectionType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.exceptions.ConfigurationException;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
@@ -38,38 +39,44 @@ import org.apache.lucene.util.Version;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
-import com.stratio.cassandra.index.AnalyzerFactory;
-import com.stratio.cassandra.index.util.ByteBufferUtils;
-import com.stratio.cassandra.index.util.JsonSerializer;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.*;
+import java.util.Map.Entry;
 
 /**
  * Class for several culumns mappings between Cassandra and Lucene.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class Schema
 {
 
-    /** The default Lucene's analyzer to be used if no other specified. */
+    /**
+     * The default Lucene's analyzer to be used if no other specified.
+     */
     public static final Analyzer DEFAULT_ANALYZER = new StandardAnalyzer(Version.LUCENE_48);
 
-    /** The Lucene's {@link org.apache.lucene.analysis.Analyzer}. */
+    /**
+     * The Lucene's {@link org.apache.lucene.analysis.Analyzer}.
+     */
     private final Analyzer defaultAnalyzer;
 
-    /** The per field Lucene's analyzer to be used. */
+    /**
+     * The per field Lucene's analyzer to be used.
+     */
     private final PerFieldAnalyzerWrapper perFieldAnalyzer;
 
-    /** The column mappers. */
+    /**
+     * The column mappers.
+     */
     private Map<String, ColumnMapper<?>> columnMappers;
 
     /**
      * Builds a new {@code ColumnsMapper} for the specified analyzer and cell mappers.
-     * 
-     * @param analyzerClassName
-     *            The name of the class of the analyzer to be used.
-     * @param columnMappers
-     *            The {@link Column} mappers to be used.
+     *
+     * @param analyzerClassName The name of the class of the analyzer to be used.
+     * @param columnMappers     The {@link Column} mappers to be used.
      */
     @JsonCreator
     public Schema(@JsonProperty("default_analyzer") String analyzerClassName,
@@ -106,11 +113,9 @@ public class Schema
 
     /**
      * Checks if this is consistent with the specified column family metadata.
-     * 
-     * @param metadata
-     *            A column family metadata.
-     * @throws ConfigurationException
-     *             If this is not consistent with the specified column family metadata.
+     *
+     * @param metadata A column family metadata.
+     * @throws ConfigurationException If this is not consistent with the specified column family metadata.
      */
     public void validate(CFMetaData metadata) throws ConfigurationException
     {
@@ -137,11 +142,9 @@ public class Schema
 
     /**
      * Returns all the {@link Column}s representing the CQL3 columns contained in the specified column family.
-     * 
-     * @param metadata
-     *            The column family metadata
-     * @param row
-     *            A {@link Row}.
+     *
+     * @param metadata The column family metadata
+     * @param row      A {@link Row}.
      * @return The cells contained in the specified columns.
      */
     public Columns cells(CFMetaData metadata, Row row)
@@ -155,11 +158,9 @@ public class Schema
 
     /**
      * Returns the {@link Column}s representing the CQL3 cells contained in the specified partition key.
-     * 
-     * @param metadata
-     *            The indexed column family meta data.
-     * @param partitionKey
-     *            The partition key.
+     *
+     * @param metadata     The indexed column family meta data.
+     * @param partitionKey The partition key.
      * @return the {@link Column}s representing the CQL3 cells contained in the specified partition key.
      */
     private List<Column> partitionKeyCells(CFMetaData metadata, DecoratedKey partitionKey)
@@ -182,11 +183,9 @@ public class Schema
     /**
      * Returns the clustering key {@link Column}s representing the CQL3 cells contained in the specified column family.
      * The clustering key, if exists, is contained in each {@link Column} of {@code columnFamily}.
-     * 
-     * @param metadata
-     *            The indexed column family meta data.
-     * @param columnFamily
-     *            The column family.
+     *
+     * @param metadata     The indexed column family meta data.
+     * @param columnFamily The column family.
      * @return The clustering key {@link Column}s representing the CQL3 columns contained in the specified column family.
      */
     private List<Column> clusteringKeyCells(CFMetaData metadata, ColumnFamily columnFamily)
@@ -196,7 +195,8 @@ public class Schema
 
         Cell cell = columnFamily.iterator().next();
         CellName cellName = cell.name();
-        for (int i = 0; i < numClusteringColumns; i++) {
+        for (int i = 0; i < numClusteringColumns; i++)
+        {
             ByteBuffer value = cellName.get(i);
             ColumnDefinition columnDefinition = metadata.clusteringColumns().get(i);
             String name = columnDefinition.name.toString();
@@ -208,11 +208,9 @@ public class Schema
 
     /**
      * Returns the regular {@link Column}s representing the CQL3 columns contained in the specified column family.
-     * 
-     * @param metadata
-     *            The indexed column family meta data.
-     * @param columnFamily
-     *            The column family.
+     *
+     * @param metadata     The indexed column family meta data.
+     * @param columnFamily The column family.
      * @return The regular {@link Column}s representing the CQL3 columns contained in the specified column family.
      */
     @SuppressWarnings("rawtypes")
@@ -245,28 +243,28 @@ public class Schema
                 collectionType = (CollectionType<?>) valueType;
                 switch (collectionType.kind)
                 {
-                case SET:
-                {
-                    AbstractType<?> type = collectionType.nameComparator();
-                    ByteBuffer value = cellName.collectionElement();
-                    columns.add(ColumnMapper.column(name, value, type));
-                    break;
-                }
-                case LIST:
-                {
-                    AbstractType<?> type = collectionType.valueComparator();
-                    columns.add(ColumnMapper.column(name, cellValue, type));
-                    break;
-                }
-                case MAP:
-                {
-                    AbstractType<?> type = collectionType.valueComparator();
-                    ByteBuffer keyValue = cellName.collectionElement();
-                    AbstractType<?> keyType = collectionType.nameComparator();
-                    String nameSufix = keyType.compose(keyValue).toString();
-                    columns.add(ColumnMapper.column(name, nameSufix, cellValue, type));
-                    break;
-                }
+                    case SET:
+                    {
+                        AbstractType<?> type = collectionType.nameComparator();
+                        ByteBuffer value = cellName.collectionElement();
+                        columns.add(ColumnMapper.column(name, value, type));
+                        break;
+                    }
+                    case LIST:
+                    {
+                        AbstractType<?> type = collectionType.valueComparator();
+                        columns.add(ColumnMapper.column(name, cellValue, type));
+                        break;
+                    }
+                    case MAP:
+                    {
+                        AbstractType<?> type = collectionType.valueComparator();
+                        ByteBuffer keyValue = cellName.collectionElement();
+                        AbstractType<?> keyType = collectionType.nameComparator();
+                        String nameSufix = keyType.compose(keyValue).toString();
+                        columns.add(ColumnMapper.column(name, nameSufix, cellValue, type));
+                        break;
+                    }
                 }
             }
             else
@@ -280,7 +278,7 @@ public class Schema
 
     /**
      * Returns the used {@link PerFieldAnalyzerWrapper}.
-     * 
+     *
      * @return The used {@link PerFieldAnalyzerWrapper}.
      */
     public PerFieldAnalyzerWrapper analyzer()
@@ -295,7 +293,6 @@ public class Schema
         {
             String name = column.getName();
             String fieldName = column.getFieldName();
-            Log.debug(" -> ADDING FIELD " + fieldName);
             Object value = column.getValue();
             ColumnMapper<?> columnMapper = columnMappers.get(name);
             if (columnMapper != null)
@@ -335,9 +332,8 @@ public class Schema
 
     /**
      * Returns the {@link Schema} contained in the specified JSON {@code String}.
-     * 
-     * @param json
-     *            A {@code String} containing the JSON representation of the {@link Schema} to be parsed.
+     *
+     * @param json A {@code String} containing the JSON representation of the {@link Schema} to be parsed.
      * @return The {@link Schema} contained in the specified JSON {@code String}.
      */
     public static Schema fromJson(String json) throws IOException
@@ -348,15 +344,9 @@ public class Schema
     @Override
     public String toString()
     {
-        StringBuilder builder = new StringBuilder();
-        builder.append("Schema [defaultAnalyzer=");
-        builder.append(defaultAnalyzer);
-        builder.append(", perFieldAnalyzer=");
-        builder.append(perFieldAnalyzer);
-        builder.append(", columnMappers=");
-        builder.append(columnMappers);
-        builder.append("]");
-        return builder.toString();
+        return new ToStringBuilder(this).append("defaultAnalyzer", defaultAnalyzer)
+                .append("perFieldAnalyzer", perFieldAnalyzer)
+                .append("columnMappers", columnMappers)
+                .toString();
     }
-
 }

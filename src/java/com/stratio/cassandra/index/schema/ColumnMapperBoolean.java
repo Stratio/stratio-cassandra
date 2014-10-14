@@ -29,7 +29,7 @@ import org.codehaus.jackson.annotate.JsonCreator;
 
 /**
  * A {@link ColumnMapper} to map a boolean field.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class ColumnMapperBoolean extends ColumnMapper<String>
@@ -41,7 +41,7 @@ public class ColumnMapperBoolean extends ColumnMapper<String>
     @JsonCreator
     public ColumnMapperBoolean()
     {
-        super(new AbstractType<?>[] { AsciiType.instance, UTF8Type.instance, BooleanType.instance });
+        super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, BooleanType.instance});
     }
 
     @Override
@@ -112,7 +112,8 @@ public class ColumnMapperBoolean extends ColumnMapper<String>
     }
 
     @Override
-    public String toString() {
+    public String toString()
+    {
         return new ToStringBuilder(this).toString();
     }
 

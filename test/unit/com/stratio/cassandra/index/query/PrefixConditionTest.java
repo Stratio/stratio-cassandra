@@ -15,9 +15,6 @@
  */
 package com.stratio.cassandra.index.query;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import com.stratio.cassandra.index.schema.*;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.search.PrefixQuery;
@@ -25,9 +22,16 @@ import org.apache.lucene.search.Query;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.stratio.cassandra.index.schema.ColumnMapper;
+import java.util.HashMap;
+import java.util.Map;
 
-public class PrefixConditionTest
+import static com.stratio.cassandra.index.query.builder.SearchBuilders.prefix;
+import static com.stratio.cassandra.index.query.builder.SearchBuilders.query;
+
+/**
+ * @author Andres de la Pena <adelapena@stratio.com>
+ */
+public class PrefixConditionTest extends AbstractConditionTest
 {
 
     @Test
@@ -97,6 +101,13 @@ public class PrefixConditionTest
         Assert.assertEquals("name", luceneQuery.getField());
         Assert.assertEquals("2001:db8:2de:0:0:0:0:e", luceneQuery.getPrefix().text());
         Assert.assertEquals(0.5f, query.getBoost(), 0);
+    }
+
+    @Test
+    public void testJson()
+    {
+
+        testJsonCondition(query(prefix("name", "aaa").boost(0.5f)));
     }
 
 }

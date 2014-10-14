@@ -15,21 +15,7 @@
  */
 package com.stratio.cassandra.index.schema;
 
-import java.text.DateFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-
-import org.apache.cassandra.db.marshal.AbstractType;
-import org.apache.cassandra.db.marshal.AsciiType;
-import org.apache.cassandra.db.marshal.DecimalType;
-import org.apache.cassandra.db.marshal.DoubleType;
-import org.apache.cassandra.db.marshal.FloatType;
-import org.apache.cassandra.db.marshal.Int32Type;
-import org.apache.cassandra.db.marshal.IntegerType;
-import org.apache.cassandra.db.marshal.LongType;
-import org.apache.cassandra.db.marshal.TimestampType;
-import org.apache.cassandra.db.marshal.UTF8Type;
+import org.apache.cassandra.db.marshal.*;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
@@ -39,9 +25,14 @@ import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 /**
  * A {@link ColumnMapper} to map a date field.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class ColumnMapperDate extends ColumnMapper<Long>
@@ -49,18 +40,23 @@ public class ColumnMapperDate extends ColumnMapper<Long>
 
     public static final String DEFAULT_PATTERN = "yyyy/MM/dd HH:mm:ss.SSS";
 
-    /** The date and time pattern. */
+    /**
+     * The date and time pattern.
+     */
     private final String pattern;
 
-    /** The thread safe date format */
+    /**
+     * The thread safe date format
+     */
     private final ThreadLocal<DateFormat> concurrentDateFormat;
 
     @JsonCreator
     public ColumnMapperDate(@JsonProperty("pattern") String pattern)
     {
-        super(new AbstractType<?>[] { AsciiType.instance, UTF8Type.instance, Int32Type.instance, LongType.instance,
+        super(new AbstractType<?>[]{
+                AsciiType.instance, UTF8Type.instance, Int32Type.instance, LongType.instance,
                 IntegerType.instance, FloatType.instance, DoubleType.instance, DecimalType.instance,
-                TimestampType.instance });
+                TimestampType.instance});
         this.pattern = pattern == null ? DEFAULT_PATTERN : pattern;
         concurrentDateFormat = new ThreadLocal<DateFormat>()
         {
@@ -135,9 +131,8 @@ public class ColumnMapperDate extends ColumnMapper<Long>
     }
 
     @Override
-    public String toString() {
-        return new ToStringBuilder(this)
-                .append("pattern", pattern)
-                .toString();
+    public String toString()
+    {
+        return new ToStringBuilder(this).append("pattern", pattern).toString();
     }
 }

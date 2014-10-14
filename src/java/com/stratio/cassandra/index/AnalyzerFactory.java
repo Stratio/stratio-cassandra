@@ -15,32 +15,32 @@
  */
 package com.stratio.cassandra.index;
 
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.util.Version;
+
 import java.lang.reflect.Constructor;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.util.Version;
-
 /**
  * Class for building Lucene's {@link Analyzer}s. It uses an internal cache which associates analyzer class names with
  * analyzers.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public final class AnalyzerFactory
 {
 
-    /** Analyzers cache, actually mocked without any eviction. */
+    /**
+     * Analyzers cache, actually mocked without any eviction.
+     */
     private static Map<String, Analyzer> analyzers = new LinkedHashMap<>();
 
     /**
      * Returns the {@link Analyzer} identified by the specified class name. The specified class must be in classpath.
      * Benefits from cache.
-     * 
-     * @param analyzerClassName
-     *            The analyzer class name.
+     *
+     * @param analyzerClassName The analyzer class name.
      * @return The {@link Analyzer} identified by the specified class name.
      */
     public static Analyzer getAnalyzer(String analyzerClassName)

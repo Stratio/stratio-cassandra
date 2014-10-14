@@ -15,8 +15,6 @@
  */
 package com.stratio.cassandra.index;
 
-import java.util.Comparator;
-
 import com.stratio.cassandra.index.query.Sorting;
 import com.stratio.cassandra.index.query.SortingField;
 import com.stratio.cassandra.index.schema.Columns;
@@ -24,6 +22,8 @@ import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.index.util.ComparatorChain;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.db.Row;
+
+import java.util.Comparator;
 
 /**
  * A {@link Comparator} for comparing {@link Row}s according to a certain {@link Sorting}.
@@ -37,12 +37,9 @@ public class RowsComparatorSorting implements RowsComparator
     private final ComparatorChain<Columns> comparatorChain;
 
     /**
-     * @param metadata
-     *            The {@link CFMetaData} of the column family of the {@link Row}s to be compared.
-     * @param schema
-     *            The indexing {@link Schema} of the {@link Row}s to be compared.
-     * @param sorting
-     *            The {@link Sorting} inf which the {@link Row} comparison is based.
+     * @param metadata The {@link CFMetaData} of the column family of the {@link Row}s to be compared.
+     * @param schema   The indexing {@link Schema} of the {@link Row}s to be compared.
+     * @param sorting  The {@link Sorting} inf which the {@link Row} comparison is based.
      */
     public RowsComparatorSorting(CFMetaData metadata, Schema schema, Sorting sorting)
     {
@@ -62,7 +59,7 @@ public class RowsComparatorSorting implements RowsComparator
      * @param row1 A {@link Row}.
      * @param row2 A {@link Row}.
      * @return A negative integer, zero, or a positive integer as the first argument is less than, equal to, or greater
-     *         than the second according to a {@link Sorting}.
+     * than the second according to a {@link Sorting}.
      */
     @Override
     public int compare(Row row1, Row row2)

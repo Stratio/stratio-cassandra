@@ -16,6 +16,7 @@
 package com.stratio.cassandra.index.query;
 
 import com.stratio.cassandra.index.schema.ColumnMapper;
+import com.stratio.cassandra.index.schema.Schema;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.FuzzyQuery;
@@ -24,15 +25,12 @@ import org.apache.lucene.util.automaton.LevenshteinAutomata;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
-import com.stratio.cassandra.index.schema.Schema;
-
 /**
  * A {@link Condition} that implements the fuzzy search query. The similarity measurement is based on the
  * Damerau-Levenshtein (optimal string alignment) algorithm, though you can explicitly choose classic Levenshtein by
  * passing {@code false} to the {@code transpositions} parameter.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class FuzzyCondition extends Condition
 {
@@ -42,39 +40,34 @@ public class FuzzyCondition extends Condition
     public final static int DEFAULT_MAX_EXPANSIONS = 50;
     public final static boolean DEFAULT_TRANSPOSITIONS = true;
 
-    /** The field name */
+    @JsonProperty("field")
     private final String field;
-
-    /** The field value */
-    private String value;
-
+    @JsonProperty("value")
+    private final String value;
+    @JsonProperty("max_edits")
     private final Integer maxEdits;
+    @JsonProperty("prefix_length")
     private final Integer prefixLength;
+    @JsonProperty("max_expansions")
     private final Integer maxExpansions;
+    @JsonProperty("transpositions")
     private final Boolean transpositions;
 
     /**
      * Returns a new {@link FuzzyCondition}.
-     * 
-     * @param boost
-     *            The boost for this query clause. Documents matching this clause will (in addition to the normal
-     *            weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link DEFAULT_BOOST}
-     *            is used as default.
-     * @param field
-     *            The field name.
-     * @param value
-     *            The field fuzzy value.
-     * @param maxEdits
-     *            Must be >= 0 and <= {@link LevenshteinAutomata#MAXIMUM_SUPPORTED_DISTANCE}.
-     * @param prefixLength
-     *            Length of common (non-fuzzy) prefix
-     * @param maxExpansions
-     *            The maximum number of terms to match. If this number is greater than
-     *            {@link BooleanQuery#getMaxClauseCount} when the query is rewritten, then the maxClauseCount will be
-     *            used instead.
-     * @param transpositions
-     *            True if transpositions should be treated as a primitive edit operation. If this is false, comparisons
-     *            will implement the classic Levenshtein algorithm.
+     *
+     * @param boost          The boost for this query clause. Documents matching this clause will (in addition to the normal
+     *                       weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link #DEFAULT_BOOST}
+     *                       is used as default.
+     * @param field          The field name.
+     * @param value          The field fuzzy value.
+     * @param maxEdits       Must be >= 0 and <= {@link LevenshteinAutomata#MAXIMUM_SUPPORTED_DISTANCE}.
+     * @param prefixLength   Length of common (non-fuzzy) prefix
+     * @param maxExpansions  The maximum number of terms to match. If this number is greater than
+     *                       {@link BooleanQuery#getMaxClauseCount} when the query is rewritten, then the maxClauseCount will be
+     *                       used instead.
+     * @param transpositions True if transpositions should be treated as a primitive edit operation. If this is false, comparisons
+     *                       will implement the classic Levenshtein algorithm.
      */
     @JsonCreator
     public FuzzyCondition(@JsonProperty("boost") Float boost,
@@ -93,66 +86,6 @@ public class FuzzyCondition extends Condition
         this.prefixLength = prefixLength == null ? DEFAULT_PREFIX_LENGTH : prefixLength;
         this.maxExpansions = maxExpansions == null ? DEFAULT_MAX_EXPANSIONS : maxExpansions;
         this.transpositions = transpositions == null ? DEFAULT_TRANSPOSITIONS : transpositions;
-    }
-
-    /**
-     * Returns the field name.
-     * 
-     * @return the field name.
-     */
-    public String getField()
-    {
-        return field;
-    }
-
-    /**
-     * Returns the field value.
-     * 
-     * @return the field value.
-     */
-    public String getValue()
-    {
-        return value;
-    }
-
-    /**
-     * Returns the Damerau-Levenshtein max distance.
-     * 
-     * @return The Damerau-Levenshtein max distance.
-     */
-    public Integer getMaxEdits()
-    {
-        return maxEdits;
-    }
-
-    /**
-     * Returns the length of common (non-fuzzy) prefix.
-     * 
-     * @return The length of common (non-fuzzy) prefix.
-     */
-    public Integer getPrefixLength()
-    {
-        return prefixLength;
-    }
-
-    /**
-     * Returns the maximum number of terms to match.
-     * 
-     * @return The maximum number of terms to match.
-     */
-    public Integer getMaxExpansions()
-    {
-        return maxExpansions;
-    }
-
-    /**
-     * Returns if transpositions should be treated as a primitive edit operation.
-     * 
-     * @return If transpositions should be treated as a primitive edit operation.
-     */
-    public Boolean getTranspositions()
-    {
-        return transpositions;
     }
 
     /**

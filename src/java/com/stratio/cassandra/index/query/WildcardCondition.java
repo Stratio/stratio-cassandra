@@ -16,44 +16,45 @@
 package com.stratio.cassandra.index.query;
 
 import com.stratio.cassandra.index.schema.ColumnMapper;
+import com.stratio.cassandra.index.schema.Schema;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.WildcardQuery;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
-import com.stratio.cassandra.index.schema.Schema;
-
 /**
- * 
  * Implements the wildcard search query. Supported wildcards are {@code *}, which matches any character sequence
  * (including the empty one), and {@code ?}, which matches any single character. '\' is the escape character.
- * <p>
+ * <p/>
  * Note this query can be slow, as it needs to iterate over many terms. In order to prevent extremely slow
  * WildcardQueries, a Wildcard term should not start with the wildcard {@code *}.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class WildcardCondition extends Condition
 {
 
-    /** The field name */
+    /**
+     * The field name
+     */
+    @JsonProperty("field")
     private final String field;
 
-    /** The field value */
+    /**
+     * The field value
+     */
+    @JsonProperty("value")
     private final String value;
 
     /**
      * Constructor using the field name and the value to be matched.
-     * 
-     * @param boost
-     *            The boost for this query clause. Documents matching this clause will (in addition to the normal
-     *            weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link DEFAULT_BOOST}
-     *            is used as default.
-     * @param field
-     *            the field name.
-     * @param value
-     *            the field value.
+     *
+     * @param boost The boost for this query clause. Documents matching this clause will (in addition to the normal
+     *              weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link #DEFAULT_BOOST}
+     *              is used as default.
+     * @param field the field name.
+     * @param value the field value.
      */
     @JsonCreator
     public WildcardCondition(@JsonProperty("boost") Float boost,
@@ -64,26 +65,6 @@ public class WildcardCondition extends Condition
 
         this.field = field;
         this.value = value;
-    }
-
-    /**
-     * Returns the field name.
-     * 
-     * @return the field name.
-     */
-    public String getField()
-    {
-        return field;
-    }
-
-    /**
-     * Returns the field value.
-     * 
-     * @return the field value.
-     */
-    public String getValue()
-    {
-        return value;
     }
 
     /**

@@ -15,19 +15,24 @@
  */
 package com.stratio.cassandra.index.query;
 
-import java.util.HashMap;
-import java.util.Map;
-
+import com.stratio.cassandra.index.schema.ColumnMapper;
+import com.stratio.cassandra.index.schema.ColumnMapperBoolean;
+import com.stratio.cassandra.index.schema.Schema;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.search.Query;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.stratio.cassandra.index.schema.ColumnMapper;
-import com.stratio.cassandra.index.schema.ColumnMapperBoolean;
-import com.stratio.cassandra.index.schema.Schema;
+import java.util.HashMap;
+import java.util.Map;
 
-public class FuzzyConditionTest
+import static com.stratio.cassandra.index.query.builder.SearchBuilders.filter;
+import static com.stratio.cassandra.index.query.builder.SearchBuilders.fuzzy;
+
+/**
+ * @author Andres de la Pena <adelapena@stratio.com>
+ */
+public class FuzzyConditionTest extends AbstractConditionTest
 {
 
     @Test
@@ -49,6 +54,17 @@ public class FuzzyConditionTest
         Assert.assertEquals(1, luceneQuery.getMaxEdits());
         Assert.assertEquals(2, luceneQuery.getPrefixLength());
         Assert.assertEquals(0.5f, query.getBoost(), 0);
+    }
+
+    @Test
+    public void testJson()
+    {
+        testJsonCondition(filter(fuzzy("name", "tr")
+                                         .maxEdits(1)
+                                         .maxExpansions(1)
+                                         .prefixLength(40)
+                                         .transpositions(true)
+                                         .boost(0.5f)));
     }
 
 }

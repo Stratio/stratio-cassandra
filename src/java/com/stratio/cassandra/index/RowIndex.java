@@ -15,12 +15,7 @@
  */
 package com.stratio.cassandra.index;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Set;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
+import com.stratio.cassandra.index.util.Log;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.ColumnFamilyStore;
@@ -30,16 +25,19 @@ import org.apache.cassandra.db.index.PerRowSecondaryIndex;
 import org.apache.cassandra.db.index.SecondaryIndexManager;
 import org.apache.cassandra.db.index.SecondaryIndexSearcher;
 import org.apache.cassandra.exceptions.ConfigurationException;
-
-import com.stratio.cassandra.index.util.Log;
 import org.apache.cassandra.utils.concurrent.OpOrder;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Set;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * A {@link PerRowSecondaryIndex} that uses Apache Lucene as backend. It allows, among others, multi-comun and full-text
  * search.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class RowIndex extends PerRowSecondaryIndex
 {
@@ -122,11 +120,9 @@ public class RowIndex extends PerRowSecondaryIndex
 
     /**
      * Index the given row.
-     * 
-     * @param key
-     *            The partition key.
-     * @param columnFamily
-     *            The column family data to be indexed
+     *
+     * @param key          The partition key.
+     * @param columnFamily The column family data to be indexed
      */
     @Override
     public void index(ByteBuffer key, ColumnFamily columnFamily)
@@ -154,9 +150,8 @@ public class RowIndex extends PerRowSecondaryIndex
 
     /**
      * cleans up deleted columns from cassandra cleanup compaction
-     * 
-     * @param key
-     *            The partition key of the physical {@link org.apache.cassandra.db.Row} to be deleted.
+     *
+     * @param key The partition key of the physical {@link org.apache.cassandra.db.Row} to be deleted.
      */
     @Override
     public void delete(DecoratedKey key, OpOrder.Group opGroup)
@@ -213,7 +208,8 @@ public class RowIndex extends PerRowSecondaryIndex
     @Override
     public long estimateResultRows()
     {
-        try {
+        try
+        {
             return rowService.getIndexSize();
         }
         catch (Exception e)
@@ -368,7 +364,7 @@ public class RowIndex extends PerRowSecondaryIndex
     public String toString()
     {
         return String.format("RowIndex [index=%s, keyspace=%s, table=%s, column=%s",
-                             indexName, keyspaceName, tableName, columnName);
+                indexName, keyspaceName, tableName, columnName);
     }
 
 }

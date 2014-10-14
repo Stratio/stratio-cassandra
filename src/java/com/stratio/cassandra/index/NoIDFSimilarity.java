@@ -18,12 +18,10 @@ package com.stratio.cassandra.index;
 import org.apache.lucene.search.similarities.DefaultSimilarity;
 
 /**
- * 
  * {@link DefaultSimilarity} that ignores the inverse document frequency, doing the similarity independent of the index
  * context.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class NoIDFSimilarity extends DefaultSimilarity
 {

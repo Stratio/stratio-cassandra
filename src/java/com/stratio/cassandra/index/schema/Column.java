@@ -15,20 +15,22 @@
  */
 package com.stratio.cassandra.index.schema;
 
-import java.nio.ByteBuffer;
-
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+
+import java.nio.ByteBuffer;
 
 /**
  * A cell of a CQL3 logic {@link Column}, which in most cases is different from a storage engine column.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class Column
 {
 
-    /** The column's name */
+    /**
+     * The column's name
+     */
     private String name;
 
     private String nameSufix;
@@ -54,7 +56,7 @@ public class Column
 
     /**
      * Returns the name.
-     * 
+     *
      * @return the name.
      */
     public String getName()
@@ -69,7 +71,7 @@ public class Column
 
     /**
      * Returns the value.
-     * 
+     *
      * @return the value.
      */
     public ByteBuffer getRawValue()
@@ -90,17 +92,11 @@ public class Column
     @Override
     public String toString()
     {
-        StringBuilder builder = new StringBuilder();
-        builder.append("Cell [name=");
-        builder.append(name);
-        builder.append(", nameSufix=");
-        builder.append(nameSufix);
-        builder.append(", value=");
-        builder.append(value);
-        builder.append(", type=");
-        builder.append(type);
-        builder.append("]");
-        return builder.toString();
+        return new ToStringBuilder(this).append("name", name)
+                .append("nameSufix", nameSufix)
+                .append("value", value)
+                .append("type", type)
+                .toString();
     }
 
 }

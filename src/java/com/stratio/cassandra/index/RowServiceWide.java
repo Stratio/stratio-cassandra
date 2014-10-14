@@ -15,12 +15,6 @@
  */
 package com.stratio.cassandra.index;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
-
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellName;
@@ -34,22 +28,24 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.ChainedFilter;
-import org.apache.lucene.search.Filter;
-import org.apache.lucene.search.FilteredQuery;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.*;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
 
 /**
  * {@link RowService} that manages wide rows.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class RowServiceWide extends RowService
 {
 
     private static final Set<String> FIELDS_TO_LOAD;
+
     static
     {
         FIELDS_TO_LOAD = new HashSet<>();
@@ -62,11 +58,9 @@ public class RowServiceWide extends RowService
 
     /**
      * Returns a new {@code RowServiceWide} for manage wide rows.
-     * 
-     * @param baseCfs
-     *            The base column family store.
-     * @param columnDefinition
-     *            The indexed column definition.
+     *
+     * @param baseCfs          The base column family store.
+     * @param columnDefinition The indexed column definition.
      */
     public RowServiceWide(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) throws IOException
     {
@@ -80,7 +74,7 @@ public class RowServiceWide extends RowService
 
     /**
      * {@inheritDoc}
-     * 
+     * <p/>
      * These fields are the partition and clustering keys.
      */
     @Override
@@ -154,7 +148,7 @@ public class RowServiceWide extends RowService
 
     /**
      * {@inheritDoc}
-     * 
+     * <p/>
      * The {@link Row} is a logical one.
      */
     @Override
@@ -181,13 +175,10 @@ public class RowServiceWide extends RowService
     /**
      * Returns the CQL3 {@link Row} identified by the specified key pair, using the specified time stamp to ignore
      * deleted columns. The {@link Row} is retrieved from the storage engine, so it involves IO operations.
-     * 
-     * @param partitionKey
-     *            The partition key.
-     * @param clusteringKey
-     *            The clustering key, maybe {@code null}.
-     * @param timestamp
-     *            The time stamp to ignore deleted columns.
+     *
+     * @param partitionKey  The partition key.
+     * @param clusteringKey The clustering key, maybe {@code null}.
+     * @param timestamp     The time stamp to ignore deleted columns.
      * @return The CQL3 {@link Row} identified by the specified key pair.
      */
     private Row row(DecoratedKey partitionKey, CellName clusteringKey, long timestamp)
@@ -202,7 +193,7 @@ public class RowServiceWide extends RowService
 
     /**
      * {@inheritDoc}
-     * 
+     * <p/>
      * The {@link Filter} is based on {@link Token} first, then clustering key order.
      */
     @Override
@@ -215,7 +206,7 @@ public class RowServiceWide extends RowService
 
     /**
      * {@inheritDoc}
-     * 
+     * <p/>
      * The {@link Filter} is based on a {@link Token} first, then clustering key range.
      */
     @Override
@@ -228,15 +219,21 @@ public class RowServiceWide extends RowService
             if (clusteringKeyFilter == null)
             {
                 return null;
-            } else {
+            }
+            else
+            {
                 return clusteringKeyFilter;
             }
-        } else {
+        }
+        else
+        {
             if (clusteringKeyFilter == null)
             {
                 return tokenFilter;
-            } else {
-                Filter[] filters = new Filter[] { tokenFilter, clusteringKeyFilter };
+            }
+            else
+            {
+                Filter[] filters = new Filter[]{tokenFilter, clusteringKeyFilter};
                 return new ChainedFilter(filters, ChainedFilter.AND);
             }
         }

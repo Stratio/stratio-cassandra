@@ -15,9 +15,8 @@
  */
 package com.stratio.cassandra.index.query;
 
-import java.util.HashMap;
-import java.util.Map;
-
+import com.stratio.cassandra.index.query.builder.RangeConditionBuilder;
+import com.stratio.cassandra.index.query.builder.SearchBuilder;
 import com.stratio.cassandra.index.schema.*;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.search.NumericRangeQuery;
@@ -26,9 +25,15 @@ import org.apache.lucene.search.TermRangeQuery;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.stratio.cassandra.index.schema.ColumnMapper;
+import java.util.HashMap;
+import java.util.Map;
 
-public class RangeConditionTest
+import static com.stratio.cassandra.index.query.builder.SearchBuilders.*;
+
+/**
+ * @author Andres de la Pena <adelapena@stratio.com>
+ */
+public class RangeConditionTest extends AbstractConditionTest
 {
 
     @Test
@@ -271,8 +276,12 @@ public class RangeConditionTest
         map.put("name", new ColumnMapperInet());
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
-        RangeCondition rangeCondition = new RangeCondition(0.5f, "name", "2001:DB8:2de::e13", "2001:DB8:02de::e23",
-                                                           true, true);
+        RangeCondition rangeCondition = range("name").boost(0.5f)
+                                                     .lower("2001:DB8:2de::e13")
+                                                     .upper("2001:DB8:02de::e23")
+                                                     .includeLower(true)
+                                                     .includeUpper(true)
+                                                     .build();
         Query query = rangeCondition.query(mappers);
 
         Assert.assertNotNull(query);
@@ -283,6 +292,43 @@ public class RangeConditionTest
         Assert.assertEquals(true, ((TermRangeQuery) query).includesLower());
         Assert.assertEquals(true, ((TermRangeQuery) query).includesUpper());
         Assert.assertEquals(0.5f, query.getBoost(), 0);
+    }
+
+    @Test
+    public void testJsonInteger()
+    {
+        RangeConditionBuilder rangeCondition = range("name").lower(1)
+                                                            .upper(2)
+                                                            .includeLower(true)
+                                                            .includeUpper(false)
+                                                            .boost(0.5f);
+        SearchBuilder searchBuilder = query(rangeCondition);
+
+        testJsonCondition(searchBuilder);
+    }
+
+    @Test
+    public void testJsonDouble()
+    {
+        testJsonCondition(query(range("name").lower(1.6)
+                                             .upper(2.5)
+                                             .includeLower(true)
+                                             .includeUpper(false)
+                                             .boost(0.5f)));
+    }
+
+    @Test
+    public void testJsonString()
+    {
+        testJsonCondition(query(range("name").lower("a")
+                                             .upper("b")
+                                             .includeLower(true)
+                                             .includeUpper(false)
+                                             .boost(0.5f))
+                                  .filter(bool().must(match("", "").boost(2),
+                                                      match("", ""))
+                                                .should(match("", "")).boost(0.5))
+                                  .build());
     }
 
 }

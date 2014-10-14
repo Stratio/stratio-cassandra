@@ -15,8 +15,7 @@
  */
 package com.stratio.cassandra.index.schema;
 
-import java.nio.ByteBuffer;
-
+import com.stratio.cassandra.index.util.ByteBufferUtils;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.BytesType;
@@ -30,11 +29,11 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
 
-import com.stratio.cassandra.index.util.ByteBufferUtils;
+import java.nio.ByteBuffer;
 
 /**
  * A {@link ColumnMapper} to map a string, not tokenized field.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class ColumnMapperBlob extends ColumnMapper<String>
@@ -43,7 +42,7 @@ public class ColumnMapperBlob extends ColumnMapper<String>
     @JsonCreator
     public ColumnMapperBlob()
     {
-        super(new AbstractType<?>[] { AsciiType.instance, UTF8Type.instance, BytesType.instance });
+        super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, BytesType.instance});
     }
 
     @Override
@@ -115,7 +114,8 @@ public class ColumnMapperBlob extends ColumnMapper<String>
     }
 
     @Override
-    public String toString() {
+    public String toString()
+    {
         return new ToStringBuilder(this).toString();
     }
 

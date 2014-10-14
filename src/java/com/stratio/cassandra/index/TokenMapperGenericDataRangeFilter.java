@@ -15,16 +15,10 @@
  */
 package com.stratio.cassandra.index;
 
-import java.io.IOException;
-
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.dht.Token;
-import org.apache.lucene.index.AtomicReader;
-import org.apache.lucene.index.AtomicReaderContext;
-import org.apache.lucene.index.DocsEnum;
-import org.apache.lucene.index.Terms;
-import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.index.*;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Filter;
@@ -32,11 +26,12 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.OpenBitSet;
 
+import java.io.IOException;
+
 /**
  * {@link Filter} that filters documents which token field satisfies a certain {@link DataRange}.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class TokenMapperGenericDataRangeFilter extends Filter
 {
@@ -48,11 +43,9 @@ public class TokenMapperGenericDataRangeFilter extends Filter
 
     /**
      * Returns a new {@code TokenMapperGeneric} for the specified data range using the specified token mapper.
-     * 
-     * @param tokenMapperGeneric
-     *            The used token mapper.
-     * @param dataRange
-     *            The partition data range to be filtered.
+     *
+     * @param tokenMapperGeneric The used token mapper.
+     * @param dataRange          The partition data range to be filtered.
      */
     public TokenMapperGenericDataRangeFilter(TokenMapperGeneric tokenMapperGeneric, DataRange dataRange)
     {

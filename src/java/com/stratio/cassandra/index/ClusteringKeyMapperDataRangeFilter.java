@@ -15,8 +15,6 @@
  */
 package com.stratio.cassandra.index;
 
-import java.io.IOException;
-
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.CellNameType;
@@ -24,11 +22,7 @@ import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.filter.ColumnSlice;
 import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.utils.ByteBufferUtil;
-import org.apache.lucene.index.AtomicReader;
-import org.apache.lucene.index.AtomicReaderContext;
-import org.apache.lucene.index.DocsEnum;
-import org.apache.lucene.index.Terms;
-import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.index.*;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Filter;
@@ -36,29 +30,32 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.OpenBitSet;
 
+import java.io.IOException;
+
 /**
  * {@link Filter} that filters documents which clustering key field satisfies a certain {@link DataRange}. This means
  * that the clustering key value must be contained in the slice query filter specified in the data range.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class ClusteringKeyMapperDataRangeFilter extends Filter
 {
 
-    /** The {@link ClusteringKeyMapper} to be used. */
+    /**
+     * The {@link ClusteringKeyMapper} to be used.
+     */
     private final ClusteringKeyMapper clusteringKeyMapper;
 
-    /** The filtering column slice. */
+    /**
+     * The filtering column slice.
+     */
     private final SliceQueryFilter sliceQueryFilter;
 
     /**
      * Returns a new {@code ClusteringKeyFilter} for {@code dataRange} using {@code clusteringKeyMapper}.
-     * 
-     * @param clusteringKeyMapper
-     *            The {@link ClusteringKeyMapper} to be used.
-     * @param dataRange
-     *            The filtering data range.
+     *
+     * @param clusteringKeyMapper The {@link ClusteringKeyMapper} to be used.
+     * @param dataRange           The filtering data range.
      */
     public ClusteringKeyMapperDataRangeFilter(ClusteringKeyMapper clusteringKeyMapper, DataRange dataRange)
     {
@@ -118,12 +115,10 @@ public class ClusteringKeyMapperDataRangeFilter extends Filter
      * Returns {@code true} if the specified clustering key is inside the specified column slice, {@code false}
      * otherwise.
      *
-     * @param key
-     *            The clustering key to be checked.
-     * @param columnSlice
-     *            The column slice to be satisfied.
+     * @param key         The clustering key to be checked.
+     * @param columnSlice The column slice to be satisfied.
      * @return {@code true} if the specified clustering key is inside the specified column slice, {@code false}
-     *         otherwise.
+     * otherwise.
      */
     private boolean isInSlice(Composite key, ColumnSlice columnSlice)
     {

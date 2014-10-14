@@ -15,8 +15,6 @@
  */
 package com.stratio.cassandra.index;
 
-import java.io.IOException;
-
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.CellNameType;
 import org.apache.cassandra.db.marshal.AbstractType;
@@ -27,19 +25,21 @@ import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 
+import java.io.IOException;
+
 /**
- * 
  * {@link FieldComparator} that compares clustering key field sorting by its Cassandra's {@link AbstractType}.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class ClusteringKeyMapperSorter extends FieldComparator<BytesRef>
 {
 
     private static final byte[] MISSING_BYTES = new byte[0];
 
-    /** The ClusteringKeyMapper to be used. */
+    /**
+     * The ClusteringKeyMapper to be used.
+     */
     private final ClusteringKeyMapper clusteringKeyMapper;
 
     private BytesRef[] values;
@@ -52,13 +52,10 @@ public class ClusteringKeyMapperSorter extends FieldComparator<BytesRef>
 
     /**
      * Returns a new {@code ClusteringKeyComparator}.
-     * 
-     * @param clusteringKeyMapper
-     *            The ClusteringKeyMapper to be used.
-     * @param numHits
-     *            The number of hits.
-     * @param field
-     *            The field name.
+     *
+     * @param clusteringKeyMapper The ClusteringKeyMapper to be used.
+     * @param numHits             The number of hits.
+     * @param field               The field name.
      */
     public ClusteringKeyMapperSorter(ClusteringKeyMapper clusteringKeyMapper, int numHits, String field)
     {
@@ -182,9 +179,10 @@ public class ClusteringKeyMapperSorter extends FieldComparator<BytesRef>
         }
         return compare(val1, val2);
     }
-    
+
     @Override
-    public int compareTop(int doc) {
+    public int compareTop(int doc)
+    {
         docTerms.get(doc, tempBR);
         if (tempBR.length == 0 && !docsWithField.get(doc))
         {
@@ -192,22 +190,21 @@ public class ClusteringKeyMapperSorter extends FieldComparator<BytesRef>
         }
         return compare(tempBR, topValue);
     }
-    
+
     @Override
-    public void setTopValue(BytesRef value) {
-      topValue = value;
+    public void setTopValue(BytesRef value)
+    {
+        topValue = value;
     }
 
     /**
      * Compares its two field value arguments for order. Returns a negative integer, zero, or a positive integer as the
      * first argument is less than, equal to, or greater than the second.
-     * 
-     * @param fieldValue1
-     *            The first field value to be compared.
-     * @param fieldValue2
-     *            The second field value to be compared.
+     *
+     * @param fieldValue1 The first field value to be compared.
+     * @param fieldValue2 The second field value to be compared.
      * @return A negative integer, zero, or a positive integer as the first argument is less than, equal to, or greater
-     *         than the second.
+     * than the second.
      */
     private int compare(BytesRef fieldValue1, BytesRef fieldValue2)
     {

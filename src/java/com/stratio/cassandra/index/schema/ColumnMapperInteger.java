@@ -15,15 +15,8 @@
  */
 package com.stratio.cassandra.index.schema;
 
-import org.apache.cassandra.db.marshal.AbstractType;
-import org.apache.cassandra.db.marshal.AsciiType;
-import org.apache.cassandra.db.marshal.DecimalType;
-import org.apache.cassandra.db.marshal.DoubleType;
-import org.apache.cassandra.db.marshal.FloatType;
-import org.apache.cassandra.db.marshal.Int32Type;
-import org.apache.cassandra.db.marshal.IntegerType;
-import org.apache.cassandra.db.marshal.LongType;
-import org.apache.cassandra.db.marshal.UTF8Type;
+import org.apache.cassandra.db.marshal.*;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntField;
@@ -34,7 +27,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
 
 /**
  * A {@link ColumnMapper} to map an integer field.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class ColumnMapperInteger extends ColumnMapper<Integer>
@@ -47,14 +40,15 @@ public class ColumnMapperInteger extends ColumnMapper<Integer>
     @JsonCreator
     public ColumnMapperInteger(@JsonProperty("boost") Float boost)
     {
-        super(new AbstractType<?>[] { AsciiType.instance,
+        super(new AbstractType<?>[]{
+                AsciiType.instance,
                 UTF8Type.instance,
                 Int32Type.instance,
                 LongType.instance,
                 IntegerType.instance,
                 FloatType.instance,
                 DoubleType.instance,
-                DecimalType.instance });
+                DecimalType.instance});
         this.boost = boost == null ? DEFAULT_BOOST : boost;
     }
 
@@ -125,11 +119,7 @@ public class ColumnMapperInteger extends ColumnMapper<Integer>
     @Override
     public String toString()
     {
-        StringBuilder builder = new StringBuilder();
-        builder.append("CellMapperInteger [boost=");
-        builder.append(boost);
-        builder.append("]");
-        return builder.toString();
+        return new ToStringBuilder(this).append("boost", boost).toString();
     }
 
 }

@@ -15,20 +15,8 @@
  */
 package com.stratio.cassandra.index.schema;
 
-import org.apache.cassandra.db.marshal.AbstractType;
-import org.apache.cassandra.db.marshal.AsciiType;
-import org.apache.cassandra.db.marshal.BooleanType;
-import org.apache.cassandra.db.marshal.BytesType;
-import org.apache.cassandra.db.marshal.DoubleType;
-import org.apache.cassandra.db.marshal.FloatType;
-import org.apache.cassandra.db.marshal.InetAddressType;
-import org.apache.cassandra.db.marshal.Int32Type;
-import org.apache.cassandra.db.marshal.IntegerType;
-import org.apache.cassandra.db.marshal.LongType;
-import org.apache.cassandra.db.marshal.TimeUUIDType;
-import org.apache.cassandra.db.marshal.TimestampType;
-import org.apache.cassandra.db.marshal.UTF8Type;
-import org.apache.cassandra.db.marshal.UUIDType;
+import org.apache.cassandra.db.marshal.*;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
@@ -38,7 +26,7 @@ import org.codehaus.jackson.annotate.JsonCreator;
 
 /**
  * A {@link ColumnMapper} to map a string, not tokenized field.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class ColumnMapperString extends ColumnMapper<String>
@@ -47,7 +35,8 @@ public class ColumnMapperString extends ColumnMapper<String>
     @JsonCreator
     public ColumnMapperString()
     {
-        super(new AbstractType<?>[] { AsciiType.instance,
+        super(new AbstractType<?>[]{
+                AsciiType.instance,
                 UTF8Type.instance,
                 Int32Type.instance,
                 LongType.instance,
@@ -59,7 +48,7 @@ public class ColumnMapperString extends ColumnMapper<String>
                 TimeUUIDType.instance,
                 TimestampType.instance,
                 BytesType.instance,
-                InetAddressType.instance });
+                InetAddressType.instance});
     }
 
     @Override
@@ -109,10 +98,7 @@ public class ColumnMapperString extends ColumnMapper<String>
     @Override
     public String toString()
     {
-        StringBuilder builder = new StringBuilder();
-        builder.append(getClass().getSimpleName());
-        builder.append(" []");
-        return builder.toString();
+        return new ToStringBuilder(this).toString();
     }
 
 }

@@ -25,9 +25,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * A queue that executes each submitted task using one of possibly several pooled threads. Tasks can be submitted with
  * an identifier, ensuring that all tasks with same identifier will be executed orderly in the same thread. Each thread
  * has its own task queue.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class TaskQueue
 {
@@ -38,11 +37,9 @@ public class TaskQueue
 
     /**
      * Returns a new {@link TaskQueue}
-     * 
-     * @param numThreads
-     *            The number of executor threads.
-     * @param queuesSize
-     *            The max number of tasks in each thread queue before blocking.
+     *
+     * @param numThreads The number of executor threads.
+     * @param queuesSize The max number of tasks in each thread queue before blocking.
      */
     public TaskQueue(int numThreads, int queuesSize)
     {
@@ -51,12 +48,12 @@ public class TaskQueue
         for (int i = 0; i < numThreads; i++)
         {
             pools[i] = new NotifyingBlockingThreadPoolExecutor(1,
-                                                               queuesSize,
-                                                               Long.MAX_VALUE,
-                                                               TimeUnit.DAYS,
-                                                               0,
-                                                               TimeUnit.NANOSECONDS,
-                                                               null);
+                    queuesSize,
+                    Long.MAX_VALUE,
+                    TimeUnit.DAYS,
+                    0,
+                    TimeUnit.NANOSECONDS,
+                    null);
             pools[i].submit(new Runnable()
             {
                 @Override
@@ -70,15 +67,13 @@ public class TaskQueue
 
     /**
      * Submits a non value-returning task for asynchronous execution.
-     * 
+     * <p/>
      * The specified identifier is used to choose the thread executor where the task will be queued. The selection and
      * load balancing is based in the {@link #hashCode()} of this identifier.
-     * 
-     * @param id
-     *            The identifier of the task used to choose the thread executor where the task will be queued for
-     *            asynchronous execution.
-     * @param task
-     *            A task to be queued for asynchronous execution.
+     *
+     * @param id   The identifier of the task used to choose the thread executor where the task will be queued for
+     *             asynchronous execution.
+     * @param task A task to be queued for asynchronous execution.
      */
     public Future<?> submitAsynchronous(Object id, Runnable task)
     {
@@ -144,9 +139,8 @@ public class TaskQueue
 
     /**
      * Submits a non value-returning task for synchronous execution. It waits for all synchronous tasks to be completed.
-     * 
-     * @param task
-     *            A task to be executed synchronously.
+     *
+     * @param task A task to be executed synchronously.
      */
     public void submitSynchronous(Runnable task)
     {

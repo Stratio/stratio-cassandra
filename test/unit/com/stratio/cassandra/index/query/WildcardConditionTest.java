@@ -15,18 +15,22 @@
  */
 package com.stratio.cassandra.index.query;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import com.stratio.cassandra.index.schema.*;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.search.Query;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.stratio.cassandra.index.schema.ColumnMapper;
+import java.util.HashMap;
+import java.util.Map;
 
-public class WildcardConditionTest
+import static com.stratio.cassandra.index.query.builder.SearchBuilders.query;
+import static com.stratio.cassandra.index.query.builder.SearchBuilders.wildcard;
+
+/**
+ * @author Andres de la Pena <adelapena@stratio.com>
+ */
+public class WildcardConditionTest extends AbstractConditionTest
 {
 
     @Test
@@ -96,6 +100,12 @@ public class WildcardConditionTest
         Assert.assertEquals("name", luceneQuery.getField());
         Assert.assertEquals("2001:db8:2de:0:0:0:0:e*", luceneQuery.getTerm().text());
         Assert.assertEquals(0.5f, query.getBoost(), 0);
+    }
+
+    @Test
+    public void testJson()
+    {
+        testJsonCondition(query(wildcard("name", "aaa*").boost(0.5f)));
     }
 
 }

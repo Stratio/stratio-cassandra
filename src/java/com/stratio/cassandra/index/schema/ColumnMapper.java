@@ -15,8 +15,6 @@
  */
 package com.stratio.cassandra.index.schema;
 
-import java.nio.ByteBuffer;
-
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.ListType;
 import org.apache.cassandra.db.marshal.MapType;
@@ -29,14 +27,16 @@ import org.apache.lucene.search.SortField;
 import org.codehaus.jackson.annotate.JsonSubTypes;
 import org.codehaus.jackson.annotate.JsonTypeInfo;
 
+import java.nio.ByteBuffer;
+
 /**
  * Class for mapping between Cassandra's columns and Lucene's documents.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
-@JsonSubTypes({ @JsonSubTypes.Type(value = ColumnMapperBlob.class, name = "bytes"),
+@JsonSubTypes({
+        @JsonSubTypes.Type(value = ColumnMapperBlob.class, name = "bytes"),
         @JsonSubTypes.Type(value = ColumnMapperBoolean.class, name = "boolean"),
         @JsonSubTypes.Type(value = ColumnMapperDate.class, name = "date"),
         @JsonSubTypes.Type(value = ColumnMapperDouble.class, name = "double"),
@@ -48,7 +48,7 @@ import org.codehaus.jackson.annotate.JsonTypeInfo;
         @JsonSubTypes.Type(value = ColumnMapperText.class, name = "text"),
         @JsonSubTypes.Type(value = ColumnMapperUUID.class, name = "uuid"),
         @JsonSubTypes.Type(value = ColumnMapperBigDecimal.class, name = "bigdec"),
-        @JsonSubTypes.Type(value = ColumnMapperBigInteger.class, name = "bigint"), })
+        @JsonSubTypes.Type(value = ColumnMapperBigInteger.class, name = "bigint"),})
 public abstract class ColumnMapper<BASE>
 {
 
@@ -78,30 +78,26 @@ public abstract class ColumnMapper<BASE>
     /**
      * Returns the Lucene's {@link org.apache.lucene.document.Field} resulting from the mapping of {@code value}, using
      * {@code name} as field's name.
-     * 
-     * @param name
-     *            The name of the Lucene's field.
-     * @param value
-     *            The value of the Lucene's field.
+     *
+     * @param name  The name of the Lucene's field.
+     * @param value The value of the Lucene's field.
      * @return The Lucene's {@link org.apache.lucene.document.Field} resulting from the mapping of {@code value}, using
-     *         {@code name} as field's name.
+     * {@code name} as field's name.
      */
     public abstract Field field(String name, Object value);
 
     /**
      * Returns the Lucene's type for this mapper.
-     * 
+     *
      * @return The Lucene's type for this mapper.
      */
     public abstract Class<BASE> baseClass();
 
     /**
      * Returns the cell value resulting from the mapping of the specified object.
-     * 
-     * @param field
-     *            The field name.
-     * @param value
-     *            The object to be mapped.
+     *
+     * @param field The field name.
+     * @param value The object to be mapped.
      * @return The cell value resulting from the mapping of the specified object.
      */
     public abstract BASE indexValue(String field, Object value);

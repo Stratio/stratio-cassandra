@@ -15,46 +15,29 @@
  */
 package com.stratio.cassandra.index;
 
+import com.stratio.cassandra.index.util.Log;
+import org.apache.cassandra.io.util.FileUtils;
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.index.*;
+import org.apache.lucene.index.sorter.EarlyTerminatingSortingCollector;
+import org.apache.lucene.index.sorter.SortingMergePolicy;
+import org.apache.lucene.search.*;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.NRTCachingDirectory;
+import org.apache.lucene.util.Version;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-import org.apache.cassandra.io.util.FileUtils;
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.Term;
-import org.apache.lucene.index.TrackingIndexWriter;
-import org.apache.lucene.index.sorter.EarlyTerminatingSortingCollector;
-import org.apache.lucene.index.sorter.SortingMergePolicy;
-import org.apache.lucene.search.Collector;
-import org.apache.lucene.search.ConstantScoreQuery;
-import org.apache.lucene.search.ControlledRealTimeReopenThread;
-import org.apache.lucene.search.FieldDoc;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.SearcherFactory;
-import org.apache.lucene.search.SearcherManager;
-import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopFieldCollector;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.store.NRTCachingDirectory;
-import org.apache.lucene.util.Version;
-
-import com.stratio.cassandra.index.util.Log;
-
 /**
  * Class wrapping a Lucene's directory and its readers , writers and searchers for NRT.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class LuceneIndex
 {
@@ -75,20 +58,14 @@ public class LuceneIndex
 
     /**
      * Builds a new {@code RowDirectory} using the specified directory path and analyzer.
-     * 
-     * @param path
-     *            The analyzer to be used. The path of the directory in where the Lucene's files will be stored.
-     * @param refreshSeconds
-     *            The index readers refresh time in seconds. No guarantees that the writings are visible until this
-     *            time.
-     * @param ramBufferMB
-     *            The index writer buffer size in MB.
-     * @param maxMergeMB
-     *            NRTCachingDirectory max merge size in MB.
-     * @param maxCachedMB
-     *            NRTCachingDirectory max cached MB.
-     * @param analyzer
-     *            The default {@link Analyzer}.
+     *
+     * @param path           The analyzer to be used. The path of the directory in where the Lucene's files will be stored.
+     * @param refreshSeconds The index readers refresh time in seconds. No guarantees that the writings are visible until this
+     *                       time.
+     * @param ramBufferMB    The index writer buffer size in MB.
+     * @param maxMergeMB     NRTCachingDirectory max merge size in MB.
+     * @param maxCachedMB    NRTCachingDirectory max cached MB.
+     * @param analyzer       The default {@link Analyzer}.
      */
     public LuceneIndex(String path,
                        Double refreshSeconds,
@@ -107,9 +84,8 @@ public class LuceneIndex
 
     /**
      * Initializes this using the specified {@link Sort} for trying to keep the {@link Document}s sorted.
-     * 
-     * @param sort
-     *            The {@link Sort} to be used.
+     *
+     * @param sort The {@link Sort} to be used.
      */
     public void init(Sort sort) throws IOException
     {
@@ -143,9 +119,9 @@ public class LuceneIndex
         TrackingIndexWriter trackingIndexWriter = new TrackingIndexWriter(indexWriter);
         searcherManager = new SearcherManager(indexWriter, true, searcherFactory);
         searcherReopener = new ControlledRealTimeReopenThread<>(trackingIndexWriter,
-                                                                searcherManager,
-                                                                refreshSeconds,
-                                                                refreshSeconds);
+                searcherManager,
+                refreshSeconds,
+                refreshSeconds);
         searcherReopener.start(); // Start the refresher thread
     }
 
@@ -153,11 +129,9 @@ public class LuceneIndex
      * Updates the specified {@link Document} by first deleting the documents containing {@code Term} and then adding
      * the new document. The delete and then add are atomic as seen by a reader on the same index (flush may happen only
      * after the add).
-     * 
-     * @param term
-     *            The {@link Term} to identify the document(s) to be deleted.
-     * @param document
-     *            The {@link Document} to be added.
+     *
+     * @param term     The {@link Term} to identify the document(s) to be deleted.
+     * @param document The {@link Document} to be added.
      */
     public void upsert(Term term, Document document) throws IOException
     {
@@ -167,9 +141,8 @@ public class LuceneIndex
 
     /**
      * Deletes all the {@link Document}s containing the specified {@link Term}.
-     * 
-     * @param term
-     *            The {@link Term} to identify the documents to be deleted.
+     *
+     * @param term The {@link Term} to identify the documents to be deleted.
      */
     public void delete(Term term) throws IOException
     {
@@ -179,9 +152,8 @@ public class LuceneIndex
 
     /**
      * Deletes all the {@link Document}s satisfying the specified {@link Query}.
-     * 
-     * @param query
-     *            The {@link Query} to identify the documents to be deleted.
+     *
+     * @param query The {@link Query} to identify the documents to be deleted.
      */
     public void delete(Query query) throws IOException
     {
@@ -233,17 +205,12 @@ public class LuceneIndex
     /**
      * Finds the top {@code count} hits for {@code query}, applying {@code filter} if non-null, and sorting the hits by
      * the criteria in {@code sort}.
-     * 
-     * @param query
-     *            The {@link Query} to search for.
-     * @param sort
-     *            The {@link Sort} to be applied.
-     * @param after
-     *            The starting {@link com.stratio.cassandra.index.ScoredDocument}.
-     * @param count
-     *            Return only the top {@code count} results.
-     * @param fieldsToLoad
-     *            The name of the fields to be loaded.
+     *
+     * @param query        The {@link Query} to search for.
+     * @param sort         The {@link Sort} to be applied.
+     * @param after        The starting {@link com.stratio.cassandra.index.ScoredDocument}.
+     * @param count        Return only the top {@code count} results.
+     * @param fieldsToLoad The name of the fields to be loaded.
      * @return The found documents, sorted according to the supplied {@link Sort} instance.
      */
     public List<ScoredDocument> search(Query query,
@@ -293,16 +260,21 @@ public class LuceneIndex
         // Use default sort if the query doesn't use relevance
         if (sort == null)
         {
-            if (query instanceof  ConstantScoreQuery) {
+            if (query instanceof ConstantScoreQuery)
+            {
                 FieldDoc start = after == null ? null : (FieldDoc) after;
                 TopFieldCollector tfc = TopFieldCollector.create(this.sort, count, start, true, false, false, false);
                 Collector collector = new EarlyTerminatingSortingCollector(tfc, this.sort, count);
                 searcher.search(query, collector);
                 return tfc.topDocs();
-            } else {
+            }
+            else
+            {
                 return searcher.searchAfter(after, query, count);
             }
-        } else {
+        }
+        else
+        {
             return searcher.searchAfter(after, query, count, sort);
         }
     }
@@ -310,7 +282,7 @@ public class LuceneIndex
     /**
      * Optimizes the index forcing merge segments leaving one single segment. This operation blocks until all merging
      * completes.
-     * 
+     *
      * @throws IOException
      */
     public void optimize() throws IOException

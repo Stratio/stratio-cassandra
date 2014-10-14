@@ -15,20 +15,9 @@
  */
 package com.stratio.cassandra.index.schema;
 
-import org.apache.cassandra.db.marshal.AbstractType;
-import org.apache.cassandra.db.marshal.AsciiType;
-import org.apache.cassandra.db.marshal.BooleanType;
-import org.apache.cassandra.db.marshal.BytesType;
-import org.apache.cassandra.db.marshal.DoubleType;
-import org.apache.cassandra.db.marshal.FloatType;
-import org.apache.cassandra.db.marshal.InetAddressType;
-import org.apache.cassandra.db.marshal.Int32Type;
-import org.apache.cassandra.db.marshal.IntegerType;
-import org.apache.cassandra.db.marshal.LongType;
-import org.apache.cassandra.db.marshal.TimeUUIDType;
-import org.apache.cassandra.db.marshal.TimestampType;
-import org.apache.cassandra.db.marshal.UTF8Type;
-import org.apache.cassandra.db.marshal.UUIDType;
+import com.stratio.cassandra.index.AnalyzerFactory;
+import org.apache.cassandra.db.marshal.*;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
@@ -37,23 +26,24 @@ import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
-import com.stratio.cassandra.index.AnalyzerFactory;
-
 /**
  * A {@link ColumnMapper} to map a string, tokenized field.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class ColumnMapperText extends ColumnMapper<String>
 {
 
-    /** The Lucene's {@link corg.apache.lucene.analysis.Analyzer}. */
+    /**
+     * The Lucene's {@link corg.apache.lucene.analysis.Analyzer}.
+     */
     private Analyzer analyzer;
 
     @JsonCreator
     public ColumnMapperText(@JsonProperty("analyzer") String analyzerClassName)
     {
-        super(new AbstractType<?>[] { AsciiType.instance,
+        super(new AbstractType<?>[]{
+                AsciiType.instance,
                 UTF8Type.instance,
                 Int32Type.instance,
                 LongType.instance,
@@ -65,7 +55,7 @@ public class ColumnMapperText extends ColumnMapper<String>
                 TimeUUIDType.instance,
                 TimestampType.instance,
                 BytesType.instance,
-                InetAddressType.instance });
+                InetAddressType.instance});
         if (analyzerClassName != null)
         {
             this.analyzer = AnalyzerFactory.getAnalyzer(analyzerClassName);
@@ -123,12 +113,6 @@ public class ColumnMapperText extends ColumnMapper<String>
     @Override
     public String toString()
     {
-        StringBuilder builder = new StringBuilder();
-        builder.append(getClass().getSimpleName());
-        builder.append(" [analyzer=");
-        builder.append(analyzer);
-        builder.append("]");
-        return builder.toString();
+        return new ToStringBuilder(this).append("analyzer", analyzer).toString();
     }
-
 }

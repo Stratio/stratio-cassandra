@@ -15,17 +15,7 @@
  */
 package com.stratio.cassandra.index.schema;
 
-import java.math.BigDecimal;
-
-import org.apache.cassandra.db.marshal.AbstractType;
-import org.apache.cassandra.db.marshal.AsciiType;
-import org.apache.cassandra.db.marshal.DecimalType;
-import org.apache.cassandra.db.marshal.DoubleType;
-import org.apache.cassandra.db.marshal.FloatType;
-import org.apache.cassandra.db.marshal.Int32Type;
-import org.apache.cassandra.db.marshal.IntegerType;
-import org.apache.cassandra.db.marshal.LongType;
-import org.apache.cassandra.db.marshal.UTF8Type;
+import org.apache.cassandra.db.marshal.*;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
@@ -36,9 +26,11 @@ import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
+import java.math.BigDecimal;
+
 /**
  * A {@link ColumnMapper} to map a string, not tokenized field.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class ColumnMapperBigDecimal extends ColumnMapper<String>
@@ -56,14 +48,15 @@ public class ColumnMapperBigDecimal extends ColumnMapper<String>
     public ColumnMapperBigDecimal(@JsonProperty("integer_digits") Integer integerDigits,
                                   @JsonProperty("decimal_digits") Integer decimalDigits)
     {
-        super(new AbstractType<?>[] { AsciiType.instance,
+        super(new AbstractType<?>[]{
+                AsciiType.instance,
                 UTF8Type.instance,
                 Int32Type.instance,
                 LongType.instance,
                 IntegerType.instance,
                 FloatType.instance,
                 DoubleType.instance,
-                DecimalType.instance });
+                DecimalType.instance});
 
         // Setup integer part mapping
         if (integerDigits != null && integerDigits <= 0)
@@ -174,7 +167,8 @@ public class ColumnMapperBigDecimal extends ColumnMapper<String>
     }
 
     @Override
-    public String toString() {
+    public String toString()
+    {
         return new ToStringBuilder(this)
                 .append("integerDigits", integerDigits)
                 .append("decimalDigits", decimalDigits)

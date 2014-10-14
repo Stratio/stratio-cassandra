@@ -15,17 +15,11 @@
  */
 package com.stratio.cassandra.index;
 
-import java.io.IOException;
-
 import org.apache.cassandra.db.RangeTombstone;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.CellNameType;
 import org.apache.cassandra.db.composites.Composite;
-import org.apache.lucene.index.AtomicReader;
-import org.apache.lucene.index.AtomicReaderContext;
-import org.apache.lucene.index.DocsEnum;
-import org.apache.lucene.index.Terms;
-import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.index.*;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Filter;
@@ -33,34 +27,39 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.OpenBitSet;
 
+import java.io.IOException;
+
 /**
  * {@link Filter} that filters documents which clustering key field satisfies a certain {@link RangeTombstone}. This
  * means that the clustering key value must be contained in the slice query filter specified in the tombstone range.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class ClusteringKeyMapperRangeTombstoneFilter extends Filter
 {
     private final ClusteringKeyMapper clusteringKeyMapper;
 
-    /** The minimum accepted column name. */
+    /**
+     * The minimum accepted column name.
+     */
     private final Composite min;
 
-    /** The maximum accepted column name. */
+    /**
+     * The maximum accepted column name.
+     */
     private final Composite max;
 
-    /** The type of the column names to be filtered. */
+    /**
+     * The type of the column names to be filtered.
+     */
     private final CellNameType columnNameType;
 
     /**
      * Returns a new {@code ClusteringKeyMapperRangeTombstoneFilter} for {@code rangeTombstone} using
      * {@code clusteringKeyMapper}.
-     * 
-     * @param clusteringKeyMapper
-     *            The {@link ClusteringKeyMapper} to be used.
-     * @param rangeTombstone
-     *            The filtering tombstone range.
+     *
+     * @param clusteringKeyMapper The {@link ClusteringKeyMapper} to be used.
+     * @param rangeTombstone      The filtering tombstone range.
      */
     public ClusteringKeyMapperRangeTombstoneFilter(ClusteringKeyMapper clusteringKeyMapper,
                                                    RangeTombstone rangeTombstone)

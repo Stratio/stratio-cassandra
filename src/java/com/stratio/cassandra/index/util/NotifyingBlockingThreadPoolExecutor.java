@@ -1,12 +1,6 @@
 package com.stratio.cassandra.index.util;
 
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.Callable;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.RejectedExecutionHandler;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -14,32 +8,32 @@ import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * This class is a specialized extension of the ThreadPoolExecutor class.
- * 
+ * <p/>
  * Two functionalities had been added to this subclass. 1) The execute method of the ThreadPoolExecutor will block in
  * case the queue is full and only unblock when the queue is dequeued - that is a task that is currently in the queue is
  * removed and handled by the ThreadPoolExecutor. 2) Client code can await for the event of all tasks beeing run to
  * conclusion. Client code which actively chose to wait for this occurrence should call await on the instance of his
  * ThreadPoolExecutor. This differs from awaitTermination as it does not require any call to shutdown.
- * 
+ * <p/>
  * Code example:
- * 
+ * <p/>
  * NotifyingBlockingThreadPoolExecutor threadPoolExecutor = new NotifyingBlockingThreadPoolExecutor(5, ,10, 15,
  * TimeUnit.SECONDS);
- * 
+ * <p/>
  * for (int i = 0; i < 5000; i++) { threadPoolExecutor.execute(...) }
- * 
+ * <p/>
  * try { threadPoolExecutor.await(); } catch (InterruptedException e) { // Handle error }
- * 
+ * <p/>
  * System.out.println("Done!");
- * 
+ * <p/>
  * The example above shows how 5000 tasks are run within 5 threads. The line with 'System.out.println("Done!");' will
  * not run until such a time when all the tasks given to the thread pool have concluded. their run.
- * 
+ * <p/>
  * This subclass of ThreadPoolExecutor also takes away the max threads capabilities of the ThreadPoolExecutor superclass
  * and internally sets the amount of maximum threads to be the size of the core threads. This is done since threads over
  * the core size and under the max are instantiated only once the queue is full, but the
  * NotifyingBlockingThreadPoolExecutor will block once the queue is full.
- * 
+ *
  * @author Yaneeve Shekel & Amir Kirsh
  */
 public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
@@ -62,25 +56,18 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
      * This constructor is used in order to maintain the first functionality specified above. It does so by using an
      * ArrayBlockingQueue and the BlockThenRunPolicy that is defined in this class. This constructor allows to give a
      * timeout for the wait on new task insertion and to react upon such a timeout if occurs.
-     * 
-     * @param poolSize
-     *            is the amount of threads that this pool may have alive at any given time
-     * @param queueSize
-     *            is the size of the queue. This number should be at least as the pool size to make sense (otherwise
-     *            there are unused threads), thus if the number sent is smaller, the poolSize is used for the size of
-     *            the queue. Recommended value is twice the poolSize.
-     * @param keepAliveTime
-     *            is the amount of time after which an inactive thread is terminated
-     * @param keepAliveTimeUnit
-     *            is the unit of time to use with the previous parameter
-     * @param maxBlockingTime
-     *            is the maximum time to wait on the queue of tasks before calling the BlockingTimeout callback
-     * @param maxBlockingTimeUnit
-     *            is the unit of time to use with the previous parameter
-     * @param blockingTimeCallback
-     *            is the callback method to call when a timeout occurs while blocking on getting a new task, the return
-     *            value of this Callable is Boolean, indicating whether to keep blocking (true) or stop (false). In case
-     *            false is returned from the blockingTimeCallback, this executer will throw a RejectedExecutionException
+     *
+     * @param poolSize             is the amount of threads that this pool may have alive at any given time
+     * @param queueSize            is the size of the queue. This number should be at least as the pool size to make sense (otherwise
+     *                             there are unused threads), thus if the number sent is smaller, the poolSize is used for the size of
+     *                             the queue. Recommended value is twice the poolSize.
+     * @param keepAliveTime        is the amount of time after which an inactive thread is terminated
+     * @param keepAliveTimeUnit    is the unit of time to use with the previous parameter
+     * @param maxBlockingTime      is the maximum time to wait on the queue of tasks before calling the BlockingTimeout callback
+     * @param maxBlockingTimeUnit  is the unit of time to use with the previous parameter
+     * @param blockingTimeCallback is the callback method to call when a timeout occurs while blocking on getting a new task, the return
+     *                             value of this Callable is Boolean, indicating whether to keep blocking (true) or stop (false). In case
+     *                             false is returned from the blockingTimeCallback, this executer will throw a RejectedExecutionException
      */
     public NotifyingBlockingThreadPoolExecutor(int poolSize,
                                                int queueSize,
@@ -92,13 +79,13 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
     {
 
         super(poolSize, // Core size
-              poolSize, // Max size
-              keepAliveTime,
-              keepAliveTimeUnit,
-              // not smaller than the poolSize (to avoid redundant threads)
-              new ArrayBlockingQueue<Runnable>(Math.max(poolSize, queueSize), true),
-              // When super invokes the reject method this class will ensure a blocking try
-              new BlockThenRunPolicy(maxBlockingTime, maxBlockingTimeUnit, blockingTimeCallback));
+                poolSize, // Max size
+                keepAliveTime,
+                keepAliveTimeUnit,
+                // not smaller than the poolSize (to avoid redundant threads)
+                new ArrayBlockingQueue<Runnable>(Math.max(poolSize, queueSize), true),
+                // When super invokes the reject method this class will ensure a blocking try
+                new BlockThenRunPolicy(maxBlockingTime, maxBlockingTimeUnit, blockingTimeCallback));
 
         super.allowCoreThreadTimeOut(true); // Time out the core threads
     }
@@ -107,29 +94,25 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
      * This constructor is used in order to maintain the first functionality specified above. It does so by using an
      * ArrayBlockingQueue and the BlockThenRunPolicy that is defined in this class. Using this constructor, waiting time
      * on new task insertion is unlimited.
-     * 
-     * @param poolSize
-     *            is the amount of threads that this pool may have alive at any given time.
-     * @param queueSize
-     *            is the size of the queue. This number should be at least as the pool size to make sense (otherwise
-     *            there are unused threads), thus if the number sent is smaller, the poolSize is used for the size of
-     *            the queue. Recommended value is twice the poolSize.
-     * @param keepAliveTime
-     *            is the amount of time after which an inactive thread is terminated.
-     * @param unit
-     *            is the unit of time to use with the previous parameter.
+     *
+     * @param poolSize      is the amount of threads that this pool may have alive at any given time.
+     * @param queueSize     is the size of the queue. This number should be at least as the pool size to make sense (otherwise
+     *                      there are unused threads), thus if the number sent is smaller, the poolSize is used for the size of
+     *                      the queue. Recommended value is twice the poolSize.
+     * @param keepAliveTime is the amount of time after which an inactive thread is terminated.
+     * @param unit          is the unit of time to use with the previous parameter.
      */
     public NotifyingBlockingThreadPoolExecutor(int poolSize, int queueSize, long keepAliveTime, TimeUnit unit)
     {
 
         super(poolSize, // Core size
-              poolSize, // Max size
-              keepAliveTime,
-              unit,
-              // not smaller than the poolSize (to avoid redundant threads)
-              new ArrayBlockingQueue<Runnable>(Math.max(poolSize, queueSize), true),
-              // When super invokes the reject method this class will ensure a blocking try.
-              new BlockThenRunPolicy());
+                poolSize, // Max size
+                keepAliveTime,
+                unit,
+                // not smaller than the poolSize (to avoid redundant threads)
+                new ArrayBlockingQueue<Runnable>(Math.max(poolSize, queueSize), true),
+                // When super invokes the reject method this class will ensure a blocking try.
+                new BlockThenRunPolicy());
 
         super.allowCoreThreadTimeOut(true); // Time out the core threads.
     }
@@ -137,7 +120,7 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
     /**
      * Before calling super's version of this method, the amount of tasks which are currently in process is first
      * incremented.
-     * 
+     *
      * @see java.util.concurrent.ThreadPoolExecutor#execute(Runnable)
      */
     @Override
@@ -165,7 +148,7 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
      * After calling super's implementation of this method, the amount of tasks which are currently in process is
      * decremented. Finally, if the amount of tasks currently running is zero the synchronizer's signallAll() method is
      * invoked, thus anyone awaiting on this instance of ThreadPoolExecutor is released.
-     * 
+     *
      * @see java.util.concurrent.ThreadPoolExecutor#afterExecute(Runnable, Throwable)
      */
     @Override
@@ -189,7 +172,7 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
 
     /**
      * Internally calls on super's setCorePoolSize and setMaximumPoolSize methods with the given method argument.
-     * 
+     *
      * @see java.util.concurrent.ThreadPoolExecutor#setCorePoolSize(int)
      */
     @Override
@@ -201,9 +184,8 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
 
     /**
      * Does Nothing!
-     * 
-     * @throws UnsupportedOperationException
-     *             in any event
+     *
+     * @throws UnsupportedOperationException in any event
      * @see java.util.concurrent.ThreadPoolExecutor#setMaximumPoolSize(int)
      */
     @Override
@@ -214,9 +196,8 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
 
     /**
      * Does Nothing! MUST NOT CHANGE OUR BUILT IN RejectedExecutionHandler
-     * 
-     * @throws UnsupportedOperationException
-     *             in any event
+     *
+     * @throws UnsupportedOperationException in any event
      * @see java.util.concurrent.ThreadPoolExecutor#setRejectedExecutionHandler(RejectedExecutionHandler)
      */
     @Override
@@ -232,9 +213,8 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
      * there are several threads feeding the TreadPool with tasks (calling execute). The safe way to call this method is
      * from the thread that is calling execute and when there is only one such thread. Note that this method differs
      * from awaitTemination, as it can be called without shutting down the ThreadPoolExecuter.
-     * 
-     * @throws InterruptedException
-     *             when the internal condition throws it.
+     *
+     * @throws InterruptedException when the internal condition throws it.
      */
     public void await() throws InterruptedException
     {
@@ -244,11 +224,10 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
     /**
      * A blocking wait for this ThreadPool to be in idle state or a certain timeout to elapse. Works the same as the
      * await() method, except for adding the timeout condition.
-     * 
-     * @see NotifyingBlockingThreadPoolExecutor#await() for more details.
+     *
      * @return false if the timeout elapsed, true if the synch event we are waiting for had happened.
-     * @throws InterruptedException
-     *             when the internal condition throws it.
+     * @throws InterruptedException when the internal condition throws it.
+     * @see NotifyingBlockingThreadPoolExecutor#await() for more details.
      */
     public boolean await(long timeout, TimeUnit timeUnit) throws InterruptedException
     {
@@ -281,7 +260,7 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
             try
             {
                 isDone = true; // To help the await method ascertain that it has not waken up
-                               // 'spuriously'
+                // 'spuriously'
                 done.signalAll();
             }
             finally
@@ -292,10 +271,9 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
 
         /**
          * This is the inner implementation for supporting the NotifyingBlockingThreadPoolExecutor.await().
-         * 
+         *
+         * @throws InterruptedException when the internal condition throws it.
          * @see NotifyingBlockingThreadPoolExecutor#await() for details.
-         * @throws InterruptedException
-         *             when the internal condition throws it.
          */
         public void await() throws InterruptedException
         {
@@ -318,10 +296,9 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
         /**
          * This is the inner implementation for supporting the NotifyingBlockingThreadPoolExecutor.await(timeout,
          * timeUnit).
-         * 
+         *
+         * @throws InterruptedException when the internal condition throws it.
          * @see NotifyingBlockingThreadPoolExecutor#await(long, TimeUnit) for details.
-         * @throws InterruptedException
-         *             when the internal condition throws it.
          */
         public boolean await(long timeout, TimeUnit timeUnit) throws InterruptedException
         {
@@ -381,7 +358,7 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
         /**
          * When this method is invoked by the ThreadPoolExecutor's reject method it simply asks for the Executor's Queue
          * and calls on its put method which will Block (at least for the ArrayBlockingQueue).
-         * 
+         *
          * @see java.util.concurrent.RejectedExecutionHandler#rejectedExecution(Runnable, ThreadPoolExecutor)
          */
         @Override
@@ -397,7 +374,7 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
                 if (executor.isShutdown())
                 {
                     throw new RejectedExecutionException(
-                                                         "ThreadPoolExecutor has shutdown while attempting to offer a new task.");
+                            "ThreadPoolExecutor has shutdown while attempting to offer a new task.");
                 }
 
                 try

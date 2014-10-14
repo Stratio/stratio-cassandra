@@ -20,7 +20,7 @@ import org.apache.lucene.search.ScoreDoc;
 
 /**
  * Tuple relating a {@link Document} to a search {@link ScoreDoc}.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class ScoredDocument
@@ -31,11 +31,9 @@ public class ScoredDocument
 
     /**
      * Returns a new {@link ScoredDocument} composed by the specified {@link Document} and {@link ScoreDoc}.
-     * 
-     * @param document
-     *            A {@link Document}.
-     * @param scoreDoc
-     *            A {@link ScoreDoc}.
+     *
+     * @param document A {@link Document}.
+     * @param scoreDoc A {@link ScoreDoc}.
      */
     public ScoredDocument(Document document, ScoreDoc scoreDoc)
     {
@@ -45,7 +43,7 @@ public class ScoredDocument
 
     /**
      * Returns the numeric {@link Document}.
-     * 
+     *
      * @return The numeric {@link Document}.
      */
     public Document getDocument()
@@ -55,7 +53,7 @@ public class ScoredDocument
 
     /**
      * Returns the numeric {@link ScoreDoc}.
-     * 
+     *
      * @return The numeric {@link ScoreDoc}.
      */
     public ScoreDoc getScoreDoc()
@@ -65,7 +63,7 @@ public class ScoredDocument
 
     /**
      * Returns the numeric score.
-     * 
+     *
      * @return The numeric score.
      */
     public Float getScore()

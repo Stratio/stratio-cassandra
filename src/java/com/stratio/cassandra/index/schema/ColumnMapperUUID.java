@@ -15,13 +15,8 @@
  */
 package com.stratio.cassandra.index.schema;
 
-import java.util.UUID;
-
-import org.apache.cassandra.db.marshal.AbstractType;
-import org.apache.cassandra.db.marshal.AsciiType;
-import org.apache.cassandra.db.marshal.TimeUUIDType;
-import org.apache.cassandra.db.marshal.UTF8Type;
-import org.apache.cassandra.db.marshal.UUIDType;
+import org.apache.cassandra.db.marshal.*;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
@@ -29,9 +24,11 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
 
+import java.util.UUID;
+
 /**
  * A {@link ColumnMapper} to map a UUID field.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class ColumnMapperUUID extends ColumnMapper<String>
@@ -40,7 +37,7 @@ public class ColumnMapperUUID extends ColumnMapper<String>
     @JsonCreator
     public ColumnMapperUUID()
     {
-        super(new AbstractType<?>[] { AsciiType.instance, UTF8Type.instance, UUIDType.instance, TimeUUIDType.instance });
+        super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, UUIDType.instance, TimeUUIDType.instance});
     }
 
     @Override
@@ -105,10 +102,8 @@ public class ColumnMapperUUID extends ColumnMapper<String>
     @Override
     public String toString()
     {
-        StringBuilder builder = new StringBuilder();
-        builder.append(getClass().getSimpleName());
-        builder.append(" []");
-        return builder.toString();
+        return new ToStringBuilder(this).toString();
     }
+
 
 }

@@ -15,43 +15,45 @@
  */
 package com.stratio.cassandra.index.query;
 
-import java.nio.ByteBuffer;
-import java.util.Comparator;
-
+import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.ColumnMapper;
+import com.stratio.cassandra.index.schema.Columns;
+import com.stratio.cassandra.index.schema.Schema;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.lucene.search.SortField;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
-import com.stratio.cassandra.index.schema.Column;
-import com.stratio.cassandra.index.schema.Columns;
-import com.stratio.cassandra.index.schema.Schema;
+import java.nio.ByteBuffer;
+import java.util.Comparator;
 
 /**
  * A sorting for a field of a search.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class SortingField
 {
 
     private static final boolean DEFAULT_REVERSE = false;
 
-    /** The name of field to sort by. */
-    private String field;
+    /**
+     * The name of field to sort by.
+     */
+    @JsonProperty("field")
+    private final String field;
 
-    /** {@code true} if natural order should be reversed. */
-    private boolean reverse;
+    /**
+     * {@code true} if natural order should be reversed.
+     */
+    @JsonProperty("reverse")
+    private final boolean reverse;
 
     /**
      * Returns a new {@link SortingField}.
-     * 
-     * @param field
-     *            The name of field to sort by.
-     * @param reverse
-     *            {@code true} if natural order should be reversed.
+     *
+     * @param field   The name of field to sort by.
+     * @param reverse {@code true} if natural order should be reversed.
      */
     @JsonCreator
     public SortingField(@JsonProperty("field") String field, @JsonProperty("reverse") Boolean reverse)
@@ -62,9 +64,8 @@ public class SortingField
 
     /**
      * Returns the Lucene's {@link SortField} representing this {@link SortingField}.
-     * 
-     * @param schema
-     *            The {@link Schema} to be used.
+     *
+     * @param schema The {@link Schema} to be used.
      * @return the Lucene's {@link SortField} representing this {@link SortingField}.
      */
     public SortField sortField(Schema schema)
@@ -83,24 +84,35 @@ public class SortingField
             return columnMapper.sortField(field, reverse);
         }
     }
-    
-    public Comparator<Columns> comparator() {
-        return new Comparator<Columns>() {
-            public int compare(Columns o1, Columns o2) {
-                
+
+    public Comparator<Columns> comparator()
+    {
+        return new Comparator<Columns>()
+        {
+            public int compare(Columns o1, Columns o2)
+            {
+
                 if (o1 == null)
+                {
                     return o2 == null ? 0 : 1;
+                }
                 if (o2 == null)
+                {
                     return -1;
-                
+                }
+
                 Column column1 = o1.getCell(field);
                 Column column2 = o2.getCell(field);
-                
+
                 if (column1 == null)
-                    return column2 == null ? 0 : 1 ;
+                {
+                    return column2 == null ? 0 : 1;
+                }
                 if (column2 == null)
+                {
                     return -1;
-                
+                }
+
                 AbstractType<?> type = column1.getType();
                 ByteBuffer value1 = column1.getRawValue();
                 ByteBuffer value2 = column2.getRawValue();

@@ -15,8 +15,8 @@
  */
 package com.stratio.cassandra.index;
 
-import java.util.Arrays;
-
+import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap;
+import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap.Builder;
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.RowPosition;
 import org.apache.cassandra.db.filter.ColumnSlice;
@@ -25,14 +25,12 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.lucene.search.CachingWrapperFilter;
 import org.apache.lucene.search.Filter;
 
-import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap;
-import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap.Builder;
+import java.util.Arrays;
 
 /**
  * Cache for Lucene's {@link Filter}s associated to Cassandra's {@link DataRange}s.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class FilterCache
 {
@@ -41,9 +39,8 @@ public class FilterCache
 
     /**
      * Returns a new {@link FilterCache} with the specified capacity.
-     * 
-     * @param capacity
-     *            The max number of {@link Filter}s to be cached.
+     *
+     * @param capacity The max number of {@link Filter}s to be cached.
      */
     public FilterCache(int capacity)
     {
@@ -55,11 +52,9 @@ public class FilterCache
      * Associates the specified Lucene's {@link Filter}s with the specified Cassandra's {@link DataRange} in this cache.
      * If the map previously contained a mapping for the key, the old value is replaced by the specified value. This
      * operation may evict older entries.
-     * 
-     * @param dataRange
-     *            DataRange with which the specified value is to be associated.
-     * @param filter
-     *            Filter to be associated with the specified dataRange.
+     *
+     * @param dataRange DataRange with which the specified value is to be associated.
+     * @param filter    Filter to be associated with the specified dataRange.
      */
     public void put(DataRange dataRange, Filter filter)
     {
@@ -70,9 +65,8 @@ public class FilterCache
 
     /**
      * Returns the {@link Filter} associated with the {@link DataRange}, {@code null} if not found.
-     * 
-     * @param dataRange
-     *            The {@link DataRange} used as key of this cache.
+     *
+     * @param dataRange The {@link DataRange} used as key of this cache.
      * @return The {@link Filter} associated with the {@link DataRange}, {@code null} if not found.
      */
     public CachingWrapperFilter get(DataRange dataRange)
@@ -83,7 +77,7 @@ public class FilterCache
 
     /**
      * Returns the number of {@link Filter}s in this map.
-     * 
+     *
      * @return the number of {@link Filter}s in this map.
      */
     public int size()
@@ -131,11 +125,17 @@ public class FilterCache
         public boolean equals(Object obj)
         {
             if (this == obj)
+            {
                 return true;
+            }
             if (obj == null)
+            {
                 return false;
+            }
             if (getClass() != obj.getClass())
+            {
                 return false;
+            }
             DataRangeKey other = (DataRangeKey) obj;
 
             if (left == null)

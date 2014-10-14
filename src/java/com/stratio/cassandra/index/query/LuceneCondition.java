@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.query;
 
+import com.stratio.cassandra.index.schema.Schema;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
@@ -23,35 +24,34 @@ import org.apache.lucene.util.Version;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
-import com.stratio.cassandra.index.schema.Schema;
-
 /**
  * A {@link Condition} implementation that matches documents satisfying a Lucene Query Syntax.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class LuceneCondition extends Condition
 {
 
     public static final String DEFAULT_FIELD = "lucene";
-
-    /** The default field name */
-    private final String defaultField;
-
-    /** The query value */
+    /**
+     * The query value
+     */
+    @JsonProperty("query")
     private final String query;
+    /**
+     * The default field name
+     */
+    @JsonProperty("default_field")
+    private String defaultField;
 
     /**
      * Constructor using the field name and the value to be matched.
-     * 
-     * @param boost
-     *            The boost for this query clause. Documents matching this clause will (in addition to the normal
-     *            weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link DEFAULT_BOOST}
-     *            is used as default.
-     * @param defaultField
-     *            the default field name.
-     * @param query
-     *            the Lucene Query Syntax query.
+     *
+     * @param boost        The boost for this query clause. Documents matching this clause will (in addition to the normal
+     *                     weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link #DEFAULT_BOOST}
+     *                     is used as default.
+     * @param defaultField the default field name.
+     * @param query        the Lucene Query Syntax query.
      */
     @JsonCreator
     public LuceneCondition(@JsonProperty("boost") Float boost,
@@ -62,26 +62,6 @@ public class LuceneCondition extends Condition
 
         this.query = query;
         this.defaultField = defaultField == null ? DEFAULT_FIELD : defaultField;
-    }
-
-    /**
-     * Returns the default field name.
-     * 
-     * @return the default field name.
-     */
-    public String getDefaultField()
-    {
-        return defaultField;
-    }
-
-    /**
-     * Returns the Lucene Query Syntax query.
-     * 
-     * @return the Lucene Query Syntax query.
-     */
-    public String getQuery()
-    {
-        return query;
     }
 
     /**
@@ -123,6 +103,7 @@ public class LuceneCondition extends Condition
         builder.append(" [boost=");
         builder.append(boost);
         builder.append(", defaultField=");
+
         builder.append(defaultField);
         builder.append(", query=");
         builder.append(query);

@@ -15,31 +15,29 @@
  */
 package com.stratio.cassandra.index.util;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-
 import org.apache.cassandra.db.marshal.AbstractCompositeType.CompositeComponent;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.Hex;
 
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+
 /**
  * Utility class with some {@link java.nio.ByteBuffer}/ {@link org.apache.cassandra.db.marshal.AbstractType} utilities.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class ByteBufferUtils
 {
 
     /**
      * Returns the specified {@link java.nio.ByteBuffer} as a byte array.
-     * 
-     * @param byteBuffer
-     *            a {@link java.nio.ByteBuffer} to be converted to a byte array.
+     *
+     * @param byteBuffer a {@link java.nio.ByteBuffer} to be converted to a byte array.
      * @return the byte array representation of the {@code byteBuffer}.
      */
     public static byte[] asArray(ByteBuffer byteBuffer)
@@ -59,11 +57,9 @@ public class ByteBufferUtils
      * Replaces the last component of the specified {@link java.nio.ByteBuffer} by an
      * {@link org.apache.cassandra.utils.ByteBufferUtil.EMPTY_BYTE_BUFFER} if the {@code byteBuffer} is a composite.
      * Otherwise, replaces {@code byteBuffer} by an empty {@link java.nio.ByteBuffer}.
-     * 
-     * @param byteBuffer
-     *            the {@link java.nio.ByteBuffer} which last component is to be cleared.
-     * @param type
-     *            the type of {@code byteBuffer}.
+     *
+     * @param byteBuffer the {@link java.nio.ByteBuffer} which last component is to be cleared.
+     * @param type       the type of {@code byteBuffer}.
      * @return a {@code byteBuffer} copy with its last component cleared.
      */
     public static ByteBuffer clearLastComponent(ByteBuffer byteBuffer, AbstractType<?> type)
@@ -89,9 +85,8 @@ public class ByteBufferUtils
 
     /**
      * Removes the last {@link AbstractType} of those contained in {@code comparator}.
-     * 
-     * @param type
-     *            an {@link AbstractType}.
+     *
+     * @param type an {@link AbstractType}.
      * @return the last {@link AbstractType} of those contained in {@code comparator}.
      */
     public static AbstractType<?> removeLastComponent(AbstractType<?> type)
@@ -103,11 +98,9 @@ public class ByteBufferUtils
 
     /**
      * Returns the last {@link java.nio.ByteBuffer} of those contained in {@code byteBuffer} if it is a composite.
-     * 
-     * @param byteBuffer
-     *            the {@link java.nio.ByteBuffer}.
-     * @param type
-     *            the {@link AbstractType} of {@code byteBuffer}.
+     *
+     * @param byteBuffer the {@link java.nio.ByteBuffer}.
+     * @param type       the {@link AbstractType} of {@code byteBuffer}.
      * @return the last {@link java.nio.ByteBuffer} of those contained in {@code byteBuffer} if it is a composite.
      */
     public static ByteBuffer getLastComponent(ByteBuffer byteBuffer, AbstractType<?> type)
@@ -118,9 +111,8 @@ public class ByteBufferUtils
 
     /**
      * Returns the last {@link AbstractType} of those contained in {@code type}.
-     * 
-     * @param type
-     *            an {@link AbstractType}.
+     *
+     * @param type an {@link AbstractType}.
      * @return the last {@link AbstractType} of those contained in {@code type}.
      */
     public static AbstractType<?> getLastComponent(AbstractType<?> type)
@@ -131,9 +123,8 @@ public class ByteBufferUtils
 
     /**
      * Returns the {@link AbstractType}s contained in {@code type}.
-     * 
-     * @param type
-     *            the {@link AbstractType} to be split.
+     *
+     * @param type the {@link AbstractType} to be split.
      * @return the {@link AbstractType}s contained in {@code type}.
      */
     public static List<AbstractType<?>> split(AbstractType<?> type)
@@ -152,11 +143,9 @@ public class ByteBufferUtils
 
     /**
      * Returns the {@link java.nio.ByteBuffer}s contained in {@code byteBuffer} according to {@code type}.
-     * 
-     * @param byteBuffer
-     *            the {@link java.nio.ByteBuffer} to be split.
-     * @param type
-     *            the {@link AbstractType} of {@code byteBuffer}.
+     *
+     * @param byteBuffer the {@link java.nio.ByteBuffer} to be split.
+     * @param type       the {@link AbstractType} of {@code byteBuffer}.
      * @return the {@link java.nio.ByteBuffer}s contained in {@code byteBuffer} according to {@code type}.
      */
     public static ByteBuffer[] split(ByteBuffer byteBuffer, AbstractType<?> type)
@@ -167,17 +156,15 @@ public class ByteBufferUtils
         }
         else
         {
-            return new ByteBuffer[] { byteBuffer };
+            return new ByteBuffer[]{byteBuffer};
         }
     }
 
     /**
      * Returns a {@code String} representation of {@code byteBuffer} validated by {@code type}.
-     * 
-     * @param byteBuffer
-     *            the {@link java.nio.ByteBuffer} to be converted to {@code String}.
-     * @param type
-     *            {@link AbstractType} of {@code byteBuffer}.
+     *
+     * @param byteBuffer the {@link java.nio.ByteBuffer} to be converted to {@code String}.
+     * @param type       {@link AbstractType} of {@code byteBuffer}.
      * @return a {@code String} representation of {@code byteBuffer} validated by {@code type}.
      */
     public static String toString(ByteBuffer byteBuffer, AbstractType<?> type)
@@ -208,9 +195,8 @@ public class ByteBufferUtils
 
     /**
      * Returns a {@code String} representation of {@link byteBuffer}.
-     * 
-     * @param byteBuffer
-     *            the {@link java.nio.ByteBuffer} to be converted to {@link String}.
+     *
+     * @param byteBuffer the {@link java.nio.ByteBuffer} to be converted to {@link String}.
      * @return a {@code String} representation of {@link byteBuffer}.
      */
     public static String toString(ByteBuffer byteBuffer)
@@ -221,10 +207,9 @@ public class ByteBufferUtils
     /**
      * Returns the {@link java.nio.ByteBuffer} represented by {@code string}, which must be have generated by
      * {@link #toString(ByteBuffer)}.
-     * 
-     * @param string
-     *            the {@link String} to be converted to {@link ByteBuffer}. This must be have generated by
-     *            {@link #toString(ByteBuffer)}.
+     *
+     * @param string the {@link String} to be converted to {@link ByteBuffer}. This must be have generated by
+     *               {@link #toString(ByteBuffer)}.
      * @return the {@link java.nio.ByteBuffer} represented by {@code string}.
      */
     public static ByteBuffer fromString(String string)

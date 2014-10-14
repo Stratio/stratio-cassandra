@@ -15,26 +15,26 @@
  */
 package com.stratio.cassandra.index.query;
 
-import java.util.Iterator;
-import java.util.List;
-
+import com.stratio.cassandra.index.schema.Schema;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
-import com.stratio.cassandra.index.schema.Schema;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * A sorting of fields for a search.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class Sorting implements Iterable<SortingField>
 {
 
-    /** How to sort each field */
+    /**
+     * How to sort each field
+     */
     private final List<SortingField> sortingFields;
 
     @JsonCreator
@@ -54,7 +54,7 @@ public class Sorting implements Iterable<SortingField>
 
     /**
      * Returns the {@link SortingField}s to be used.
-     * 
+     *
      * @return
      */
     public List<SortingField> getSortingFields()
@@ -64,9 +64,8 @@ public class Sorting implements Iterable<SortingField>
 
     /**
      * Returns the Lucene's {@link Sort} representing this {@link Sorting}.
-     * 
-     * @param schema
-     *            The {@link Schema} to be used.
+     *
+     * @param schema The {@link Schema} to be used.
      * @return the Lucene's {@link Sort} representing this {@link Sorting}.
      */
     public Sort sort(Schema schema)

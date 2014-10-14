@@ -15,9 +15,6 @@
  */
 package com.stratio.cassandra.index.query;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import com.stratio.cassandra.index.schema.*;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.search.NumericRangeQuery;
@@ -26,9 +23,16 @@ import org.apache.lucene.search.TermQuery;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.stratio.cassandra.index.schema.ColumnMapperInet;
+import java.util.HashMap;
+import java.util.Map;
 
-public class MatchConditionTest
+import static com.stratio.cassandra.index.query.builder.SearchBuilders.filter;
+import static com.stratio.cassandra.index.query.builder.SearchBuilders.match;
+
+/**
+ * @author Andres de la Pena <adelapena@stratio.com>
+ */
+public class MatchConditionTest extends AbstractConditionTest
 {
 
     @Test
@@ -177,6 +181,12 @@ public class MatchConditionTest
         Assert.assertEquals(TermQuery.class, query.getClass());
         Assert.assertEquals("2001:db8:2de:0:0:0:0:e13", ((TermQuery) query).getTerm().bytes().utf8ToString());
         Assert.assertEquals(0.5f, query.getBoost(), 0);
+    }
+
+    @Test
+    public void testJson()
+    {
+        testJsonCondition(filter(match("name", 42).boost(0.5f)));
     }
 
 }

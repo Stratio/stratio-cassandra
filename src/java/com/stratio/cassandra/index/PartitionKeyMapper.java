@@ -15,8 +15,7 @@
  */
 package com.stratio.cassandra.index;
 
-import java.nio.ByteBuffer;
-
+import com.stratio.cassandra.index.util.ByteBufferUtils;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.dht.IPartitioner;
@@ -28,21 +27,24 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 
-import com.stratio.cassandra.index.util.ByteBufferUtils;
+import java.nio.ByteBuffer;
 
 /**
  * Class for several partition key mappings between Cassandra and Lucene.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class PartitionKeyMapper
 {
 
-    /** The Lucene's field name. */
+    /**
+     * The Lucene's field name.
+     */
     public static final String FIELD_NAME = "_partition_key";
 
-    /** The active active partition key. */
+    /**
+     * The active active partition key.
+     */
     private final IPartitioner<?> partitioner;
 
     /**
@@ -65,11 +67,9 @@ public class PartitionKeyMapper
 
     /**
      * Adds to the specified {@link Document} the {@link Field}s associated to the specified raw partition key.
-     * 
-     * @param document
-     *            The document in which the fields are going to be added.
-     * @param partitionKey
-     *            The raw partition key to be converted.
+     *
+     * @param document     The document in which the fields are going to be added.
+     * @param partitionKey The raw partition key to be converted.
      */
     public void addFields(Document document, DecoratedKey partitionKey)
     {
@@ -80,9 +80,8 @@ public class PartitionKeyMapper
 
     /**
      * Returns the specified raw partition key as a Lucene's {@link Term}.
-     * 
-     * @param partitionKey
-     *            The raw partition key to be converted.
+     *
+     * @param partitionKey The raw partition key to be converted.
      * @return The specified raw partition key as a Lucene's {@link Term}.
      */
     public Term term(DecoratedKey partitionKey)
@@ -93,9 +92,8 @@ public class PartitionKeyMapper
 
     /**
      * Returns the specified raw partition key as a Lucene's {@link Query}.
-     * 
-     * @param partitionKey
-     *            The raw partition key to be converted.
+     *
+     * @param partitionKey The raw partition key to be converted.
      * @return The specified raw partition key as a Lucene's {@link Query}.
      */
     public Query query(DecoratedKey partitionKey)
@@ -105,9 +103,8 @@ public class PartitionKeyMapper
 
     /**
      * Returns the {@link DecoratedKey} contained in the specified Lucene's {@link Document}.
-     * 
-     * @param document
-     *            the {@link Document} containing the partition key to be get.
+     *
+     * @param document the {@link Document} containing the partition key to be get.
      * @return The {@link DecoratedKey} contained in the specified Lucene's {@link Document}.
      */
     public DecoratedKey decoratedKey(Document document)
@@ -119,9 +116,8 @@ public class PartitionKeyMapper
 
     /**
      * Returns the specified raw partition key as a a {@link DecoratedKey}.
-     * 
-     * @param partitionKey
-     *            The raw partition key to be converted.
+     *
+     * @param partitionKey The raw partition key to be converted.
      * @return The specified raw partition key as a a {@link DecoratedKey}.
      */
     public DecoratedKey decoratedKey(ByteBuffer partitionKey)

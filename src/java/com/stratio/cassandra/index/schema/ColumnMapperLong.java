@@ -15,15 +15,8 @@
  */
 package com.stratio.cassandra.index.schema;
 
-import org.apache.cassandra.db.marshal.AbstractType;
-import org.apache.cassandra.db.marshal.AsciiType;
-import org.apache.cassandra.db.marshal.DecimalType;
-import org.apache.cassandra.db.marshal.DoubleType;
-import org.apache.cassandra.db.marshal.FloatType;
-import org.apache.cassandra.db.marshal.Int32Type;
-import org.apache.cassandra.db.marshal.IntegerType;
-import org.apache.cassandra.db.marshal.LongType;
-import org.apache.cassandra.db.marshal.UTF8Type;
+import org.apache.cassandra.db.marshal.*;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.LongField;
@@ -34,7 +27,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
 
 /**
  * A {@link ColumnMapper} to map a long field.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class ColumnMapperLong extends ColumnMapper<Long>
@@ -47,14 +40,15 @@ public class ColumnMapperLong extends ColumnMapper<Long>
     @JsonCreator
     public ColumnMapperLong(@JsonProperty("boost") Float boost)
     {
-        super(new AbstractType<?>[] { AsciiType.instance,
+        super(new AbstractType<?>[]{
+                AsciiType.instance,
                 UTF8Type.instance,
                 Int32Type.instance,
                 LongType.instance,
                 IntegerType.instance,
                 FloatType.instance,
                 DoubleType.instance,
-                DecimalType.instance });
+                DecimalType.instance});
         this.boost = boost == null ? DEFAULT_BOOST : boost;
     }
 
@@ -125,11 +119,6 @@ public class ColumnMapperLong extends ColumnMapper<Long>
     @Override
     public String toString()
     {
-        StringBuilder builder = new StringBuilder();
-        builder.append("CellMapperLong [boost=");
-        builder.append(boost);
-        builder.append("]");
-        return builder.toString();
+        return new ToStringBuilder(this).append("boost", boost).toString();
     }
-
 }
