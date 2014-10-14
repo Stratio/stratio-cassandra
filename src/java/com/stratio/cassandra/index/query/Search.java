@@ -142,6 +142,11 @@ public class Search
         return sorting != null;
     }
 
+    public Sorting getSorting() 
+    {
+        return this.sorting;
+    }
+
     /**
      * Returns the Lucene's {@link Query} represented by this querying {@link Condition} using the specified
      * {@link Schema}. Maybe {@code null} meaning no querying.

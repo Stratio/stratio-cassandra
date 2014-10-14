@@ -62,11 +62,11 @@
     <property name="test.long.src" value="${test.dir}/long"/>
     <property name="test.pig.src" value="${test.dir}/pig"/>
     <property name="dist.dir" value="${build.dir}/dist"/>
-	<property name="test.index.src" value="${test.dir}/unit/com/stratio/cassandra/index"/>
-	
-	<property name="source.version" value="1.7"/>
-	<property name="target.version" value="1.7"/>
-	
+  <property name="test.index.src" value="${test.dir}/unit/com/stratio/cassandra/index"/>
+  
+  <property name="source.version" value="1.7"/>
+  <property name="target.version" value="1.7"/>
+  
     <condition property="version" value="${base.version}">
       <isset property="release"/>
     </condition>
@@ -103,9 +103,9 @@
     <property name="cobertura.report.dir" value="${cobertura.build.dir}/report"/>
     <property name="cobertura.classes.dir" value="${cobertura.build.dir}/classes"/>
     <property name="cobertura.datafile" value="${cobertura.build.dir}/cobertura.ser"/>
-	
-	<!-- Apache Lucene-->
-	<property name="lucene.version" value="4.8.1"/>
+  
+  <!-- Apache Lucene-->
+  <property name="lucene.version" value="4.8.1"/>
 
     <condition property="maven-ant-tasks.jar.exists">
       <available file="${build.dir}/maven-ant-tasks-${maven-ant-tasks.version}.jar" />
@@ -140,10 +140,10 @@
           <exclude name="**/*-sources.jar"/>
         </fileset>
     </path>
-	
-	<path id="cobertura.classpath">
-		<pathelement location="${cobertura.classes.dir}"/>
-	</path>
+  
+  <path id="cobertura.classpath">
+    <pathelement location="${cobertura.classes.dir}"/>
+  </path>
 
   <macrodef name="create-javadoc">
     <attribute name="destdir"/>
@@ -373,7 +373,7 @@
           <dependency groupId="com.boundary" artifactId="high-scale-lib" version="1.0.6"/>
           <dependency groupId="com.github.jbellis" artifactId="jamm" version="0.2.6"/>
           <dependency groupId="com.thinkaurelius.thrift" artifactId="thrift-server" version="0.3.5">
-	      	<exclusion groupId="org.slf4j" artifactId="slf4j-log4j12"/>
+          <exclusion groupId="org.slf4j" artifactId="slf4j-log4j12"/>
           </dependency>
           <dependency groupId="org.yaml" artifactId="snakeyaml" version="1.11"/>
           <dependency groupId="org.apache.thrift" artifactId="libthrift" version="0.9.1"/>
@@ -384,7 +384,7 @@
              <exclusion groupId="commons-lang" artifactId="commons-lang"/>
           </dependency>
           <dependency groupId="org.apache.hadoop" artifactId="hadoop-core" version="1.0.3">
-          	<exclusion groupId="org.mortbay.jetty" artifactId="servlet-api"/>
+            <exclusion groupId="org.mortbay.jetty" artifactId="servlet-api"/>
           </dependency>
           <dependency groupId="org.apache.hadoop" artifactId="hadoop-minicluster" version="1.0.3"/>
           <dependency groupId="org.apache.pig" artifactId="pig" version="0.12.1"/>
@@ -405,7 +405,7 @@
           <dependency groupId="com.clearspring.analytics" artifactId="stream" version="2.5.2" />
           <dependency groupId="com.datastax.cassandra" artifactId="cassandra-driver-core" version="2.0.5" />
           <dependency groupId="net.sf.supercsv" artifactId="super-csv" version="2.1.0" />
-        	
+          
         </dependencyManagement>
         <developer id="alakshman" name="Avinash Lakshman"/>
         <developer id="antelder" name="Anthony Elder"/>
@@ -435,9 +435,9 @@
         <dependency groupId="commons-logging" artifactId="commons-logging"/>
         <dependency groupId="org.apache.rat" artifactId="apache-rat"/>
         <dependency groupId="org.apache.hadoop" artifactId="hadoop-core"/>
-      	<dependency groupId="org.apache.hadoop" artifactId="hadoop-minicluster"/>
+        <dependency groupId="org.apache.hadoop" artifactId="hadoop-minicluster"/>
         <dependency groupId="org.apache.pig" artifactId="pig"/>
-      	<dependency groupId="com.google.code.findbugs" artifactId="jsr305"/>
+        <dependency groupId="com.google.code.findbugs" artifactId="jsr305"/>
         <dependency groupId="com.datastax.cassandra" artifactId="cassandra-driver-core"/>
       </artifact:pom>
 
@@ -503,16 +503,16 @@
         <dependency groupId="org.apache.hadoop" artifactId="hadoop-core" optional="true"/>
         <dependency groupId="org.apache.hadoop" artifactId="hadoop-minicluster" optional="true"/>
         <dependency groupId="org.apache.pig" artifactId="pig" optional="true"/>
-      	<dependency groupId="com.datastax.cassandra" artifactId="cassandra-driver-core" optional="true"/>
+        <dependency groupId="com.datastax.cassandra" artifactId="cassandra-driver-core" optional="true"/>
 
-      	<!-- don't need jna to run, but nice to have -->
-      	<dependency groupId="net.java.dev.jna" artifactId="jna" version="4.0.0"/>
+        <!-- don't need jna to run, but nice to have -->
+        <dependency groupId="net.java.dev.jna" artifactId="jna" version="4.0.0"/>
 
-      	<!-- don't need jamm unless running a server in which case it needs to be a -javagent to be used anyway -->
-      	<dependency groupId="com.github.jbellis" artifactId="jamm"/>
-      	<dependency groupId="io.netty" artifactId="netty-all"/>
+        <!-- don't need jamm unless running a server in which case it needs to be a -javagent to be used anyway -->
+        <dependency groupId="com.github.jbellis" artifactId="jamm"/>
+        <dependency groupId="io.netty" artifactId="netty-all"/>
 
-      	<!-- Lucene dependencies -->
+        <!-- Lucene dependencies -->
         <dependency groupId="org.apache.lucene" artifactId="lucene-core" version="${lucene.version}" />
         <dependency groupId="org.apache.lucene" artifactId="lucene-codecs" version="${lucene.version}" />
         <dependency groupId="org.apache.lucene" artifactId="lucene-misc" version="${lucene.version}" />
@@ -696,8 +696,8 @@
     <target name="build"
         depends="maven-ant-tasks-retrieve-build,build-project" description="Compile Cassandra classes"/>
     <target name="codecoverage" depends="cobertura-instrument,test,cobertura-report" description="Create code coverage report"/>
-	
-	<target name="codecoverage-stratio" depends="cobertura-instrument-stratio,test-index,cobertura-report-stratio" description="Create code coverage report"/>
+  
+  <target name="codecoverage-stratio" depends="cobertura-instrument-stratio,test-index,cobertura-report-stratio" description="Create code coverage report"/>
 
     <target depends="init,gen-cli-grammar,gen-cql2-grammar,gen-cql3-grammar"
             name="build-project">
@@ -724,13 +724,13 @@
     <!-- Stress build file -->
     <property name="stress.build.src" value="${basedir}/tools/stress/src" />
     <property name="stress.build.classes" value="${build.classes}/stress" />
-	<property name="stress.manifest" value="${stress.build.classes}/MANIFEST.MF" />
+  <property name="stress.manifest" value="${stress.build.classes}/MANIFEST.MF" />
     <path id="cassandra.classes">
         <pathelement location="${basedir}/build/classes/main" />
         <pathelement location="${basedir}/build/classes/thrift" />
     </path>
     <target name="stress-build" depends="build" description="build stress tool">
-    	<mkdir dir="${stress.build.classes}" />
+      <mkdir dir="${stress.build.classes}" />
         <javac debug="true" debuglevel="${debuglevel}" destdir="${stress.build.classes}" includeantruntime="true" source="${source.version}" target="${target.version}">
             <src path="${stress.build.src}" />
             <classpath>
@@ -747,19 +747,19 @@
         </javac>
     </target>
 
-	<target name="_write-poms" depends="maven-declare-dependencies">
-	    <artifact:writepom pomRefId="parent-pom" file="${build.dir}/${final.name}-parent.pom"/>
-	    <artifact:writepom pomRefId="thrift-pom"
-	                       file="${build.dir}/${ant.project.name}-thrift-${version}.pom"/>
-	    <artifact:writepom pomRefId="all-pom" file="${build.dir}/${final.name}.pom"/>
-	    <artifact:writepom pomRefId="clientutil-pom"
-	    	               file="${build.dir}/${ant.project.name}-clientutil-${version}.pom"/>
-	</target>
+  <target name="_write-poms" depends="maven-declare-dependencies">
+      <artifact:writepom pomRefId="parent-pom" file="${build.dir}/${final.name}-parent.pom"/>
+      <artifact:writepom pomRefId="thrift-pom"
+                         file="${build.dir}/${ant.project.name}-thrift-${version}.pom"/>
+      <artifact:writepom pomRefId="all-pom" file="${build.dir}/${final.name}.pom"/>
+      <artifact:writepom pomRefId="clientutil-pom"
+                       file="${build.dir}/${ant.project.name}-clientutil-${version}.pom"/>
+  </target>
 
-	<target name="write-poms" unless="without.maven">
-	    <antcall target="_write-poms" />
-	</target>
-	
+  <target name="write-poms" unless="without.maven">
+      <antcall target="_write-poms" />
+  </target>
+  
     <!--
         The jar target makes cassandra.jar output.
     -->
@@ -960,7 +960,7 @@
       <copy todir="${dist.dir}/tools/">
         <fileset dir="${basedir}/tools/">
             <include name="*.yaml"/>
-	</fileset>
+  </fileset>
       </copy>
       <copy todir="${dist.dir}/tools/lib">
         <fileset dir="${build.dir}/tools/lib/">
@@ -1106,8 +1106,8 @@
         <jvmarg value="-Xss256k"/>
         <jvmarg value="-Dcassandra.memtable_row_overhead_computation_step=100"/>
         <jvmarg value="-Dcassandra.test.use_prepared=${cassandra.test.use_prepared}"/>
-	<jvmarg value="-Dcassandra.test.offsetseed=@{poffset}"/>        
-	<optjvmargs/>
+  <jvmarg value="-Dcassandra.test.offsetseed=@{poffset}"/>        
+  <optjvmargs/>
         <classpath>
           <path refid="cassandra.classpath" />
           <pathelement location="${test.classes}"/>
@@ -1507,52 +1507,52 @@
     </path>
     <property name="all-test-classes" refid="all-test-classes-path"/>
     <script language="javascript"> <![CDATA[
-	importClass(java.lang.Integer)
-	sep = project.getProperty("path.separator");
-	all = project.getProperty("all-test-classes").split(sep);
-	dir = project.getProperty("test.unit.src");
+  importClass(java.lang.Integer)
+  sep = project.getProperty("path.separator");
+  all = project.getProperty("all-test-classes").split(sep);
+  dir = project.getProperty("test.unit.src");
 
-	numRunners = parseInt(project.getProperty("test.runners"));  	
-	
-	buckets = new Array(numRunners);
-	for (i = 0; i < all.length; i++) {
-	    bucketNum = i % numRunners;
-	    if (buckets[bucketNum] == undefined) 
-		buckets[bucketNum] = "";
-	    else
-		buckets[bucketNum] += ",";
-	
-	    buckets[bucketNum] += all[i];
-	}
+  numRunners = parseInt(project.getProperty("test.runners"));   
+  
+  buckets = new Array(numRunners);
+  for (i = 0; i < all.length; i++) {
+      bucketNum = i % numRunners;
+      if (buckets[bucketNum] == undefined) 
+    buckets[bucketNum] = "";
+      else
+    buckets[bucketNum] += ",";
+  
+      buckets[bucketNum] += all[i];
+  }
 
 
-	var p = project.createTask('parallel');
-	p.setThreadCount(numRunners);
+  var p = project.createTask('parallel');
+  p.setThreadCount(numRunners);
 
-  	for (i = 0; i < buckets.length; i++) {
+    for (i = 0; i < buckets.length; i++) {
 
-	    if (buckets[i] == undefined) continue;
+      if (buckets[i] == undefined) continue;
 
-	    task = project.createTask( 'antcall' );
+      task = project.createTask( 'antcall' );
 
-	    task.setTarget("testlist");
-	    param = task.createParam();
-	    param.setName("test.file.list");
-	    param.setValue(buckets[i]);
+      task.setTarget("testlist");
+      param = task.createParam();
+      param.setName("test.file.list");
+      param.setValue(buckets[i]);
 
-	    param = task.createParam();
-	    param.setName("testlist.name");
-	    param.setValue("test bucket "+i);	  
+      param = task.createParam();
+      param.setName("testlist.name");
+      param.setValue("test bucket "+i);   
 
-	    param = task.createParam();
-	    param.setName("testlist.offset");
-	    param.setValue(i);  
+      param = task.createParam();
+      param.setName("testlist.offset");
+      param.setValue(i);  
 
-	    p.addTask(task); 
-  	}
-	
-	p.perform();
-	  			    
+      p.addTask(task); 
+    }
+  
+  p.perform();
+              
 ]]> </script>
   </target>
 
@@ -1574,7 +1574,7 @@
   </natures>
 </projectDescription>]]>
     </echo>
-	<echo file=".classpath"><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+  <echo file=".classpath"><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
 <classpath>
   <classpathentry kind="src" path="src/java"/>
   <classpathentry kind="src" path="src/resources"/>
@@ -1590,36 +1590,36 @@
   <classpathentry kind="lib" path="build/test/classes"/>
   <classpathentry kind="lib" path="test/conf"/>
 ]]>
-	</echo>	  
-  	<path id="eclipse-project-libs-path">
-  	 <fileset dir="lib">
-  	    <include name="**/*.jar" />
+  </echo>   
+    <path id="eclipse-project-libs-path">
+     <fileset dir="lib">
+        <include name="**/*.jar" />
      </fileset>
- 	 <fileset dir="build/lib/jars">
-  	    <include name="**/*.jar" />
-  	 </fileset>
-  	 <fileset dir="tools/lib">
-  	     <include name="**/*.jar" />
-  	 </fileset>
-  	</path>
-  	<property name="eclipse-project-libs" refid="eclipse-project-libs-path"/>
-  	<script language="javascript"> <![CDATA[
-  		importClass(java.io.File);
-  		jars = project.getProperty("eclipse-project-libs").split(project.getProperty("path.separator"));
-  		
-  		cp = "";
-  	    for (i=0; i< jars.length; i++) {
-  	       cp += ' <classpathentry kind="lib" path="'+jars[i]+'"/>\n';
-  		}
-  		
-  		cp += '</classpath>';
-  	    
-  		echo = project.createTask("echo");
-  	    echo.setMessage(cp);
-  		echo.setFile(new File(".classpath"));
-  		echo.setAppend(true);
-  	    echo.perform();	     
-  	]]> </script>
+   <fileset dir="build/lib/jars">
+        <include name="**/*.jar" />
+     </fileset>
+     <fileset dir="tools/lib">
+         <include name="**/*.jar" />
+     </fileset>
+    </path>
+    <property name="eclipse-project-libs" refid="eclipse-project-libs-path"/>
+    <script language="javascript"> <![CDATA[
+      importClass(java.io.File);
+      jars = project.getProperty("eclipse-project-libs").split(project.getProperty("path.separator"));
+      
+      cp = "";
+        for (i=0; i< jars.length; i++) {
+           cp += ' <classpathentry kind="lib" path="'+jars[i]+'"/>\n';
+      }
+      
+      cp += '</classpath>';
+        
+      echo = project.createTask("echo");
+        echo.setMessage(cp);
+      echo.setFile(new File(".classpath"));
+      echo.setAppend(true);
+        echo.perform();      
+    ]]> </script>
     <mkdir dir=".settings" />
   </target>
 
@@ -1633,8 +1633,8 @@
     <delete file=".project" />
     <delete file=".classpath" />
     <delete dir=".settings" />
-  	<delete dir=".externalToolBuilders" />
-  	<delete dir="build/eclipse-classes" />
+    <delete dir=".externalToolBuilders" />
+    <delete dir="build/eclipse-classes" />
   </target>
 
   <!-- Publish artifacts to Maven repositories -->
