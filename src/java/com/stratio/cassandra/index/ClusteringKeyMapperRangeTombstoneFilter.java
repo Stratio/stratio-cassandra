@@ -15,16 +15,11 @@
  */
 package com.stratio.cassandra.index;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-
 import org.apache.cassandra.db.RangeTombstone;
-import org.apache.cassandra.db.marshal.AbstractType;
-import org.apache.lucene.index.AtomicReader;
-import org.apache.lucene.index.AtomicReaderContext;
-import org.apache.lucene.index.DocsEnum;
-import org.apache.lucene.index.Terms;
-import org.apache.lucene.index.TermsEnum;
+import org.apache.cassandra.db.composites.CellName;
+import org.apache.cassandra.db.composites.CellNameType;
+import org.apache.cassandra.db.composites.Composite;
+import org.apache.lucene.index.*;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Filter;
@@ -32,40 +27,45 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.OpenBitSet;
 
-import com.stratio.cassandra.index.util.ByteBufferUtils;
+import java.io.IOException;
 
 /**
  * {@link Filter} that filters documents which clustering key field satisfies a certain {@link RangeTombstone}. This
  * means that the clustering key value must be contained in the slice query filter specified in the tombstone range.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class ClusteringKeyMapperRangeTombstoneFilter extends Filter
 {
+    private final ClusteringKeyMapper clusteringKeyMapper;
 
-    /** The minimum accepted column name. */
-    private final ByteBuffer min;
+    /**
+     * The minimum accepted column name.
+     */
+    private final Composite min;
 
-    /** The maximum accepted column name. */
-    private final ByteBuffer max;
+    /**
+     * The maximum accepted column name.
+     */
+    private final Composite max;
 
-    /** The type of the column names to be filtered. */
-    private final AbstractType<?> columnNameType;
+    /**
+     * The type of the column names to be filtered.
+     */
+    private final CellNameType columnNameType;
 
     /**
      * Returns a new {@code ClusteringKeyMapperRangeTombstoneFilter} for {@code rangeTombstone} using
      * {@code clusteringKeyMapper}.
-     * 
-     * @param clusteringKeyMapper
-     *            The {@link ClusteringKeyMapper} to be used.
-     * @param rangeTombstone
-     *            The filtering tombstone range.
+     *
+     * @param clusteringKeyMapper The {@link ClusteringKeyMapper} to be used.
+     * @param rangeTombstone      The filtering tombstone range.
      */
     public ClusteringKeyMapperRangeTombstoneFilter(ClusteringKeyMapper clusteringKeyMapper,
                                                    RangeTombstone rangeTombstone)
     {
         super();
+        this.clusteringKeyMapper = clusteringKeyMapper;
         this.min = rangeTombstone.min;
         this.max = rangeTombstone.max;
         this.columnNameType = clusteringKeyMapper.getType();
@@ -95,14 +95,13 @@ public class ClusteringKeyMapperRangeTombstoneFilter extends Filter
 
         while (bytesRef != null)
         {
-            String string = bytesRef.utf8ToString();
-            ByteBuffer value = ByteBufferUtils.fromString(string);
+            CellName value = clusteringKeyMapper.cellName(bytesRef);
             boolean accepted = true;
-            if (min != null && !ByteBufferUtils.isEmpty(min))
+            if (min != null && !min.isEmpty())
             {
                 accepted = columnNameType.compare(min, value) <= 0;
             }
-            if (max != null && !ByteBufferUtils.isEmpty(max))
+            if (max != null && !max.isEmpty())
             {
                 accepted &= columnNameType.compare(max, value) >= 0;
             }

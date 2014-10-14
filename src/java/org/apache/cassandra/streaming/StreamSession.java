@@ -27,7 +27,6 @@ import com.google.common.collect.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Keyspace;
@@ -40,6 +39,7 @@ import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.metrics.StreamingMetrics;
+import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.streaming.messages.*;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
@@ -108,15 +108,11 @@ import org.apache.cassandra.utils.Pair;
  *       session is done is is closed (closeSession()). Otherwise, the node switch to the WAIT_COMPLETE state and
  *       send a CompleteMessage to the other side.
  */
-public class StreamSession implements IEndpointStateChangeSubscriber, IFailureDetectionEventListener
+public class StreamSession implements IEndpointStateChangeSubscriber
 {
     private static final Logger logger = LoggerFactory.getLogger(StreamSession.class);
-
-    // Executor that establish the streaming connection. Once we're connected to the other end, the rest of the streaming
-    // is directly handled by the ConnectionHandler incoming and outgoing threads.
-    private static final DebuggableThreadPoolExecutor streamExecutor = DebuggableThreadPoolExecutor.createWithFixedPoolSize("StreamConnectionEstablisher",
-                                                                                                                            FBUtilities.getAvailableProcessors());
     public final InetAddress peer;
+    private final int index;
 
     // should not be null when session is started
     private StreamResultFuture streamResult;
@@ -153,9 +149,10 @@ public class StreamSession implements IEndpointStateChangeSubscriber, IFailureDe
      *
      * @param peer Address of streaming peer
      */
-    public StreamSession(InetAddress peer)
+    public StreamSession(InetAddress peer, int index)
     {
         this.peer = peer;
+        this.index = index;
         this.handler = new ConnectionHandler(this);
         this.metrics = StreamingMetrics.get(peer);
     }
@@ -163,6 +160,11 @@ public class StreamSession implements IEndpointStateChangeSubscriber, IFailureDe
     public UUID planId()
     {
         return streamResult == null ? null : streamResult.planId;
+    }
+
+    public int sessionIndex()
+    {
+        return index;
     }
 
     public String description()
@@ -179,10 +181,6 @@ public class StreamSession implements IEndpointStateChangeSubscriber, IFailureDe
     public void init(StreamResultFuture streamResult)
     {
         this.streamResult = streamResult;
-
-        // register to gossiper/FD to fail on node failure
-        Gossiper.instance.register(this);
-        FailureDetector.instance.registerFailureDetectionEventListener(this);
     }
 
     public void start()
@@ -194,21 +192,16 @@ public class StreamSession implements IEndpointStateChangeSubscriber, IFailureDe
             return;
         }
 
-        streamExecutor.execute(new Runnable()
+        try
         {
-            public void run()
-            {
-                try
-                {
-                    handler.initiate();
-                    onInitializationComplete();
-                }
-                catch (IOException e)
-                {
-                    onError(e);
-                }
-            }
-        });
+            logger.info("[Stream #{}, ID#{}] Beginning stream session with {}", planId(), sessionIndex(), peer);
+            handler.initiate();
+            onInitializationComplete();
+        }
+        catch (Exception e)
+        {
+            onError(e);
+        }
     }
 
     /**
@@ -218,19 +211,42 @@ public class StreamSession implements IEndpointStateChangeSubscriber, IFailureDe
      * @param ranges Ranges to retrieve data
      * @param columnFamilies ColumnFamily names. Can be empty if requesting all CF under the keyspace.
      */
-    public void addStreamRequest(String keyspace, Collection<Range<Token>> ranges, Collection<String> columnFamilies)
+    public void addStreamRequest(String keyspace, Collection<Range<Token>> ranges, Collection<String> columnFamilies, long repairedAt)
     {
-        requests.add(new StreamRequest(keyspace, ranges, columnFamilies));
+        requests.add(new StreamRequest(keyspace, ranges, columnFamilies, repairedAt));
     }
 
     /**
      * Set up transfer for specific keyspace/ranges/CFs
      *
+     * Used in repair - a streamed sstable in repair will be marked with the given repairedAt time
+     *
      * @param keyspace Transfer keyspace
      * @param ranges Transfer ranges
      * @param columnFamilies Transfer ColumnFamilies
+     * @param flushTables flush tables?
+     * @param repairedAt the time the repair started.
      */
-    public void addTransferRanges(String keyspace, Collection<Range<Token>> ranges, Collection<String> columnFamilies, boolean flushTables)
+    public void addTransferRanges(String keyspace, Collection<Range<Token>> ranges, Collection<String> columnFamilies, boolean flushTables, long repairedAt)
+    {
+        Collection<ColumnFamilyStore> stores = getColumnFamilyStores(keyspace, columnFamilies);
+        if (flushTables)
+            flushSSTables(stores);
+
+        List<Range<Token>> normalizedRanges = Range.normalize(ranges);
+        List<SSTableStreamingSections> sections = getSSTableSectionsForRanges(normalizedRanges, stores, repairedAt);
+        try
+        {
+            addTransferFiles(sections);
+        }
+        finally
+        {
+            for (SSTableStreamingSections release : sections)
+                release.sstable.releaseReference();
+        }
+    }
+
+    private Collection<ColumnFamilyStore> getColumnFamilyStores(String keyspace, Collection<String> columnFamilies)
     {
         Collection<ColumnFamilyStore> stores = new HashSet<>();
         // if columnfamilies are not specified, we add all cf under the keyspace
@@ -243,24 +259,10 @@ public class StreamSession implements IEndpointStateChangeSubscriber, IFailureDe
             for (String cf : columnFamilies)
                 stores.add(Keyspace.open(keyspace).getColumnFamilyStore(cf));
         }
-
-        if (flushTables)
-            flushSSTables(stores);
-
-        List<Range<Token>> normalizedRanges = Range.normalize(ranges);
-        List<SSTableStreamingSections> sections = getSSTableSectionsForRanges(normalizedRanges, stores);
-        try
-        {
-            addTransferFiles(sections);
-        }
-        finally
-        {
-            for (SSTableStreamingSections release : sections)
-                release.sstable.releaseReference();
-        }
+        return stores;
     }
 
-    private List<SSTableStreamingSections> getSSTableSectionsForRanges(Collection<Range<Token>> ranges, Collection<ColumnFamilyStore> stores)
+    private List<SSTableStreamingSections> getSSTableSectionsForRanges(Collection<Range<Token>> ranges, Collection<ColumnFamilyStore> stores, long overriddenRepairedAt)
     {
         List<SSTableReader> sstables = new ArrayList<>();
         try
@@ -270,16 +272,20 @@ public class StreamSession implements IEndpointStateChangeSubscriber, IFailureDe
                 List<AbstractBounds<RowPosition>> rowBoundsList = new ArrayList<>(ranges.size());
                 for (Range<Token> range : ranges)
                     rowBoundsList.add(range.toRowBounds());
-                ColumnFamilyStore.ViewFragment view = cfStore.markReferenced(rowBoundsList);
+                ColumnFamilyStore.ViewFragment view = cfStore.selectAndReference(cfStore.viewFilter(rowBoundsList));
                 sstables.addAll(view.sstables);
             }
 
             List<SSTableStreamingSections> sections = new ArrayList<>(sstables.size());
             for (SSTableReader sstable : sstables)
             {
+                long repairedAt = overriddenRepairedAt;
+                if (overriddenRepairedAt == ActiveRepairService.UNREPAIRED_SSTABLE)
+                    repairedAt = sstable.getSSTableMetadata().repairedAt;
                 sections.add(new SSTableStreamingSections(sstable,
                                                           sstable.getPositionsForRanges(ranges),
-                                                          sstable.estimatedKeysForRanges(ranges)));
+                                                          sstable.estimatedKeysForRanges(ranges),
+                                                          repairedAt));
             }
             return sections;
         }
@@ -289,8 +295,6 @@ public class StreamSession implements IEndpointStateChangeSubscriber, IFailureDe
             throw t;
         }
     }
-
-
 
     public void addTransferFiles(Collection<SSTableStreamingSections> sstableDetails)
     {
@@ -313,7 +317,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber, IFailureDe
                 task = new StreamTransferTask(this, cfId);
                 transfers.put(cfId, task);
             }
-            task.addTransferFile(details.sstable, details.estimatedKeys, details.sections);
+            task.addTransferFile(details.sstable, details.estimatedKeys, details.sections, details.repairedAt);
             iter.remove();
         }
     }
@@ -323,12 +327,14 @@ public class StreamSession implements IEndpointStateChangeSubscriber, IFailureDe
         public final SSTableReader sstable;
         public final List<Pair<Long, Long>> sections;
         public final long estimatedKeys;
+        public final long repairedAt;
 
-        public SSTableStreamingSections(SSTableReader sstable, List<Pair<Long, Long>> sections, long estimatedKeys)
+        public SSTableStreamingSections(SSTableReader sstable, List<Pair<Long, Long>> sections, long estimatedKeys, long repairedAt)
         {
             this.sstable = sstable;
             this.sections = sections;
             this.estimatedKeys = estimatedKeys;
+            this.repairedAt = repairedAt;
         }
     }
 
@@ -348,8 +354,6 @@ public class StreamSession implements IEndpointStateChangeSubscriber, IFailureDe
             // incoming thread (so we would deadlock).
             handler.close();
 
-            Gossiper.instance.unregister(this);
-            FailureDetector.instance.unregisterFailureDetectionEventListener(this);
             streamResult.handleSessionComplete(this);
         }
     }
@@ -433,14 +437,14 @@ public class StreamSession implements IEndpointStateChangeSubscriber, IFailureDe
             startStreamingFiles();
     }
 
-    /**
+    /**l
      * Call back for handling exception during streaming.
      *
      * @param e thrown exception
      */
     public void onError(Throwable e)
     {
-        logger.error("[Stream #" + planId() + "] Streaming error occurred", e);
+        logger.error("[Stream #{}] Streaming error occurred", planId(), e);
         // send session failure message
         if (handler.isOutgoingConnected())
             handler.sendMessage(new SessionFailedMessage());
@@ -456,7 +460,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber, IFailureDe
         // prepare tasks
         state(State.PREPARING);
         for (StreamRequest request : requests)
-            addTransferRanges(request.keyspace, request.ranges, request.columnFamilies, true); // always flush on stream request
+            addTransferRanges(request.keyspace, request.ranges, request.columnFamilies, true, request.repairedAt); // always flush on stream request
         for (StreamSummary summary : summaries)
             prepareReceiving(summary);
 
@@ -509,7 +513,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber, IFailureDe
 
     public void progress(Descriptor desc, ProgressInfo.Direction direction, long bytes, long total)
     {
-        ProgressInfo progress = new ProgressInfo(peer, desc.filenameFor(Component.DATA), direction, bytes, total);
+        ProgressInfo progress = new ProgressInfo(peer, index, desc.filenameFor(Component.DATA), direction, bytes, total);
         streamResult.handleProgress(progress);
     }
 
@@ -560,7 +564,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber, IFailureDe
 
     public void doRetry(FileMessageHeader header, Throwable e)
     {
-        logger.warn("[Stream #" + planId() + "] Retrying for following error", e);
+        logger.warn("[Stream #{}] Retrying for following error", planId(), e);
         // retry
         retries++;
         if (retries > DatabaseDescriptor.getMaxStreamingRetries())
@@ -580,7 +584,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber, IFailureDe
         List<StreamSummary> transferSummaries = Lists.newArrayList();
         for (StreamTask transfer : transfers.values())
             transferSummaries.add(transfer.getSummary());
-        return new SessionInfo(peer, receivingSummaries, transferSummaries, state);
+        return new SessionInfo(peer, index, receivingSummaries, transferSummaries, state);
     }
 
     public synchronized void taskCompleted(StreamReceiveTask completedTask)
@@ -603,23 +607,11 @@ public class StreamSession implements IEndpointStateChangeSubscriber, IFailureDe
 
     public void onRemove(InetAddress endpoint)
     {
-        convict(endpoint, Double.MAX_VALUE);
+        closeSession(State.FAILED);
     }
 
     public void onRestart(InetAddress endpoint, EndpointState epState)
     {
-        convict(endpoint, Double.MAX_VALUE);
-    }
-
-    public void convict(InetAddress endpoint, double phi)
-    {
-        if (!endpoint.equals(peer))
-            return;
-
-        // We want a higher confidence in the failure detection than usual because failing a streaming wrongly has a high cost (CASSANDRA-7063)
-        if (phi < 100 * DatabaseDescriptor.getPhiConvictThreshold())
-            return;
-
         closeSession(State.FAILED);
     }
 

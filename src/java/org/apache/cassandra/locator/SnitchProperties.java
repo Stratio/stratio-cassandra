@@ -29,9 +29,10 @@ public class SnitchProperties
 {
     private static final Logger logger = LoggerFactory.getLogger(SnitchProperties.class);
     public static final String RACKDC_PROPERTY_FILENAME = "cassandra-rackdc.properties";
-    private static Properties properties = new Properties();
 
-    static
+    private Properties properties;
+
+    public SnitchProperties()
     {
         properties = new Properties();
         InputStream stream = null;
@@ -59,9 +60,9 @@ public class SnitchProperties
     }
 
     /**
-     * Get a snitch property value or return null if not defined.
+     * Get a snitch property value or return defaultValue if not defined.
      */
-    public static String get(String propertyName, String defaultValue)
+    public String get(String propertyName, String defaultValue)
     {
         return properties.getProperty(propertyName, defaultValue);
     }

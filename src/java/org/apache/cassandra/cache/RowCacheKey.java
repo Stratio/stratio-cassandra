@@ -33,9 +33,11 @@ public class RowCacheKey implements CacheKey, Comparable<RowCacheKey>
     public final UUID cfId;
     public final byte[] key;
 
+    private static final long EMPTY_SIZE = ObjectSizes.measure(new RowCacheKey(null, ByteBufferUtil.EMPTY_BYTE_BUFFER));
+
     public RowCacheKey(UUID cfId, DecoratedKey key)
     {
-        this(cfId, key.key);
+        this(cfId, key.getKey());
     }
 
     public RowCacheKey(UUID cfId, ByteBuffer key)
@@ -45,18 +47,15 @@ public class RowCacheKey implements CacheKey, Comparable<RowCacheKey>
         assert this.key != null;
     }
 
-    public Pair<String, String> getPathInfo()
+    public PathInfo getPathInfo()
     {
-        return Schema.instance.getCF(cfId);
+        Pair<String, String> cf = Schema.instance.getCF(cfId);
+        return new PathInfo(cf.left, cf.right, cfId);
     }
 
-    public long memorySize()
+    public long unsharedHeapSize()
     {
-        return ObjectSizes.getFieldSize(// cfId
-                                        ObjectSizes.getReferenceSize() +
-                                        // key
-                                        ObjectSizes.getReferenceSize())
-               + ObjectSizes.getArraySize(key);
+        return EMPTY_SIZE + ObjectSizes.sizeOfArray(key);
     }
 
     @Override

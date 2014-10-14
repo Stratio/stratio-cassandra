@@ -30,6 +30,7 @@ options {
     import java.util.Arrays;
     import java.util.Collections;
     import java.util.EnumSet;
+    import java.util.HashSet;
     import java.util.HashMap;
     import java.util.LinkedHashMap;
     import java.util.List;
@@ -52,6 +53,18 @@ options {
 @members {
     private final List<String> recognitionErrors = new ArrayList<String>();
     private final List<ColumnIdentifier> bindVariables = new ArrayList<ColumnIdentifier>();
+
+    public static final Set<String> reservedTypeNames = new HashSet<String>()
+    {{
+        add("byte");
+        add("smallint");
+        add("complex");
+        add("enum");
+        add("date");
+        add("interval");
+        add("macaddr");
+        add("bitstring");
+    }};
 
     public AbstractMarker.Raw newBindVariables(ColumnIdentifier name)
     {
@@ -229,6 +242,9 @@ cqlStatement returns [ParsedStatement stmt]
     | st22=listUsersStatement          { $stmt = st22; }
     | st23=createTriggerStatement      { $stmt = st23; }
     | st24=dropTriggerStatement        { $stmt = st24; }
+    | st25=createTypeStatement         { $stmt = st25; }
+    | st26=alterTypeStatement          { $stmt = st26; }
+    | st27=dropTypeStatement           { $stmt = st27; }
     ;
 
 /*
@@ -281,17 +297,19 @@ selector returns [RawSelector s]
     ;
 
 unaliasedSelector returns [Selectable s]
-    : c=cident                                  { $s = c; }
-    | K_WRITETIME '(' c=cident ')'              { $s = new Selectable.WritetimeOrTTL(c, true); }
-    | K_TTL       '(' c=cident ')'              { $s = new Selectable.WritetimeOrTTL(c, false); }
-    | f=functionName args=selectionFunctionArgs { $s = new Selectable.WithFunction(f, args); }
+    @init { Selectable tmp = null; }
+    :  ( c=cident                                  { tmp = c; }
+       | K_WRITETIME '(' c=cident ')'              { tmp = new Selectable.WritetimeOrTTL(c, true); }
+       | K_TTL       '(' c=cident ')'              { tmp = new Selectable.WritetimeOrTTL(c, false); }
+       | f=functionName args=selectionFunctionArgs { tmp = new Selectable.WithFunction(f, args); }
+       ) ( '.' fi=cident { tmp = new Selectable.WithFieldSelection(tmp, fi); } )* { $s = tmp; }
     ;
 
 selectionFunctionArgs returns [List<Selectable> a]
     : '(' ')' { $a = Collections.emptyList(); }
     | '(' s1=unaliasedSelector { List<Selectable> args = new ArrayList<Selectable>(); args.add(s1); }
           ( ',' sn=unaliasedSelector { args.add(sn); } )*
-       ')' { $a = args; }
+      ')' { $a = args; }
     ;
 
 selectCountClause returns [List<RawSelector> expr]
@@ -523,6 +541,26 @@ cfamOrdering[CreateTableStatement.RawStatement expr]
     : k=cident (K_ASC | K_DESC { reversed=true;} ) { $expr.setOrdering(k, reversed); }
     ;
 
+
+/**
+ * CREATE TYPE foo (
+ *    <name1> <type1>,
+ *    <name2> <type2>,
+ *    ....
+ * )
+ */
+createTypeStatement returns [CreateTypeStatement expr]
+    @init { boolean ifNotExists = false; }
+    : K_CREATE K_TYPE (K_IF K_NOT K_EXISTS { ifNotExists = true; } )?
+         tn=userTypeName { $expr = new CreateTypeStatement(tn, ifNotExists); }
+         '(' typeColumns[expr] ( ',' typeColumns[expr]? )* ')'
+    ;
+
+typeColumns[CreateTypeStatement expr]
+    : k=cident v=comparatorType { $expr.addDefinition(k, v); }
+    ;
+
+
 /**
  * CREATE INDEX [IF NOT EXISTS] [indexName] ON <columnFamily> (<columnName>);
  * CREATE CUSTOM INDEX [IF NOT EXISTS] [indexName] ON <columnFamily> (<columnName>) USING <indexClass>;
@@ -533,26 +571,32 @@ createIndexStatement returns [CreateIndexStatement expr]
         boolean ifNotExists = false;
     }
     : K_CREATE (K_CUSTOM { props.isCustom = true; })? K_INDEX (K_IF K_NOT K_EXISTS { ifNotExists = true; } )?
-        (idxName=IDENT)? K_ON cf=columnFamilyName '(' id=cident ')'
+        (idxName=IDENT)? K_ON cf=columnFamilyName '(' id=indexIdent ')'
         (K_USING cls=STRING_LITERAL { props.customClass = $cls.text; })?
         (K_WITH properties[props])?
       { $expr = new CreateIndexStatement(cf, $idxName.text, id, props, ifNotExists); }
     ;
 
+indexIdent returns [IndexTarget id]
+    : c=cident                { $id = IndexTarget.of(c); }
+    | K_KEYS '(' c=cident ')' { $id = IndexTarget.keysOf(c); }
+    ;
+
+
 /**
  * CREATE TRIGGER triggerName ON columnFamily USING 'triggerClass';
  */
 createTriggerStatement returns [CreateTriggerStatement expr]
-    : K_CREATE K_TRIGGER (name=IDENT) K_ON cf=columnFamilyName K_USING cls=STRING_LITERAL
-      { $expr = new CreateTriggerStatement(cf, $name.text, $cls.text); }
+    : K_CREATE K_TRIGGER (name=cident) K_ON cf=columnFamilyName K_USING cls=STRING_LITERAL
+      { $expr = new CreateTriggerStatement(cf, name.toString(), $cls.text); }
     ;
 
 /**
  * DROP TRIGGER triggerName ON columnFamily;
  */
 dropTriggerStatement returns [DropTriggerStatement expr]
-    : K_DROP K_TRIGGER (name=IDENT) K_ON cf=columnFamilyName
-      { $expr = new DropTriggerStatement(cf, $name.text); }
+    : K_DROP K_TRIGGER (name=cident) K_ON cf=columnFamilyName
+      { $expr = new DropTriggerStatement(cf, name.toString()); }
     ;
 
 /**
@@ -594,6 +638,24 @@ alterTableStatement returns [AlterTableStatement expr]
     ;
 
 /**
+ * ALTER TYPE <name> ALTER <field> TYPE <newtype>;
+ * ALTER TYPE <name> ADD <field> <newtype>;
+ * ALTER TYPE <name> RENAME <field> TO <newtype> AND ...;
+ */
+alterTypeStatement returns [AlterTypeStatement expr]
+    : K_ALTER K_TYPE name=userTypeName
+          ( K_ALTER f=cident K_TYPE v=comparatorType { $expr = AlterTypeStatement.alter(name, f, v); }
+          | K_ADD   f=cident v=comparatorType        { $expr = AlterTypeStatement.addition(name, f, v); }
+          | K_RENAME
+               { Map<ColumnIdentifier, ColumnIdentifier> renames = new HashMap<ColumnIdentifier, ColumnIdentifier>(); }
+                 id1=cident K_TO toId1=cident { renames.put(id1, toId1); }
+                 ( K_AND idn=cident K_TO toIdn=cident { renames.put(idn, toIdn); } )*
+               { $expr = AlterTypeStatement.renames(name, renames); }
+          )
+    ;
+
+
+/**
  * DROP KEYSPACE [IF EXISTS] <KSP>;
  */
 dropKeyspaceStatement returns [DropKeyspaceStatement ksp]
@@ -607,6 +669,14 @@ dropKeyspaceStatement returns [DropKeyspaceStatement ksp]
 dropTableStatement returns [DropTableStatement stmt]
     @init { boolean ifExists = false; }
     : K_DROP K_COLUMNFAMILY (K_IF K_EXISTS { ifExists = true; } )? cf=columnFamilyName { $stmt = new DropTableStatement(cf, ifExists); }
+    ;
+
+/**
+ * DROP TYPE <name>;
+ */
+dropTypeStatement returns [DropTypeStatement stmt]
+    @init { boolean ifExists = false; }
+    : K_DROP K_TYPE (K_IF K_EXISTS { ifExists = true; } )? name=userTypeName { $stmt = new DropTypeStatement(name, ifExists); }
     ;
 
 /**
@@ -752,12 +822,12 @@ keyspaceName returns [String id]
     @init { CFName name = new CFName(); }
     : cfOrKsName[name, true] { $id = name.getKeyspace(); }
     ;
-    
+
 indexName returns [IndexName name]
     @init { $name = new IndexName(); }
     : (idxOrKsName[name, true] '.')? idxOrKsName[name, false]
     ;
-    
+
 idxOrKsName[IndexName name, boolean isKs]
     : t=IDENT              { if (isKs) $name.setKeyspace($t.text, false); else $name.setIndex($t.text, false); }
     | t=QUOTED_NAME        { if (isKs) $name.setKeyspace($t.text, true); else $name.setIndex($t.text, true); }
@@ -767,6 +837,10 @@ idxOrKsName[IndexName name, boolean isKs]
 columnFamilyName returns [CFName name]
     @init { $name = new CFName(); }
     : (cfOrKsName[name, true] '.')? cfOrKsName[name, false]
+    ;
+
+userTypeName returns [UTName name]
+    : (ks=cident '.')? ut=non_type_ident { return new UTName(ks, ut); }
     ;
 
 cfOrKsName[CFName name, boolean isKs]
@@ -785,13 +859,13 @@ constant returns [Constants.Literal constant]
     | { String sign=""; } ('-' {sign = "-"; } )? t=(K_NAN | K_INFINITY) { $constant = Constants.Literal.floatingPoint(sign + $t.text); }
     ;
 
-map_literal returns [Maps.Literal map]
+mapLiteral returns [Maps.Literal map]
     : '{' { List<Pair<Term.Raw, Term.Raw>> m = new ArrayList<Pair<Term.Raw, Term.Raw>>(); }
           ( k1=term ':' v1=term { m.add(Pair.create(k1, v1)); } ( ',' kn=term ':' vn=term { m.add(Pair.create(kn, vn)); } )* )?
       '}' { $map = new Maps.Literal(m); }
     ;
 
-set_or_map[Term.Raw t] returns [Term.Raw value]
+setOrMapLiteral[Term.Raw t] returns [Term.Raw value]
     : ':' v=term { List<Pair<Term.Raw, Term.Raw>> m = new ArrayList<Pair<Term.Raw, Term.Raw>>(); m.add(Pair.create(t, v)); }
           ( ',' kn=term ':' vn=term { m.add(Pair.create(kn, vn)); } )*
       { $value = new Maps.Literal(m); }
@@ -800,19 +874,34 @@ set_or_map[Term.Raw t] returns [Term.Raw value]
       { $value = new Sets.Literal(s); }
     ;
 
-collection_literal returns [Term.Raw value]
+collectionLiteral returns [Term.Raw value]
     : '[' { List<Term.Raw> l = new ArrayList<Term.Raw>(); }
           ( t1=term { l.add(t1); } ( ',' tn=term { l.add(tn); } )* )?
       ']' { $value = new Lists.Literal(l); }
-    | '{' t=term v=set_or_map[t] { $value = v; } '}'
+    | '{' t=term v=setOrMapLiteral[t] { $value = v; } '}'
     // Note that we have an ambiguity between maps and set for "{}". So we force it to a set literal,
     // and deal with it later based on the type of the column (SetLiteral.java).
     | '{' '}' { $value = new Sets.Literal(Collections.<Term.Raw>emptyList()); }
     ;
 
+usertypeLiteral returns [UserTypes.Literal ut]
+    @init{ Map<ColumnIdentifier, Term.Raw> m = new HashMap<ColumnIdentifier, Term.Raw>(); }
+    @after{ $ut = new UserTypes.Literal(m); }
+    // We don't allow empty literals because that conflicts with sets/maps and is currently useless since we don't allow empty user types
+    : '{' k1=cident ':' v1=term { m.put(k1, v1); } ( ',' kn=cident ':' vn=term { m.put(kn, vn); } )* '}'
+    ;
+
+tupleLiteral returns [Tuples.Literal tt]
+    @init{ List<Term.Raw> l = new ArrayList<Term.Raw>(); }
+    @after{ $tt = new Tuples.Literal(l); }
+    : '(' t1=term { l.add(t1); } ( ',' tn=term { l.add(tn); } )* ')'
+    ;
+
 value returns [Term.Raw value]
     : c=constant           { $value = c; }
-    | l=collection_literal { $value = l; }
+    | l=collectionLiteral  { $value = l; }
+    | u=usertypeLiteral    { $value = u; }
+    | t=tupleLiteral       { $value = t; }
     | K_NULL               { $value = Constants.NULL_LITERAL; }
     | ':' id=cident        { $value = newBindVariables(id); }
     | QMARK                { $value = newBindVariables(null); }
@@ -890,7 +979,7 @@ properties[PropertyDefinitions props]
 
 property[PropertyDefinitions props]
     : k=cident '=' (simple=propertyValue { try { $props.addProperty(k.toString(), simple); } catch (SyntaxException e) { addRecognitionError(e.getMessage()); } }
-                   |   map=map_literal   { try { $props.addProperty(k.toString(), convertPropertyMap(map)); } catch (SyntaxException e) { addRecognitionError(e.getMessage()); } })
+                   |   map=mapLiteral    { try { $props.addProperty(k.toString(), convertPropertyMap(map)); } catch (SyntaxException e) { addRecognitionError(e.getMessage()); } })
     ;
 
 propertyValue returns [String str]
@@ -917,6 +1006,8 @@ relation[List<Relation> clauses]
         { $clauses.add(new SingleColumnRelation(name, Relation.Type.IN, marker)); }
     | name=cident K_IN inValues=singleColumnInValues
         { $clauses.add(SingleColumnRelation.createInRelation($name.id, inValues)); }
+    | name=cident K_CONTAINS { Relation.Type rt = Relation.Type.CONTAINS; } (K_KEY { rt = Relation.Type.CONTAINS_KEY; })?
+        t=term { $clauses.add(new SingleColumnRelation(name, rt, t)); }
     | ids=tupleOfIdentifiers
       ( K_IN
           ( '(' ')'
@@ -955,11 +1046,6 @@ singleColumnInValues returns [List<Term.Raw> terms]
     : '(' ( t1 = term { $terms.add(t1); } (',' ti=term { $terms.add(ti); })* )? ')'
     ;
 
-tupleLiteral returns [Tuples.Literal literal]
-    @init { List<Term.Raw> terms = new ArrayList<>(); }
-    : '(' t1=term { terms.add(t1); } (',' ti=term { terms.add(ti); })* ')' { $literal = new Tuples.Literal(terms); }
-    ;
-
 tupleOfTupleLiterals returns [List<Tuples.Literal> literals]
     @init { $literals = new ArrayList<>(); }
     : '(' t1=tupleLiteral { $literals.add(t1); } (',' ti=tupleLiteral { $literals.add(ti); })* ')'
@@ -980,13 +1066,23 @@ inMarkerForTuple returns [Tuples.INRaw marker]
     | ':' name=cident { $marker = newTupleINBindVariables(name); }
     ;
 
-comparatorType returns [CQL3Type t]
-    : c=native_type     { $t = c; }
+comparatorType returns [CQL3Type.Raw t]
+    : n=native_type     { $t = CQL3Type.Raw.from(n); }
     | c=collection_type { $t = c; }
+    | tt=tuple_type     { $t = tt; }
+    | id=userTypeName   { $t = CQL3Type.Raw.userType(id); }
+    | K_FROZEN '<' f=comparatorType '>'
+      {
+        try {
+            $t = CQL3Type.Raw.frozen(f);
+        } catch (InvalidRequestException e) {
+            addRecognitionError(e.getMessage());
+        }
+      }
     | s=STRING_LITERAL
       {
         try {
-            $t = new CQL3Type.Custom($s.text);
+            $t = CQL3Type.Raw.from(new CQL3Type.Custom($s.text));
         } catch (SyntaxException e) {
             addRecognitionError("Cannot parse type " + $s.text + ": " + e.getMessage());
         } catch (ConfigurationException e) {
@@ -1014,17 +1110,23 @@ native_type returns [CQL3Type t]
     | K_TIMEUUID  { $t = CQL3Type.Native.TIMEUUID; }
     ;
 
-collection_type returns [CQL3Type pt]
+collection_type returns [CQL3Type.Raw pt]
     : K_MAP  '<' t1=comparatorType ',' t2=comparatorType '>'
         { try {
             // if we can't parse either t1 or t2, antlr will "recover" and we may have t1 or t2 null.
             if (t1 != null && t2 != null)
-                $pt = CQL3Type.Collection.map(t1, t2);
+                $pt = CQL3Type.Raw.map(t1, t2);
           } catch (InvalidRequestException e) { addRecognitionError(e.getMessage()); } }
     | K_LIST '<' t=comparatorType '>'
-        { try { if (t != null) $pt = CQL3Type.Collection.list(t); } catch (InvalidRequestException e) { addRecognitionError(e.getMessage()); } }
+        { try { if (t != null) $pt = CQL3Type.Raw.list(t); } catch (InvalidRequestException e) { addRecognitionError(e.getMessage()); } }
     | K_SET  '<' t=comparatorType '>'
-        { try { if (t != null) $pt = CQL3Type.Collection.set(t); } catch (InvalidRequestException e) { addRecognitionError(e.getMessage()); } }
+        { try { if (t != null) $pt = CQL3Type.Raw.set(t); } catch (InvalidRequestException e) { addRecognitionError(e.getMessage()); } }
+    ;
+
+tuple_type returns [CQL3Type.Raw t]
+    : K_TUPLE '<' { List<CQL3Type.Raw> types = new ArrayList<>(); }
+         t1=comparatorType { types.add(t1); } (',' tn=comparatorType { types.add(tn); })*
+      '>' { try { $t = CQL3Type.Raw.tuple(types); } catch (InvalidRequestException e) { addRecognitionError(e.getMessage()); }}
     ;
 
 username
@@ -1032,13 +1134,27 @@ username
     | STRING_LITERAL
     ;
 
+// Basically the same than cident, but we need to exlude existing CQL3 types
+// (which for some reason are not reserved otherwise)
+non_type_ident returns [ColumnIdentifier id]
+    : t=IDENT                    { if (reservedTypeNames.contains($t.text)) addRecognitionError("Invalid (reserved) user type name " + $t.text); $id = new ColumnIdentifier($t.text, false); }
+    | t=QUOTED_NAME              { $id = new ColumnIdentifier($t.text, true); }
+    | k=basic_unreserved_keyword { $id = new ColumnIdentifier(k, false); }
+    | kk=K_KEY                   { $id = new ColumnIdentifier($kk.text, false); }
+    ;
+
 unreserved_keyword returns [String str]
     : u=unreserved_function_keyword     { $str = u; }
-    | k=(K_TTL | K_COUNT | K_WRITETIME) { $str = $k.text; }
+    | k=(K_TTL | K_COUNT | K_WRITETIME | K_KEY) { $str = $k.text; }
     ;
 
 unreserved_function_keyword returns [String str]
-    : k=( K_KEY
+    : u=basic_unreserved_keyword { $str = u; }
+    | t=native_type              { $str = t.toString(); }
+    ;
+
+basic_unreserved_keyword returns [String str]
+    : k=( K_KEYS
         | K_AS
         | K_CLUSTERING
         | K_COMPACT
@@ -1061,9 +1177,9 @@ unreserved_function_keyword returns [String str]
         | K_CUSTOM
         | K_TRIGGER
         | K_DISTINCT
+        | K_CONTAINS
         | K_STATIC
         ) { $str = $k.text; }
-    | t=native_type { $str = t.toString(); }
     ;
 
 
@@ -1074,6 +1190,7 @@ K_AS:          A S;
 K_WHERE:       W H E R E;
 K_AND:         A N D;
 K_KEY:         K E Y;
+K_KEYS:        K E Y S;
 K_INSERT:      I N S E R T;
 K_UPDATE:      U P D A T E;
 K_WITH:        W I T H;
@@ -1119,6 +1236,7 @@ K_DESC:        D E S C;
 K_ALLOW:       A L L O W;
 K_FILTERING:   F I L T E R I N G;
 K_IF:          I F;
+K_CONTAINS:    C O N T A I N S;
 
 K_GRANT:       G R A N T;
 K_ALL:         A L L;
@@ -1163,9 +1281,11 @@ K_MAP:         M A P;
 K_LIST:        L I S T;
 K_NAN:         N A N;
 K_INFINITY:    I N F I N I T Y;
+K_TUPLE:       T U P L E;
 
 K_TRIGGER:     T R I G G E R;
 K_STATIC:      S T A T I C;
+K_FROZEN:      F R O Z E N;
 
 // Case-insensitive alpha characters
 fragment A: ('a'|'A');

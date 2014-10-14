@@ -29,7 +29,7 @@ import org.apache.cassandra.exceptions.UnauthorizedException;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.MigrationManager;
 import org.apache.cassandra.thrift.ThriftValidation;
-import org.apache.cassandra.transport.messages.ResultMessage;
+import org.apache.cassandra.transport.Event;
 
 public class DropTriggerStatement extends SchemaAlteringStatement
 {
@@ -53,17 +53,17 @@ public class DropTriggerStatement extends SchemaAlteringStatement
         ThriftValidation.validateColumnFamily(keyspace(), columnFamily());
     }
 
-    public void announceMigration() throws ConfigurationException
+    public void announceMigration(boolean isLocalOnly) throws ConfigurationException
     {
-        CFMetaData cfm = Schema.instance.getCFMetaData(keyspace(), columnFamily()).clone();
+        CFMetaData cfm = Schema.instance.getCFMetaData(keyspace(), columnFamily()).copy();
         if (!cfm.removeTrigger(triggerName))
             throw new ConfigurationException(String.format("Trigger %s was not found", triggerName));
         logger.info("Dropping trigger with name {}", triggerName);
-        MigrationManager.announceColumnFamilyUpdate(cfm, false);
+        MigrationManager.announceColumnFamilyUpdate(cfm, false, isLocalOnly);
     }
 
-    public ResultMessage.SchemaChange.Change changeType()
+    public Event.SchemaChange changeEvent()
     {
-        return ResultMessage.SchemaChange.Change.UPDATED;
+        return new Event.SchemaChange(Event.SchemaChange.Change.UPDATED, Event.SchemaChange.Target.TABLE, keyspace(), columnFamily());
     }
 }

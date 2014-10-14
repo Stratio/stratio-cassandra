@@ -17,21 +17,26 @@
  */
 package org.apache.cassandra.repair;
 
+import java.io.IOException;
 import java.net.InetAddress;
+import java.security.MessageDigest;
 import java.util.UUID;
 
 import org.junit.After;
 import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
+import org.apache.cassandra.db.BufferDecoratedKey;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Keyspace;
-import org.apache.cassandra.db.TreeMapBackedSortedColumns;
-import org.apache.cassandra.db.compaction.PrecompactedRow;
+import org.apache.cassandra.db.RowIndexEntry;
+import org.apache.cassandra.db.compaction.AbstractCompactedRow;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.io.sstable.ColumnStats;
+import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.net.MessageIn;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
@@ -41,13 +46,9 @@ import org.apache.cassandra.repair.messages.RepairMessage;
 import org.apache.cassandra.repair.messages.ValidationComplete;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.ByteBufferUtil;
-import org.apache.cassandra.utils.SimpleCondition;
+import org.apache.cassandra.utils.concurrent.SimpleCondition;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class ValidatorTest extends SchemaLoader
 {
@@ -65,7 +66,7 @@ public class ValidatorTest extends SchemaLoader
     public void testValidatorComplete() throws Throwable
     {
         Range<Token> range = new Range<>(partitioner.getMinimumToken(), partitioner.getRandomToken());
-        final RepairJobDesc desc = new RepairJobDesc(UUID.randomUUID(), keyspace, columnFamily, range);
+        final RepairJobDesc desc = new RepairJobDesc(UUID.randomUUID(), UUID.randomUUID(), keyspace, columnFamily, range);
 
         final SimpleCondition lock = new SimpleCondition();
         SinkManager.add(new IMessageSink()
@@ -109,8 +110,7 @@ public class ValidatorTest extends SchemaLoader
 
         // add a row
         Token mid = partitioner.midpoint(range.left, range.right);
-        validator.add(new PrecompactedRow(new DecoratedKey(mid, ByteBufferUtil.bytes("inconceivable!")),
-                                                 TreeMapBackedSortedColumns.factory.create(cfs.metadata)));
+        validator.add(new CompactedRowStub(new BufferDecoratedKey(mid, ByteBufferUtil.bytes("inconceivable!"))));
         validator.complete();
 
         // confirm that the tree was validated
@@ -121,11 +121,33 @@ public class ValidatorTest extends SchemaLoader
             lock.await();
     }
 
+    private static class CompactedRowStub extends AbstractCompactedRow
+    {
+        private CompactedRowStub(DecoratedKey key)
+        {
+            super(key);
+        }
+
+        public RowIndexEntry write(long currentPosition, DataOutputPlus out) throws IOException
+        {
+            throw new UnsupportedOperationException();
+        }
+
+        public void update(MessageDigest digest) { }
+
+        public ColumnStats columnStats()
+        {
+            throw new UnsupportedOperationException();
+        }
+
+        public void close() throws IOException { }
+    }
+
     @Test
     public void testValidatorFailed() throws Throwable
     {
         Range<Token> range = new Range<>(partitioner.getMinimumToken(), partitioner.getRandomToken());
-        final RepairJobDesc desc = new RepairJobDesc(UUID.randomUUID(), keyspace, columnFamily, range);
+        final RepairJobDesc desc = new RepairJobDesc(UUID.randomUUID(), UUID.randomUUID(), keyspace, columnFamily, range);
 
         final SimpleCondition lock = new SimpleCondition();
         SinkManager.add(new IMessageSink()

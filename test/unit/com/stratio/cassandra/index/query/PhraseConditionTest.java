@@ -15,29 +15,35 @@
  */
 package com.stratio.cassandra.index.query;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
+import com.stratio.cassandra.index.schema.ColumnMapper;
+import com.stratio.cassandra.index.schema.ColumnMapperBoolean;
+import com.stratio.cassandra.index.schema.Schema;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.search.Query;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.stratio.cassandra.index.schema.CellMapper;
-import com.stratio.cassandra.index.schema.CellMapperBoolean;
-import com.stratio.cassandra.index.schema.Schema;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-public class PhraseConditionTest
+import static com.stratio.cassandra.index.query.builder.SearchBuilders.filter;
+import static com.stratio.cassandra.index.query.builder.SearchBuilders.phrase;
+
+/**
+ * @author Andres de la Pena <adelapena@stratio.com>
+ */
+public class PhraseConditionTest extends AbstractConditionTest
 {
 
     @Test
     public void testPhraseQuery()
     {
 
-        Map<String, CellMapper<?>> map = new HashMap<>();
-        map.put("name", new CellMapperBoolean());
+        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        map.put("name", new ColumnMapperBoolean());
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
         List<String> values = new ArrayList<>();
@@ -52,6 +58,12 @@ public class PhraseConditionTest
         Assert.assertEquals(values.size(), luceneQuery.getTerms().length);
         Assert.assertEquals(2, luceneQuery.getSlop());
         Assert.assertEquals(0.5f, query.getBoost(), 0);
+    }
+
+    @Test
+    public void testJson()
+    {
+        testJsonCondition(filter(phrase("name", "hola", "adios").slop(1).boost(0.5f)));
     }
 
 }

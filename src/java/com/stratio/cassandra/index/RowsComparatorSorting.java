@@ -15,18 +15,15 @@
  */
 package com.stratio.cassandra.index;
 
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
-
 import com.stratio.cassandra.index.query.Sorting;
 import com.stratio.cassandra.index.query.SortingField;
-import com.stratio.cassandra.index.schema.Cells;
+import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.index.util.ComparatorChain;
 import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Row;
+
+import java.util.Comparator;
 
 /**
  * A {@link Comparator} for comparing {@link Row}s according to a certain {@link Sorting}.
@@ -37,17 +34,12 @@ public class RowsComparatorSorting implements RowsComparator
 {
     private final CFMetaData metadata;
     private final Schema schema;
-    private final ComparatorChain<Cells> comparatorChain;
-
-    private final Map<DecoratedKey, Cells> cellsCache;
+    private final ComparatorChain<Columns> comparatorChain;
 
     /**
-     * @param metadata
-     *            The {@link CFMetaData} of the column family of the {@link Row}s to be compared.
-     * @param schema
-     *            The indexing {@link Schema} of the {@link Row}s to be compared.
-     * @param sorting
-     *            The {@link Sorting} inf which the {@link Row} comparison is based.
+     * @param metadata The {@link CFMetaData} of the column family of the {@link Row}s to be compared.
+     * @param schema   The indexing {@link Schema} of the {@link Row}s to be compared.
+     * @param sorting  The {@link Sorting} inf which the {@link Row} comparison is based.
      */
     public RowsComparatorSorting(CFMetaData metadata, Schema schema, Sorting sorting)
     {
@@ -56,10 +48,9 @@ public class RowsComparatorSorting implements RowsComparator
         comparatorChain = new ComparatorChain<>();
         for (SortingField sortingField : sorting.getSortingFields())
         {
-            Comparator<Cells> comparator = sortingField.comparator();
+            Comparator<Columns> comparator = sortingField.comparator();
             comparatorChain.addComparator(comparator);
         }
-        cellsCache = new HashMap<>();
     }
 
     /**
@@ -68,21 +59,13 @@ public class RowsComparatorSorting implements RowsComparator
      * @param row1 A {@link Row}.
      * @param row2 A {@link Row}.
      * @return A negative integer, zero, or a positive integer as the first argument is less than, equal to, or greater
-     *         than the second according to a {@link Sorting}.
+     * than the second according to a {@link Sorting}.
      */
     @Override
     public int compare(Row row1, Row row2)
     {
-        Cells cells1 = cellsCache.get(row1.key);
-        if (cells1 == null) {
-            cells1 = schema.cells(metadata, row1);
-            cellsCache.put(row1.key, cells1);
-        }
-        Cells cells2 = cellsCache.get(row2.key);
-        if (cells2 == null) {
-            cells2 = schema.cells(metadata, row2);
-            cellsCache.put(row2.key, cells2);
-        }
-        return comparatorChain.compare(cells1, cells2);
+        Columns columns1 = schema.cells(metadata, row1);
+        Columns columns2 = schema.cells(metadata, row2);
+        return comparatorChain.compare(columns1, columns2);
     }
 }

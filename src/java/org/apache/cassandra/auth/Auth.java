@@ -25,12 +25,15 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.KSMetaData;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.QueryOptions;
+import org.apache.cassandra.cql3.statements.CFStatement;
+import org.apache.cassandra.cql3.statements.CreateTableStatement;
 import org.apache.cassandra.cql3.statements.SelectStatement;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.exceptions.RequestExecutionException;
@@ -127,7 +130,7 @@ public class Auth
             return;
 
         setupAuthKeyspace();
-        setupUsersTable();
+        setupTable(USERS_CF, USERS_CF_SCHEMA);
 
         DatabaseDescriptor.getAuthenticator().setup();
         DatabaseDescriptor.getAuthorizer().setup();
@@ -178,7 +181,7 @@ public class Auth
             try
             {
                 KSMetaData ksm = KSMetaData.newKeyspace(AUTH_KS, SimpleStrategy.class.getName(), ImmutableMap.of("replication_factor", "1"), true);
-                MigrationManager.announceNewKeyspace(ksm, 0);
+                MigrationManager.announceNewKeyspace(ksm, 0, false);
             }
             catch (Exception e)
             {
@@ -187,15 +190,26 @@ public class Auth
         }
     }
 
-    private static void setupUsersTable()
+    /**
+     * Set up table from given CREATE TABLE statement under system_auth keyspace, if not already done so.
+     *
+     * @param name name of the table
+     * @param cql CREATE TABLE statement
+     */
+    public static void setupTable(String name, String cql)
     {
-        if (Schema.instance.getCFMetaData(AUTH_KS, USERS_CF) == null)
+        if (Schema.instance.getCFMetaData(AUTH_KS, name) == null)
         {
             try
             {
-                QueryProcessor.process(USERS_CF_SCHEMA, ConsistencyLevel.ANY);
+                CFStatement parsed = (CFStatement)QueryProcessor.parseStatement(cql);
+                parsed.prepareKeyspace(AUTH_KS);
+                CreateTableStatement statement = (CreateTableStatement) parsed.prepare().statement;
+                CFMetaData cfm = statement.getCFMetaData().copy(CFMetaData.generateLegacyCfId(AUTH_KS, name));
+                assert cfm.cfName.equals(name);
+                MigrationManager.announceNewColumnFamily(cfm);
             }
-            catch (RequestExecutionException e)
+            catch (Exception e)
             {
                 throw new AssertionError(e);
             }
@@ -244,9 +258,9 @@ public class Auth
         try
         {
             ResultMessage.Rows rows = selectUserStatement.execute(QueryState.forInternalCalls(),
-                                                                  new QueryOptions(consistencyForUser(username),
-                                                                                   Lists.newArrayList(ByteBufferUtil.bytes(username))));
-            return new UntypedResultSet(rows.result);
+                                                                  QueryOptions.forInternalCalls(consistencyForUser(username),
+                                                                                                Lists.newArrayList(ByteBufferUtil.bytes(username))));
+            return UntypedResultSet.create(rows.result);
         }
         catch (RequestValidationException e)
         {
@@ -273,6 +287,10 @@ public class Auth
             DatabaseDescriptor.getAuthorizer().revokeAll(DataResource.columnFamily(ksName, cfName));
         }
 
+        public void onDropUserType(String ksName, String userType)
+        {
+        }
+
         public void onCreateKeyspace(String ksName)
         {
         }
@@ -281,11 +299,19 @@ public class Auth
         {
         }
 
+        public void onCreateUserType(String ksName, String userType)
+        {
+        }
+
         public void onUpdateKeyspace(String ksName)
         {
         }
 
         public void onUpdateColumnFamily(String ksName, String cfName)
+        {
+        }
+
+        public void onUpdateUserType(String ksName, String userType)
         {
         }
     }

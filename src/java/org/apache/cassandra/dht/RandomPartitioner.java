@@ -22,6 +22,7 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import org.apache.cassandra.db.BufferDecoratedKey;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.marshal.AbstractType;
@@ -29,6 +30,7 @@ import org.apache.cassandra.db.marshal.IntegerType;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.GuidGenerator;
+import org.apache.cassandra.utils.ObjectSizes;
 import org.apache.cassandra.utils.Pair;
 
 /**
@@ -40,9 +42,11 @@ public class RandomPartitioner extends AbstractPartitioner<BigIntegerToken>
     public static final BigIntegerToken MINIMUM = new BigIntegerToken("-1");
     public static final BigInteger MAXIMUM = new BigInteger("2").pow(127);
 
+    private static final int EMPTY_SIZE = (int) ObjectSizes.measureDeep(new BigIntegerToken(FBUtilities.hashToBigInteger(ByteBuffer.allocate(1))));
+
     public DecoratedKey decorateKey(ByteBuffer key)
     {
-        return new DecoratedKey(getToken(key), key);
+        return new BufferDecoratedKey(getToken(key), key);
     }
 
     public Token midpoint(Token ltoken, Token rtoken)
@@ -121,6 +125,11 @@ public class RandomPartitioner extends AbstractPartitioner<BigIntegerToken>
         if (key.remaining() == 0)
             return MINIMUM;
         return new BigIntegerToken(FBUtilities.hashToBigInteger(key));
+    }
+
+    public long getHeapSizeOf(BigIntegerToken token)
+    {
+        return EMPTY_SIZE;
     }
 
     public Map<Token, Float> describeOwnership(List<Token> sortedTokens)

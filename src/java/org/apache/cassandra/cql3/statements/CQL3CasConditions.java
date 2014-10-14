@@ -23,6 +23,7 @@ import java.util.*;
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.filter.*;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.service.CASConditions;
@@ -39,19 +40,19 @@ public class CQL3CasConditions implements CASConditions
     // We index RowCondition by the prefix of the row they applied to for 2 reasons:
     //   1) this allows to keep things sorted to build the ColumnSlice array below
     //   2) this allows to detect when contradictory conditions are set (not exists with some other conditions on the same row)
-    private final SortedMap<ByteBuffer, RowCondition> conditions;
+    private final SortedMap<Composite, RowCondition> conditions;
 
     public CQL3CasConditions(CFMetaData cfm, long now)
     {
         this.cfm = cfm;
-        // We will use now for Column.isLive() which expects milliseconds but the argument is in microseconds.
+        // We will use now for Cell.isLive() which expects milliseconds but the argument is in microseconds.
         this.now = now / 1000;
         this.conditions = new TreeMap<>(cfm.comparator);
     }
 
-    public void addNotExist(ColumnNameBuilder prefix) throws InvalidRequestException
+    public void addNotExist(Composite prefix) throws InvalidRequestException
     {
-        RowCondition previous = conditions.put(prefix.build(), new NotExistCondition(prefix, now));
+        RowCondition previous = conditions.put(prefix, new NotExistCondition(prefix, now));
         if (previous != null && !(previous instanceof NotExistCondition))
         {
             // these should be prevented by the parser, but it doesn't hurt to check
@@ -62,28 +63,27 @@ public class CQL3CasConditions implements CASConditions
         }
     }
 
-    public void addExist(ColumnNameBuilder prefix) throws InvalidRequestException
+    public void addExist(Composite prefix) throws InvalidRequestException
     {
-        RowCondition previous = conditions.put(prefix.build(), new ExistCondition(prefix, now));
+        RowCondition previous = conditions.put(prefix, new ExistCondition(prefix, now));
         // this should be prevented by the parser, but it doesn't hurt to check
         if (previous != null && previous instanceof NotExistCondition)
             throw new InvalidRequestException("Cannot mix IF EXISTS and IF NOT EXISTS conditions for the same row");
     }
 
-    public void addConditions(ColumnNameBuilder prefix, Collection<ColumnCondition> conds, List<ByteBuffer> variables) throws InvalidRequestException
+    public void addConditions(Composite prefix, Collection<ColumnCondition> conds, QueryOptions options) throws InvalidRequestException
     {
-        ByteBuffer b = prefix.build();
-        RowCondition condition = conditions.get(b);
+        RowCondition condition = conditions.get(prefix);
         if (condition == null)
         {
             condition = new ColumnsConditions(prefix, now);
-            conditions.put(b, condition);
+            conditions.put(prefix, condition);
         }
         else if (!(condition instanceof ColumnsConditions))
         {
             throw new InvalidRequestException("Cannot mix IF conditions and IF NOT EXISTS for the same row");
         }
-        ((ColumnsConditions)condition).addConditions(conds, variables);
+        ((ColumnsConditions)condition).addConditions(conds, options);
     }
 
     public IDiskAtomFilter readFilter()
@@ -92,12 +92,13 @@ public class CQL3CasConditions implements CASConditions
         ColumnSlice[] slices = new ColumnSlice[conditions.size()];
         int i = 0;
         // We always read CQL rows entirely as on CAS failure we want to be able to distinguish between "row exists
-        // but all values on why there were conditions are null" and "row doesn't exists", and we can't rely on the
+        // but all values for which there were conditions are null" and "row doesn't exists", and we can't rely on the
         // row marker for that (see #6623)
-        for (Map.Entry<ByteBuffer, RowCondition> entry : conditions.entrySet())
-            slices[i++] = new ColumnSlice(entry.getKey(), entry.getValue().rowPrefix.buildAsEndOfRange());
+        for (Composite prefix : conditions.keySet())
+            slices[i++] = prefix.slice();
 
-        int toGroup = cfm.getCfDef().isCompact ? -1 : cfm.clusteringKeyColumns().size();
+        int toGroup = cfm.comparator.isDense() ? -1 : cfm.clusteringColumns().size();
+        assert ColumnSlice.validateSlices(slices, cfm.comparator, false);
         return new SliceQueryFilter(slices, false, slices.length, toGroup);
     }
 
@@ -113,10 +114,10 @@ public class CQL3CasConditions implements CASConditions
 
     private static abstract class RowCondition
     {
-        public final ColumnNameBuilder rowPrefix;
+        public final Composite rowPrefix;
         protected final long now;
 
-        protected RowCondition(ColumnNameBuilder rowPrefix, long now)
+        protected RowCondition(Composite rowPrefix, long now)
         {
             this.rowPrefix = rowPrefix;
             this.now = now;
@@ -127,7 +128,7 @@ public class CQL3CasConditions implements CASConditions
 
     private static class NotExistCondition extends RowCondition
     {
-        private NotExistCondition(ColumnNameBuilder rowPrefix, long now)
+        private NotExistCondition(Composite rowPrefix, long now)
         {
             super(rowPrefix, now);
         }
@@ -137,7 +138,7 @@ public class CQL3CasConditions implements CASConditions
             if (current == null)
                 return true;
 
-            Iterator<Column> iter = current.iterator(new ColumnSlice[]{ new ColumnSlice(rowPrefix.build(), rowPrefix.buildAsEndOfRange()) });
+            Iterator<Cell> iter = current.iterator(new ColumnSlice[]{ rowPrefix.slice() });
             while (iter.hasNext())
                 if (iter.next().isLive(now))
                     return false;
@@ -147,7 +148,7 @@ public class CQL3CasConditions implements CASConditions
 
     private static class ExistCondition extends RowCondition
     {
-        private ExistCondition(ColumnNameBuilder rowPrefix, long now)
+        private ExistCondition(Composite rowPrefix, long now)
         {
             super (rowPrefix, now);
         }
@@ -157,7 +158,7 @@ public class CQL3CasConditions implements CASConditions
             if (current == null)
                 return false;
 
-            Iterator<Column> iter = current.iterator(new ColumnSlice[]{ new ColumnSlice(rowPrefix.build(), rowPrefix.buildAsEndOfRange())});
+            Iterator<Cell> iter = current.iterator(new ColumnSlice[]{ rowPrefix.slice() });
             while (iter.hasNext())
                 if (iter.next().isLive(now))
                     return true;
@@ -169,18 +170,18 @@ public class CQL3CasConditions implements CASConditions
     {
         private final Map<Pair<ColumnIdentifier, ByteBuffer>, ColumnCondition.Bound> conditions = new HashMap<>();
 
-        private ColumnsConditions(ColumnNameBuilder rowPrefix, long now)
+        private ColumnsConditions(Composite rowPrefix, long now)
         {
             super(rowPrefix, now);
         }
 
-        public void addConditions(Collection<ColumnCondition> conds, List<ByteBuffer> variables) throws InvalidRequestException
+        public void addConditions(Collection<ColumnCondition> conds, QueryOptions options) throws InvalidRequestException
         {
             for (ColumnCondition condition : conds)
             {
                 // We will need the variables in appliesTo but with protocol batches, each condition in this object can have a
                 // different list of variables.
-                ColumnCondition.Bound current = condition.bind(variables);
+                ColumnCondition.Bound current = condition.bind(options);
                 ColumnCondition.Bound previous = conditions.put(Pair.create(condition.column.name, current.getCollectionElementValue()), current);
                 // If 2 conditions are actually equal, let it slide
                 if (previous != null && !previous.equals(current))

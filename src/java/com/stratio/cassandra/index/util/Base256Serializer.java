@@ -15,24 +15,22 @@
  */
 package com.stratio.cassandra.index.util;
 
-import java.nio.ByteBuffer;
-
 import org.apache.cassandra.utils.ByteBufferUtil;
+
+import java.nio.ByteBuffer;
 
 /**
  * Class for mapping several binary types from/to {@link String} using a base of 256 UTF-8 characters.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class Base256Serializer
 {
 
     /**
      * Returns the {@code char} array representation of the specified {@code byte} array.
-     * 
-     * @param bytes
-     *            The {@code byte} array to be converted.
+     *
+     * @param bytes The {@code byte} array to be converted.
      * @return The {@code char} array representation of the specified {@code byte} array.
      */
     public static char[] chars(byte[] bytes)
@@ -48,9 +46,8 @@ public class Base256Serializer
 
     /**
      * Returns the {@code byte} array representation of the specified {@code char} array.
-     * 
-     * @param chars
-     *            The {@code char} array to be converted.
+     *
+     * @param chars The {@code char} array to be converted.
      * @return The {@code byte} array representation of the specified {@code char} array.
      */
     public static byte[] bytes(char[] chars)
@@ -66,9 +63,8 @@ public class Base256Serializer
 
     /**
      * Returns the {@code byte} array representation of the specified {@code String}.
-     * 
-     * @param string
-     *            The {@code String} to be converted.
+     *
+     * @param string The {@code String} to be converted.
      * @return The {@code byte} array representation of the specified {@code String}.
      */
     public static byte[] bytes(String string)
@@ -78,9 +74,8 @@ public class Base256Serializer
 
     /**
      * Returns the {@code String} representation of the specified {@code byte} array.
-     * 
-     * @param bytes
-     *            The {@code byte} array to be converted.
+     *
+     * @param bytes The {@code byte} array to be converted.
      * @return The {@code String} representation of the specified {@code byte} array.
      */
     public static String string(byte[] bytes)
@@ -90,9 +85,8 @@ public class Base256Serializer
 
     /**
      * Returns the {@code String} representation of the specified {@code ByteBuffer}.
-     * 
-     * @param byteBuffer
-     *            The {@code ByteBuffer} to be converted.
+     *
+     * @param byteBuffer The {@code ByteBuffer} to be converted.
      * @return The {@code String} representation of the specified {@code ByteBuffer}.
      */
     public static String string(ByteBuffer byteBuffer)
@@ -105,9 +99,8 @@ public class Base256Serializer
 
     /**
      * Returns the {@code ByteBuffer} representation of the specified {@code String}.
-     * 
-     * @param string
-     *            The {@code String} to be converted.
+     *
+     * @param string The {@code String} to be converted.
      * @return The {@code ByteBuffer} representation of the specified {@code String}.
      */
     public static ByteBuffer byteBuffer(String string)

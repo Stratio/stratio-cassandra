@@ -18,10 +18,8 @@
 */
 package org.apache.cassandra.db;
 
-import java.io.IOException;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
-import java.util.concurrent.ExecutionException;
 import java.util.Set;
 import java.util.HashSet;
 
@@ -30,7 +28,7 @@ import org.apache.cassandra.Util;
 import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
-import org.apache.cassandra.db.marshal.CompositeType;
+import org.apache.cassandra.db.composites.*;
 import org.apache.cassandra.utils.FBUtilities;
 import static org.junit.Assert.assertEquals;
 import org.apache.cassandra.utils.ByteBufferUtil;
@@ -42,7 +40,7 @@ public class RowIterationTest extends SchemaLoader
     public static final InetAddress LOCAL = FBUtilities.getBroadcastAddress();
 
     @Test
-    public void testRowIteration() throws IOException, ExecutionException, InterruptedException
+    public void testRowIteration()
     {
         Keyspace keyspace = Keyspace.open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore("Super3");
@@ -51,8 +49,8 @@ public class RowIterationTest extends SchemaLoader
         Set<DecoratedKey> inserted = new HashSet<DecoratedKey>();
         for (int i = 0; i < ROWS_PER_SSTABLE; i++) {
             DecoratedKey key = Util.dk(String.valueOf(i));
-            RowMutation rm = new RowMutation(KEYSPACE1, key.key);
-            rm.add("Super3", CompositeType.build(ByteBufferUtil.bytes("sc"), ByteBufferUtil.bytes(String.valueOf(i))), ByteBuffer.wrap(new byte[ROWS_PER_SSTABLE * 10 - i * 2]), i);
+            Mutation rm = new Mutation(KEYSPACE1, key.getKey());
+            rm.add("Super3", CellNames.compositeDense(ByteBufferUtil.bytes("sc"), ByteBufferUtil.bytes(String.valueOf(i))), ByteBuffer.wrap(new byte[ROWS_PER_SSTABLE * 10 - i * 2]), i);
             rm.apply();
             inserted.add(key);
         }
@@ -61,7 +59,7 @@ public class RowIterationTest extends SchemaLoader
     }
 
     @Test
-    public void testRowIterationDeletionTime() throws IOException, ExecutionException, InterruptedException
+    public void testRowIterationDeletionTime()
     {
         Keyspace keyspace = Keyspace.open(KEYSPACE1);
         String CF_NAME = "Standard3";
@@ -69,17 +67,16 @@ public class RowIterationTest extends SchemaLoader
         DecoratedKey key = Util.dk("key");
 
         // Delete row in first sstable
-        RowMutation rm = new RowMutation(KEYSPACE1, key.key);
+        Mutation rm = new Mutation(KEYSPACE1, key.getKey());
         rm.delete(CF_NAME, 0);
-        rm.add(CF_NAME, ByteBufferUtil.bytes("c"), ByteBufferUtil.bytes("values"), 0L);
-        DeletionInfo delInfo1 = rm.getColumnFamilies().iterator().next().deletionInfo();
+        rm.add(CF_NAME, Util.cellname("c"), ByteBufferUtil.bytes("values"), 0L);
         rm.apply();
         store.forceBlockingFlush();
 
         // Delete row in second sstable with higher timestamp
-        rm = new RowMutation(KEYSPACE1, key.key);
+        rm = new Mutation(KEYSPACE1, key.getKey());
         rm.delete(CF_NAME, 1);
-        rm.add(CF_NAME, ByteBufferUtil.bytes("c"), ByteBufferUtil.bytes("values"), 1L);
+        rm.add(CF_NAME, Util.cellname("c"), ByteBufferUtil.bytes("values"), 1L);
         DeletionInfo delInfo2 = rm.getColumnFamilies().iterator().next().deletionInfo();
         assert delInfo2.getTopLevelDeletion().markedForDeleteAt == 1L;
         rm.apply();
@@ -90,7 +87,7 @@ public class RowIterationTest extends SchemaLoader
     }
 
     @Test
-    public void testRowIterationDeletion() throws IOException, ExecutionException, InterruptedException
+    public void testRowIterationDeletion()
     {
         Keyspace keyspace = Keyspace.open(KEYSPACE1);
         String CF_NAME = "Standard3";
@@ -98,7 +95,7 @@ public class RowIterationTest extends SchemaLoader
         DecoratedKey key = Util.dk("key");
 
         // Delete a row in first sstable
-        RowMutation rm = new RowMutation(KEYSPACE1, key.key);
+        Mutation rm = new Mutation(KEYSPACE1, key.getKey());
         rm.delete(CF_NAME, 0);
         rm.apply();
         store.forceBlockingFlush();

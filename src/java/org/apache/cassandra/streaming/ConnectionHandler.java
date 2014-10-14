@@ -38,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.io.util.DataOutputStreamAndChannel;
 import org.apache.cassandra.net.OutboundTcpConnectionPool;
 import org.apache.cassandra.streaming.messages.StreamInitMessage;
 import org.apache.cassandra.streaming.messages.StreamMessage;
@@ -122,6 +123,7 @@ public class ConnectionHandler
             {
                 Socket socket = OutboundTcpConnectionPool.newSocket(peer);
                 socket.setSoTimeout(DatabaseDescriptor.getStreamingSocketTimeout());
+                socket.setKeepAlive(true);
                 return socket;
             }
             catch (IOException e)
@@ -130,7 +132,7 @@ public class ConnectionHandler
                     throw e;
 
                 long waitms = DatabaseDescriptor.getRpcTimeout() * (long)Math.pow(2, attempts);
-                logger.warn("Failed attempt " + attempts + " to connect to " + peer + ". Retrying in " + waitms + " ms. (" + e + ")");
+                logger.warn("Failed attempt {} to connect to {}. Retrying in {} ms. ({})", attempts, peer, waitms, e);
                 try
                 {
                     Thread.sleep(waitms);
@@ -196,13 +198,13 @@ public class ConnectionHandler
 
         protected abstract String name();
 
-        protected static WritableByteChannel getWriteChannel(Socket socket) throws IOException
+        protected static DataOutputStreamAndChannel getWriteChannel(Socket socket) throws IOException
         {
             WritableByteChannel out = socket.getChannel();
             // socket channel is null when encrypted(SSL)
-            return out == null
-                 ? Channels.newChannel(socket.getOutputStream())
-                 : out;
+            if (out == null)
+                out = Channels.newChannel(socket.getOutputStream());
+            return new DataOutputStreamAndChannel(socket.getOutputStream(), out);
         }
 
         protected static ReadableByteChannel getReadChannel(Socket socket) throws IOException
@@ -216,10 +218,14 @@ public class ConnectionHandler
 
         public void sendInitMessage(Socket socket, boolean isForOutgoing) throws IOException
         {
-            StreamInitMessage message = new StreamInitMessage(FBUtilities.getBroadcastAddress(), session.planId(), session.description(), isForOutgoing);
+            StreamInitMessage message = new StreamInitMessage(
+                    FBUtilities.getBroadcastAddress(),
+                    session.sessionIndex(),
+                    session.planId(),
+                    session.description(),
+                    isForOutgoing);
             ByteBuffer messageBuf = message.createMessage(false, protocolVersion);
-            while (messageBuf.hasRemaining())
-                getWriteChannel(socket).write(messageBuf);
+            getWriteChannel(socket).write(messageBuf);
         }
 
         public void start(Socket socket, int protocolVersion)
@@ -344,7 +350,7 @@ public class ConnectionHandler
         {
             try
             {
-                WritableByteChannel out = getWriteChannel(socket);
+                DataOutputStreamAndChannel out = getWriteChannel(socket);
 
                 StreamMessage next;
                 while (!isClosed())
@@ -376,7 +382,7 @@ public class ConnectionHandler
             }
         }
 
-        private void sendMessage(WritableByteChannel out, StreamMessage message)
+        private void sendMessage(DataOutputStreamAndChannel out, StreamMessage message)
         {
             try
             {

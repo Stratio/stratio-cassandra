@@ -19,30 +19,34 @@ package org.apache.cassandra.cache;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.UUID;
 
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.ObjectSizes;
-import org.apache.cassandra.utils.Pair;
 
 public class KeyCacheKey implements CacheKey
 {
+    public final UUID cfId;
     public final Descriptor desc;
+
+    private static final long EMPTY_SIZE = ObjectSizes.measure(new KeyCacheKey(null, null, ByteBufferUtil.EMPTY_BYTE_BUFFER));
 
     // keeping an array instead of a ByteBuffer lowers the overhead of the key cache working set,
     // without extra copies on lookup since client-provided key ByteBuffers will be array-backed already
     public final byte[] key;
 
-    public KeyCacheKey(Descriptor desc, ByteBuffer key)
+    public KeyCacheKey(UUID cfId, Descriptor desc, ByteBuffer key)
     {
+        this.cfId = cfId;
         this.desc = desc;
         this.key = ByteBufferUtil.getArray(key);
         assert this.key != null;
     }
 
-    public Pair<String, String> getPathInfo()
+    public PathInfo getPathInfo()
     {
-        return Pair.create(desc.ksname, desc.cfname);
+        return new PathInfo(desc.ksname, desc.cfname, cfId);
     }
 
     public String toString()
@@ -50,13 +54,9 @@ public class KeyCacheKey implements CacheKey
         return String.format("KeyCacheKey(%s, %s)", desc, ByteBufferUtil.bytesToHex(ByteBuffer.wrap(key)));
     }
 
-    public long memorySize()
+    public long unsharedHeapSize()
     {
-        return ObjectSizes.getFieldSize(// desc
-                                        ObjectSizes.getReferenceSize() +
-                                        // key
-                                        ObjectSizes.getReferenceSize())
-               + ObjectSizes.getArraySize(key);
+        return EMPTY_SIZE + ObjectSizes.sizeOfArray(key);
     }
 
     @Override
@@ -67,15 +67,15 @@ public class KeyCacheKey implements CacheKey
 
         KeyCacheKey that = (KeyCacheKey) o;
 
-        if (desc != null ? !desc.equals(that.desc) : that.desc != null) return false;
-        return Arrays.equals(key, that.key);
+        return cfId.equals(that.cfId) && desc.equals(that.desc) && Arrays.equals(key, that.key);
     }
 
     @Override
     public int hashCode()
     {
-        int result = desc != null ? desc.hashCode() : 0;
-        result = 31 * result + (key != null ? Arrays.hashCode(key) : 0);
+        int result = cfId.hashCode();
+        result = 31 * result + desc.hashCode();
+        result = 31 * result + Arrays.hashCode(key);
         return result;
     }
 }

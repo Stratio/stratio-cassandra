@@ -204,4 +204,5 @@ public class UUIDType extends AbstractType<UUID>
     {
         return UUIDSerializer.instance;
     }
+
 }

@@ -52,7 +52,7 @@ public class ThreadPoolMetrics
      */
     public ThreadPoolMetrics(final ThreadPoolExecutor executor, String path, String poolName)
     {
-        this.factory = new ThreadPoolMetricNameFactory(path, poolName);
+        this.factory = new ThreadPoolMetricNameFactory("ThreadPools", path, poolName);
 
         activeTasks = Metrics.newGauge(factory.createMetricName("ActiveTasks"), new Gauge<Integer>()
         {
@@ -86,31 +86,5 @@ public class ThreadPoolMetrics
         Metrics.defaultRegistry().removeMetric(factory.createMetricName("CompletedTasks"));
         Metrics.defaultRegistry().removeMetric(factory.createMetricName("TotalBlockedTasks"));
         Metrics.defaultRegistry().removeMetric(factory.createMetricName("CurrentlyBlockedTasks"));
-    }
-
-    class ThreadPoolMetricNameFactory implements MetricNameFactory
-    {
-        private final String path;
-        private final String poolName;
-
-        ThreadPoolMetricNameFactory(String path, String poolName)
-        {
-            this.path = path;
-            this.poolName = poolName;
-        }
-
-        public MetricName createMetricName(String metricName)
-        {
-            String groupName = ThreadPoolMetrics.class.getPackage().getName();
-            String type = "ThreadPools";
-            StringBuilder mbeanName = new StringBuilder();
-            mbeanName.append(groupName).append(":");
-            mbeanName.append("type=").append(type);
-            mbeanName.append(",path=").append(path);
-            mbeanName.append(",scope=").append(poolName);
-            mbeanName.append(",name=").append(metricName);
-
-            return new MetricName(groupName, type, metricName, path + "." + poolName, mbeanName.toString());
-        }
     }
 }

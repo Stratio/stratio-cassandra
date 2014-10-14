@@ -18,9 +18,7 @@
 package org.apache.cassandra.db.filter;
 
 import java.io.DataInput;
-import java.io.DataOutput;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.SortedSet;
@@ -28,41 +26,38 @@ import java.util.TreeSet;
 
 import org.apache.commons.lang3.StringUtils;
 import com.google.common.collect.AbstractIterator;
+import com.google.common.collect.Iterators;
 
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.columniterator.OnDiskAtomIterator;
 import org.apache.cassandra.db.columniterator.SSTableNamesIterator;
-import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.composites.CellName;
+import org.apache.cassandra.db.composites.CellNameType;
+import org.apache.cassandra.db.composites.Composite;
+import org.apache.cassandra.db.composites.CType;
+import org.apache.cassandra.io.ISerializer;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.sstable.SSTableReader;
+import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.io.util.FileDataInput;
-import org.apache.cassandra.utils.ByteBufferUtil;
-import org.apache.cassandra.utils.FBUtilities;
 
 public class NamesQueryFilter implements IDiskAtomFilter
 {
-    public static final Serializer serializer = new Serializer();
-
-    public final SortedSet<ByteBuffer> columns;
+    public final SortedSet<CellName> columns;
 
     // If true, getLiveCount will always return either 0 or 1. This uses the fact that we know 
     // CQL3 will never use a name filter with cell names spanning multiple CQL3 rows.
     private final boolean countCQL3Rows;
 
-    public NamesQueryFilter(SortedSet<ByteBuffer> columns)
+    public NamesQueryFilter(SortedSet<CellName> columns)
     {
         this(columns, false);
     }
 
-    public NamesQueryFilter(SortedSet<ByteBuffer> columns, boolean countCQL3Rows)
+    public NamesQueryFilter(SortedSet<CellName> columns, boolean countCQL3Rows)
     {
         this.columns = columns;
         this.countCQL3Rows = countCQL3Rows;
-    }
-
-    public NamesQueryFilter(ByteBuffer column, Comparator<ByteBuffer> comparator)
-    {
-        this(FBUtilities.singleton(column, comparator));
     }
 
     public NamesQueryFilter cloneShallow()
@@ -71,15 +66,22 @@ public class NamesQueryFilter implements IDiskAtomFilter
         return this;
     }
 
-    public NamesQueryFilter withUpdatedColumns(SortedSet<ByteBuffer> newColumns)
+    public NamesQueryFilter withUpdatedColumns(SortedSet<CellName> newColumns)
     {
        return new NamesQueryFilter(newColumns, countCQL3Rows);
     }
 
-    public OnDiskAtomIterator getColumnFamilyIterator(DecoratedKey key, ColumnFamily cf)
+    @SuppressWarnings("unchecked")
+    public Iterator<Cell> getColumnIterator(ColumnFamily cf)
     {
         assert cf != null;
-        return new ByNameColumnIterator(columns.iterator(), cf, key);
+        return (Iterator<Cell>) (Iterator<?>) new ByNameColumnIterator(columns.iterator(), null, cf);
+    }
+
+    public OnDiskAtomIterator getColumnIterator(DecoratedKey key, ColumnFamily cf)
+    {
+        assert cf != null;
+        return new ByNameColumnIterator(columns.iterator(), key, cf);
     }
 
     public OnDiskAtomIterator getSSTableColumnIterator(SSTableReader sstable, DecoratedKey key)
@@ -92,16 +94,16 @@ public class NamesQueryFilter implements IDiskAtomFilter
         return new SSTableNamesIterator(sstable, file, key, columns, indexEntry);
     }
 
-    public void collectReducedColumns(ColumnFamily container, Iterator<Column> reducedColumns, int gcBefore, long now)
+    public void collectReducedColumns(ColumnFamily container, Iterator<Cell> reducedColumns, int gcBefore, long now)
     {
         DeletionInfo.InOrderTester tester = container.inOrderDeletionTester();
         while (reducedColumns.hasNext())
-            container.addIfRelevant(reducedColumns.next(), tester, gcBefore);
+            container.maybeAppendColumn(reducedColumns.next(), tester, gcBefore);
     }
 
-    public Comparator<Column> getColumnComparator(AbstractType<?> comparator)
+    public Comparator<Cell> getColumnComparator(CellNameType comparator)
     {
-        return comparator.columnComparator;
+        return comparator.columnComparator();
     }
 
     @Override
@@ -129,19 +131,19 @@ public class NamesQueryFilter implements IDiskAtomFilter
             return cf.hasOnlyTombstones(now) ? 0 : 1;
 
         int count = 0;
-        for (Column column : cf)
+        for (Cell cell : cf)
         {
-            if (column.isLive(now))
+            if (cell.isLive(now))
                 count++;
         }
         return count;
     }
 
-    public boolean maySelectPrefix(Comparator<ByteBuffer> cmp, ByteBuffer prefix)
+    public boolean maySelectPrefix(CType type, Composite prefix)
     {
-        for (ByteBuffer column : columns)
+        for (CellName column : columns)
         {
-            if (ByteBufferUtil.isPrefix(prefix, column))
+            if (prefix.isPrefixOf(type, column))
                 return true;
         }
         return false;
@@ -152,12 +154,33 @@ public class NamesQueryFilter implements IDiskAtomFilter
         return true;
     }
 
-    public boolean countCQL3Rows()
+    public boolean isFullyCoveredBy(ColumnFamily cf, long now)
+    {
+        // cf will cover all the requested columns if the range it covers include
+        // all said columns
+        CellName first = cf.iterator(ColumnSlice.ALL_COLUMNS_ARRAY).next().name();
+        CellName last = cf.reverseIterator(ColumnSlice.ALL_COLUMNS_ARRAY).next().name();
+
+        return cf.getComparator().compare(first, columns.first()) <= 0
+            && cf.getComparator().compare(columns.last(), last) <= 0;
+    }
+
+    public boolean isHeadFilter()
+    {
+        return false;
+    }
+
+    public boolean countCQL3Rows(CellNameType comparator)
     {
         return countCQL3Rows;
     }
 
-    public ColumnCounter columnCounter(AbstractType<?> comparator, long now)
+    public boolean countCQL3Rows()
+    {
+        return countCQL3Rows(null);
+    }
+
+    public ColumnCounter columnCounter(CellNameType comparator, long now)
     {
         return countCQL3Rows
              ? new ColumnCounter.GroupByPrefix(now, null, 0)
@@ -168,13 +191,25 @@ public class NamesQueryFilter implements IDiskAtomFilter
     {
         private final ColumnFamily cf;
         private final DecoratedKey key;
-        private final Iterator<ByteBuffer> iter;
+        private final Iterator<CellName> iter;
 
-        public ByNameColumnIterator(Iterator<ByteBuffer> iter, ColumnFamily cf, DecoratedKey key)
+        public ByNameColumnIterator(Iterator<CellName> iter, DecoratedKey key, ColumnFamily cf)
         {
             this.iter = iter;
             this.cf = cf;
             this.key = key;
+        }
+
+        protected OnDiskAtom computeNext()
+        {
+            while (iter.hasNext())
+            {
+                CellName current = iter.next();
+                Cell cell = cf.getColumn(current);
+                if (cell != null)
+                    return cell;
+            }
+            return endOfData();
         }
 
         public ColumnFamily getColumnFamily()
@@ -187,44 +222,36 @@ public class NamesQueryFilter implements IDiskAtomFilter
             return key;
         }
 
-        protected OnDiskAtom computeNext()
-        {
-            while (iter.hasNext())
-            {
-                ByteBuffer current = iter.next();
-                Column column = cf.getColumn(current);
-                if (column != null)
-                    return column;
-            }
-            return endOfData();
-        }
-
         public void close() throws IOException { }
     }
 
     public static class Serializer implements IVersionedSerializer<NamesQueryFilter>
     {
-        public void serialize(NamesQueryFilter f, DataOutput out, int version) throws IOException
+        private CellNameType type;
+
+        public Serializer(CellNameType type)
+        {
+            this.type = type;
+        }
+
+        public void serialize(NamesQueryFilter f, DataOutputPlus out, int version) throws IOException
         {
             out.writeInt(f.columns.size());
-            for (ByteBuffer cName : f.columns)
+            ISerializer<CellName> serializer = type.cellSerializer();
+            for (CellName cName : f.columns)
             {
-                ByteBufferUtil.writeWithShortLength(cName, out);
+                serializer.serialize(cName, out);
             }
             out.writeBoolean(f.countCQL3Rows);
         }
 
         public NamesQueryFilter deserialize(DataInput in, int version) throws IOException
         {
-            throw new UnsupportedOperationException();
-        }
-
-        public NamesQueryFilter deserialize(DataInput in, int version, AbstractType comparator) throws IOException
-        {
             int size = in.readInt();
-            SortedSet<ByteBuffer> columns = new TreeSet<ByteBuffer>(comparator);
+            SortedSet<CellName> columns = new TreeSet<CellName>(type);
+            ISerializer<CellName> serializer = type.cellSerializer();
             for (int i = 0; i < size; ++i)
-                columns.add(ByteBufferUtil.readWithShortLength(in));
+                columns.add(serializer.deserialize(in));
             boolean countCQL3Rows = in.readBoolean();
             return new NamesQueryFilter(columns, countCQL3Rows);
         }
@@ -233,13 +260,40 @@ public class NamesQueryFilter implements IDiskAtomFilter
         {
             TypeSizes sizes = TypeSizes.NATIVE;
             int size = sizes.sizeof(f.columns.size());
-            for (ByteBuffer cName : f.columns)
-            {
-                int cNameSize = cName.remaining();
-                size += sizes.sizeof((short) cNameSize) + cNameSize;
-            }
+            ISerializer<CellName> serializer = type.cellSerializer();
+            for (CellName cName : f.columns)
+                size += serializer.serializedSize(cName, sizes);
             size += sizes.sizeof(f.countCQL3Rows);
             return size;
         }
+    }
+
+    public Iterator<RangeTombstone> getRangeTombstoneIterator(final ColumnFamily source)
+    {
+        if (!source.deletionInfo().hasRanges())
+            return Iterators.<RangeTombstone>emptyIterator();
+
+        return new AbstractIterator<RangeTombstone>()
+        {
+            private final Iterator<CellName> names = columns.iterator();
+            private RangeTombstone lastFindRange;
+
+            protected RangeTombstone computeNext()
+            {
+                while (names.hasNext())
+                {
+                    CellName next = names.next();
+                    if (lastFindRange != null && lastFindRange.includes(source.getComparator(), next))
+                        return lastFindRange;
+
+                    // We keep the last range around as since names are in sort order, it's
+                    // possible it will match the next name too.
+                    lastFindRange = source.deletionInfo().rangeCovering(next);
+                    if (lastFindRange != null)
+                        return lastFindRange;
+                }
+                return endOfData();
+            }
+        };
     }
 }

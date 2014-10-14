@@ -24,11 +24,13 @@ import java.nio.channels.ReadableByteChannel;
 
 import com.google.common.base.Throwables;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.io.compress.CompressionMetadata;
-import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.sstable.SSTableWriter;
 import org.apache.cassandra.streaming.ProgressInfo;
 import org.apache.cassandra.streaming.StreamReader;
@@ -42,6 +44,8 @@ import org.apache.cassandra.utils.Pair;
  */
 public class CompressedStreamReader extends StreamReader
 {
+    private static final Logger logger = LoggerFactory.getLogger(CompressedStreamReader.class);
+
     protected final CompressionInfo compressionInfo;
 
     public CompressedStreamReader(FileMessageHeader header, StreamSession session)
@@ -57,12 +61,13 @@ public class CompressedStreamReader extends StreamReader
     @Override
     public SSTableWriter read(ReadableByteChannel channel) throws IOException
     {
+        logger.debug("reading file from {}, repairedAt = {}", session.peer, repairedAt);
         long totalSize = totalSize();
 
         Pair<String, String> kscf = Schema.instance.getCF(cfId);
         ColumnFamilyStore cfs = Keyspace.open(kscf.left).getColumnFamilyStore(kscf.right);
 
-        SSTableWriter writer = createWriter(cfs, totalSize);
+        SSTableWriter writer = createWriter(cfs, totalSize, repairedAt);
 
         CompressedInputStream cis = new CompressedInputStream(Channels.newInputStream(channel), compressionInfo, inputVersion.hasPostCompressionAdlerChecksums);
         BytesReadTracker in = new BytesReadTracker(new DataInputStream(cis));

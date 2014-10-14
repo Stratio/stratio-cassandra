@@ -29,10 +29,10 @@ import java.util.UUID;
 import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
+import org.apache.cassandra.db.ArrayBackedSortedColumns;
 import org.apache.cassandra.db.ColumnFamily;
 
 import com.googlecode.concurrentlinkedhashmap.Weighers;
-import org.apache.cassandra.db.TreeMapBackedSortedColumns;
 
 import static org.apache.cassandra.Util.column;
 import static org.junit.Assert.*;
@@ -51,7 +51,7 @@ public class CacheProviderTest extends SchemaLoader
     private void simpleCase(ColumnFamily cf, ICache<MeasureableString, IRowCacheEntry> cache)
     {
         cache.put(key1, cf);
-        assert cache.get(key1) != null;
+        assertNotNull(cache.get(key1));
 
         assertDigests(cache.get(key1), cf);
         cache.put(key2, cf);
@@ -65,8 +65,8 @@ public class CacheProviderTest extends SchemaLoader
     private void assertDigests(IRowCacheEntry one, ColumnFamily two)
     {
         // CF does not implement .equals
-        assert one instanceof ColumnFamily;
-        assert ColumnFamily.digest((ColumnFamily)one).equals(ColumnFamily.digest(two));
+        assertTrue(one instanceof ColumnFamily);
+        assertEquals(ColumnFamily.digest((ColumnFamily)one), ColumnFamily.digest(two));
     }
 
     // TODO this isn't terribly useful
@@ -100,7 +100,7 @@ public class CacheProviderTest extends SchemaLoader
 
     private ColumnFamily createCF()
     {
-        ColumnFamily cf = TreeMapBackedSortedColumns.factory.create(keyspaceName, cfName);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(keyspaceName, cfName);
         cf.addColumn(column("vijay", "great", 1));
         cf.addColumn(column("awesome", "vijay", 1));
         return cf;
@@ -142,7 +142,7 @@ public class CacheProviderTest extends SchemaLoader
             this.string = input;
         }
 
-        public long memorySize()
+        public long unsharedHeapSize()
         {
             return string.length();
         }

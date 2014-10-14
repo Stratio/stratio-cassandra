@@ -28,10 +28,10 @@ import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.context.CounterContext;
-import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.dht.IPartitioner;
+import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
+import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.utils.CounterId;
-import org.apache.cassandra.utils.HeapAllocator;
 import org.apache.cassandra.utils.Pair;
 
 public abstract class AbstractSSTableSimpleWriter
@@ -55,9 +55,10 @@ public abstract class AbstractSSTableSimpleWriter
         return new SSTableWriter(
             makeFilename(directory, metadata.ksName, metadata.cfName),
             0, // We don't care about the bloom filter
+            ActiveRepairService.UNREPAIRED_SSTABLE,
             metadata,
             DatabaseDescriptor.getPartitioner(),
-            SSTableMetadata.createCollector(metadata.comparator));
+            new MetadataCollector(metadata.comparator));
     }
 
     // find available generation and pick up filename from that
@@ -82,7 +83,7 @@ public abstract class AbstractSSTableSimpleWriter
         int maxGen = 0;
         for (Descriptor desc : existing)
             maxGen = Math.max(maxGen, desc.generation);
-        return new Descriptor(directory, keyspace, columnFamily, maxGen + 1, true).filenameFor(Component.DATA);
+        return new Descriptor(directory, keyspace, columnFamily, maxGen + 1, Descriptor.Type.TEMP).filenameFor(Component.DATA);
     }
 
     /**
@@ -110,16 +111,16 @@ public abstract class AbstractSSTableSimpleWriter
         currentSuperColumn = name;
     }
 
-    private void addColumn(Column column)
+    private void addColumn(Cell cell)
     {
         if (columnFamily.metadata().isSuper())
         {
             if (currentSuperColumn == null)
-                throw new IllegalStateException("Trying to add a column to a super column family, but no super column has been started.");
+                throw new IllegalStateException("Trying to add a cell to a super column family, but no super cell has been started.");
 
-            column = column.withUpdatedName(CompositeType.build(currentSuperColumn, column.name()));
+            cell = cell.withUpdatedName(columnFamily.getComparator().makeCellName(currentSuperColumn, cell.name().toByteBuffer()));
         }
-        columnFamily.addColumn(column);
+        columnFamily.addColumn(cell);
     }
 
     /**
@@ -130,7 +131,7 @@ public abstract class AbstractSSTableSimpleWriter
      */
     public void addColumn(ByteBuffer name, ByteBuffer value, long timestamp)
     {
-        addColumn(new Column(name, value, timestamp));
+        addColumn(new BufferCell(metadata.comparator.cellFromByteBuffer(name), value, timestamp));
     }
 
     /**
@@ -145,7 +146,7 @@ public abstract class AbstractSSTableSimpleWriter
      */
     public void addExpiringColumn(ByteBuffer name, ByteBuffer value, long timestamp, int ttl, long expirationTimestampMS)
     {
-        addColumn(new ExpiringColumn(name, value, timestamp, ttl, (int)(expirationTimestampMS / 1000)));
+        addColumn(new BufferExpiringCell(metadata.comparator.cellFromByteBuffer(name), value, timestamp, ttl, (int)(expirationTimestampMS / 1000)));
     }
 
     /**
@@ -155,9 +156,9 @@ public abstract class AbstractSSTableSimpleWriter
      */
     public void addCounterColumn(ByteBuffer name, long value)
     {
-        addColumn(new CounterColumn(name,
-                                    CounterContext.instance().createRemote(counterid, 1L, value, HeapAllocator.instance),
-                                    System.currentTimeMillis()));
+        addColumn(new BufferCounterCell(metadata.comparator.cellFromByteBuffer(name),
+                                        CounterContext.instance().createGlobal(counterid, 1L, value),
+                                        System.currentTimeMillis()));
     }
 
     /**

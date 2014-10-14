@@ -19,16 +19,13 @@
 package org.apache.cassandra.config;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.*;
-import java.util.concurrent.ExecutionException;
 
 import org.apache.cassandra.OrderedJUnit4ClassRunner;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
 import org.apache.cassandra.db.*;
-import org.apache.cassandra.db.filter.QueryFilter;
+import org.apache.cassandra.db.composites.*;
 import org.apache.cassandra.db.marshal.BytesType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.db.marshal.TimeUUIDType;
@@ -39,10 +36,10 @@ import org.apache.cassandra.io.sstable.SSTableDeletingTask;
 import org.apache.cassandra.locator.OldNetworkTopologyStrategy;
 import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.cassandra.service.MigrationManager;
-import org.apache.cassandra.thrift.IndexType;
 import org.apache.cassandra.utils.ByteBufferUtil;
-import org.apache.cassandra.utils.FBUtilities;
+import static org.apache.cassandra.Util.cellname;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -52,51 +49,48 @@ public class DefsTest extends SchemaLoader
     @Test
     public void testCFMetaDataApply() throws ConfigurationException
     {
-        Map<ByteBuffer, ColumnDefinition> indexes = new HashMap<ByteBuffer, ColumnDefinition>();
-        for (int i = 0; i < 5; i++)
-        {
-            ByteBuffer name = ByteBuffer.wrap(new byte[] { (byte)i });
-            indexes.put(name, ColumnDefinition.regularDef(name, BytesType.instance, null).setIndex(Integer.toString(i), IndexType.KEYS, null));
-        }
         CFMetaData cfm = new CFMetaData("Keyspace1",
                                         "TestApplyCFM_CF",
                                         ColumnFamilyType.Standard,
-                                        BytesType.instance);
+                                        new SimpleDenseCellNameType(BytesType.instance));
+
+        for (int i = 0; i < 5; i++)
+        {
+            ByteBuffer name = ByteBuffer.wrap(new byte[] { (byte)i });
+            cfm.addColumnDefinition(ColumnDefinition.regularDef(cfm, name, BytesType.instance, null).setIndex(Integer.toString(i), IndexType.KEYS, null));
+        }
 
         cfm.comment("No comment")
            .readRepairChance(0.5)
-           .replicateOnWrite(false)
            .gcGraceSeconds(100000)
-           .defaultValidator(null)
            .minCompactionThreshold(500)
-           .maxCompactionThreshold(500)
-           .columnMetadata(indexes);
+           .maxCompactionThreshold(500);
 
         // we'll be adding this one later. make sure it's not already there.
         assert cfm.getColumnDefinition(ByteBuffer.wrap(new byte[] { 5 })) == null;
 
-        CFMetaData cfNew = cfm.clone();
+        CFMetaData cfNew = cfm.copy();
 
         // add one.
-        ColumnDefinition addIndexDef = ColumnDefinition.regularDef(ByteBuffer.wrap(new byte[] { 5 }), BytesType.instance, null)
+        ColumnDefinition addIndexDef = ColumnDefinition.regularDef(cfm, ByteBuffer.wrap(new byte[] { 5 }), BytesType.instance, null)
                                                        .setIndex("5", IndexType.KEYS, null);
         cfNew.addColumnDefinition(addIndexDef);
 
         // remove one.
-        ColumnDefinition removeIndexDef = ColumnDefinition.regularDef(ByteBuffer.wrap(new byte[] { 0 }), BytesType.instance, null)
+        ColumnDefinition removeIndexDef = ColumnDefinition.regularDef(cfm, ByteBuffer.wrap(new byte[] { 0 }), BytesType.instance, null)
                                                           .setIndex("0", IndexType.KEYS, null);
         assert cfNew.removeColumnDefinition(removeIndexDef);
 
         cfm.apply(cfNew);
 
-        for (int i = 1; i < indexes.size(); i++)
+        for (int i = 1; i < cfm.allColumns().size(); i++)
             assert cfm.getColumnDefinition(ByteBuffer.wrap(new byte[] { 1 })) != null;
         assert cfm.getColumnDefinition(ByteBuffer.wrap(new byte[] { 0 })) == null;
         assert cfm.getColumnDefinition(ByteBuffer.wrap(new byte[] { 5 })) != null;
     }
 
     @Test
-    public void testInvalidNames() throws IOException
+    public void testInvalidNames()
     {
         String[] valid = {"1", "a", "_1", "b_", "__", "1_a"};
         for (String s : valid)
@@ -107,8 +101,9 @@ public class DefsTest extends SchemaLoader
             assert !CFMetaData.isNameValid(s);
     }
 
+    @Ignore
     @Test
-    public void saveAndRestore() throws IOException
+    public void saveAndRestore()
     {
         /*
         // verify dump and reload.
@@ -127,7 +122,7 @@ public class DefsTest extends SchemaLoader
     }
 
     @Test
-    public void addNewCfToBogusKeyspace() throws InterruptedException
+    public void addNewCfToBogusKeyspace()
     {
         CFMetaData newCf = addTestCF("MadeUpKeyspace", "NewCF", "new cf");
         try
@@ -141,7 +136,7 @@ public class DefsTest extends SchemaLoader
     }
 
     @Test
-    public void addNewCfWithNullComment() throws ConfigurationException, IOException, ExecutionException, InterruptedException
+    public void addNewCfWithNullComment() throws ConfigurationException
     {
         final String ks = "Keyspace1";
         final String cf = "BrandNewCfWithNull";
@@ -157,7 +152,7 @@ public class DefsTest extends SchemaLoader
     }
 
     @Test
-    public void addNewCF() throws ConfigurationException, IOException, ExecutionException, InterruptedException
+    public void addNewCF() throws ConfigurationException
     {
         final String ks = "Keyspace1";
         final String cf = "BrandNewCf";
@@ -172,22 +167,23 @@ public class DefsTest extends SchemaLoader
         assert Schema.instance.getKSMetaData(ks).cfMetaData().get(newCf.cfName).equals(newCf);
 
         // now read and write to it.
+        CellName col0 = cellname("col0");
         DecoratedKey dk = Util.dk("key0");
-        RowMutation rm = new RowMutation(ks, dk.key);
-        rm.add(cf, ByteBufferUtil.bytes("col0"), ByteBufferUtil.bytes("value0"), 1L);
+        Mutation rm = new Mutation(ks, dk.getKey());
+        rm.add(cf, col0, ByteBufferUtil.bytes("value0"), 1L);
         rm.apply();
         ColumnFamilyStore store = Keyspace.open(ks).getColumnFamilyStore(cf);
         assert store != null;
         store.forceBlockingFlush();
 
-        ColumnFamily cfam = store.getColumnFamily(QueryFilter.getNamesFilter(dk, cf, FBUtilities.singleton(ByteBufferUtil.bytes("col0"), store.getComparator()), System.currentTimeMillis()));
-        assert cfam.getColumn(ByteBufferUtil.bytes("col0")) != null;
-        Column col = cfam.getColumn(ByteBufferUtil.bytes("col0"));
+        ColumnFamily cfam = store.getColumnFamily(Util.namesQueryFilter(store, dk, col0));
+        assert cfam.getColumn(col0) != null;
+        Cell col = cfam.getColumn(col0);
         assert ByteBufferUtil.bytes("value0").equals(col.value());
     }
 
     @Test
-    public void dropCf() throws ConfigurationException, IOException, ExecutionException, InterruptedException
+    public void dropCf() throws ConfigurationException
     {
         DecoratedKey dk = Util.dk("dropCf");
         // sanity
@@ -197,9 +193,9 @@ public class DefsTest extends SchemaLoader
         assert cfm != null;
 
         // write some data, force a flush, then verify that files exist on disk.
-        RowMutation rm = new RowMutation(ks.name, dk.key);
+        Mutation rm = new Mutation(ks.name, dk.getKey());
         for (int i = 0; i < 100; i++)
-            rm.add(cfm.cfName, ByteBufferUtil.bytes(("col" + i)), ByteBufferUtil.bytes("anyvalue"), 1L);
+            rm.add(cfm.cfName, cellname("col" + i), ByteBufferUtil.bytes("anyvalue"), 1L);
         rm.apply();
         ColumnFamilyStore store = Keyspace.open(cfm.ksName).getColumnFamilyStore(cfm.cfName);
         assert store != null;
@@ -211,11 +207,11 @@ public class DefsTest extends SchemaLoader
         assert !Schema.instance.getKSMetaData(ks.name).cfMetaData().containsKey(cfm.cfName);
 
         // any write should fail.
-        rm = new RowMutation(ks.name, dk.key);
+        rm = new Mutation(ks.name, dk.getKey());
         boolean success = true;
         try
         {
-            rm.add("Standard1", ByteBufferUtil.bytes("col0"), ByteBufferUtil.bytes("value0"), 1L);
+            rm.add("Standard1", cellname("col0"), ByteBufferUtil.bytes("value0"), 1L);
             rm.apply();
         }
         catch (Throwable th)
@@ -233,7 +229,7 @@ public class DefsTest extends SchemaLoader
     }
 
     @Test
-    public void addNewKS() throws ConfigurationException, IOException, ExecutionException, InterruptedException
+    public void addNewKS() throws ConfigurationException
     {
         DecoratedKey dk = Util.dk("key0");
         CFMetaData newCf = addTestCF("NewKeyspace1", "AddedStandard1", "A new cf for a new ks");
@@ -246,21 +242,22 @@ public class DefsTest extends SchemaLoader
         assert Schema.instance.getKSMetaData(newCf.ksName).equals(newKs);
 
         // test reads and writes.
-        RowMutation rm = new RowMutation(newCf.ksName, dk.key);
-        rm.add(newCf.cfName, ByteBufferUtil.bytes("col0"), ByteBufferUtil.bytes("value0"), 1L);
+        CellName col0 = cellname("col0");
+        Mutation rm = new Mutation(newCf.ksName, dk.getKey());
+        rm.add(newCf.cfName, col0, ByteBufferUtil.bytes("value0"), 1L);
         rm.apply();
         ColumnFamilyStore store = Keyspace.open(newCf.ksName).getColumnFamilyStore(newCf.cfName);
         assert store != null;
         store.forceBlockingFlush();
 
-        ColumnFamily cfam = store.getColumnFamily(QueryFilter.getNamesFilter(dk, newCf.cfName, FBUtilities.singleton(ByteBufferUtil.bytes("col0"), store.getComparator()), System.currentTimeMillis()));
-        assert cfam.getColumn(ByteBufferUtil.bytes("col0")) != null;
-        Column col = cfam.getColumn(ByteBufferUtil.bytes("col0"));
+        ColumnFamily cfam = store.getColumnFamily(Util.namesQueryFilter(store, dk, col0));
+        assert cfam.getColumn(col0) != null;
+        Cell col = cfam.getColumn(col0);
         assert ByteBufferUtil.bytes("value0").equals(col.value());
     }
 
     @Test
-    public void dropKS() throws ConfigurationException, IOException, ExecutionException, InterruptedException
+    public void dropKS() throws ConfigurationException
     {
         DecoratedKey dk = Util.dk("dropKs");
         // sanity
@@ -270,9 +267,9 @@ public class DefsTest extends SchemaLoader
         assert cfm != null;
 
         // write some data, force a flush, then verify that files exist on disk.
-        RowMutation rm = new RowMutation(ks.name, dk.key);
+        Mutation rm = new Mutation(ks.name, dk.getKey());
         for (int i = 0; i < 100; i++)
-            rm.add(cfm.cfName, ByteBufferUtil.bytes(("col" + i)), ByteBufferUtil.bytes("anyvalue"), 1L);
+            rm.add(cfm.cfName, cellname("col" + i), ByteBufferUtil.bytes("anyvalue"), 1L);
         rm.apply();
         ColumnFamilyStore store = Keyspace.open(cfm.ksName).getColumnFamilyStore(cfm.cfName);
         assert store != null;
@@ -284,11 +281,11 @@ public class DefsTest extends SchemaLoader
         assert Schema.instance.getKSMetaData(ks.name) == null;
 
         // write should fail.
-        rm = new RowMutation(ks.name, dk.key);
+        rm = new Mutation(ks.name, dk.getKey());
         boolean success = true;
         try
         {
-            rm.add("Standard1", ByteBufferUtil.bytes("col0"), ByteBufferUtil.bytes("value0"), 1L);
+            rm.add("Standard1", cellname("col0"), ByteBufferUtil.bytes("value0"), 1L);
             rm.apply();
         }
         catch (Throwable th)
@@ -311,7 +308,7 @@ public class DefsTest extends SchemaLoader
     }
 
     @Test
-    public void dropKSUnflushed() throws ConfigurationException, IOException, ExecutionException, InterruptedException
+    public void dropKSUnflushed() throws ConfigurationException
     {
         DecoratedKey dk = Util.dk("dropKs");
         // sanity
@@ -321,9 +318,9 @@ public class DefsTest extends SchemaLoader
         assert cfm != null;
 
         // write some data
-        RowMutation rm = new RowMutation(ks.name, dk.key);
+        Mutation rm = new Mutation(ks.name, dk.getKey());
         for (int i = 0; i < 100; i++)
-            rm.add(cfm.cfName, ByteBufferUtil.bytes(("col" + i)), ByteBufferUtil.bytes("anyvalue"), 1L);
+            rm.add(cfm.cfName, cellname("col" + i), ByteBufferUtil.bytes("anyvalue"), 1L);
         rm.apply();
 
         MigrationManager.announceKeyspaceDrop(ks.name);
@@ -332,7 +329,7 @@ public class DefsTest extends SchemaLoader
     }
 
     @Test
-    public void createEmptyKsAddNewCf() throws ConfigurationException, IOException, ExecutionException, InterruptedException
+    public void createEmptyKsAddNewCf() throws ConfigurationException
     {
         assert Schema.instance.getKSMetaData("EmptyKeyspace") == null;
 
@@ -353,22 +350,23 @@ public class DefsTest extends SchemaLoader
         assert Schema.instance.getKSMetaData(newKs.name).cfMetaData().get(newCf.cfName).equals(newCf);
 
         // now read and write to it.
+        CellName col0 = cellname("col0");
         DecoratedKey dk = Util.dk("key0");
-        RowMutation rm = new RowMutation(newKs.name, dk.key);
-        rm.add(newCf.cfName, ByteBufferUtil.bytes("col0"), ByteBufferUtil.bytes("value0"), 1L);
+        Mutation rm = new Mutation(newKs.name, dk.getKey());
+        rm.add(newCf.cfName, col0, ByteBufferUtil.bytes("value0"), 1L);
         rm.apply();
         ColumnFamilyStore store = Keyspace.open(newKs.name).getColumnFamilyStore(newCf.cfName);
         assert store != null;
         store.forceBlockingFlush();
 
-        ColumnFamily cfam = store.getColumnFamily(QueryFilter.getNamesFilter(dk, newCf.cfName, FBUtilities.singleton(ByteBufferUtil.bytes("col0"), store.getComparator()), System.currentTimeMillis()));
-        assert cfam.getColumn(ByteBufferUtil.bytes("col0")) != null;
-        Column col = cfam.getColumn(ByteBufferUtil.bytes("col0"));
+        ColumnFamily cfam = store.getColumnFamily(Util.namesQueryFilter(store, dk, col0));
+        assert cfam.getColumn(col0) != null;
+        Cell col = cfam.getColumn(col0);
         assert ByteBufferUtil.bytes("value0").equals(col.value());
     }
 
     @Test
-    public void testUpdateKeyspace() throws ConfigurationException, IOException, ExecutionException, InterruptedException
+    public void testUpdateKeyspace() throws ConfigurationException
     {
         // create a keyspace to serve as existing.
         CFMetaData cf = addTestCF("UpdatedKeyspace", "AddedStandard1", "A new cf for a new ks");
@@ -400,7 +398,7 @@ public class DefsTest extends SchemaLoader
     }
 
     @Test
-    public void testUpdateColumnFamilyNoIndexes() throws ConfigurationException, IOException, ExecutionException, InterruptedException
+    public void testUpdateColumnFamilyNoIndexes() throws ConfigurationException
     {
         // create a keyspace with a cf to update.
         CFMetaData cf = addTestCF("UpdatedCfKs", "Standard1added", "A new cf that will be updated");
@@ -412,8 +410,7 @@ public class DefsTest extends SchemaLoader
         assert Schema.instance.getCFMetaData(cf.ksName, cf.cfName) != null;
 
         // updating certain fields should fail.
-        CFMetaData newCfm = cf.clone();
-        newCfm.columnMetadata(new HashMap<ByteBuffer, ColumnDefinition>());
+        CFMetaData newCfm = cf.copy();
         newCfm.defaultValidator(BytesType.instance);
         newCfm.minCompactionThreshold(5);
         newCfm.maxCompactionThreshold(31);
@@ -446,7 +443,7 @@ public class DefsTest extends SchemaLoader
         assert Schema.instance.getCFMetaData(cf.ksName, cf.cfName).getDefaultValidator() == UTF8Type.instance;
 
         // Change cfId
-        newCfm = new CFMetaData(cf.ksName, cf.cfName, cf.cfType, cf.comparator, UUID.randomUUID());
+        newCfm = new CFMetaData(cf.ksName, cf.cfName, cf.cfType, cf.comparator);
         CFMetaData.copyOpts(newCfm, cf);
         try
         {
@@ -486,7 +483,7 @@ public class DefsTest extends SchemaLoader
         catch (ConfigurationException expected) {}
 
         // Change comparator
-        newCfm = new CFMetaData(cf.ksName, cf.cfName, cf.cfType, TimeUUIDType.instance);
+        newCfm = new CFMetaData(cf.ksName, cf.cfName, cf.cfType, new SimpleDenseCellNameType(TimeUUIDType.instance));
         CFMetaData.copyOpts(newCfm, cf);
         try
         {
@@ -497,25 +494,25 @@ public class DefsTest extends SchemaLoader
     }
 
     @Test
-    public void testDropIndex() throws IOException, ExecutionException, InterruptedException, ConfigurationException
+    public void testDropIndex() throws ConfigurationException
     {
         // persist keyspace definition in the system keyspace
         Schema.instance.getKSMetaData("Keyspace6").toSchema(System.currentTimeMillis()).apply();
+        ColumnFamilyStore cfs = Keyspace.open("Keyspace6").getColumnFamilyStore("Indexed1");
 
         // insert some data.  save the sstable descriptor so we can make sure it's marked for delete after the drop
-        RowMutation rm = new RowMutation("Keyspace6", ByteBufferUtil.bytes("k1"));
-        rm.add("Indexed1", ByteBufferUtil.bytes("notbirthdate"), ByteBufferUtil.bytes(1L), 0);
-        rm.add("Indexed1", ByteBufferUtil.bytes("birthdate"), ByteBufferUtil.bytes(1L), 0);
+        Mutation rm = new Mutation("Keyspace6", ByteBufferUtil.bytes("k1"));
+        rm.add("Indexed1", cellname("notbirthdate"), ByteBufferUtil.bytes(1L), 0);
+        rm.add("Indexed1", cellname("birthdate"), ByteBufferUtil.bytes(1L), 0);
         rm.apply();
-        ColumnFamilyStore cfs = Keyspace.open("Keyspace6").getColumnFamilyStore("Indexed1");
         cfs.forceBlockingFlush();
         ColumnFamilyStore indexedCfs = cfs.indexManager.getIndexForColumn(ByteBufferUtil.bytes("birthdate")).getIndexCfs();
         Descriptor desc = indexedCfs.getSSTables().iterator().next().descriptor;
 
         // drop the index
-        CFMetaData meta = cfs.metadata.clone();
+        CFMetaData meta = cfs.metadata.copy();
         ColumnDefinition cdOld = meta.regularColumns().iterator().next();
-        ColumnDefinition cdNew = ColumnDefinition.regularDef(cdOld.name, cdOld.getValidator(), null);
+        ColumnDefinition cdNew = ColumnDefinition.regularDef(meta, cdOld.name.bytes, cdOld.type, null);
         meta.addOrReplaceColumnDefinition(cdNew);
         MigrationManager.announceColumnFamilyUpdate(meta, false);
 
@@ -527,7 +524,7 @@ public class DefsTest extends SchemaLoader
 
     private CFMetaData addTestCF(String ks, String cf, String comment)
     {
-        CFMetaData newCFMD = new CFMetaData(ks, cf, ColumnFamilyType.Standard, UTF8Type.instance);
+        CFMetaData newCFMD = new CFMetaData(ks, cf, ColumnFamilyType.Standard, new SimpleDenseCellNameType(UTF8Type.instance));
         newCFMD.comment(comment)
                .readRepairChance(0.0);
 

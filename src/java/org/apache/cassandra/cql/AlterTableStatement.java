@@ -17,14 +17,20 @@
  */
 package org.apache.cassandra.cql;
 
-import org.apache.cassandra.config.*;
-import org.apache.cassandra.db.marshal.TypeParser;
-import org.apache.cassandra.exceptions.*;
-import org.apache.cassandra.io.compress.CompressionParameters;
-
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.apache.cassandra.cache.CachingOptions;
+import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.ColumnDefinition;
+import org.apache.cassandra.config.Schema;
+import org.apache.cassandra.db.marshal.TypeParser;
+import org.apache.cassandra.exceptions.ConfigurationException;
+import org.apache.cassandra.exceptions.InvalidRequestException;
+import org.apache.cassandra.exceptions.RequestValidationException;
+import org.apache.cassandra.exceptions.SyntaxException;
+import org.apache.cassandra.io.compress.CompressionParameters;
 
 public class AlterTableStatement
 {
@@ -66,21 +72,21 @@ public class AlterTableStatement
     public CFMetaData getCFMetaData(String keyspace) throws ConfigurationException, InvalidRequestException, SyntaxException
     {
         CFMetaData meta = Schema.instance.getCFMetaData(keyspace, columnFamily);
-        CFMetaData cfm = meta.clone();
+        CFMetaData cfm = meta.copy();
 
         ByteBuffer columnName = this.oType == OperationType.OPTS ? null
-                                                                 : meta.comparator.fromStringCQL2(this.columnName);
+                                                                 : meta.comparator.subtype(0).fromStringCQL2(this.columnName);
 
         switch (oType)
         {
             case ADD:
-                cfm.addColumnDefinition(ColumnDefinition.regularDef(columnName, TypeParser.parse(validator), null));
+                cfm.addColumnDefinition(ColumnDefinition.regularDef(cfm, columnName, TypeParser.parse(validator), null));
                 break;
 
             case ALTER:
                 // We only look for the first key alias which is ok for CQL2
                 ColumnDefinition partionKeyDef = cfm.partitionKeyColumns().get(0);
-                if (partionKeyDef.name.equals(columnName))
+                if (partionKeyDef.name.bytes.equals(columnName))
                 {
                     cfm.keyValidator(TypeParser.parse(validator));
                 }
@@ -90,7 +96,7 @@ public class AlterTableStatement
 
                     for (ColumnDefinition columnDef : cfm.regularColumns())
                     {
-                        if (columnDef.name.equals(columnName))
+                        if (columnDef.name.bytes.equals(columnName))
                         {
                             toUpdate = columnDef;
                             break;
@@ -102,7 +108,7 @@ public class AlterTableStatement
                                     this.columnName,
                                     columnFamily));
 
-                    toUpdate.setValidator(TypeParser.parse(validator));
+                    cfm.addOrReplaceColumnDefinition(toUpdate.withNewType(TypeParser.parse(validator)));
                 }
                 break;
 
@@ -111,7 +117,7 @@ public class AlterTableStatement
 
                 for (ColumnDefinition columnDef : cfm.regularColumns())
                 {
-                    if (columnDef.name.equals(columnName))
+                    if (columnDef.name.bytes.equals(columnName))
                     {
                         toDelete = columnDef;
                     }
@@ -173,17 +179,15 @@ public class AlterTableStatement
         cfm.readRepairChance(cfProps.getPropertyDouble(CFPropDefs.KW_READREPAIRCHANCE, cfm.getReadRepairChance()));
         cfm.dcLocalReadRepairChance(cfProps.getPropertyDouble(CFPropDefs.KW_DCLOCALREADREPAIRCHANCE, cfm.getDcLocalReadRepair()));
         cfm.gcGraceSeconds(cfProps.getPropertyInt(CFPropDefs.KW_GCGRACESECONDS, cfm.getGcGraceSeconds()));
-        cfm.replicateOnWrite(cfProps.getPropertyBoolean(CFPropDefs.KW_REPLICATEONWRITE, cfm.getReplicateOnWrite()));
         int minCompactionThreshold = cfProps.getPropertyInt(CFPropDefs.KW_MINCOMPACTIONTHRESHOLD, cfm.getMinCompactionThreshold());
         int maxCompactionThreshold = cfProps.getPropertyInt(CFPropDefs.KW_MAXCOMPACTIONTHRESHOLD, cfm.getMaxCompactionThreshold());
         if (minCompactionThreshold <= 0 || maxCompactionThreshold <= 0)
             throw new ConfigurationException("Disabling compaction by setting compaction thresholds to 0 has been deprecated, set the compaction option 'enabled' to false instead.");
         cfm.minCompactionThreshold(minCompactionThreshold);
         cfm.maxCompactionThreshold(maxCompactionThreshold);
-        cfm.caching(CFMetaData.Caching.fromString(cfProps.getPropertyString(CFPropDefs.KW_CACHING, cfm.getCaching().toString())));
+        cfm.caching(CachingOptions.fromString(cfProps.getPropertyString(CFPropDefs.KW_CACHING, cfm.getCaching().toString())));
         cfm.defaultTimeToLive(cfProps.getPropertyInt(CFPropDefs.KW_DEFAULT_TIME_TO_LIVE, cfm.getDefaultTimeToLive()));
         cfm.speculativeRetry(CFMetaData.SpeculativeRetry.fromString(cfProps.getPropertyString(CFPropDefs.KW_SPECULATIVE_RETRY, cfm.getSpeculativeRetry().toString())));
-        cfm.populateIoCacheOnFlush(cfProps.getPropertyBoolean(CFPropDefs.KW_POPULATE_IO_CACHE_ON_FLUSH, cfm.populateIoCacheOnFlush()));
         cfm.bloomFilterFpChance(cfProps.getPropertyDouble(CFPropDefs.KW_BF_FP_CHANCE, cfm.getBloomFilterFpChance()));
         cfm.memtableFlushPeriod(cfProps.getPropertyInt(CFPropDefs.KW_MEMTABLE_FLUSH_PERIOD, cfm.getMemtableFlushPeriod()));
 

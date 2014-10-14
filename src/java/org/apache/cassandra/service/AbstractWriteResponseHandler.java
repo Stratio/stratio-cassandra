@@ -30,7 +30,7 @@ import org.apache.cassandra.db.WriteType;
 import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.net.IAsyncCallback;
 import org.apache.cassandra.net.MessageIn;
-import org.apache.cassandra.utils.SimpleCondition;
+import org.apache.cassandra.utils.concurrent.SimpleCondition;
 
 public abstract class AbstractWriteResponseHandler implements IAsyncCallback
 {
@@ -44,7 +44,6 @@ public abstract class AbstractWriteResponseHandler implements IAsyncCallback
     private final WriteType writeType;
 
     /**
-     * @param pendingEndpoints
      * @param callback A callback to be called when the write is successful.
      */
     protected AbstractWriteResponseHandler(Keyspace keyspace,
@@ -65,7 +64,11 @@ public abstract class AbstractWriteResponseHandler implements IAsyncCallback
 
     public void get() throws WriteTimeoutException
     {
-        long timeout = TimeUnit.MILLISECONDS.toNanos(DatabaseDescriptor.getWriteRpcTimeout()) - (System.nanoTime() - start);
+        long requestTimeout = writeType == WriteType.COUNTER
+                            ? DatabaseDescriptor.getCounterWriteRpcTimeout()
+                            : DatabaseDescriptor.getWriteRpcTimeout();
+
+        long timeout = TimeUnit.MILLISECONDS.toNanos(requestTimeout) - (System.nanoTime() - start);
 
         boolean success;
         try

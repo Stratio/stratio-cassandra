@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index;
 
+import com.stratio.cassandra.index.util.Log;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.DecoratedKey;
@@ -29,14 +30,11 @@ import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.NumericRangeFilter;
 import org.apache.lucene.search.SortField;
 
-import com.stratio.cassandra.index.util.Log;
-
 /**
  * {@link PartitionKeyMapper} to be used when {@link Murmur3Partitioner} is used. It indexes the token long value as a
  * Lucene's long field.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class TokenMapperMurmur extends TokenMapper
 {
@@ -54,7 +52,7 @@ public class TokenMapperMurmur extends TokenMapper
     @Override
     public void addFields(Document document, DecoratedKey partitionKey)
     {
-        Long value = (Long) partitionKey.token.token;
+        Long value = (Long) partitionKey.getToken().token;
         Field tokenField = new LongField(FIELD_NAME, value, Store.NO);
         document.add(tokenField);
     }
@@ -89,7 +87,7 @@ public class TokenMapperMurmur extends TokenMapper
     @Override
     public SortField[] sortFields()
     {
-        return new SortField[] { new SortField(FIELD_NAME, SortField.Type.LONG) };
+        return new SortField[]{new SortField(FIELD_NAME, SortField.Type.LONG)};
     }
 
 }

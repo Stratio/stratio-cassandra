@@ -35,6 +35,7 @@ import org.apache.cassandra.gms.VersionedValue;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.net.OutboundTcpConnectionPool;
 import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.db.Keyspace;
 
 import static org.junit.Assert.assertEquals;
 
@@ -47,8 +48,8 @@ public class CloudstackSnitchTest
     {
         SchemaLoader.mkdirs();
         SchemaLoader.cleanup();
+        Keyspace.setInitialized();
         StorageService.instance.initServer(0);
-
     }
 
     private class TestCloudstackSnitch extends CloudstackSnitch

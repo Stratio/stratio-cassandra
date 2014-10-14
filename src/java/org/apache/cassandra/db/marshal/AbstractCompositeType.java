@@ -37,10 +37,8 @@ public abstract class AbstractCompositeType extends AbstractType<ByteBuffer>
 {
     public int compare(ByteBuffer o1, ByteBuffer o2)
     {
-        if (o1 == null || !o1.hasRemaining())
-            return o2 == null || !o2.hasRemaining() ? 0 : -1;
-        if (o2 == null || !o2.hasRemaining())
-            return 1;
+        if (!o1.hasRemaining() || !o2.hasRemaining())
+            return o1.hasRemaining() ? 1 : o2.hasRemaining() ? -1 : 0;
 
         ByteBuffer bb1 = o1.duplicate();
         ByteBuffer bb2 = o2.duplicate();
@@ -141,7 +139,7 @@ public abstract class AbstractCompositeType extends AbstractType<ByteBuffer>
      * Escapes all occurences of the ':' character from the input, replacing them by "\:".
      * Furthermore, if the last character is '\' or '!', a '!' is appended.
      */
-    static String escape(String input)
+    public static String escape(String input)
     {
         if (input.isEmpty())
             return input;
@@ -207,7 +205,7 @@ public abstract class AbstractCompositeType extends AbstractType<ByteBuffer>
             byte b = bb.get();
             if (b != 0)
             {
-                sb.append(":!");
+                sb.append(b < 0 ? ":_" : ":!");
                 break;
             }
             ++i;
@@ -222,12 +220,18 @@ public abstract class AbstractCompositeType extends AbstractType<ByteBuffer>
         List<ParsedComparator> comparators = new ArrayList<ParsedComparator>(parts.size());
         int totalLength = 0, i = 0;
         boolean lastByteIsOne = false;
+        boolean lastByteIsMinusOne = false;
 
         for (String part : parts)
         {
             if (part.equals("!"))
             {
                 lastByteIsOne = true;
+                break;
+            }
+            else if (part.equals("_"))
+            {
+                lastByteIsMinusOne = true;
                 break;
             }
 
@@ -254,6 +258,8 @@ public abstract class AbstractCompositeType extends AbstractType<ByteBuffer>
         }
         if (lastByteIsOne)
             bb.put(bb.limit() - 1, (byte)1);
+        else if (lastByteIsMinusOne)
+            bb.put(bb.limit() - 1, (byte)-1);
 
         bb.rewind();
         return bb;

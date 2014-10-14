@@ -17,128 +17,70 @@
  */
 package org.apache.cassandra.cql3;
 
-import org.apache.cassandra.SchemaLoader;
-import org.apache.cassandra.db.ConsistencyLevel;
-import org.apache.cassandra.exceptions.RequestExecutionException;
-import org.apache.cassandra.exceptions.RequestValidationException;
-import org.apache.cassandra.gms.Gossiper;
-import org.apache.cassandra.service.ClientState;
-import org.apache.cassandra.service.QueryState;
-import org.apache.cassandra.transport.messages.ResultMessage;
-import org.apache.cassandra.utils.MD5Digest;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.apache.cassandra.exceptions.ConfigurationException;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import static org.apache.cassandra.cql3.QueryProcessor.process;
-import static org.apache.cassandra.cql3.QueryProcessor.processInternal;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
-public class TypeTest
+public class TypeTest extends CQLTester
 {
-    private static final Logger logger = LoggerFactory.getLogger(TypeTest.class);
-    static ClientState clientState;
-    static String keyspace = "cql3_type_test";
-
-    @BeforeClass
-    public static void setUpClass() throws Throwable
-    {
-        SchemaLoader.loadSchema();
-        executeSchemaChange("CREATE KEYSPACE IF NOT EXISTS %s WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'}");
-        clientState = ClientState.forInternalCalls();
-    }
-
-    @AfterClass
-    public static void stopGossiper()
-    {
-        Gossiper.instance.stop();
-    }
-
-    private static void executeSchemaChange(String query) throws Throwable
-    {
-        try
-        {
-            process(String.format(query, keyspace), ConsistencyLevel.ONE);
-        } catch (RuntimeException exc)
-        {
-            throw exc.getCause();
-        }
-    }
-
-    private static UntypedResultSet execute(String query) throws Throwable
-    {
-        try
-        {
-            return processInternal(String.format(query, keyspace));
-        } catch (RuntimeException exc)
-        {
-            if (exc.getCause() != null)
-                throw exc.getCause();
-            throw exc;
-        }
-    }
-
-    private MD5Digest prepare(String query) throws RequestValidationException
-    {
-        ResultMessage.Prepared prepared = QueryProcessor.prepare(String.format(query, keyspace), clientState, false);
-        return prepared.statementId;
-    }
-
-    private UntypedResultSet executePrepared(MD5Digest statementId, QueryOptions options) throws RequestValidationException, RequestExecutionException
-    {
-        CQLStatement statement = QueryProcessor.instance.getPrepared(statementId);
-        ResultMessage message = statement.executeInternal(QueryState.forInternalCalls(), options);
-
-        if (message instanceof ResultMessage.Rows)
-            return new UntypedResultSet(((ResultMessage.Rows)message).result);
-        else
-            return null;
-    }
-
     @Test
     public void testNowToUUIDCompatibility() throws Throwable
     {
-        executeSchemaChange("CREATE TABLE IF NOT EXISTS %s.uuid_now (a int, b uuid, PRIMARY KEY (a, b))");
-        String insert = "INSERT INTO %s.uuid_now (a, b) VALUES (0, now())";
-        String select = "SELECT * FROM %s.uuid_now WHERE a=0 AND b < now()";
-        execute(insert);
-        UntypedResultSet results = execute(select);
+        createTable("CREATE TABLE %s (a int, b uuid, PRIMARY KEY (a, b))");
+        execute("INSERT INTO %s (a, b) VALUES (0, now())");
+        UntypedResultSet results = execute("SELECT * FROM %s WHERE a=0 AND b < now()");
         assertEquals(1, results.size());
-
-        executePrepared(prepare(insert), QueryOptions.DEFAULT);
-        results = executePrepared(prepare(select), QueryOptions.DEFAULT);
-        assertEquals(2, results.size());
     }
 
     @Test
     public void testDateCompatibility() throws Throwable
     {
-        executeSchemaChange("CREATE TABLE IF NOT EXISTS %s.date_compatibility (a int, b timestamp, c bigint, d varint, PRIMARY KEY (a, b, c, d))");
-        String insert = "INSERT INTO %s.date_compatibility (a, b, c, d) VALUES (0, unixTimestampOf(now()), dateOf(now()), dateOf(now()))";
-        String select = "SELECT * FROM %s.date_compatibility WHERE a=0 AND b < unixTimestampOf(now())";
-        execute(insert);
-        UntypedResultSet results = execute(select);
+        createTable("CREATE TABLE %s (a int, b timestamp, c bigint, d varint, PRIMARY KEY (a, b, c, d))");
+        execute("INSERT INTO %s (a, b, c, d) VALUES (0, unixTimestampOf(now()), dateOf(now()), dateOf(now()))");
+        UntypedResultSet results = execute("SELECT * FROM %s WHERE a=0 AND b < unixTimestampOf(now())");
         assertEquals(1, results.size());
-
-        executePrepared(prepare(insert), QueryOptions.DEFAULT);
-        results = executePrepared(prepare(select), QueryOptions.DEFAULT);
-        assertEquals(2, results.size());
     }
 
     @Test
     public void testReversedTypeCompatibility() throws Throwable
     {
-        executeSchemaChange("CREATE TABLE IF NOT EXISTS %s.uuid_now_reversed (a int, b timeuuid, PRIMARY KEY (a, b)) WITH CLUSTERING ORDER BY (b DESC)");
-        String insert = "INSERT INTO %s.uuid_now_reversed (a, b) VALUES (0, now())";
-        String select = "SELECT * FROM %s.uuid_now_reversed WHERE a=0 AND b < now()";
-        execute(insert);
-        UntypedResultSet results = execute(select);
+        createTable("CREATE TABLE %s (a int, b timeuuid, PRIMARY KEY (a, b)) WITH CLUSTERING ORDER BY (b DESC)");
+        execute("INSERT INTO %s (a, b) VALUES (0, now())");
+        UntypedResultSet results = execute("SELECT * FROM %s WHERE a=0 AND b < now()");
         assertEquals(1, results.size());
+    }
 
-        executePrepared(prepare(insert), QueryOptions.DEFAULT);
-        results = executePrepared(prepare(select), QueryOptions.DEFAULT);
-        assertEquals(2, results.size());
+    @Test
+    // tests CASSANDRA-7797
+    public void testAlterReversedColumn() throws Throwable
+    {
+        createTable("CREATE TABLE IF NOT EXISTS %s (a int, b 'org.apache.cassandra.db.marshal.DateType', PRIMARY KEY (a, b)) WITH CLUSTERING ORDER BY (b DESC)");
+        alterTable("ALTER TABLE %s ALTER b TYPE 'org.apache.cassandra.db.marshal.ReversedType(org.apache.cassandra.db.marshal.TimestampType)'");
+    }
+
+    @Test
+    public void testIncompatibleReversedTypes() throws Throwable
+    {
+        createTable("CREATE TABLE IF NOT EXISTS %s (a int, b 'org.apache.cassandra.db.marshal.DateType', PRIMARY KEY (a, b)) WITH CLUSTERING ORDER BY (b DESC)");
+        try
+        {
+            alterTable("ALTER TABLE %s ALTER b TYPE 'org.apache.cassandra.db.marshal.ReversedType(org.apache.cassandra.db.marshal.TimeUUIDType)'");
+            fail("Expected error for ALTER statement");
+        }
+        catch (RuntimeException e) { }
+    }
+
+    @Test
+    public void testReversedAndNonReversed() throws Throwable
+    {
+        createTable("CREATE TABLE IF NOT EXISTS %s (a int, b 'org.apache.cassandra.db.marshal.DateType', PRIMARY KEY (a, b))");
+        try
+        {
+            alterTable("ALTER TABLE %s ALTER b TYPE 'org.apache.cassandra.db.marshal.ReversedType(org.apache.cassandra.db.marshal.DateType)'");
+            fail("Expected error for ALTER statement");
+        }
+        catch (RuntimeException e) { }
     }
 }

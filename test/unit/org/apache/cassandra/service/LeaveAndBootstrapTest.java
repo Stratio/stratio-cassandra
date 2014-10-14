@@ -19,7 +19,6 @@
 
 package org.apache.cassandra.service;
 
-import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.*;
@@ -51,7 +50,7 @@ public class LeaveAndBootstrapTest
     private static IPartitioner oldPartitioner;
 
     @BeforeClass
-    public static void setup() throws IOException, ConfigurationException
+    public static void setup() throws ConfigurationException
     {
         oldPartitioner = StorageService.instance.setPartitionerUnsafe(partitioner);
         SchemaLoader.loadSchema();
@@ -142,7 +141,7 @@ public class LeaveAndBootstrapTest
      * simultaneously
      */
     @Test
-    public void testSimultaneousMove() throws UnknownHostException, ConfigurationException
+    public void testSimultaneousMove() throws UnknownHostException
     {
         StorageService ss = StorageService.instance;
         final int RING_SIZE = 10;
@@ -246,7 +245,7 @@ public class LeaveAndBootstrapTest
             for (int i = 0; i < keyTokens.size(); i++)
             {
                 endpoints = tmd.getWriteEndpoints(keyTokens.get(i), keyspaceName, strategy.getNaturalEndpoints(keyTokens.get(i)));
-                assertTrue(expectedEndpoints.get(keyspaceName).get(keyTokens.get(i)).size() == endpoints.size());
+                assertEquals(expectedEndpoints.get(keyspaceName).get(keyTokens.get(i)).size(), endpoints.size());
                 assertTrue(expectedEndpoints.get(keyspaceName).get(keyTokens.get(i)).containsAll(endpoints));
             }
 
@@ -257,7 +256,7 @@ public class LeaveAndBootstrapTest
             for (int i=0; i<3; ++i)
             {
                 endpoints = tmd.getWriteEndpoints(keyTokens.get(i), keyspaceName, strategy.getNaturalEndpoints(keyTokens.get(i)));
-                assertTrue(endpoints.size() == 3);
+                assertEquals(3, endpoints.size());
                 assertTrue(endpoints.contains(hosts.get(i+1)));
                 assertTrue(endpoints.contains(hosts.get(i+2)));
                 assertTrue(endpoints.contains(hosts.get(i+3)));
@@ -265,7 +264,7 @@ public class LeaveAndBootstrapTest
 
             // token 35 should go to nodes 4, 5, 6, 7 and boot1
             endpoints = tmd.getWriteEndpoints(keyTokens.get(3), keyspaceName, strategy.getNaturalEndpoints(keyTokens.get(3)));
-            assertTrue(endpoints.size() == 5);
+            assertEquals(5, endpoints.size());
             assertTrue(endpoints.contains(hosts.get(4)));
             assertTrue(endpoints.contains(hosts.get(5)));
             assertTrue(endpoints.contains(hosts.get(6)));
@@ -274,7 +273,7 @@ public class LeaveAndBootstrapTest
 
             // token 45 should go to nodes 5, 6, 7, 0, boot1 and boot2
             endpoints = tmd.getWriteEndpoints(keyTokens.get(4), keyspaceName, strategy.getNaturalEndpoints(keyTokens.get(4)));
-            assertTrue(endpoints.size() == 6);
+            assertEquals(6, endpoints.size());
             assertTrue(endpoints.contains(hosts.get(5)));
             assertTrue(endpoints.contains(hosts.get(6)));
             assertTrue(endpoints.contains(hosts.get(7)));
@@ -284,7 +283,7 @@ public class LeaveAndBootstrapTest
 
             // token 55 should go to nodes 6, 7, 8, 0, 1, boot1 and boot2
             endpoints = tmd.getWriteEndpoints(keyTokens.get(5), keyspaceName, strategy.getNaturalEndpoints(keyTokens.get(5)));
-            assertTrue(endpoints.size() == 7);
+            assertEquals(7, endpoints.size());
             assertTrue(endpoints.contains(hosts.get(6)));
             assertTrue(endpoints.contains(hosts.get(7)));
             assertTrue(endpoints.contains(hosts.get(8)));
@@ -295,7 +294,7 @@ public class LeaveAndBootstrapTest
 
             // token 65 should go to nodes 7, 8, 9, 0, 1 and boot2
             endpoints = tmd.getWriteEndpoints(keyTokens.get(6), keyspaceName, strategy.getNaturalEndpoints(keyTokens.get(6)));
-            assertTrue(endpoints.size() == 6);
+            assertEquals(6, endpoints.size());
             assertTrue(endpoints.contains(hosts.get(7)));
             assertTrue(endpoints.contains(hosts.get(8)));
             assertTrue(endpoints.contains(hosts.get(9)));
@@ -305,7 +304,7 @@ public class LeaveAndBootstrapTest
 
             // token 75 should to go nodes 8, 9, 0, 1, 2 and boot2
             endpoints = tmd.getWriteEndpoints(keyTokens.get(7), keyspaceName, strategy.getNaturalEndpoints(keyTokens.get(7)));
-            assertTrue(endpoints.size() == 6);
+            assertEquals(6, endpoints.size());
             assertTrue(endpoints.contains(hosts.get(8)));
             assertTrue(endpoints.contains(hosts.get(9)));
             assertTrue(endpoints.contains(hosts.get(0)));
@@ -315,7 +314,7 @@ public class LeaveAndBootstrapTest
 
             // token 85 should go to nodes 9, 0, 1 and 2
             endpoints = tmd.getWriteEndpoints(keyTokens.get(8), keyspaceName, strategy.getNaturalEndpoints(keyTokens.get(8)));
-            assertTrue(endpoints.size() == 4);
+            assertEquals(4, endpoints.size());
             assertTrue(endpoints.contains(hosts.get(9)));
             assertTrue(endpoints.contains(hosts.get(0)));
             assertTrue(endpoints.contains(hosts.get(1)));
@@ -323,7 +322,7 @@ public class LeaveAndBootstrapTest
 
             // token 95 should go to nodes 0, 1 and 2
             endpoints = tmd.getWriteEndpoints(keyTokens.get(9), keyspaceName, strategy.getNaturalEndpoints(keyTokens.get(9)));
-            assertTrue(endpoints.size() == 3);
+            assertEquals(3, endpoints.size());
             assertTrue(endpoints.contains(hosts.get(0)));
             assertTrue(endpoints.contains(hosts.get(1)));
             assertTrue(endpoints.contains(hosts.get(2)));
@@ -368,7 +367,7 @@ public class LeaveAndBootstrapTest
             for (int i = 0; i < keyTokens.size(); i++)
             {
                 endpoints = tmd.getWriteEndpoints(keyTokens.get(i), keyspaceName, strategy.getNaturalEndpoints(keyTokens.get(i)));
-                assertTrue(expectedEndpoints.get(keyspaceName).get(keyTokens.get(i)).size() == endpoints.size());
+                assertEquals(expectedEndpoints.get(keyspaceName).get(keyTokens.get(i)).size(), endpoints.size());
                 assertTrue(expectedEndpoints.get(keyspaceName).get(keyTokens.get(i)).containsAll(endpoints));
             }
 
@@ -379,7 +378,7 @@ public class LeaveAndBootstrapTest
             for (int i=0; i<3; ++i)
             {
                 endpoints = tmd.getWriteEndpoints(keyTokens.get(i), keyspaceName, strategy.getNaturalEndpoints(keyTokens.get(i)));
-                assertTrue(endpoints.size() == 3);
+                assertEquals(3, endpoints.size());
                 assertTrue(endpoints.contains(hosts.get(i+1)));
                 assertTrue(endpoints.contains(hosts.get(i+2)));
                 assertTrue(endpoints.contains(hosts.get(i+3)));
@@ -387,21 +386,21 @@ public class LeaveAndBootstrapTest
 
             // token 35 goes to nodes 4, 5 and boot1
             endpoints = tmd.getWriteEndpoints(keyTokens.get(3), keyspaceName, strategy.getNaturalEndpoints(keyTokens.get(3)));
-            assertTrue(endpoints.size() == 3);
+            assertEquals(3, endpoints.size());
             assertTrue(endpoints.contains(hosts.get(4)));
             assertTrue(endpoints.contains(hosts.get(5)));
             assertTrue(endpoints.contains(boot1));
 
             // token 45 goes to nodes 5, boot1 and node7
             endpoints = tmd.getWriteEndpoints(keyTokens.get(4), keyspaceName, strategy.getNaturalEndpoints(keyTokens.get(4)));
-            assertTrue(endpoints.size() == 3);
+            assertEquals(3, endpoints.size());
             assertTrue(endpoints.contains(hosts.get(5)));
             assertTrue(endpoints.contains(boot1));
             assertTrue(endpoints.contains(hosts.get(7)));
 
             // token 55 goes to boot1, 7, boot2, 8 and 0
             endpoints = tmd.getWriteEndpoints(keyTokens.get(5), keyspaceName, strategy.getNaturalEndpoints(keyTokens.get(5)));
-            assertTrue(endpoints.size() == 5);
+            assertEquals(5, endpoints.size());
             assertTrue(endpoints.contains(boot1));
             assertTrue(endpoints.contains(hosts.get(7)));
             assertTrue(endpoints.contains(boot2));
@@ -410,7 +409,7 @@ public class LeaveAndBootstrapTest
 
             // token 65 goes to nodes 7, boot2, 8, 0 and 1
             endpoints = tmd.getWriteEndpoints(keyTokens.get(6), keyspaceName, strategy.getNaturalEndpoints(keyTokens.get(6)));
-            assertTrue(endpoints.size() == 5);
+            assertEquals(5, endpoints.size());
             assertTrue(endpoints.contains(hosts.get(7)));
             assertTrue(endpoints.contains(boot2));
             assertTrue(endpoints.contains(hosts.get(8)));
@@ -419,7 +418,7 @@ public class LeaveAndBootstrapTest
 
             // token 75 goes to nodes boot2, 8, 0, 1 and 2
             endpoints = tmd.getWriteEndpoints(keyTokens.get(7), keyspaceName, strategy.getNaturalEndpoints(keyTokens.get(7)));
-            assertTrue(endpoints.size() == 5);
+            assertEquals(5, endpoints.size());
             assertTrue(endpoints.contains(boot2));
             assertTrue(endpoints.contains(hosts.get(8)));
             assertTrue(endpoints.contains(hosts.get(0)));
@@ -428,14 +427,14 @@ public class LeaveAndBootstrapTest
 
             // token 85 goes to nodes 0, 1 and 2
             endpoints = tmd.getWriteEndpoints(keyTokens.get(8), keyspaceName, strategy.getNaturalEndpoints(keyTokens.get(8)));
-            assertTrue(endpoints.size() == 3);
+            assertEquals(3, endpoints.size());
             assertTrue(endpoints.contains(hosts.get(0)));
             assertTrue(endpoints.contains(hosts.get(1)));
             assertTrue(endpoints.contains(hosts.get(2)));
 
             // token 95 goes to nodes 0, 1 and 2
             endpoints = tmd.getWriteEndpoints(keyTokens.get(9), keyspaceName, strategy.getNaturalEndpoints(keyTokens.get(9)));
-            assertTrue(endpoints.size() == 3);
+            assertEquals(3, endpoints.size());
             assertTrue(endpoints.contains(hosts.get(0)));
             assertTrue(endpoints.contains(hosts.get(1)));
             assertTrue(endpoints.contains(hosts.get(2)));
@@ -478,7 +477,7 @@ public class LeaveAndBootstrapTest
 
         assertFalse(tmd.isMember(hosts.get(2)));
         assertFalse(tmd.isLeaving(hosts.get(2)));
-        assertTrue(tmd.getBootstrapTokens().get(keyTokens.get(4)).equals(hosts.get(2)));
+        assertEquals(hosts.get(2), tmd.getBootstrapTokens().get(keyTokens.get(4)));
 
         // Bootstrap node hosts.get(3) to keyTokens.get(1)
         Gossiper.instance.injectApplicationState(hosts.get(3), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(1))));
@@ -488,8 +487,8 @@ public class LeaveAndBootstrapTest
 
         assertFalse(tmd.isMember(hosts.get(3)));
         assertFalse(tmd.isLeaving(hosts.get(3)));
-        assertTrue(tmd.getBootstrapTokens().get(keyTokens.get(4)).equals(hosts.get(2)));
-        assertTrue(tmd.getBootstrapTokens().get(keyTokens.get(1)).equals(hosts.get(3)));
+        assertEquals(hosts.get(2), tmd.getBootstrapTokens().get(keyTokens.get(4)));
+        assertEquals(hosts.get(3), tmd.getBootstrapTokens().get(keyTokens.get(1)));
 
         // Bootstrap node hosts.get(2) further to keyTokens.get(3)
         Gossiper.instance.injectApplicationState(hosts.get(2), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(3))));
@@ -499,9 +498,9 @@ public class LeaveAndBootstrapTest
 
         assertFalse(tmd.isMember(hosts.get(2)));
         assertFalse(tmd.isLeaving(hosts.get(2)));
-        assertTrue(tmd.getBootstrapTokens().get(keyTokens.get(3)).equals(hosts.get(2)));
-        assertTrue(tmd.getBootstrapTokens().get(keyTokens.get(4)) == null);
-        assertTrue(tmd.getBootstrapTokens().get(keyTokens.get(1)).equals(hosts.get(3)));
+        assertEquals(hosts.get(2), tmd.getBootstrapTokens().get(keyTokens.get(3)));
+        assertNull(tmd.getBootstrapTokens().get(keyTokens.get(4)));
+        assertEquals(hosts.get(3), tmd.getBootstrapTokens().get(keyTokens.get(1)));
 
         // Go to normal again for both nodes
         Gossiper.instance.injectApplicationState(hosts.get(3), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(2))));
@@ -511,10 +510,10 @@ public class LeaveAndBootstrapTest
 
         assertTrue(tmd.isMember(hosts.get(2)));
         assertFalse(tmd.isLeaving(hosts.get(2)));
-        assertTrue(tmd.getToken(hosts.get(2)).equals(keyTokens.get(3)));
+        assertEquals(keyTokens.get(3), tmd.getToken(hosts.get(2)));
         assertTrue(tmd.isMember(hosts.get(3)));
         assertFalse(tmd.isLeaving(hosts.get(3)));
-        assertTrue(tmd.getToken(hosts.get(3)).equals(keyTokens.get(2)));
+        assertEquals(keyTokens.get(2), tmd.getToken(hosts.get(3)));
 
         assertTrue(tmd.getBootstrapTokens().isEmpty());
     }
@@ -540,14 +539,14 @@ public class LeaveAndBootstrapTest
         ss.onChange(hosts.get(2), ApplicationState.STATUS, valueFactory.leaving(Collections.singleton(endpointTokens.get(2))));
 
         assertTrue(tmd.isLeaving(hosts.get(2)));
-        assertTrue(tmd.getToken(hosts.get(2)).equals(endpointTokens.get(2)));
+        assertEquals(endpointTokens.get(2), tmd.getToken(hosts.get(2)));
 
         // back to normal
         Gossiper.instance.injectApplicationState(hosts.get(2), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(2))));
         ss.onChange(hosts.get(2), ApplicationState.STATUS, valueFactory.normal(Collections.singleton(keyTokens.get(2))));
 
         assertTrue(tmd.getLeavingEndpoints().isEmpty());
-        assertTrue(tmd.getToken(hosts.get(2)).equals(keyTokens.get(2)));
+        assertEquals(keyTokens.get(2), tmd.getToken(hosts.get(2)));
 
         // node 3 goes through leave and left and then jumps to normal at its new token
         ss.onChange(hosts.get(2), ApplicationState.STATUS, valueFactory.leaving(Collections.singleton(keyTokens.get(2))));
@@ -558,7 +557,7 @@ public class LeaveAndBootstrapTest
 
         assertTrue(tmd.getBootstrapTokens().isEmpty());
         assertTrue(tmd.getLeavingEndpoints().isEmpty());
-        assertTrue(tmd.getToken(hosts.get(2)).equals(keyTokens.get(4)));
+        assertEquals(keyTokens.get(4), tmd.getToken(hosts.get(2)));
     }
 
     @Test
@@ -582,9 +581,9 @@ public class LeaveAndBootstrapTest
         Gossiper.instance.injectApplicationState(hosts.get(2), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(0))));
         ss.onChange(hosts.get(2), ApplicationState.STATUS, valueFactory.leaving(Collections.singleton(keyTokens.get(0))));
 
-        assertTrue(tmd.getToken(hosts.get(2)).equals(keyTokens.get(0)));
+        assertEquals(keyTokens.get(0), tmd.getToken(hosts.get(2)));
         assertTrue(tmd.isLeaving(hosts.get(2)));
-        assertTrue(tmd.getEndpoint(endpointTokens.get(2)) == null);
+        assertNull(tmd.getEndpoint(endpointTokens.get(2)));
 
         // go to boostrap
         Gossiper.instance.injectApplicationState(hosts.get(2), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(1))));
@@ -593,13 +592,13 @@ public class LeaveAndBootstrapTest
                     valueFactory.bootstrapping(Collections.<Token>singleton(keyTokens.get(1))));
 
         assertFalse(tmd.isLeaving(hosts.get(2)));
-        assertTrue(tmd.getBootstrapTokens().size() == 1);
-        assertTrue(tmd.getBootstrapTokens().get(keyTokens.get(1)).equals(hosts.get(2)));
+        assertEquals(1, tmd.getBootstrapTokens().size());
+        assertEquals(hosts.get(2), tmd.getBootstrapTokens().get(keyTokens.get(1)));
 
         // jump to leaving again
         ss.onChange(hosts.get(2), ApplicationState.STATUS, valueFactory.leaving(Collections.singleton(keyTokens.get(1))));
 
-        assertTrue(tmd.getEndpoint(keyTokens.get(1)).equals(hosts.get(2)));
+        assertEquals(hosts.get(2), tmd.getEndpoint(keyTokens.get(1)));
         assertTrue(tmd.isLeaving(hosts.get(2)));
         assertTrue(tmd.getBootstrapTokens().isEmpty());
 
@@ -639,8 +638,8 @@ public class LeaveAndBootstrapTest
         ss.onChange(hosts.get(3), ApplicationState.STATUS, valueFactory.bootstrapping(Collections.<Token>singleton(keyTokens.get(1))));
 
         assertFalse(tmd.isMember(hosts.get(3)));
-        assertTrue(tmd.getBootstrapTokens().size() == 1);
-        assertTrue(tmd.getBootstrapTokens().get(keyTokens.get(1)).equals(hosts.get(3)));
+        assertEquals(1, tmd.getBootstrapTokens().size());
+        assertEquals(hosts.get(3), tmd.getBootstrapTokens().get(keyTokens.get(1)));
 
         // and then directly to 'left'
         Gossiper.instance.injectApplicationState(hosts.get(2), ApplicationState.TOKENS, valueFactory.tokens(Collections.singleton(keyTokens.get(1))));
@@ -667,8 +666,8 @@ public class LeaveAndBootstrapTest
         Util.createInitialRing(ss, partitioner, endpointTokens, new ArrayList<Token>(), hosts, new ArrayList<UUID>(), 2);
 
         InetAddress toRemove = hosts.get(1);
-        SystemKeyspace.updatePeerInfo(toRemove, "data_center", "'dc42'");
-        SystemKeyspace.updatePeerInfo(toRemove, "rack", "'rack42'");
+        SystemKeyspace.updatePeerInfo(toRemove, "data_center", "dc42");
+        SystemKeyspace.updatePeerInfo(toRemove, "rack", "rack42");
         assertEquals("rack42", SystemKeyspace.loadDcRackInfo().get(toRemove).get("rack"));
 
         // mark the node as removed
@@ -703,7 +702,7 @@ public class LeaveAndBootstrapTest
         return addrs;
     }
 
-    private AbstractReplicationStrategy getStrategy(String keyspaceName, TokenMetadata tmd) throws ConfigurationException
+    private AbstractReplicationStrategy getStrategy(String keyspaceName, TokenMetadata tmd)
     {
         KSMetaData ksmd = Schema.instance.getKSMetaData(keyspaceName);
         return AbstractReplicationStrategy.createReplicationStrategy(

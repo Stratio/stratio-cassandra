@@ -27,10 +27,9 @@ import java.util.concurrent.SynchronousQueue;
 import com.google.common.base.Throwables;
 
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.db.ArrayBackedSortedColumns;
 import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.ColumnFamilyType;
 import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.TreeMapBackedSortedColumns;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.io.compress.CompressionParameters;
@@ -77,7 +76,7 @@ public class SSTableSimpleUnsortedWriter extends AbstractSSTableSimpleWriter
                                        int bufferSizeInMB,
                                        CompressionParameters compressParameters)
     {
-        this(directory, new CFMetaData(keyspace, columnFamily, subComparator == null ? ColumnFamilyType.Standard : ColumnFamilyType.Super, comparator, subComparator).compressionParameters(compressParameters), partitioner, bufferSizeInMB);
+        this(directory, CFMetaData.denseCFMetaData(keyspace, columnFamily, comparator, subComparator).compressionParameters(compressParameters), partitioner, bufferSizeInMB);
     }
 
     public SSTableSimpleUnsortedWriter(File directory,
@@ -100,7 +99,7 @@ public class SSTableSimpleUnsortedWriter extends AbstractSSTableSimpleWriter
 
     protected void writeRow(DecoratedKey key, ColumnFamily columnFamily) throws IOException
     {
-        currentSize += key.key.remaining() + ColumnFamily.serializer.serializedSize(columnFamily, MessagingService.current_version) * 1.2;
+        currentSize += key.getKey().remaining() + ColumnFamily.serializer.serializedSize(columnFamily, MessagingService.current_version) * 1.2;
 
         if (currentSize > bufferSize)
             sync();
@@ -112,14 +111,14 @@ public class SSTableSimpleUnsortedWriter extends AbstractSSTableSimpleWriter
         // If the CF already exist in memory, we'll just continue adding to it
         if (previous == null)
         {
-            previous = TreeMapBackedSortedColumns.factory.create(metadata);
+            previous = ArrayBackedSortedColumns.factory.create(metadata);
             buffer.put(currentKey, previous);
         }
         else
         {
             // We will reuse a CF that we have counted already. But because it will be easier to add the full size
             // of the CF in the next writeRow call than to find out the delta, we just remove the size until that next call
-            currentSize -= currentKey.key.remaining() + ColumnFamily.serializer.serializedSize(previous, MessagingService.current_version) * 1.2;
+            currentSize -= currentKey.getKey().remaining() + ColumnFamily.serializer.serializedSize(previous, MessagingService.current_version) * 1.2;
         }
         return previous;
     }

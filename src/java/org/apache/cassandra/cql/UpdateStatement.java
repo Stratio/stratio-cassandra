@@ -23,10 +23,9 @@ import java.util.*;
 import org.apache.cassandra.auth.Permission;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.db.CounterMutation;
-import org.apache.cassandra.db.ConsistencyLevel;
-import org.apache.cassandra.db.IMutation;
-import org.apache.cassandra.db.RowMutation;
+import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.composites.CellName;
+import org.apache.cassandra.db.composites.CellNameType;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.UnauthorizedException;
@@ -149,18 +148,16 @@ public class UpdateStatement extends AbstractModification
 
         clientState.hasColumnFamilyAccess(keyspace, columnFamily, Permission.MODIFY);
 
-        List<IMutation> rowMutations = new LinkedList<IMutation>();
+        List<IMutation> mutations = new LinkedList<>();
 
         for (Term key: keys)
-        {
-            rowMutations.add(mutationForKey(keyspace, key.getByteBuffer(getKeyType(keyspace),variables), metadata, timestamp, clientState, variables));
-        }
+            mutations.add(mutationForKey(keyspace, key.getByteBuffer(getKeyType(keyspace),variables), metadata, timestamp, clientState, variables));
 
-        return rowMutations;
+        return mutations;
     }
 
     /**
-     * Compute a row mutation for a single key
+     * Compute a mutation for a single key
      *
      *
      * @param keyspace working keyspace
@@ -169,7 +166,7 @@ public class UpdateStatement extends AbstractModification
      * @param timestamp global timestamp to use for every key mutation
      *
      * @param clientState
-     * @return row mutation
+     * @return mutation
      *
      * @throws InvalidRequestException on the wrong request
      */
@@ -177,15 +174,16 @@ public class UpdateStatement extends AbstractModification
     throws InvalidRequestException
     {
         validateKey(key);
-        AbstractType<?> comparator = getComparator(keyspace);
+        CellNameType comparator = metadata.comparator;
+        AbstractType<?> at = comparator.asAbstractType();
 
-        // if true we need to wrap RowMutation into CounterMutation
+        // if true we need to wrap Mutation into CounterMutation
         boolean hasCounterColumn = false;
-        RowMutation rm = new RowMutation(keyspace, key);
+        Mutation mutation = new Mutation(keyspace, key);
 
         for (Map.Entry<Term, Operation> column : getColumns().entrySet())
         {
-            ByteBuffer colName = column.getKey().getByteBuffer(comparator, variables);
+            CellName colName = comparator.cellFromByteBuffer(column.getKey().getByteBuffer(at, variables));
             Operation op = column.getValue();
 
             if (op.isUnary())
@@ -193,14 +191,14 @@ public class UpdateStatement extends AbstractModification
                 if (hasCounterColumn)
                     throw new InvalidRequestException("Mix of commutative and non-commutative operations is not allowed.");
 
-                ByteBuffer colValue = op.a.getByteBuffer(metadata.getValueValidatorFromColumnName(colName),variables);
+                ByteBuffer colValue = op.a.getByteBuffer(metadata.getValueValidator(colName),variables);
 
                 validateColumn(metadata, colName, colValue);
-                rm.add(columnFamily,
-                       colName,
-                       colValue,
-                       (timestamp == null) ? getTimestamp(clientState) : timestamp,
-                       getTimeToLive());
+                mutation.add(columnFamily,
+                             colName,
+                             colValue,
+                             (timestamp == null) ? getTimestamp(clientState) : timestamp,
+                             getTimeToLive());
             }
             else
             {
@@ -221,11 +219,11 @@ public class UpdateStatement extends AbstractModification
                                                       op.b.getText()));
                 }
 
-                rm.addCounter(columnFamily, colName, value);
+                mutation.addCounter(columnFamily, colName, value);
             }
         }
 
-        return (hasCounterColumn) ? new CounterMutation(rm, getConsistencyLevel()) : rm;
+        return (hasCounterColumn) ? new CounterMutation(mutation, getConsistencyLevel()) : mutation;
     }
 
     public String getColumnFamily()
@@ -275,11 +273,6 @@ public class UpdateStatement extends AbstractModification
     public AbstractType<?> getKeyType(String keyspace)
     {
         return Schema.instance.getCFMetaData(keyspace, columnFamily).getKeyValidator();
-    }
-
-    public AbstractType<?> getComparator(String keyspace)
-    {
-        return Schema.instance.getComparator(keyspace, columnFamily);
     }
 
     public List<Term> getColumnNames()

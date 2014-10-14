@@ -18,49 +18,50 @@
 package org.apache.cassandra.db;
 
 import java.io.*;
-import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.db.composites.CellName;
+import org.apache.cassandra.db.composites.CellNameType;
+import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.io.ISSTableSerializer;
 import org.apache.cassandra.io.sstable.Descriptor;
+import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.serializers.MarshalException;
-import org.apache.cassandra.utils.ByteBufferUtil;
 
 public interface OnDiskAtom
 {
-    public ByteBuffer name();
+    public Composite name();
 
     /**
      * For a standard column, this is the same as timestamp().
      * For a super column, this is the min/max column timestamp of the sub columns.
      */
-    public long minTimestamp();
-    public long maxTimestamp();
+    public long timestamp();
     public int getLocalDeletionTime(); // for tombstone GC, so int is sufficient granularity
-
-    public int serializedSize(TypeSizes typeSizes);
-    public long serializedSizeForSSTable();
 
     public void validateFields(CFMetaData metadata) throws MarshalException;
     public void updateDigest(MessageDigest digest);
 
     public static class Serializer implements ISSTableSerializer<OnDiskAtom>
     {
-        public static Serializer instance = new Serializer();
+        private final CellNameType type;
 
-        private Serializer() {}
-
-        public void serializeForSSTable(OnDiskAtom atom, DataOutput out) throws IOException
+        public Serializer(CellNameType type)
         {
-            if (atom instanceof Column)
+            this.type = type;
+        }
+
+        public void serializeForSSTable(OnDiskAtom atom, DataOutputPlus out) throws IOException
+        {
+            if (atom instanceof Cell)
             {
-                Column.serializer.serialize((Column) atom, out);
+                type.columnSerializer().serialize((Cell)atom, out);
             }
             else
             {
                 assert atom instanceof RangeTombstone;
-                RangeTombstone.serializer.serializeForSSTable((RangeTombstone)atom, out);
+                type.rangeTombstoneSerializer().serializeForSSTable((RangeTombstone)atom, out);
             }
         }
 
@@ -71,8 +72,8 @@ public interface OnDiskAtom
 
         public OnDiskAtom deserializeFromSSTable(DataInput in, ColumnSerializer.Flag flag, int expireBefore, Descriptor.Version version) throws IOException
         {
-            ByteBuffer name = ByteBufferUtil.readWithShortLength(in);
-            if (name.remaining() <= 0)
+            Composite name = type.serializer().deserialize(in);
+            if (name.isEmpty())
             {
                 // SSTableWriter.END_OF_ROW
                 return null;
@@ -80,9 +81,22 @@ public interface OnDiskAtom
 
             int b = in.readUnsignedByte();
             if ((b & ColumnSerializer.RANGE_TOMBSTONE_MASK) != 0)
-                return RangeTombstone.serializer.deserializeBody(in, name, version);
+                return type.rangeTombstoneSerializer().deserializeBody(in, name, version);
             else
-                return Column.serializer.deserializeColumnBody(in, name, b, flag, expireBefore);
+                return type.columnSerializer().deserializeColumnBody(in, (CellName)name, b, flag, expireBefore);
+        }
+
+        public long serializedSizeForSSTable(OnDiskAtom atom)
+        {
+            if (atom instanceof Cell)
+            {
+                return type.columnSerializer().serializedSize((Cell)atom, TypeSizes.NATIVE);
+            }
+            else
+            {
+                assert atom instanceof RangeTombstone;
+                return type.rangeTombstoneSerializer().serializedSizeForSSTable((RangeTombstone)atom);
+            }
         }
     }
 }

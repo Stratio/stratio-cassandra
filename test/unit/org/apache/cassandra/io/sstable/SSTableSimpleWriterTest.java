@@ -20,6 +20,7 @@ package org.apache.cassandra.io.sstable;
 
 import java.io.File;
 
+import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.dht.IPartitioner;
 import org.junit.Test;
 
@@ -43,7 +44,7 @@ public class SSTableSimpleWriterTest extends SchemaLoader
         String cfname = "StandardInteger1";
 
         Keyspace t = Keyspace.open(keyspaceName); // make sure we create the directory
-        File dir = Directories.create(keyspaceName, cfname).getDirectoryForNewSSTables();
+        File dir = new Directories(Schema.instance.getCFMetaData(keyspaceName, cfname)).getDirectoryForNewSSTables();
         assert dir.exists();
 
         IPartitioner partitioner = StorageService.getPartitioner();
@@ -92,9 +93,9 @@ public class SSTableSimpleWriterTest extends SchemaLoader
         ColumnFamily cf = Util.getColumnFamily(t, Util.dk("Key10"), cfname);
         assert cf.getColumnCount() == INC * NBCOL : "expecting " + (INC * NBCOL) + " columns, got " + cf.getColumnCount();
         int i = 0;
-        for (Column c : cf)
+        for (Cell c : cf)
         {
-            assert toInt(c.name()) == i : "Column name should be " + i + ", got " + toInt(c.name());
+            assert toInt(c.name().toByteBuffer()) == i : "Cell name should be " + i + ", got " + toInt(c.name().toByteBuffer());
             assert c.value().equals(bytes("v"));
             assert c.timestamp() == 1;
             ++i;

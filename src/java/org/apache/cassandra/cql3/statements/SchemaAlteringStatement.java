@@ -23,6 +23,7 @@ import org.apache.cassandra.cql3.QueryOptions;
 import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.QueryState;
+import org.apache.cassandra.transport.Event;
 import org.apache.cassandra.transport.messages.ResultMessage;
 
 /**
@@ -62,20 +63,26 @@ public abstract class SchemaAlteringStatement extends CFStatement implements CQL
         return new Prepared(this);
     }
 
-    public abstract ResultMessage.SchemaChange.Change changeType();
+    public abstract Event.SchemaChange changeEvent();
 
-    public abstract void announceMigration() throws RequestValidationException;
+    public abstract void announceMigration(boolean isLocalOnly) throws RequestValidationException;
 
     public ResultMessage execute(QueryState state, QueryOptions options) throws RequestValidationException
     {
-        announceMigration();
-        String tableName = cfName == null || columnFamily() == null ? "" : columnFamily();
-        return new ResultMessage.SchemaChange(changeType(), keyspace(), tableName);
+        announceMigration(false);
+        return new ResultMessage.SchemaChange(changeEvent());
     }
 
     public ResultMessage executeInternal(QueryState state, QueryOptions options)
     {
-        // executeInternal is for local query only, thus altering schema is not supported
-        throw new UnsupportedOperationException();
+        try
+        {
+            announceMigration(true);
+            return new ResultMessage.SchemaChange(changeEvent());
+        }
+        catch (RequestValidationException e)
+        {
+            throw new RuntimeException(e);
+        }
     }
 }

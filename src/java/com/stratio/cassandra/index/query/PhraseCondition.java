@@ -15,8 +15,8 @@
  */
 package com.stratio.cassandra.index.query;
 
-import java.util.List;
-
+import com.stratio.cassandra.index.schema.ColumnMapper;
+import com.stratio.cassandra.index.schema.Schema;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.PhraseQuery;
@@ -24,12 +24,11 @@ import org.apache.lucene.search.Query;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
-import com.stratio.cassandra.index.schema.CellMapper;
-import com.stratio.cassandra.index.schema.Schema;
+import java.util.List;
 
 /**
  * A {@link Condition} implementation that matches documents containing a particular sequence of terms.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class PhraseCondition extends Condition
@@ -37,28 +36,33 @@ public class PhraseCondition extends Condition
 
     public static final int DEFAULT_SLOP = 0;
 
-    /** The field name */
+    /**
+     * The field name
+     */
+    @JsonProperty("field")
     private final String field;
 
-    /** The field values */
-    private List<String> values;
+    /**
+     * The field values
+     */
+    @JsonProperty("values")
+    private final List<String> values;
 
-    /** The slop */
-    private final Integer slop;
+    /**
+     * The slop
+     */
+    @JsonProperty("slop")
+    private Integer slop;
 
     /**
      * Constructor using the field name and the value to be matched.
-     * 
-     * @param boost
-     *            The boost for this query clause. Documents matching this clause will (in addition to the normal
-     *            weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link DEFAULT_BOOST}
-     *            is used as default.
-     * @param field
-     *            The field name.
-     * @param values
-     *            The field values.
-     * @param slop
-     *            The slop.
+     *
+     * @param boost  The boost for this query clause. Documents matching this clause will (in addition to the normal
+     *               weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link #DEFAULT_BOOST} is
+     *               used as default.
+     * @param field  The field name.
+     * @param values The field values.
+     * @param slop   The slop.
      */
     @JsonCreator
     public PhraseCondition(@JsonProperty("boost") Float boost,
@@ -71,36 +75,6 @@ public class PhraseCondition extends Condition
         this.field = field;
         this.values = values;
         this.slop = slop == null ? DEFAULT_SLOP : slop;
-    }
-
-    /**
-     * Returns the field name.
-     * 
-     * @return the field name.
-     */
-    public String getField()
-    {
-        return field;
-    }
-
-    /**
-     * Returns the field values.
-     * 
-     * @return the field values.
-     */
-    public List<String> getValues()
-    {
-        return values;
-    }
-
-    /**
-     * Returns the slop.
-     * 
-     * @return the slop.
-     */
-    public int getSlop()
-    {
-        return slop;
     }
 
     /**
@@ -127,8 +101,8 @@ public class PhraseCondition extends Condition
             throw new IllegalArgumentException("Slop must be positive");
         }
 
-        CellMapper<?> cellMapper = schema.getMapper(field);
-        Class<?> clazz = cellMapper.baseClass();
+        ColumnMapper<?> columnMapper = schema.getMapper(field);
+        Class<?> clazz = columnMapper.baseClass();
         if (clazz == String.class)
         {
             Analyzer analyzer = schema.analyzer();
@@ -153,7 +127,7 @@ public class PhraseCondition extends Condition
         }
         else
         {
-            String message = String.format("Unsupported query %s for mapper %s", this, cellMapper);
+            String message = String.format("Unsupported query %s for mapper %s", this, columnMapper);
             throw new UnsupportedOperationException(message);
         }
     }

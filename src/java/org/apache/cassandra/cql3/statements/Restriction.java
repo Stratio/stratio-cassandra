@@ -21,7 +21,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 import org.apache.cassandra.exceptions.InvalidRequestException;
-import org.apache.cassandra.thrift.IndexOperator;
+import org.apache.cassandra.db.IndexExpression;
 import org.apache.cassandra.cql3.*;
 
 /**
@@ -35,10 +35,11 @@ public interface Restriction
     public boolean isSlice();
     public boolean isEQ();
     public boolean isIN();
+    public boolean isContains();
     public boolean isMultiColumn();
 
-    // Only supported for EQ and IN, but it's convenient to have here
-    public List<ByteBuffer> values(List<ByteBuffer> variables) throws InvalidRequestException;
+    // Not supported by Slice, but it's convenient to have here
+    public List<ByteBuffer> values(QueryOptions options) throws InvalidRequestException;
 
     public static interface EQ extends Restriction {}
 
@@ -49,20 +50,20 @@ public interface Restriction
 
     public static interface Slice extends Restriction
     {
-        public List<ByteBuffer> values(List<ByteBuffer> variables) throws InvalidRequestException;
+        public List<ByteBuffer> values(QueryOptions options) throws InvalidRequestException;
 
         /** Returns true if the start or end bound (depending on the argument) is set, false otherwise */
         public boolean hasBound(Bound b);
 
-        public ByteBuffer bound(Bound b, List<ByteBuffer> variables) throws InvalidRequestException;
+        public ByteBuffer bound(Bound b, QueryOptions options) throws InvalidRequestException;
 
         /** Returns true if the start or end bound (depending on the argument) is inclusive, false otherwise */
         public boolean isInclusive(Bound b);
 
         public Relation.Type getRelation(Bound eocBound, Bound inclusiveBound);
 
-        public IndexOperator getIndexOperator(Bound b);
+        public IndexExpression.Operator getIndexOperator(Bound b);
 
-        public void setBound(Relation.Type type, Term t) throws InvalidRequestException;
+        public void setBound(ColumnIdentifier name, Relation.Type type, Term t) throws InvalidRequestException;
     }
 }

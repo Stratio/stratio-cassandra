@@ -20,18 +20,20 @@ package org.apache.cassandra.cql3;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-import org.apache.cassandra.serializers.MarshalException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.cassandra.db.ColumnFamily;
+import org.apache.cassandra.config.ColumnDefinition;
+import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.composites.CellName;
+import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.BytesType;
-import org.apache.cassandra.db.marshal.CollectionType;
 import org.apache.cassandra.db.marshal.CounterColumnType;
 import org.apache.cassandra.db.marshal.LongType;
 import org.apache.cassandra.db.marshal.ReversedType;
 import org.apache.cassandra.exceptions.InvalidRequestException;
+import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 /**
@@ -51,22 +53,28 @@ public abstract class Constants
         private final Term.Terminal NULL_VALUE = new Value(null)
         {
             @Override
-            public Terminal bind(List<ByteBuffer> values)
+            public Terminal bind(QueryOptions options)
             {
                 // We return null because that makes life easier for collections
                 return null;
             }
+
+            @Override
+            public String toString()
+            {
+                return "null";
+            }
         };
 
-        public Term prepare(ColumnSpecification receiver) throws InvalidRequestException
+        public Term prepare(String keyspace, ColumnSpecification receiver) throws InvalidRequestException
         {
-            if (!isAssignableTo(receiver))
+            if (!isAssignableTo(keyspace, receiver))
                 throw new InvalidRequestException("Invalid null value for counter increment/decrement");
 
             return NULL_VALUE;
         }
 
-        public boolean isAssignableTo(ColumnSpecification receiver)
+        public boolean isAssignableTo(String keyspace, ColumnSpecification receiver)
         {
             return !(receiver.type instanceof CounterColumnType);
         }
@@ -74,7 +82,7 @@ public abstract class Constants
         @Override
         public String toString()
         {
-            return null;
+            return "null";
         }
     };
 
@@ -120,10 +128,10 @@ public abstract class Constants
             return new Literal(Type.HEX, text);
         }
 
-        public Value prepare(ColumnSpecification receiver) throws InvalidRequestException
+        public Value prepare(String keyspace, ColumnSpecification receiver) throws InvalidRequestException
         {
-            if (!isAssignableTo(receiver))
-                throw new InvalidRequestException(String.format("Invalid %s constant (%s) for %s of type %s", type, text, receiver, receiver.type.asCQL3Type()));
+            if (!isAssignableTo(keyspace, receiver))
+                throw new InvalidRequestException(String.format("Invalid %s constant (%s) for \"%s\" of type %s", type, text, receiver.name, receiver.type.asCQL3Type()));
 
             return new Value(parsedValue(receiver.type));
         }
@@ -152,7 +160,7 @@ public abstract class Constants
             return text;
         }
 
-        public boolean isAssignableTo(ColumnSpecification receiver)
+        public boolean isAssignableTo(String keyspace, ColumnSpecification receiver)
         {
             CQL3Type receiverType = receiver.type.asCQL3Type();
             if (receiverType.isCollection())
@@ -244,13 +252,13 @@ public abstract class Constants
             this.bytes = bytes;
         }
 
-        public ByteBuffer get()
+        public ByteBuffer get(QueryOptions options)
         {
             return bytes;
         }
 
         @Override
-        public ByteBuffer bindAndGet(List<ByteBuffer> values)
+        public ByteBuffer bindAndGet(QueryOptions options)
         {
             return bytes;
         }
@@ -267,15 +275,15 @@ public abstract class Constants
         protected Marker(int bindIndex, ColumnSpecification receiver)
         {
             super(bindIndex, receiver);
-            assert !(receiver.type instanceof CollectionType);
+            assert !receiver.type.isCollection();
         }
 
         @Override
-        public ByteBuffer bindAndGet(List<ByteBuffer> values) throws InvalidRequestException
+        public ByteBuffer bindAndGet(QueryOptions options) throws InvalidRequestException
         {
             try
             {
-                ByteBuffer value = values.get(bindIndex);
+                ByteBuffer value = options.getValues().get(bindIndex);
                 if (value != null)
                     receiver.type.validate(value);
                 return value;
@@ -286,58 +294,56 @@ public abstract class Constants
             }
         }
 
-        public Value bind(List<ByteBuffer> values) throws InvalidRequestException
+        public Value bind(QueryOptions options) throws InvalidRequestException
         {
-            ByteBuffer bytes = bindAndGet(values);
+            ByteBuffer bytes = bindAndGet(options);
             return bytes == null ? null : new Constants.Value(bytes);
         }
     }
 
     public static class Setter extends Operation
     {
-        public Setter(ColumnIdentifier column, Term t)
+        public Setter(ColumnDefinition column, Term t)
         {
             super(column, t);
         }
 
-        public void execute(ByteBuffer rowKey, ColumnFamily cf, ColumnNameBuilder prefix, UpdateParameters params) throws InvalidRequestException
+        public void execute(ByteBuffer rowKey, ColumnFamily cf, Composite prefix, UpdateParameters params) throws InvalidRequestException
         {
-            prefix = maybeUpdatePrefix(cf.metadata(), prefix);
-            ByteBuffer cname = columnName == null ? prefix.build() : prefix.add(columnName.key).build();
-            ByteBuffer value = t.bindAndGet(params.variables);
+            CellName cname = cf.getComparator().create(prefix, column);
+            ByteBuffer value = t.bindAndGet(params.options);
             cf.addColumn(value == null ? params.makeTombstone(cname) : params.makeColumn(cname, value));
         }
     }
 
     public static class Adder extends Operation
     {
-        public Adder(ColumnIdentifier column, Term t)
+        public Adder(ColumnDefinition column, Term t)
         {
             super(column, t);
         }
 
-        public void execute(ByteBuffer rowKey, ColumnFamily cf, ColumnNameBuilder prefix, UpdateParameters params) throws InvalidRequestException
+        public void execute(ByteBuffer rowKey, ColumnFamily cf, Composite prefix, UpdateParameters params) throws InvalidRequestException
         {
-            ByteBuffer bytes = t.bindAndGet(params.variables);
+            ByteBuffer bytes = t.bindAndGet(params.options);
             if (bytes == null)
                 throw new InvalidRequestException("Invalid null value for counter increment");
             long increment = ByteBufferUtil.toLong(bytes);
-            prefix = maybeUpdatePrefix(cf.metadata(), prefix);
-            ByteBuffer cname = columnName == null ? prefix.build() : prefix.add(columnName.key).build();
-            cf.addCounter(cname, increment);
+            CellName cname = cf.getComparator().create(prefix, column);
+            cf.addColumn(params.makeCounter(cname, increment));
         }
     }
 
     public static class Substracter extends Operation
     {
-        public Substracter(ColumnIdentifier column, Term t)
+        public Substracter(ColumnDefinition column, Term t)
         {
             super(column, t);
         }
 
-        public void execute(ByteBuffer rowKey, ColumnFamily cf, ColumnNameBuilder prefix, UpdateParameters params) throws InvalidRequestException
+        public void execute(ByteBuffer rowKey, ColumnFamily cf, Composite prefix, UpdateParameters params) throws InvalidRequestException
         {
-            ByteBuffer bytes = t.bindAndGet(params.variables);
+            ByteBuffer bytes = t.bindAndGet(params.options);
             if (bytes == null)
                 throw new InvalidRequestException("Invalid null value for counter increment");
 
@@ -345,9 +351,8 @@ public abstract class Constants
             if (increment == Long.MIN_VALUE)
                 throw new InvalidRequestException("The negation of " + increment + " overflows supported counter precision (signed 8 bytes integer)");
 
-            prefix = maybeUpdatePrefix(cf.metadata(), prefix);
-            ByteBuffer cname = columnName == null ? prefix.build() : prefix.add(columnName.key).build();
-            cf.addCounter(cname, -increment);
+            CellName cname = cf.getComparator().create(prefix, column);
+            cf.addColumn(params.makeCounter(cname, -increment));
         }
     }
 
@@ -355,22 +360,18 @@ public abstract class Constants
     // duplicating this further
     public static class Deleter extends Operation
     {
-        private final boolean isCollection;
-
-        public Deleter(ColumnIdentifier column, boolean isCollection)
+        public Deleter(ColumnDefinition column)
         {
             super(column, null);
-            this.isCollection = isCollection;
         }
 
-        public void execute(ByteBuffer rowKey, ColumnFamily cf, ColumnNameBuilder prefix, UpdateParameters params) throws InvalidRequestException
+        public void execute(ByteBuffer rowKey, ColumnFamily cf, Composite prefix, UpdateParameters params) throws InvalidRequestException
         {
-            ColumnNameBuilder column = maybeUpdatePrefix(cf.metadata(), prefix).add(columnName.key);
-
-            if (isCollection)
-                cf.addAtom(params.makeRangeTombstone(column.build(), column.buildAsEndOfRange()));
+            CellName cname = cf.getComparator().create(prefix, column);
+            if (column.type.isCollection())
+                cf.addAtom(params.makeRangeTombstone(cname.slice()));
             else
-                cf.addColumn(params.makeTombstone(column.build()));
+                cf.addColumn(params.makeTombstone(cname));
         }
     };
 }

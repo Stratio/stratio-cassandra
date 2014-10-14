@@ -20,13 +20,11 @@
  */
 package org.apache.cassandra.db.filter;
 
-import java.nio.ByteBuffer;
-
-import org.apache.cassandra.db.Column;
+import org.apache.cassandra.db.Cell;
+import org.apache.cassandra.db.composites.CellName;
+import org.apache.cassandra.db.composites.CellNameType;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.DeletionInfo;
-import org.apache.cassandra.db.marshal.CompositeType;
-import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class ColumnCounter
 {
@@ -39,17 +37,17 @@ public class ColumnCounter
         this.timestamp = timestamp;
     }
 
-    public void count(Column column, DeletionInfo.InOrderTester tester)
+    public void count(Cell cell, DeletionInfo.InOrderTester tester)
     {
-        if (!isLive(column, tester, timestamp))
+        if (!isLive(cell, tester, timestamp))
             ignored++;
         else
             live++;
     }
 
-    protected static boolean isLive(Column column, DeletionInfo.InOrderTester tester, long timestamp)
+    protected static boolean isLive(Cell cell, DeletionInfo.InOrderTester tester, long timestamp)
     {
-        return column.isLive(timestamp) && (!tester.isDeleted(column));
+        return cell.isLive(timestamp) && !tester.isDeleted(cell);
     }
 
     public int live()
@@ -68,17 +66,16 @@ public class ColumnCounter
             return this;
 
         DeletionInfo.InOrderTester tester = container.inOrderDeletionTester();
-        for (Column c : container)
+        for (Cell c : container)
             count(c, tester);
         return this;
     }
 
     public static class GroupByPrefix extends ColumnCounter
     {
-        private final CompositeType type;
+        private final CellNameType type;
         private final int toGroup;
-        private ByteBuffer[] previous;
-        private boolean previousGroupIsStatic;
+        private CellName previous;
 
         /**
          * A column counter that count only 1 for all the columns sharing a
@@ -90,7 +87,7 @@ public class ColumnCounter
          *                column. If 0, all columns are grouped, otherwise we group
          *                those for which the {@code toGroup} first component are equals.
          */
-        public GroupByPrefix(long timestamp, CompositeType type, int toGroup)
+        public GroupByPrefix(long timestamp, CellNameType type, int toGroup)
         {
             super(timestamp);
             this.type = type;
@@ -99,9 +96,9 @@ public class ColumnCounter
             assert toGroup == 0 || type != null;
         }
 
-        public void count(Column column, DeletionInfo.InOrderTester tester)
+        public void count(Cell cell, DeletionInfo.InOrderTester tester)
         {
-            if (!isLive(column, tester, timestamp))
+            if (!isLive(cell, tester, timestamp))
             {
                 ignored++;
                 return;
@@ -113,22 +110,17 @@ public class ColumnCounter
                 return;
             }
 
-            ByteBuffer[] current = type.split(column.name());
-            assert current.length >= toGroup;
+            CellName current = cell.name();
+            assert current.size() >= toGroup;
 
-            if (previous == null)
+            if (previous != null)
             {
-                // Only the first group can be static
-                previousGroupIsStatic = type.isStaticName(column.name());
-            }
-            else
-            {
-                boolean isSameGroup = previousGroupIsStatic == type.isStaticName(column.name());
+                boolean isSameGroup = previous.isStatic() == current.isStatic();
                 if (isSameGroup)
                 {
                     for (int i = 0; i < toGroup; i++)
                     {
-                        if (ByteBufferUtil.compareUnsigned(previous[i], current[i]) != 0)
+                        if (type.subtype(i).compare(previous.get(i), current.get(i)) != 0)
                         {
                             isSameGroup = false;
                             break;
@@ -142,10 +134,9 @@ public class ColumnCounter
                 // We want to count the static group as 1 (CQL) row only if it's the only
                 // group in the partition. So, since we have already counted it at this point,
                 // just don't count the 2nd group if there is one and the first one was static
-                if (previousGroupIsStatic)
+                if (previous.isStatic())
                 {
                     previous = current;
-                    previousGroupIsStatic = false;
                     return;
                 }
             }

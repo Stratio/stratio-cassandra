@@ -15,15 +15,13 @@
  */
 package com.stratio.cassandra.index.util;
 
-import java.nio.ByteBuffer;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
+
 /**
- * 
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class Log
 {
@@ -77,7 +75,9 @@ public class Log
         {
             Object option = options[i];
             if (option instanceof ByteBuffer)
+            {
                 option = ByteBufferUtils.toHex((ByteBuffer) option);
+            }
             result[i] = option;
         }
         return result;

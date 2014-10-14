@@ -17,7 +17,6 @@
  */
 package org.apache.cassandra.service.pager;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -28,6 +27,7 @@ import com.google.common.annotations.VisibleForTesting;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.filter.ColumnCounter;
 import org.apache.cassandra.db.filter.IDiskAtomFilter;
 import org.apache.cassandra.exceptions.RequestExecutionException;
@@ -145,12 +145,12 @@ abstract class AbstractQueryPager implements QueryPager
     {
         for (Row row : result)
         {
-            if (row.cf == null || row.cf.getColumnCount() == 0)
+            if (row.cf == null || !row.cf.hasColumns())
             {
                 List<Row> newResult = new ArrayList<Row>(result.size() - 1);
                 for (Row row2 : result)
                 {
-                    if (row2.cf == null || row2.cf.getColumnCount() == 0)
+                    if (row2.cf == null || !row2.cf.hasColumns())
                         continue;
 
                     newResult.add(row2);
@@ -303,14 +303,14 @@ abstract class AbstractQueryPager implements QueryPager
              : discardTail(cf, toDiscard, newCf, cf.iterator(), tester);
     }
 
-    private int discardHead(ColumnFamily cf, int toDiscard, ColumnFamily copy, Iterator<Column> iter, DeletionInfo.InOrderTester tester)
+    private int discardHead(ColumnFamily cf, int toDiscard, ColumnFamily copy, Iterator<Cell> iter, DeletionInfo.InOrderTester tester)
     {
         ColumnCounter counter = columnCounter();
 
         // Discard the first 'toDiscard' live
         while (iter.hasNext())
         {
-            Column c = iter.next();
+            Cell c = iter.next();
             counter.count(c, tester);
             if (counter.live() > toDiscard)
             {
@@ -322,7 +322,7 @@ abstract class AbstractQueryPager implements QueryPager
         return Math.min(counter.live(), toDiscard);
     }
 
-    private int discardTail(ColumnFamily cf, int toDiscard, ColumnFamily copy, Iterator<Column> iter, DeletionInfo.InOrderTester tester)
+    private int discardTail(ColumnFamily cf, int toDiscard, ColumnFamily copy, Iterator<Cell> iter, DeletionInfo.InOrderTester tester)
     {
         // Redoing the counting like that is not extremely efficient.
         // This is called only for reversed slices or in the case of a race between
@@ -333,7 +333,7 @@ abstract class AbstractQueryPager implements QueryPager
         // Discard the last 'toDiscard' live (so stop adding as sound as we're past 'liveCount - toDiscard')
         while (iter.hasNext())
         {
-            Column c = iter.next();
+            Cell c = iter.next();
             counter.count(c, tester);
             if (counter.live() > liveCount - toDiscard)
                 break;
@@ -343,12 +343,12 @@ abstract class AbstractQueryPager implements QueryPager
         return Math.min(liveCount, toDiscard);
     }
 
-    protected static Column firstColumn(ColumnFamily cf)
+    protected static Cell firstCell(ColumnFamily cf)
     {
         return cf.iterator().next();
     }
 
-    protected static Column lastColumn(ColumnFamily cf)
+    protected static Cell lastCell(ColumnFamily cf)
     {
         return cf.getReverseSortedColumns().iterator().next();
     }

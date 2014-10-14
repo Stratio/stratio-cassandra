@@ -18,7 +18,6 @@
  */
 package org.apache.cassandra.db;
 
-import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.*;
@@ -26,6 +25,7 @@ import java.util.*;
 import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
+import org.apache.cassandra.Util;
 import org.apache.cassandra.db.columniterator.IdentityQueryFilter;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.IntegerType;
@@ -73,23 +73,23 @@ public class KeyCollisionTest extends SchemaLoader
 
         List<Row> rows = cfs.getRangeSlice(new Bounds<RowPosition>(dk("k2"), dk("key2")), null, new IdentityQueryFilter(), 10000);
         assert rows.size() == 4 : "Expecting 4 keys, got " + rows.size();
-        assert rows.get(0).key.key.equals(ByteBufferUtil.bytes("k2"));
-        assert rows.get(1).key.key.equals(ByteBufferUtil.bytes("k3"));
-        assert rows.get(2).key.key.equals(ByteBufferUtil.bytes("key1"));
-        assert rows.get(3).key.key.equals(ByteBufferUtil.bytes("key2"));
+        assert rows.get(0).key.getKey().equals(ByteBufferUtil.bytes("k2"));
+        assert rows.get(1).key.getKey().equals(ByteBufferUtil.bytes("k3"));
+        assert rows.get(2).key.getKey().equals(ByteBufferUtil.bytes("key1"));
+        assert rows.get(3).key.getKey().equals(ByteBufferUtil.bytes("key2"));
     }
 
-    private void insert(String... keys) throws IOException
+    private void insert(String... keys)
     {
         for (String key : keys)
             insert(key);
     }
 
-    private void insert(String key) throws IOException
+    private void insert(String key)
     {
-        RowMutation rm;
-        rm = new RowMutation(KEYSPACE, ByteBufferUtil.bytes(key));
-        rm.add(CF, ByteBufferUtil.bytes("column"), ByteBufferUtil.bytes("asdf"), 0);
+        Mutation rm;
+        rm = new Mutation(KEYSPACE, ByteBufferUtil.bytes(key));
+        rm.add(CF, Util.cellname("column"), ByteBufferUtil.bytes("asdf"), 0);
         rm.apply();
     }
 
@@ -102,7 +102,7 @@ public class KeyCollisionTest extends SchemaLoader
 
         public DecoratedKey decorateKey(ByteBuffer key)
         {
-            return new DecoratedKey(getToken(key), key);
+            return new BufferDecoratedKey(getToken(key), key);
         }
 
         public Token midpoint(Token ltoken, Token rtoken)
@@ -166,6 +166,12 @@ public class KeyCollisionTest extends SchemaLoader
             return new BigIntegerToken(BigInteger.valueOf(key.remaining()));
         }
 
+        @Override
+        public long getHeapSizeOf(BigIntegerToken token)
+        {
+            return 0;
+        }
+
         public Map<Token, Float> describeOwnership(List<Token> sortedTokens)
         {
             // allTokens will contain the count and be returned, sorted_ranges is shorthand for token<->token math.
@@ -188,7 +194,7 @@ public class KeyCollisionTest extends SchemaLoader
                     for (Range<Token> r : sortedRanges)
                     {
                         // Looping over every KS:CF:Range, get the splits size and add it to the count
-                        allTokens.put(r.right, allTokens.get(r.right) + StorageService.instance.getSplits(ks, cfmd.cfName, r, 1, cfmd).size());
+                        allTokens.put(r.right, allTokens.get(r.right) + StorageService.instance.getSplits(ks, cfmd.cfName, r, 1).size());
                     }
                 }
             }

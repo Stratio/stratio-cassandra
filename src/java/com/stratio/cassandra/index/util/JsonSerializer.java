@@ -15,22 +15,23 @@
  */
 package com.stratio.cassandra.index.util;
 
-import java.io.IOException;
-
 import org.codehaus.jackson.JsonParser;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.SerializationConfig;
 
+import java.io.IOException;
+
 /**
- * 
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class JsonSerializer
 {
 
-    /** The embedded JSON serializer. */
+    /**
+     * The embedded JSON serializer.
+     */
     private static final ObjectMapper jsonMapper = new ObjectMapper();
+
     static
     {
         // jsonMapper.configure(JsonGenerator.Feature.QUOTE_FIELD_NAMES, false);

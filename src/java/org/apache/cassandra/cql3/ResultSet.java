@@ -20,7 +20,7 @@ package org.apache.cassandra.cql3;
 import java.nio.ByteBuffer;
 import java.util.*;
 
-import org.jboss.netty.buffer.ChannelBuffer;
+import io.netty.buffer.ByteBuf;
 
 import org.apache.cassandra.transport.*;
 import org.apache.cassandra.db.marshal.AbstractType;
@@ -60,14 +60,14 @@ public class ResultSet
 
     public void addRow(List<ByteBuffer> row)
     {
-        assert row.size() == metadata.columnCount;
+        assert row.size() == metadata.valueCount();
         rows.add(row);
     }
 
     public void addColumnValue(ByteBuffer value)
     {
-        if (rows.isEmpty() || lastRow().size() == metadata.columnCount)
-            rows.add(new ArrayList<ByteBuffer>(metadata.columnCount));
+        if (rows.isEmpty() || lastRow().size() == metadata.valueCount())
+            rows.add(new ArrayList<ByteBuffer>(metadata.valueCount()));
 
         lastRow().add(value);
     }
@@ -90,6 +90,16 @@ public class ResultSet
             for (int i = 0; i < toRemove; i++)
                 rows.remove(rows.size() - 1);
         }
+    }
+
+    public ResultSet withPagingState(PagingState state)
+    {
+        if (state == null)
+            return this;
+
+        // The metadata is shared by all execution of a given statement. So if there is a paging state
+        // we need to copy the metadata
+        return new ResultSet(metadata.withPagingState(state), rows);
     }
 
     public ResultSet makeCountResult(ColumnIdentifier alias)
@@ -123,11 +133,12 @@ public class ResultSet
                 // The 2 following ones shouldn't be needed in CQL3
                 UTF8, UTF8);
 
-        for (ColumnSpecification name : metadata.names)
+        for (int i = 0; i < metadata.columnCount; i++)
         {
-            ByteBuffer colName = ByteBufferUtil.bytes(name.toString());
+            ColumnSpecification spec = metadata.names.get(i);
+            ByteBuffer colName = ByteBufferUtil.bytes(spec.name.toString());
             schema.name_types.put(colName, UTF8);
-            AbstractType<?> normalizedType = name.type instanceof ReversedType ? ((ReversedType)name.type).baseType : name.type;
+            AbstractType<?> normalizedType = spec.type instanceof ReversedType ? ((ReversedType)spec.type).baseType : spec.type;
             schema.value_types.put(colName, normalizedType.toString());
 
         }
@@ -135,10 +146,10 @@ public class ResultSet
         List<CqlRow> cqlRows = new ArrayList<CqlRow>(rows.size());
         for (List<ByteBuffer> row : rows)
         {
-            List<Column> thriftCols = new ArrayList<Column>(metadata.names.size());
-            for (int i = 0; i < metadata.names.size(); i++)
+            List<Column> thriftCols = new ArrayList<Column>(metadata.columnCount);
+            for (int i = 0; i < metadata.columnCount; i++)
             {
-                Column col = new Column(ByteBufferUtil.bytes(metadata.names.get(i).toString()));
+                Column col = new Column(ByteBufferUtil.bytes(metadata.names.get(i).name.toString()));
                 col.setValue(row.get(i));
                 thriftCols.add(col);
             }
@@ -194,7 +205,7 @@ public class ResultSet
          *   - rows count (4 bytes)
          *   - rows
          */
-        public ResultSet decode(ChannelBuffer body, int version)
+        public ResultSet decode(ByteBuf body, int version)
         {
             Metadata m = Metadata.codec.decode(body, version);
             int rowCount = body.readInt();
@@ -208,14 +219,16 @@ public class ResultSet
             return rs;
         }
 
-        public void encode(ResultSet rs, ChannelBuffer dest, int version)
+        public void encode(ResultSet rs, ByteBuf dest, int version)
         {
             Metadata.codec.encode(rs.metadata, dest, version);
             dest.writeInt(rs.rows.size());
             for (List<ByteBuffer> row : rs.rows)
             {
-                for (ByteBuffer bb : row)
-                    CBUtil.writeValue(bb, dest);
+                // Note that we do only want to serialize only the first columnCount values, even if the row
+                // as more: see comment on Metadata.names field.
+                for (int i = 0; i < rs.metadata.columnCount; i++)
+                    CBUtil.writeValue(row.get(i), dest);
             }
         }
 
@@ -224,8 +237,8 @@ public class ResultSet
             int size = Metadata.codec.encodedSize(rs.metadata, version) + 4;
             for (List<ByteBuffer> row : rs.rows)
             {
-                for (ByteBuffer bb : row)
-                    size += CBUtil.sizeOfValue(bb);
+                for (int i = 0; i < rs.metadata.columnCount; i++)
+                    size += CBUtil.sizeOfValue(row.get(i));
             }
             return size;
         }
@@ -235,32 +248,43 @@ public class ResultSet
     {
         public static final CBCodec<Metadata> codec = new Codec();
 
-        public static final Metadata EMPTY = new Metadata(EnumSet.of(Flag.NO_METADATA), 0);
+        public static final Metadata EMPTY = new Metadata(EnumSet.of(Flag.NO_METADATA), null, 0, null);
 
         public final EnumSet<Flag> flags;
+        // Please note that columnCount can actually be smaller than names, even if names is not null. This is
+        // used to include columns in the resultSet that we need to do post-query re-orderings
+        // (SelectStatement.orderResults) but that shouldn't be sent to the user as they haven't been requested
+        // (CASSANDRA-4911). So the serialization code will exclude any columns in name whose index is >= columnCount.
         public final List<ColumnSpecification> names;
         public final int columnCount;
-        public PagingState pagingState;
+        public final PagingState pagingState;
 
         public Metadata(List<ColumnSpecification> names)
         {
-            this(EnumSet.noneOf(Flag.class), names);
+            this(EnumSet.noneOf(Flag.class), names, names.size(), null);
             if (!names.isEmpty() && allInSameCF())
                 flags.add(Flag.GLOBAL_TABLES_SPEC);
         }
 
-        private Metadata(EnumSet<Flag> flags, List<ColumnSpecification> names)
+        private Metadata(EnumSet<Flag> flags, List<ColumnSpecification> names, int columnCount, PagingState pagingState)
         {
             this.flags = flags;
             this.names = names;
-            this.columnCount = names.size();
+            this.columnCount = columnCount;
+            this.pagingState = pagingState;
         }
 
-        private Metadata(EnumSet<Flag> flags, int columnCount)
+        // The maximum number of values that the ResultSet can hold. This can be bigger than columnCount due to CASSANDRA-4911
+        public int valueCount()
         {
-            this.flags = flags;
-            this.names = null;
-            this.columnCount = columnCount;
+            return names == null ? columnCount : names.size();
+        }
+
+        public void addNonSerializedColumn(ColumnSpecification name)
+        {
+            // See comment above. Because columnCount doesn't account the newly added name, it
+            // won't be serialized.
+            names.add(name);
         }
 
         private boolean allInSameCF()
@@ -281,14 +305,14 @@ public class ResultSet
             return true;
         }
 
-        public Metadata setHasMorePages(PagingState pagingState)
+        public Metadata withPagingState(PagingState pagingState)
         {
             if (pagingState == null)
                 return this;
 
-            flags.add(Flag.HAS_MORE_PAGES);
-            this.pagingState = pagingState;
-            return this;
+            EnumSet<Flag> newFlags = EnumSet.copyOf(flags);
+            newFlags.add(Flag.HAS_MORE_PAGES);
+            return new Metadata(newFlags, names, columnCount, pagingState);
         }
 
         public void setSkipMetadata()
@@ -309,7 +333,7 @@ public class ResultSet
             {
                 for (ColumnSpecification name : names)
                 {
-                    sb.append("[").append(name.toString());
+                    sb.append("[").append(name.name.toString());
                     sb.append("(").append(name.ksName).append(", ").append(name.cfName).append(")");
                     sb.append(", ").append(name.type).append("]");
                 }
@@ -321,7 +345,7 @@ public class ResultSet
 
         private static class Codec implements CBCodec<Metadata>
         {
-            public Metadata decode(ChannelBuffer body, int version)
+            public Metadata decode(ByteBuf body, int version)
             {
                 // flags & column count
                 int iflags = body.readInt();
@@ -334,7 +358,7 @@ public class ResultSet
                     state = PagingState.deserialize(CBUtil.readValue(body));
 
                 if (flags.contains(Flag.NO_METADATA))
-                    return new Metadata(flags, columnCount).setHasMorePages(state);
+                    return new Metadata(flags, null, columnCount, state);
 
                 boolean globalTablesSpec = flags.contains(Flag.GLOBAL_TABLES_SPEC);
 
@@ -353,13 +377,13 @@ public class ResultSet
                     String ksName = globalTablesSpec ? globalKsName : CBUtil.readString(body);
                     String cfName = globalTablesSpec ? globalCfName : CBUtil.readString(body);
                     ColumnIdentifier colName = new ColumnIdentifier(CBUtil.readString(body), true);
-                    AbstractType type = DataType.toType(DataType.codec.decodeOne(body));
+                    AbstractType type = DataType.toType(DataType.codec.decodeOne(body, version));
                     names.add(new ColumnSpecification(ksName, cfName, colName, type));
                 }
-                return new Metadata(flags, names).setHasMorePages(state);
+                return new Metadata(flags, names, names.size(), state);
             }
 
-            public void encode(Metadata m, ChannelBuffer dest, int version)
+            public void encode(Metadata m, ByteBuf dest, int version)
             {
                 boolean noMetadata = m.flags.contains(Flag.NO_METADATA);
                 boolean globalTablesSpec = m.flags.contains(Flag.GLOBAL_TABLES_SPEC);
@@ -381,15 +405,16 @@ public class ResultSet
                         CBUtil.writeString(m.names.get(0).cfName, dest);
                     }
 
-                    for (ColumnSpecification name : m.names)
+                    for (int i = 0; i < m.columnCount; i++)
                     {
+                        ColumnSpecification name = m.names.get(i);
                         if (!globalTablesSpec)
                         {
                             CBUtil.writeString(name.ksName, dest);
                             CBUtil.writeString(name.cfName, dest);
                         }
-                        CBUtil.writeString(name.toString(), dest);
-                        DataType.codec.writeOne(DataType.fromType(name.type), dest);
+                        CBUtil.writeString(name.name.toString(), dest);
+                        DataType.codec.writeOne(DataType.fromType(name.type, version), dest, version);
                     }
                 }
             }
@@ -412,15 +437,16 @@ public class ResultSet
                         size += CBUtil.sizeOfString(m.names.get(0).cfName);
                     }
 
-                    for (ColumnSpecification name : m.names)
+                    for (int i = 0; i < m.columnCount; i++)
                     {
+                        ColumnSpecification name = m.names.get(i);
                         if (!globalTablesSpec)
                         {
                             size += CBUtil.sizeOfString(name.ksName);
                             size += CBUtil.sizeOfString(name.cfName);
                         }
-                        size += CBUtil.sizeOfString(name.toString());
-                        size += DataType.codec.oneSerializedSize(DataType.fromType(name.type));
+                        size += CBUtil.sizeOfString(name.name.toString());
+                        size += DataType.codec.oneSerializedSize(DataType.fromType(name.type, version), version);
                     }
                 }
                 return size;

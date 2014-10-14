@@ -17,10 +17,12 @@
  */
 package org.apache.cassandra.cql3;
 
+import org.apache.cassandra.exceptions.InvalidRequestException;
+
 public interface AssignementTestable
 {
     /**
      * @return whether this object can be assigned to the provided receiver
      */
-    public boolean isAssignableTo(ColumnSpecification receiver);
+    public boolean isAssignableTo(String keyspace, ColumnSpecification receiver) throws InvalidRequestException;
 }

@@ -32,16 +32,24 @@ import com.yammer.metrics.core.*;
  */
 public class KeyspaceMetrics
 {
-    /** Total amount of data stored in the memtable, including column related overhead. */
-    public final Gauge<Long> memtableDataSize;
-    /** Total amount of data stored in the memtables (2i and pending flush memtables included). */
-    public final Gauge<Long> allMemtablesDataSize;
+    /** Total amount of live data stored in the memtable, excluding any data structure overhead */
+    public final Gauge<Long> memtableLiveDataSize;
+    /** Total amount of data stored in the memtable that resides on-heap, including column related overhead and overwritten rows. */
+    public final Gauge<Long> memtableOnHeapDataSize;
+    /** Total amount of data stored in the memtable that resides off-heap, including column related overhead and overwritten rows. */
+    public final Gauge<Long> memtableOffHeapDataSize;
+    /** Total amount of live data stored in the memtables (2i and pending flush memtables included) that resides off-heap, excluding any data structure overhead */
+    public final Gauge<Long> allMemtablesLiveDataSize;
+    /** Total amount of data stored in the memtables (2i and pending flush memtables included) that resides on-heap. */
+    public final Gauge<Long> allMemtablesOnHeapDataSize;
+    /** Total amount of data stored in the memtables (2i and pending flush memtables included) that resides off-heap. */
+    public final Gauge<Long> allMemtablesOffHeapDataSize;
     /** Total number of columns present in the memtable. */
     public final Gauge<Long> memtableColumnsCount;
     /** Number of times flush has resulted in the memtable being switched out. */
     public final Gauge<Long> memtableSwitchCount;
     /** Estimated number of tasks pending for this column family */
-    public final Gauge<Integer> pendingTasks;
+    public final Gauge<Long> pendingFlushes;
     /** Estimate of number of pending compactios for this CF */
     public final Gauge<Long> pendingCompactions;
     /** Disk space used by SSTables belonging to this CF */
@@ -62,8 +70,8 @@ public class KeyspaceMetrics
     public final Histogram tombstoneScannedHistogram;
     /** Live cells scanned in queries on this Keyspace */
     public final Histogram liveScannedHistogram;
-
-    private final MetricNameFactory factory;
+    
+    public final MetricNameFactory factory;
     private Keyspace keyspace;
     
     /** set containing names of all the metrics stored here, for releasing later */
@@ -85,18 +93,46 @@ public class KeyspaceMetrics
                 return metric.memtableColumnsCount.value();
             }
         });
-        memtableDataSize = createKeyspaceGauge("MemtableDataSize", new MetricValue()
+        memtableLiveDataSize = createKeyspaceGauge("MemtableLiveDataSize", new MetricValue()
         {
             public Long getValue(ColumnFamilyMetrics metric)
             {
-                return metric.memtableDataSize.value();
+                return metric.memtableLiveDataSize.value();
             }
         }); 
-        allMemtablesDataSize = createKeyspaceGauge("AllMemtablesDataSize", new MetricValue()
+        memtableOnHeapDataSize = createKeyspaceGauge("MemtableOnHeapDataSize", new MetricValue()
         {
             public Long getValue(ColumnFamilyMetrics metric)
             {
-                return metric.allMemtablesDataSize.value();
+                return metric.memtableOnHeapSize.value();
+            }
+        });
+        memtableOffHeapDataSize = createKeyspaceGauge("MemtableOffHeapDataSize", new MetricValue()
+        {
+            public Long getValue(ColumnFamilyMetrics metric)
+            {
+                return metric.memtableOffHeapSize.value();
+            }
+        });
+        allMemtablesLiveDataSize = createKeyspaceGauge("AllMemtablesLiveDataSize", new MetricValue()
+        {
+            public Long getValue(ColumnFamilyMetrics metric)
+            {
+                return metric.allMemtablesLiveDataSize.value();
+            }
+        });
+        allMemtablesOnHeapDataSize = createKeyspaceGauge("AllMemtablesOnHeapDataSize", new MetricValue()
+        {
+            public Long getValue(ColumnFamilyMetrics metric)
+            {
+                return metric.allMemtablesOnHeapSize.value();
+            }
+        });
+        allMemtablesOffHeapDataSize = createKeyspaceGauge("AllMemtablesOffHeapDataSize", new MetricValue()
+        {
+            public Long getValue(ColumnFamilyMetrics metric)
+            {
+                return metric.allMemtablesOffHeapSize.value();
             }
         });
         memtableSwitchCount = createKeyspaceGauge("MemtableSwitchCount", new MetricValue()
@@ -113,11 +149,11 @@ public class KeyspaceMetrics
                 return (long) metric.pendingCompactions.value();
             }
         });
-        pendingTasks = Metrics.newGauge(factory.createMetricName("PendingTasks"), new Gauge<Integer>()
+        pendingFlushes = createKeyspaceGauge("PendingFlushes", new MetricValue()
         {
-            public Integer value()
+            public Long getValue(ColumnFamilyMetrics metric)
             {
-                return Keyspace.switchLock.getQueueLength();
+                return (long) metric.pendingFlushes.count();
             }
         });
         liveDiskSpaceUsed = createKeyspaceGauge("LiveDiskSpaceUsed", new MetricValue()
@@ -166,7 +202,6 @@ public class KeyspaceMetrics
         readLatency.release();
         writeLatency.release();
         rangeLatency.release();
-        Metrics.defaultRegistry().removeMetric(factory.createMetricName("PendingTasks"));
     }
     
     /**

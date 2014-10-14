@@ -15,30 +15,29 @@
  */
 package com.stratio.cassandra.index;
 
+import com.stratio.cassandra.index.util.Log;
+import org.apache.cassandra.config.ColumnDefinition;
+import org.apache.cassandra.db.ColumnFamily;
+import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.db.composites.CellName;
+import org.apache.cassandra.db.index.PerRowSecondaryIndex;
+import org.apache.cassandra.db.index.SecondaryIndexManager;
+import org.apache.cassandra.db.index.SecondaryIndexSearcher;
+import org.apache.cassandra.exceptions.ConfigurationException;
+import org.apache.cassandra.utils.concurrent.OpOrder;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.index.PerRowSecondaryIndex;
-import org.apache.cassandra.db.index.SecondaryIndexManager;
-import org.apache.cassandra.db.index.SecondaryIndexSearcher;
-import org.apache.cassandra.db.marshal.UTF8Type;
-import org.apache.cassandra.exceptions.ConfigurationException;
-
-import com.stratio.cassandra.index.util.Log;
-
 /**
  * A {@link PerRowSecondaryIndex} that uses Apache Lucene as backend. It allows, among others, multi-comun and full-text
  * search.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class RowIndex extends PerRowSecondaryIndex
 {
@@ -112,7 +111,7 @@ public class RowIndex extends PerRowSecondaryIndex
         indexName = columnDefinition.getIndexName();
         keyspaceName = baseCfs.metadata.ksName;
         tableName = baseCfs.metadata.cfName;
-        columnName = UTF8Type.instance.compose(columnDefinition.name);
+        columnName = columnDefinition.name.toString();
         logName = String.format("%s.%s.%s", keyspaceName, tableName, indexName);
 
         // Build row mapper
@@ -121,16 +120,14 @@ public class RowIndex extends PerRowSecondaryIndex
 
     /**
      * Index the given row.
-     * 
-     * @param key
-     *            The partition key.
-     * @param columnFamily
-     *            The column family data to be indexed
+     *
+     * @param key          The partition key.
+     * @param columnFamily The column family data to be indexed
      */
     @Override
     public void index(ByteBuffer key, ColumnFamily columnFamily)
     {
-        // Log.debug("Indexing row %s in index %s", key, logName);
+        Log.debug("Indexing row %s in index %s", key, logName);
         lock.readLock().lock();
         try
         {
@@ -153,12 +150,11 @@ public class RowIndex extends PerRowSecondaryIndex
 
     /**
      * cleans up deleted columns from cassandra cleanup compaction
-     * 
-     * @param key
-     *            The partition key of the physical {@link org.apache.cassandra.db.Row} to be deleted.
+     *
+     * @param key The partition key of the physical {@link org.apache.cassandra.db.Row} to be deleted.
      */
     @Override
-    public void delete(DecoratedKey key)
+    public void delete(DecoratedKey key, OpOrder.Group opGroup)
     {
         Log.debug("Removing row %s from index %s", key, logName);
         lock.writeLock().lock();
@@ -179,7 +175,7 @@ public class RowIndex extends PerRowSecondaryIndex
     }
 
     @Override
-    public boolean indexes(ByteBuffer cellName)
+    public boolean indexes(CellName cellName)
     {
         return true;
     }
@@ -210,9 +206,17 @@ public class RowIndex extends PerRowSecondaryIndex
     }
 
     @Override
-    public long getLiveSize()
+    public long estimateResultRows()
     {
-        return 0;
+        try
+        {
+            return rowService.getIndexSize();
+        }
+        catch (Exception e)
+        {
+            Log.error(e, "Estimating row results for index %s", logName);
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -360,7 +364,7 @@ public class RowIndex extends PerRowSecondaryIndex
     public String toString()
     {
         return String.format("RowIndex [index=%s, keyspace=%s, table=%s, column=%s",
-                             indexName, keyspaceName, tableName, columnName);
+                indexName, keyspaceName, tableName, columnName);
     }
 
 }

@@ -15,8 +15,6 @@
  */
 package com.stratio.cassandra.index;
 
-import java.io.IOException;
-
 import org.apache.cassandra.dht.Token;
 import org.apache.lucene.index.AtomicReaderContext;
 import org.apache.lucene.index.BinaryDocValues;
@@ -25,19 +23,21 @@ import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 
+import java.io.IOException;
+
 /**
- * 
  * {@link FieldComparator} that compares {@link Token} field sorting by its Cassandra's partitioner.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class TokenMapperGenericSorter extends FieldComparator<BytesRef>
 {
 
     private static final byte[] MISSING_BYTES = new byte[0];
 
-    /** The PartitionKeyComparator to be used. */
+    /**
+     * The PartitionKeyComparator to be used.
+     */
     private final TokenMapperGeneric tokenMapperGeneric;
 
     private BytesRef[] values;
@@ -50,13 +50,10 @@ public class TokenMapperGenericSorter extends FieldComparator<BytesRef>
 
     /**
      * Returns a new {@code TokenMapperGenericSorter}
-     * 
-     * @param tokenMapperGeneric
-     *            The {@code TokenMapperGenericSorter} to be used.
-     * @param numHits
-     *            The number of hits.
-     * @param field
-     *            The field name.
+     *
+     * @param tokenMapperGeneric The {@code TokenMapperGenericSorter} to be used.
+     * @param numHits            The number of hits.
+     * @param field              The field name.
      */
     public TokenMapperGenericSorter(TokenMapperGeneric tokenMapperGeneric, int numHits, String field)
     {
@@ -207,15 +204,13 @@ public class TokenMapperGenericSorter extends FieldComparator<BytesRef>
     /**
      * Compares its two field value arguments for order. Returns a negative integer, zero, or a positive integer as the
      * first argument is less than, equal to, or greater than the second.
-     * 
-     * @param value1
-     *            The first field value to be compared.
-     * @param value2
-     *            The second field value to be compared.
+     *
+     * @param value1 The first field value to be compared.
+     * @param value2 The second field value to be compared.
      * @return A negative integer, zero, or a positive integer as the first argument is less than, equal to, or greater
-     *         than the second.
+     * than the second.
      */
-    @SuppressWarnings({ "unchecked", "rawtypes" })
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private int compare(BytesRef value1, BytesRef value2)
     {
         Token t1 = tokenMapperGeneric.token(value1);

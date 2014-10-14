@@ -24,8 +24,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.cassandra.cache.CachingOptions;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
+import org.apache.cassandra.db.composites.SimpleDenseCellNameType;
 import org.apache.cassandra.db.ColumnFamilyType;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.TypeParser;
@@ -122,20 +124,20 @@ public class CreateColumnFamilyStatement
     }
 
     // Column definitions
-    private Map<ByteBuffer, ColumnDefinition> getColumns(AbstractType<?> comparator) throws InvalidRequestException
+    private List<ColumnDefinition> getColumns(CFMetaData cfm) throws InvalidRequestException
     {
-        Map<ByteBuffer, ColumnDefinition> columnDefs = new HashMap<ByteBuffer, ColumnDefinition>();
+        List<ColumnDefinition> columnDefs = new ArrayList<>(columns.size());
 
         for (Map.Entry<Term, String> col : columns.entrySet())
         {
             try
             {
-                ByteBuffer columnName = comparator.fromStringCQL2(col.getKey().getText());
+                ByteBuffer columnName = cfm.comparator.asAbstractType().fromStringCQL2(col.getKey().getText());
                 String validatorClassName = CFPropDefs.comparators.containsKey(col.getValue())
                                           ? CFPropDefs.comparators.get(col.getValue())
                                           : col.getValue();
                 AbstractType<?> validator = TypeParser.parse(validatorClassName);
-                columnDefs.put(columnName, ColumnDefinition.regularDef(columnName, validator, null));
+                columnDefs.add(ColumnDefinition.regularDef(cfm, columnName, validator, null));
             }
             catch (ConfigurationException e)
             {
@@ -174,8 +176,7 @@ public class CreateColumnFamilyStatement
             newCFMD = new CFMetaData(keyspace,
                                      name,
                                      ColumnFamilyType.Standard,
-                                     comparator,
-                                     null);
+                                     new SimpleDenseCellNameType(comparator));
 
             if (CFMetaData.DEFAULT_COMPRESSOR != null && cfProps.compressionParameters.isEmpty())
                 cfProps.compressionParameters.put(CompressionParameters.SSTABLE_COMPRESSION, CFMetaData.DEFAULT_COMPRESSOR);
@@ -184,29 +185,27 @@ public class CreateColumnFamilyStatement
             if (minCompactionThreshold <= 0 || maxCompactionThreshold <= 0)
                 throw new ConfigurationException("Disabling compaction by setting compaction thresholds to 0 has been deprecated, set the compaction option 'enabled' to false instead.");
 
-            newCFMD.comment(cfProps.getProperty(CFPropDefs.KW_COMMENT))
+            newCFMD.addAllColumnDefinitions(getColumns(newCFMD))
+                   .comment(cfProps.getProperty(CFPropDefs.KW_COMMENT))
                    .readRepairChance(getPropertyDouble(CFPropDefs.KW_READREPAIRCHANCE, CFMetaData.DEFAULT_READ_REPAIR_CHANCE))
                    .dcLocalReadRepairChance(getPropertyDouble(CFPropDefs.KW_DCLOCALREADREPAIRCHANCE, CFMetaData.DEFAULT_DCLOCAL_READ_REPAIR_CHANCE))
-                   .replicateOnWrite(getPropertyBoolean(CFPropDefs.KW_REPLICATEONWRITE, CFMetaData.DEFAULT_REPLICATE_ON_WRITE))
                    .gcGraceSeconds(getPropertyInt(CFPropDefs.KW_GCGRACESECONDS, CFMetaData.DEFAULT_GC_GRACE_SECONDS))
                    .defaultValidator(cfProps.getValidator())
                    .minCompactionThreshold(minCompactionThreshold)
                    .maxCompactionThreshold(maxCompactionThreshold)
-                   .columnMetadata(getColumns(comparator))
                    .keyValidator(TypeParser.parse(CFPropDefs.comparators.get(getKeyType())))
                    .compactionStrategyClass(cfProps.compactionStrategyClass)
                    .compactionStrategyOptions(cfProps.compactionStrategyOptions)
                    .compressionParameters(CompressionParameters.create(cfProps.compressionParameters))
-                   .caching(CFMetaData.Caching.fromString(getPropertyString(CFPropDefs.KW_CACHING, CFMetaData.DEFAULT_CACHING_STRATEGY.toString())))
+                   .caching(CachingOptions.fromString(getPropertyString(CFPropDefs.KW_CACHING, CFMetaData.DEFAULT_CACHING_STRATEGY.toString())))
                    .speculativeRetry(CFMetaData.SpeculativeRetry.fromString(getPropertyString(CFPropDefs.KW_SPECULATIVE_RETRY, CFMetaData.DEFAULT_SPECULATIVE_RETRY.toString())))
                    .bloomFilterFpChance(getPropertyDouble(CFPropDefs.KW_BF_FP_CHANCE, null))
                    .memtableFlushPeriod(getPropertyInt(CFPropDefs.KW_MEMTABLE_FLUSH_PERIOD, 0))
-                   .defaultTimeToLive(getPropertyInt(CFPropDefs.KW_DEFAULT_TIME_TO_LIVE, CFMetaData.DEFAULT_DEFAULT_TIME_TO_LIVE))
-                   .populateIoCacheOnFlush(getPropertyBoolean(CFPropDefs.KW_POPULATE_IO_CACHE_ON_FLUSH, CFMetaData.DEFAULT_POPULATE_IO_CACHE_ON_FLUSH));
+                   .defaultTimeToLive(getPropertyInt(CFPropDefs.KW_DEFAULT_TIME_TO_LIVE, CFMetaData.DEFAULT_DEFAULT_TIME_TO_LIVE));
 
             // CQL2 can have null keyAliases
             if (keyAlias != null)
-                newCFMD.addColumnDefinition(ColumnDefinition.partitionKeyDef(keyAlias, newCFMD.getKeyValidator(), null));
+                newCFMD.addColumnDefinition(ColumnDefinition.partitionKeyDef(newCFMD, keyAlias, newCFMD.getKeyValidator(), null));
         }
         catch (ConfigurationException e)
         {

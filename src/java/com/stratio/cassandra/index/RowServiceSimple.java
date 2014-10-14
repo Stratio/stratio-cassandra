@@ -15,39 +15,35 @@
  */
 package com.stratio.cassandra.index;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.HashSet;
-import java.util.Set;
-
 import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.db.Column;
-import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.DataRange;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.Row;
-import org.apache.cassandra.db.TreeMapBackedSortedColumns;
+import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.filter.QueryFilter;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.dht.Token;
-import org.apache.cassandra.utils.HeapAllocator;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.Sort;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.HashSet;
+import java.util.Set;
+
 /**
  * {@link RowService} that manages simple rows.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class RowServiceSimple extends RowService
 {
 
-    /** The Lucene's fields to be loaded */
+    /**
+     * The Lucene's fields to be loaded
+     */
     private static final Set<String> FIELDS_TO_LOAD;
+
     static
     {
         FIELDS_TO_LOAD = new HashSet<>();
@@ -56,11 +52,9 @@ public class RowServiceSimple extends RowService
 
     /**
      * Returns a new {@code RowServiceSimple} for manage simple rows.
-     * 
-     * @param baseCfs
-     *            The base column family store.
-     * @param columnDefinition
-     *            The indexed column definition.
+     *
+     * @param baseCfs          The base column family store.
+     * @param columnDefinition The indexed column definition.
      */
     public RowServiceSimple(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) throws IOException
     {
@@ -71,7 +65,7 @@ public class RowServiceSimple extends RowService
 
     /**
      * {@inheritDoc}
-     * 
+     * <p/>
      * These fields are just the partition key.
      */
     @Override
@@ -126,7 +120,7 @@ public class RowServiceSimple extends RowService
 
     /**
      * {@inheritDoc}
-     * 
+     * <p/>
      * The {@link Row} is a physical one.
      */
     @Override
@@ -138,27 +132,28 @@ public class RowServiceSimple extends RowService
         DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
         Row row = row(partitionKey, timestamp);
 
-        // Create score column from document score
+        // Create score cell from document score
         Float score = scoredDocument.getScore();
-        ByteBuffer columnName = nameType.builder().add(indexedColumnName.key).build();
-        ByteBuffer columnValue = UTF8Type.instance.decompose(score.toString());
-        Column scoreColumn = new Column(columnName, columnValue, timestamp);
+        ByteBuffer cellValue = UTF8Type.instance.decompose(score.toString());
 
-        // Return new row with score column
-        ColumnFamily decoratedCf = TreeMapBackedSortedColumns.factory.create(baseCfs.metadata);
-        decoratedCf.addColumn(scoreColumn);
-        decoratedCf.addAll(row.cf, HeapAllocator.instance);
+//        CellName cellName = nameType.cellFromByteBuffer(indexedColumnName.bytes);
+        CellName cellName = nameType.makeCellName(indexedColumnName.bytes);
+//        CellName cellName = nameType.makeCellName(nameType.builder().add(indexedColumnName.bytes).build());
+//        CellName cellName = (CellName) nameType.builder().add(indexedColumnName.bytes).build();
+
+        // Return new row with score cell
+        ColumnFamily decoratedCf = ArrayBackedSortedColumns.factory.create(baseCfs.metadata);
+        decoratedCf.addColumn(cellName, cellValue, timestamp);
+        decoratedCf.addAll(row.cf);
         return new Row(partitionKey, decoratedCf);
     }
 
     /**
      * Returns the CQL3 {@link Row} identified by the specified key pair, using the specified time stamp to ignore
      * deleted columns. The {@link Row} is retrieved from the storage engine, so it involves IO operations.
-     * 
-     * @param partitionKey
-     *            The partition key.
-     * @param timestamp
-     *            The time stamp to ignore deleted columns.
+     *
+     * @param partitionKey The partition key.
+     * @param timestamp    The time stamp to ignore deleted columns.
      * @return The CQL3 {@link Row} identified by the specified key pair.
      */
     private Row row(DecoratedKey partitionKey, long timestamp)
@@ -169,7 +164,7 @@ public class RowServiceSimple extends RowService
 
     /**
      * {@inheritDoc}
-     * 
+     * <p/>
      * The {@link Filter} is based in {@link Token} order.
      */
     @Override
@@ -180,7 +175,7 @@ public class RowServiceSimple extends RowService
 
     /**
      * {@inheritDoc}
-     * 
+     * <p/>
      * The {@link Filter} is based on a {@link Token} range.
      */
     @Override
@@ -196,8 +191,9 @@ public class RowServiceSimple extends RowService
     protected Float score(Row row)
     {
         ColumnFamily cf = row.cf;
-        ByteBuffer columnName = nameType.builder().add(indexedColumnName.key).build();
-        Column column = cf.getColumn(columnName);
+        CellName cellName = nameType.makeCellName(indexedColumnName.bytes);
+//        CellName cellName = (CellName) nameType.builder().add(indexedColumnName.bytes).build();
+        Cell column = cf.getColumn(cellName);
         ByteBuffer columnValue = column.value();
         String stringValue = UTF8Type.instance.compose(columnValue);
         return Float.parseFloat(stringValue);

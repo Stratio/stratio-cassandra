@@ -32,12 +32,12 @@ import org.apache.cassandra.db.columniterator.OnDiskAtomIterator;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.ConfigurationException;
-import org.apache.cassandra.io.sstable.SSTable;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.notifications.INotification;
 import org.apache.cassandra.notifications.INotificationConsumer;
 import org.apache.cassandra.notifications.SSTableAddedNotification;
 import org.apache.cassandra.notifications.SSTableListChangedNotification;
+import org.apache.cassandra.notifications.SSTableRepairStatusChanged;
 
 public class LeveledCompactionStrategy extends AbstractCompactionStrategy implements INotificationConsumer
 {
@@ -109,11 +109,13 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy implem
     {
         if (!isEnabled())
             return null;
-
-        return getMaximalTask(gcBefore);
+        Collection<AbstractCompactionTask> tasks = getMaximalTask(gcBefore);
+        if (tasks == null || tasks.size() == 0)
+            return null;
+        return tasks.iterator().next();
     }
 
-    public AbstractCompactionTask getMaximalTask(int gcBefore)
+    public Collection<AbstractCompactionTask> getMaximalTask(int gcBefore)
     {
         while (true)
         {
@@ -142,7 +144,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy implem
             {
                 LeveledCompactionTask newTask = new LeveledCompactionTask(cfs, candidate.sstables, candidate.level, gcBefore, candidate.maxSSTableBytes);
                 newTask.setCompactionType(op);
-                return newTask;
+                return Arrays.<AbstractCompactionTask>asList(newTask);
             }
         }
     }
@@ -185,6 +187,10 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy implem
             SSTableListChangedNotification listChangedNotification = (SSTableListChangedNotification) notification;
             manifest.replace(listChangedNotification.removed, listChangedNotification.added);
         }
+        else if (notification instanceof SSTableRepairStatusChanged)
+        {
+            manifest.repairStatusChanged(((SSTableRepairStatusChanged) notification).sstable);
+        }
     }
 
     public long getMaxSSTableBytes()
@@ -196,7 +202,12 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy implem
     {
         Multimap<Integer, SSTableReader> byLevel = ArrayListMultimap.create();
         for (SSTableReader sstable : sstables)
-            byLevel.get(sstable.getSSTableLevel()).add(sstable);
+        {
+            if (manifest.hasRepairedData() && !sstable.isRepaired())
+                byLevel.get(0).add(sstable);
+            else
+                byLevel.get(sstable.getSSTableLevel()).add(sstable);
+        }
 
         List<ICompactionScanner> scanners = new ArrayList<ICompactionScanner>(sstables.size());
         for (Integer level : byLevel.keySet())
@@ -253,7 +264,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy implem
             }
 
             totalLength = length;
-            Collections.sort(this.sstables, SSTable.sstableComparator);
+            Collections.sort(this.sstables, SSTableReader.sstableComparator);
             sstableIterator = this.sstables.iterator();
             assert sstableIterator.hasNext(); // caller should check intersecting first
             currentScanner = sstableIterator.next().getScanner(range, CompactionManager.instance.getRateLimiter());

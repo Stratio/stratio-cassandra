@@ -140,6 +140,7 @@ public class CliClient
         INDEX_INTERVAL,
         MEMTABLE_FLUSH_PERIOD_IN_MS,
         CACHING,
+        CELLS_PER_ROW_TO_CACHE,
         DEFAULT_TIME_TO_LIVE,
         SPECULATIVE_RETRY,
         POPULATE_IO_CACHE_ON_FLUSH,
@@ -628,9 +629,8 @@ public class CliClient
             }
             catch (RequestValidationException ce)
             {
-                StringBuilder errorMessage = new StringBuilder("Unknown comparator '" + compareWith + "'. ");
-                errorMessage.append("Available functions: ");
-                throw new RuntimeException(errorMessage.append(Function.getFunctionNames()).toString(), e);
+                String message = String.format("Unknown comparator '%s'. Available functions: %s", compareWith, Function.getFunctionNames());
+                throw new RuntimeException(message, e);
             }
         }
 
@@ -1349,6 +1349,9 @@ public class CliClient
             case CACHING:
                 cfDef.setCaching(CliUtils.unescapeSQLString(mValue));
                 break;
+            case CELLS_PER_ROW_TO_CACHE:
+                cfDef.setCells_per_row_to_cache(CliUtils.unescapeSQLString(mValue));
+                break;
             case DEFAULT_TIME_TO_LIVE:
                 cfDef.setDefault_time_to_live(Integer.parseInt(mValue));
                 break;
@@ -1768,7 +1771,7 @@ public class CliClient
             String prefix = "";
             for (Map.Entry<String, String> opt : ksDef.strategy_options.entrySet())
             {
-                opts.append(prefix + CliUtils.escapeSQLString(opt.getKey()) + " : " + CliUtils.escapeSQLString(opt.getValue()));
+                opts.append(prefix).append(CliUtils.escapeSQLString(opt.getKey())).append(" : ").append(CliUtils.escapeSQLString(opt.getValue()));
                 prefix = ", ";
             }
             opts.append("}");
@@ -1780,7 +1783,7 @@ public class CliClient
         output.append(";").append(NEWLINE);
         output.append(NEWLINE);
 
-        output.append("use " + CliUtils.maybeEscapeName(ksDef.name) + ";");
+        output.append("use ").append(CliUtils.maybeEscapeName(ksDef.name)).append(";");
         output.append(NEWLINE);
         output.append(NEWLINE);
 
@@ -1813,13 +1816,12 @@ public class CliClient
 
         writeAttr(output, false, "read_repair_chance", cfDef.read_repair_chance);
         writeAttr(output, false, "dclocal_read_repair_chance", cfDef.dclocal_read_repair_chance);
-        writeAttr(output, false, "populate_io_cache_on_flush", cfDef.populate_io_cache_on_flush);
         writeAttr(output, false, "gc_grace", cfDef.gc_grace_seconds);
         writeAttr(output, false, "min_compaction_threshold", cfDef.min_compaction_threshold);
         writeAttr(output, false, "max_compaction_threshold", cfDef.max_compaction_threshold);
-        writeAttr(output, false, "replicate_on_write", cfDef.replicate_on_write);
         writeAttr(output, false, "compaction_strategy", cfDef.compaction_strategy);
         writeAttr(output, false, "caching", cfDef.caching);
+        writeAttr(output, false, "cells_per_row_to_cache", cfDef.cells_per_row_to_cache);
         writeAttr(output, false, "default_time_to_live", cfDef.default_time_to_live);
         writeAttr(output, false, "speculative_retry", cfDef.speculative_retry);
 
@@ -1849,7 +1851,6 @@ public class CliClient
 
             writeAttrRaw(output, false, "compaction_strategy_options", cOptions.toString());
         }
-
         if (!StringUtils.isEmpty(cfDef.comment))
             writeAttr(output, false, "comment", cfDef.comment);
 
@@ -2186,8 +2187,6 @@ public class CliClient
         sessionState.out.printf("      Compaction min/max thresholds: %s/%s%n", cf_def.min_compaction_threshold, cf_def.max_compaction_threshold);
         sessionState.out.printf("      Read repair chance: %s%n", cf_def.read_repair_chance);
         sessionState.out.printf("      DC Local Read repair chance: %s%n", cf_def.dclocal_read_repair_chance);
-        sessionState.out.printf("      Populate IO Cache on flush: %b%n", cf_def.populate_io_cache_on_flush);
-        sessionState.out.printf("      Replicate on write: %s%n", cf_def.replicate_on_write);
         sessionState.out.printf("      Caching: %s%n", cf_def.caching);
         sessionState.out.printf("      Default time to live: %s%n", cf_def.default_time_to_live);
         sessionState.out.printf("      Bloom Filter FP chance: %s%n", cf_def.isSetBloom_filter_fp_chance() ? cf_def.bloom_filter_fp_chance : "default");
@@ -2830,9 +2829,8 @@ public class CliClient
         }
         catch (IllegalArgumentException e)
         {
-            StringBuilder errorMessage = new StringBuilder("Function '" + functionName + "' not found. ");
-            errorMessage.append("Available functions: ");
-            throw new RuntimeException(errorMessage.append(Function.getFunctionNames()).toString(), e);
+            String message = String.format("Function '%s' not found. Available functions: %s", functionName, Function.getFunctionNames());
+            throw new RuntimeException(message, e);
         }
 
         return function.getValidator();

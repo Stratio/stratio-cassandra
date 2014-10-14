@@ -1,4 +1,3 @@
-package org.apache.cassandra.service.paxos;
 /*
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -19,34 +18,23 @@ package org.apache.cassandra.service.paxos;
  * under the License.
  * 
  */
-
+package org.apache.cassandra.service.paxos;
 
 import java.nio.ByteBuffer;
+import java.util.concurrent.locks.Lock;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.google.common.util.concurrent.Striped;
 
 import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.db.RowMutation;
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.tracing.Tracing;
 
 public class PaxosState
 {
-    private static final Logger logger = LoggerFactory.getLogger(PaxosState.class);
-
-    private static final Object[] locks;
-    static
-    {
-        locks = new Object[1024];
-        for (int i = 0; i < locks.length; i++)
-            locks[i] = new Object();
-    }
-    private static Object lockFor(ByteBuffer key)
-    {
-        return locks[(0x7FFFFFFF & key.hashCode()) % locks.length];
-    }
+    private static final Striped<Lock> LOCKS = Striped.lazyWeakLock(DatabaseDescriptor.getConcurrentWriters() * 1024);
 
     private final Commit promised;
     private final Commit accepted;
@@ -69,7 +57,9 @@ public class PaxosState
 
     public static PrepareResponse prepare(Commit toPrepare)
     {
-        synchronized (lockFor(toPrepare.key))
+        Lock lock = LOCKS.get(toPrepare.key);
+        lock.lock();
+        try
         {
             PaxosState state = SystemKeyspace.loadPaxosState(toPrepare.key, toPrepare.update.metadata());
             if (toPrepare.isAfter(state.promised))
@@ -85,11 +75,17 @@ public class PaxosState
                 return new PrepareResponse(false, state.promised, state.mostRecentCommit);
             }
         }
+        finally
+        {
+            lock.unlock();
+        }
     }
 
     public static Boolean propose(Commit proposal)
     {
-        synchronized (lockFor(proposal.key))
+        Lock lock = LOCKS.get(proposal.key);
+        lock.lock();
+        try
         {
             PaxosState state = SystemKeyspace.loadPaxosState(proposal.key, proposal.update.metadata());
             if (proposal.hasBallot(state.promised.ballot) || proposal.isAfter(state.promised))
@@ -104,6 +100,10 @@ public class PaxosState
                 return false;
             }
         }
+        finally
+        {
+            lock.unlock();
+        }
     }
 
     public static void commit(Commit proposal)
@@ -114,8 +114,8 @@ public class PaxosState
         // if our current in-progress ballot is strictly greater than the proposal one, we shouldn't
         // erase the in-progress update.
         Tracing.trace("Committing proposal {}", proposal);
-        RowMutation rm = proposal.makeMutation();
-        Keyspace.open(rm.getKeyspaceName()).apply(rm, true);
+        Mutation mutation = proposal.makeMutation();
+        Keyspace.open(mutation.getKeyspaceName()).apply(mutation, true);
 
         // We don't need to lock, we're just blindly updating
         SystemKeyspace.savePaxosCommit(proposal);
