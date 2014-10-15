@@ -62,10 +62,10 @@
     <property name="test.long.src" value="${test.dir}/long"/>
     <property name="test.pig.src" value="${test.dir}/pig"/>
     <property name="dist.dir" value="${build.dir}/dist"/>
-  <property name="test.index.src" value="${test.dir}/unit/com/stratio/cassandra/index"/>
+    <property name="test.index.src" value="${test.dir}/unit/com/stratio/cassandra/index"/>
   
-  <property name="source.version" value="1.7"/>
-  <property name="target.version" value="1.7"/>
+    <property name="source.version" value="1.7"/>
+    <property name="target.version" value="1.7"/>
   
     <condition property="version" value="${base.version}">
       <isset property="release"/>
@@ -1106,8 +1106,8 @@
         <jvmarg value="-Xss256k"/>
         <jvmarg value="-Dcassandra.memtable_row_overhead_computation_step=100"/>
         <jvmarg value="-Dcassandra.test.use_prepared=${cassandra.test.use_prepared}"/>
-  <jvmarg value="-Dcassandra.test.offsetseed=@{poffset}"/>        
-  <optjvmargs/>
+        <jvmarg value="-Dcassandra.test.offsetseed=@{poffset}"/>
+        <optjvmargs/>
         <classpath>
           <path refid="cassandra.classpath" />
           <pathelement location="${test.classes}"/>
@@ -1143,6 +1143,8 @@
     <element name="optjvmargs" implicit="true" optional="true" />
     <attribute name="filter" default="**/stratio/**/${test.name}.java"/>
     <attribute name="exclude" default="" />
+    <attribute name="filelist" default="" />
+    <attribute name="poffset" default="0"/>
     <sequential>
       <echo message="running @{suitename} tests"/>
       <mkdir dir="${build.test.dir}/cassandra"/>
@@ -1152,11 +1154,13 @@
         <formatter type="xml" usefile="true"/>
         <formatter type="brief" usefile="false"/>
         <jvmarg value="-Dstorage-config=${test.conf}"/>
-        <jvmarg value="-Dlog4j.configuration=log4j-junit.properties" />
         <jvmarg value="-Djava.awt.headless=true"/>
-        <jvmarg value="-javaagent:${basedir}/lib/jamm-0.2.5.jar" />
+        <jvmarg value="-javaagent:${basedir}/lib/jamm-0.2.6.jar" />
         <jvmarg value="-ea"/>
         <jvmarg value="-Xss256k"/>
+        <jvmarg value="-Dcassandra.memtable_row_overhead_computation_step=100"/>
+        <jvmarg value="-Dcassandra.test.use_prepared=${cassandra.test.use_prepared}"/>
+        <jvmarg value="-Dcassandra.test.offsetseed=@{poffset}"/>
         <optjvmargs/>
         <classpath>
           <path refid="cassandra.classpath" />
@@ -1168,7 +1172,8 @@
           </fileset>
         </classpath>
         <batchtest todir="${build.test.dir}/output">
-            <fileset dir="@{inputdir}" includes="@{filter}" excludes="@{exclude}"/>
+          <fileset dir="@{inputdir}" includes="@{filter}" excludes="@{exclude}"/>
+          <filelist dir="@{inputdir}" files="@{filelist}"/>
         </batchtest>
       </junit>
       <fail message="Some @{suitename} test(s) failed.">
@@ -1235,8 +1240,8 @@
     </testmacro>
   </target>
   
-  <target name="test-index" depends="build-test" description="Execute unit tests" >
-    <testmacroindex suitename="unit" inputdir="${test.unit.src}" exclude="**/pig/*.java" timeout="${test.timeout}">
+  <target name="test-index" depends="build-test" description="Execute Stratio Index unit tests" >
+    <testmacroindex suitename="unit" inputdir="${test.unit.src}" exclude="**/pig/*.java,**/Abstract*Test.java" timeout="${test.timeout}">
       <jvmarg value="-Dlegacy-sstable-root=${test.data}/legacy-sstables"/>
       <jvmarg value="-Dcorrupt-sstable-root=${test.data}/corrupt-sstables"/>
       <jvmarg value="-Dmigration-sstable-root=${test.data}/migration-sstables"/>

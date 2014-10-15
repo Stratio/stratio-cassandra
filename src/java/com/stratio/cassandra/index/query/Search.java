@@ -105,8 +105,6 @@ public class Search
     {
         try
         {
-            System.out.println(" ------> OBJECT " + this);
-            System.out.println(" ------> JSON " + JsonSerializer.toString(this));
             return JsonSerializer.toString(this);
         }
         catch (Exception e)
