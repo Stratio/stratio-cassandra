@@ -32,18 +32,12 @@ import org.apache.cassandra.db.compaction.LeveledCompactionStrategy;
 import org.apache.cassandra.db.compaction.LeveledManifest;
 import org.apache.cassandra.db.compaction.Scrubber;
 import org.apache.cassandra.io.sstable.*;
-import org.apache.cassandra.service.CassandraDaemon;
 import org.apache.cassandra.utils.OutputHandler;
 
 import static org.apache.cassandra.tools.BulkLoader.CmdLineOptions;
 
 public class StandaloneScrubber
 {
-    static
-    {
-        CassandraDaemon.initLog4j();
-    }
-
     private static final String TOOL_NAME = "sstablescrub";
     private static final String VERBOSE_OPTION  = "verbose";
     private static final String DEBUG_OPTION  = "debug";
@@ -99,13 +93,6 @@ public class StandaloneScrubber
             }
             System.out.println(String.format("Pre-scrub sstables snapshotted into snapshot %s", snapshotName));
 
-            // if old-style json manifest, snapshot it
-            if (cfs.directories.tryGetLeveledManifest() != null)
-            {
-                cfs.directories.snapshotLeveledManifest(snapshotName);
-                System.out.println(String.format("Leveled manifest snapshotted into snapshot %s", snapshotName));
-            }
-
             LeveledManifest manifest = null;
             // If leveled, load the manifest
             if (cfs.getCompactionStrategy() instanceof LeveledCompactionStrategy)
@@ -128,17 +115,6 @@ public class StandaloneScrubber
                         finally
                         {
                             scrubber.close();
-                        }
-
-                        if (manifest != null)
-                        {
-                            if (scrubber.getNewInOrderSSTable() != null)
-                                manifest.add(scrubber.getNewInOrderSSTable());
-
-                            List<SSTableReader> added = scrubber.getNewSSTable() == null
-                                ? Collections.<SSTableReader>emptyList()
-                                : Collections.singletonList(scrubber.getNewSSTable());
-                            manifest.replace(Collections.singletonList(sstable), added);
                         }
 
                         // Remove the sstable (it's been copied by scrub and snapshotted)

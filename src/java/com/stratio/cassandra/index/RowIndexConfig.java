@@ -15,19 +15,17 @@
  */
 package com.stratio.cassandra.index;
 
-import java.io.File;
-import java.util.Map;
-
+import com.stratio.cassandra.index.schema.Schema;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
 
-import com.stratio.cassandra.index.schema.Schema;
+import java.io.File;
+import java.util.Map;
 
 /**
  * Class for building {@link RowService} instances.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class RowIndexConfig
 {

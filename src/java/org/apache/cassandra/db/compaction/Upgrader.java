@@ -26,6 +26,8 @@ import com.google.common.base.Throwables;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.io.sstable.*;
+import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
+import org.apache.cassandra.utils.CLibrary;
 import org.apache.cassandra.utils.CloseableIterator;
 import org.apache.cassandra.utils.OutputHandler;
 
@@ -33,7 +35,7 @@ public class Upgrader
 {
     private final ColumnFamilyStore cfs;
     private final SSTableReader sstable;
-    private final Collection<SSTableReader> toUpgrade;
+    private final Set<SSTableReader> toUpgrade;
     private final File directory;
 
     private final OperationType compactionType = OperationType.UPGRADE_SSTABLES;
@@ -47,7 +49,7 @@ public class Upgrader
     {
         this.cfs = cfs;
         this.sstable = sstable;
-        this.toUpgrade = Collections.singletonList(sstable);
+        this.toUpgrade = new HashSet<>(Collections.singleton(sstable));
         this.outputHandler = outputHandler;
 
         this.directory = new File(sstable.getFilename()).getParentFile();
@@ -55,14 +57,14 @@ public class Upgrader
         this.controller = new UpgradeController(cfs);
 
         this.strategy = cfs.getCompactionStrategy();
-        long estimatedTotalKeys = Math.max(cfs.metadata.getIndexInterval(), SSTableReader.getApproximateKeyCount(toUpgrade, cfs.metadata));
-        long estimatedSSTables = Math.max(1, SSTable.getTotalBytes(this.toUpgrade) / strategy.getMaxSSTableBytes());
+        long estimatedTotalKeys = Math.max(cfs.metadata.getMinIndexInterval(), SSTableReader.getApproximateKeyCount(toUpgrade));
+        long estimatedSSTables = Math.max(1, SSTableReader.getTotalBytes(this.toUpgrade) / strategy.getMaxSSTableBytes());
         this.estimatedRows = (long) Math.ceil((double) estimatedTotalKeys / estimatedSSTables);
     }
 
-    private SSTableWriter createCompactionWriter()
+    private SSTableWriter createCompactionWriter(long repairedAt)
     {
-        SSTableMetadata.Collector sstableMetadataCollector = SSTableMetadata.createCollector(cfs.getComparator());
+        MetadataCollector sstableMetadataCollector = new MetadataCollector(cfs.getComparator());
 
         // Get the max timestamp of the precompacted sstables
         // and adds generation of live ancestors
@@ -78,63 +80,35 @@ public class Upgrader
             sstableMetadataCollector.sstableLevel(sstable.getSSTableLevel());
         }
 
-        return new SSTableWriter(cfs.getTempSSTablePath(directory), estimatedRows, cfs.metadata, cfs.partitioner, sstableMetadataCollector);
+        return new SSTableWriter(cfs.getTempSSTablePath(directory), estimatedRows, repairedAt, cfs.metadata, cfs.partitioner, sstableMetadataCollector);
     }
 
     public void upgrade()
     {
         outputHandler.output("Upgrading " + sstable);
 
-
-        AbstractCompactionIterable ci = new CompactionIterable(compactionType, strategy.getScanners(this.toUpgrade), controller);
-
-        CloseableIterator<AbstractCompactedRow> iter = ci.iterator();
-
-        Collection<SSTableReader> sstables = new ArrayList<SSTableReader>();
-        Collection<SSTableWriter> writers = new ArrayList<SSTableWriter>();
-
-        try
+        SSTableRewriter writer = new SSTableRewriter(cfs, toUpgrade, CompactionTask.getMaxDataAge(this.toUpgrade), OperationType.UPGRADE_SSTABLES, true);
+        try (CloseableIterator<AbstractCompactedRow> iter = new CompactionIterable(compactionType, strategy.getScanners(this.toUpgrade), controller).iterator())
         {
-            SSTableWriter writer = createCompactionWriter();
-            writers.add(writer);
+            writer.switchWriter(createCompactionWriter(sstable.getSSTableMetadata().repairedAt));
             while (iter.hasNext())
             {
                 AbstractCompactedRow row = iter.next();
-
                 writer.append(row);
             }
 
-            long maxAge = CompactionTask.getMaxDataAge(this.toUpgrade);
-            for (SSTableWriter completedWriter : writers)
-                sstables.add(completedWriter.closeAndOpenReader(maxAge));
-
+            writer.finish();
             outputHandler.output("Upgrade of " + sstable + " complete.");
 
         }
         catch (Throwable t)
         {
-            for (SSTableWriter writer : writers)
-                writer.abort();
-            // also remove already completed SSTables
-            for (SSTableReader sstable : sstables)
-            {
-                sstable.markObsolete();
-                sstable.releaseReference();
-            }
+            writer.abort();
             throw Throwables.propagate(t);
         }
         finally
         {
             controller.close();
-
-            try
-            {
-                iter.close();
-            }
-            catch (IOException e)
-            {
-                throw new RuntimeException(e);
-            }
         }
     }
 
@@ -146,9 +120,9 @@ public class Upgrader
         }
 
         @Override
-        public boolean shouldPurge(DecoratedKey key, long delTimestamp)
+        public long maxPurgeableTimestamp(DecoratedKey key)
         {
-            return false;
+            return Long.MIN_VALUE;
         }
     }
 }

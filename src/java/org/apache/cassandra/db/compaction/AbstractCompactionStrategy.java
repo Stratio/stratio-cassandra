@@ -159,7 +159,7 @@ public abstract class AbstractCompactionStrategy
      *
      * Is responsible for marking its sstables as compaction-pending.
      */
-    public abstract AbstractCompactionTask getMaximalTask(final int gcBefore);
+    public abstract Collection<AbstractCompactionTask> getMaximalTask(final int gcBefore);
 
     /**
      * @param sstables SSTables to compact. Must be marked as compacting.
@@ -174,7 +174,7 @@ public abstract class AbstractCompactionStrategy
 
     public AbstractCompactionTask getCompactionTask(Collection<SSTableReader> sstables, final int gcBefore, long maxSSTableBytes)
     {
-        return new CompactionTask(cfs, sstables, gcBefore);
+        return new CompactionTask(cfs, sstables, gcBefore, false);
     }
 
     /**
@@ -315,7 +315,7 @@ public abstract class AbstractCompactionStrategy
         else
         {
             // what percentage of columns do we expect to compact outside of overlap?
-            if (sstable.getKeySampleSize() < 2)
+            if (sstable.getIndexSummarySize() < 2)
             {
                 // we have too few samples to estimate correct percentage
                 return false;
@@ -324,7 +324,7 @@ public abstract class AbstractCompactionStrategy
             long keys = sstable.estimatedKeys();
             Set<Range<Token>> ranges = new HashSet<Range<Token>>(overlaps.size());
             for (SSTableReader overlap : overlaps)
-                ranges.add(new Range<Token>(overlap.first.token, overlap.last.token, overlap.partitioner));
+                ranges.add(new Range<Token>(overlap.first.getToken(), overlap.last.getToken(), overlap.partitioner));
             long remainingKeys = keys - sstable.estimatedKeysForRanges(ranges);
             // next, calculate what percentage of columns we have within those keys
             long columns = sstable.getEstimatedColumnCount().mean() * remainingKeys;

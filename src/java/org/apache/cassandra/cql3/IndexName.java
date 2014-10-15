@@ -19,7 +19,7 @@ package org.apache.cassandra.cql3;
 
 import java.util.Locale;
 
-public class IndexName 
+public class IndexName
 {
     private String ksName;
     private String idxName;
@@ -48,14 +48,13 @@ public class IndexName
     {
         return idxName;
     }
-    
+
     public CFName getCfName()
     {
-    	CFName cfName = new CFName();
-    	if (hasKeyspace()) {
-    		cfName.setKeyspace(ksName, true);
-    	}
-    	return cfName;
+        CFName cfName = new CFName();
+        if (hasKeyspace())
+            cfName.setKeyspace(ksName, true);
+        return cfName;
     }
 
     @Override

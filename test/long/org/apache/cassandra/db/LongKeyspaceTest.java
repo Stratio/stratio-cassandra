@@ -21,13 +21,10 @@ package org.apache.cassandra.db;
 import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
-import org.apache.cassandra.db.filter.QueryFilter;
 import org.apache.cassandra.utils.WrappedRunnable;
 import static org.apache.cassandra.Util.column;
 
 import org.apache.cassandra.Util;
-import org.apache.cassandra.utils.ByteBufferUtil;
-import org.apache.cassandra.utils.FBUtilities;
 
 
 public class LongKeyspaceTest extends SchemaLoader
@@ -40,8 +37,8 @@ public class LongKeyspaceTest extends SchemaLoader
 
         for (int i = 1; i < 5000; i += 100)
         {
-            RowMutation rm = new RowMutation("Keyspace1", Util.dk("key" + i).key);
-            ColumnFamily cf = TreeMapBackedSortedColumns.factory.create("Keyspace1", "Standard1");
+            Mutation rm = new Mutation("Keyspace1", Util.dk("key" + i).getKey());
+            ColumnFamily cf = ArrayBackedSortedColumns.factory.create("Keyspace1", "Standard1");
             for (int j = 0; j < i; j++)
                 cf.addColumn(column("c" + j, "v" + j, 1L));
             rm.add(cf);
@@ -57,10 +54,7 @@ public class LongKeyspaceTest extends SchemaLoader
                 {
                     for (int j = 0; j < i; j++)
                     {
-                        cf = cfStore.getColumnFamily(QueryFilter.getNamesFilter(Util.dk("key" + i),
-                                                                                "Standard1",
-                                                                                FBUtilities.singleton(ByteBufferUtil.bytes("c" + j), cfStore.getComparator()),
-                                                                                System.currentTimeMillis()));
+                        cf = cfStore.getColumnFamily(Util.namesQueryFilter(cfStore, Util.dk("key" + i), "c" + j));
                         KeyspaceTest.assertColumns(cf, "c" + j);
                     }
                 }

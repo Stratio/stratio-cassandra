@@ -19,14 +19,14 @@ package org.apache.cassandra.transport.messages;
 
 import java.util.*;
 
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.buffer.ChannelBuffers;
+import io.netty.buffer.ByteBuf;
 
 import org.apache.cassandra.cql3.ColumnSpecification;
 import org.apache.cassandra.cql3.CQLStatement;
 import org.apache.cassandra.cql3.ResultSet;
 import org.apache.cassandra.cql3.statements.SelectStatement;
 import org.apache.cassandra.cql3.statements.ParsedStatement;
+import org.apache.cassandra.service.pager.PagingState;
 import org.apache.cassandra.transport.*;
 import org.apache.cassandra.thrift.CqlPreparedResult;
 import org.apache.cassandra.thrift.CqlResult;
@@ -37,13 +37,13 @@ public abstract class ResultMessage extends Message.Response
 {
     public static final Message.Codec<ResultMessage> codec = new Message.Codec<ResultMessage>()
     {
-        public ResultMessage decode(ChannelBuffer body, int version)
+        public ResultMessage decode(ByteBuf body, int version)
         {
             Kind kind = Kind.fromId(body.readInt());
             return kind.subcodec.decode(body, version);
         }
 
-        public void encode(ResultMessage msg, ChannelBuffer dest, int version)
+        public void encode(ResultMessage msg, ByteBuf dest, int version)
         {
             dest.writeInt(msg.kind.id);
             msg.kind.subcodec.encode(msg, dest, version);
@@ -117,12 +117,12 @@ public abstract class ResultMessage extends Message.Response
 
         public static final Message.Codec<ResultMessage> subcodec = new Message.Codec<ResultMessage>()
         {
-            public ResultMessage decode(ChannelBuffer body, int version)
+            public ResultMessage decode(ByteBuf body, int version)
             {
                 return new Void();
             }
 
-            public void encode(ResultMessage msg, ChannelBuffer dest, int version)
+            public void encode(ResultMessage msg, ByteBuf dest, int version)
             {
                 assert msg instanceof Void;
             }
@@ -157,13 +157,13 @@ public abstract class ResultMessage extends Message.Response
 
         public static final Message.Codec<ResultMessage> subcodec = new Message.Codec<ResultMessage>()
         {
-            public ResultMessage decode(ChannelBuffer body, int version)
+            public ResultMessage decode(ByteBuf body, int version)
             {
                 String keyspace = CBUtil.readString(body);
                 return new SetKeyspace(keyspace);
             }
 
-            public void encode(ResultMessage msg, ChannelBuffer dest, int version)
+            public void encode(ResultMessage msg, ByteBuf dest, int version)
             {
                 assert msg instanceof SetKeyspace;
                 CBUtil.writeString(((SetKeyspace)msg).keyspace, dest);
@@ -192,12 +192,12 @@ public abstract class ResultMessage extends Message.Response
     {
         public static final Message.Codec<ResultMessage> subcodec = new Message.Codec<ResultMessage>()
         {
-            public ResultMessage decode(ChannelBuffer body, int version)
+            public ResultMessage decode(ByteBuf body, int version)
             {
                 return new Rows(ResultSet.codec.decode(body, version));
             }
 
-            public void encode(ResultMessage msg, ChannelBuffer dest, int version)
+            public void encode(ResultMessage msg, ByteBuf dest, int version)
             {
                 assert msg instanceof Rows;
                 Rows rowMsg = (Rows)msg;
@@ -220,6 +220,11 @@ public abstract class ResultMessage extends Message.Response
             this.result = result;
         }
 
+        public Rows withPagingState(PagingState state)
+        {
+            return new Rows(result.withPagingState(state));
+        }
+
         public CqlResult toThriftResult()
         {
             return result.toThriftResult();
@@ -230,14 +235,13 @@ public abstract class ResultMessage extends Message.Response
         {
             return "ROWS " + result;
         }
-
     }
 
     public static class Prepared extends ResultMessage
     {
         public static final Message.Codec<ResultMessage> subcodec = new Message.Codec<ResultMessage>()
         {
-            public ResultMessage decode(ChannelBuffer body, int version)
+            public ResultMessage decode(ByteBuf body, int version)
             {
                 MD5Digest id = MD5Digest.wrap(CBUtil.readBytes(body));
                 ResultSet.Metadata metadata = ResultSet.Metadata.codec.decode(body, version);
@@ -249,7 +253,7 @@ public abstract class ResultMessage extends Message.Response
                 return new Prepared(id, -1, metadata, resultMetadata);
             }
 
-            public void encode(ResultMessage msg, ChannelBuffer dest, int version)
+            public void encode(ResultMessage msg, ByteBuf dest, int version)
             {
                 assert msg instanceof Prepared;
                 Prepared prepared = (Prepared)msg;
@@ -277,7 +281,11 @@ public abstract class ResultMessage extends Message.Response
         };
 
         public final MD5Digest statementId;
+
+        /** Describes the variables to be bound in the prepared statement */
         public final ResultSet.Metadata metadata;
+
+        /** Describes the results of executing this prepared statement */
         public final ResultSet.Metadata resultMetadata;
 
         // statement id for CQL-over-thrift compatibility. The binary protocol ignore that.
@@ -336,56 +344,33 @@ public abstract class ResultMessage extends Message.Response
 
     public static class SchemaChange extends ResultMessage
     {
-        public enum Change { CREATED, UPDATED, DROPPED }
+        public final Event.SchemaChange change;
 
-        public final Change change;
-        public final String keyspace;
-        public final String columnFamily;
-
-        public SchemaChange(Change change, String keyspace)
-        {
-            this(change, keyspace, "");
-        }
-
-        public SchemaChange(Change change, String keyspace, String columnFamily)
+        public SchemaChange(Event.SchemaChange change)
         {
             super(Kind.SCHEMA_CHANGE);
             this.change = change;
-            this.keyspace = keyspace;
-            this.columnFamily = columnFamily;
         }
 
         public static final Message.Codec<ResultMessage> subcodec = new Message.Codec<ResultMessage>()
         {
-            public ResultMessage decode(ChannelBuffer body, int version)
+            public ResultMessage decode(ByteBuf body, int version)
             {
-                Change change = CBUtil.readEnumValue(Change.class, body);
-                String keyspace = CBUtil.readString(body);
-                String columnFamily = CBUtil.readString(body);
-                return new SchemaChange(change, keyspace, columnFamily);
-
+                return new SchemaChange(Event.SchemaChange.deserializeEvent(body, version));
             }
 
-            public void encode(ResultMessage msg, ChannelBuffer dest, int version)
+            public void encode(ResultMessage msg, ByteBuf dest, int version)
             {
                 assert msg instanceof SchemaChange;
                 SchemaChange scm = (SchemaChange)msg;
-
-                CBUtil.writeEnumValue(scm.change, dest);
-                CBUtil.writeString(scm.keyspace, dest);
-                CBUtil.writeString(scm.columnFamily, dest);
+                scm.change.serializeEvent(dest, version);
             }
 
             public int encodedSize(ResultMessage msg, int version)
             {
                 assert msg instanceof SchemaChange;
                 SchemaChange scm = (SchemaChange)msg;
-
-                int size = 0;
-                size += CBUtil.sizeOfEnumValue(scm.change);
-                size += CBUtil.sizeOfString(scm.keyspace);
-                size += CBUtil.sizeOfString(scm.columnFamily);
-                return size;
+                return scm.change.eventSerializedSize(version);
             }
         };
 
@@ -397,7 +382,7 @@ public abstract class ResultMessage extends Message.Response
         @Override
         public String toString()
         {
-            return "RESULT schema change " + change + " on " + keyspace + (columnFamily.isEmpty() ? "" : "." + columnFamily);
+            return "RESULT schema change " + change;
         }
     }
 }

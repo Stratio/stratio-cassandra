@@ -50,7 +50,7 @@ public class ReversedType<T> extends AbstractType<T>
             type = new ReversedType<T>(baseType);
             instances.put(baseType, type);
         }
-        return (ReversedType<T>) type;
+        return type;
     }
 
     private ReversedType(AbstractType<T> baseType)
@@ -81,6 +81,15 @@ public class ReversedType<T> extends AbstractType<T>
     public ByteBuffer fromString(String source)
     {
         return baseType.fromString(source);
+    }
+
+    @Override
+    public boolean isCompatibleWith(AbstractType<?> otherType)
+    {
+        if (!(otherType instanceof ReversedType))
+            return false;
+
+        return this.baseType.isCompatibleWith(((ReversedType) otherType).baseType);
     }
 
     @Override

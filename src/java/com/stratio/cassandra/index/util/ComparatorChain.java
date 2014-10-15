@@ -17,11 +17,7 @@
 package com.stratio.cassandra.index.util;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 /**
  * <p>
@@ -31,40 +27,49 @@ import java.util.List;
  * multi-column sorting in SQL, and this class allows Java classes to emulate that kind of behaviour when sorting a
  * List.
  * </p>
- * 
+ * <p/>
  * <p>
  * To further facilitate SQL-like sorting, the order of any single Comparator in the list can be reversed.
  * </p>
- * 
+ * <p/>
  * <p>
  * Calling a method that adds new Comparators or changes the ascend/descend sort <i>after compare(Object, Object) has
  * been called</i> will result in an UnsupportedOperationException. However, <i>take care</i> to not alter the
  * underlying List of Comparators or the BitSet that defines the sort order.
  * </p>
- * 
+ * <p/>
  * <p>
  * Instances of ComparatorChain are not synchronized. The class is not thread-safe at construction time, but it
  * <i>is</i> thread-safe to perform multiple comparisons after all the setup operations are complete.
  * </p>
- * 
- * @since Commons Collections 2.0
+ *
  * @author Morgan Delagrange
  * @version $Revision: 646777 $ $Date: 2008-04-10 13:33:15 +0100 (Thu, 10 Apr 2008) $
+ * @since Commons Collections 2.0
  */
 public class ComparatorChain<T> implements Comparator<T>, Serializable
 {
 
-    /** Serialization version from Collections 2.0. */
+    /**
+     * Serialization version from Collections 2.0.
+     */
     private static final long serialVersionUID = -721644942746081630L;
 
-    /** The list of comparators in the chain. */
+    /**
+     * The list of comparators in the chain.
+     */
     protected List<Comparator<T>> comparatorChain = null;
-    /** Order - false (clear) = ascend; true (set) = descend. */
+    /**
+     * Order - false (clear) = ascend; true (set) = descend.
+     */
     protected BitSet orderingBits = null;
-    /** Whether the chain has been "locked". */
+    /**
+     * Whether the chain has been "locked".
+     */
     protected boolean isLocked = false;
 
     // -----------------------------------------------------------------------
+
     /**
      * Construct a ComparatorChain with no Comparators. You must add at least one Comparator before calling the
      * compare(Object,Object) method, or an UnsupportedOperationException is thrown
@@ -76,9 +81,8 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
 
     /**
      * Construct a ComparatorChain with a single Comparator, sorting in the forward order
-     * 
-     * @param comparator
-     *            First comparator in the Comparator chain
+     *
+     * @param comparator First comparator in the Comparator chain
      */
     public ComparatorChain(Comparator<T> comparator)
     {
@@ -87,11 +91,9 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
 
     /**
      * Construct a Comparator chain with a single Comparator, sorting in the given order
-     * 
-     * @param comparator
-     *            First Comparator in the ComparatorChain
-     * @param reverse
-     *            false = forward sort; true = reverse sort
+     *
+     * @param comparator First Comparator in the ComparatorChain
+     * @param reverse    false = forward sort; true = reverse sort
      */
     public ComparatorChain(Comparator<T> comparator, boolean reverse)
     {
@@ -107,10 +109,9 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
     /**
      * Construct a ComparatorChain from the Comparators in the List. All Comparators will default to the forward sort
      * order.
-     * 
-     * @param list
-     *            List of Comparators
-     * @see #ComparatorChain(List,BitSet)
+     *
+     * @param list List of Comparators
+     * @see #ComparatorChain(List, BitSet)
      */
     public ComparatorChain(List<Comparator<T>> list)
     {
@@ -122,12 +123,10 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
      * from the given BitSet. When determining the sort order for Comparator at index <i>i</i> in the List, the
      * ComparatorChain will call BitSet.get(<i>i</i>). If that method returns <i>false</i>, the forward sort order is
      * used; a return value of <i>true</i> indicates reverse sort order.
-     * 
-     * @param list
-     *            List of Comparators. NOTE: This constructor does not perform a defensive copy of the list
-     * @param bits
-     *            Sort order for each Comparator. Extra bits are ignored, unless extra Comparators are added by another
-     *            method.
+     *
+     * @param list List of Comparators. NOTE: This constructor does not perform a defensive copy of the list
+     * @param bits Sort order for each Comparator. Extra bits are ignored, unless extra Comparators are added by another
+     *             method.
      */
     public ComparatorChain(List<Comparator<T>> list, BitSet bits)
     {
@@ -136,11 +135,11 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
     }
 
     // -----------------------------------------------------------------------
+
     /**
      * Add a Comparator to the end of the chain using the forward sort order
-     * 
-     * @param comparator
-     *            Comparator with the forward sort order
+     *
+     * @param comparator Comparator with the forward sort order
      */
     public void addComparator(Comparator<T> comparator)
     {
@@ -149,11 +148,9 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
 
     /**
      * Add a Comparator to the end of the chain using the given sort order
-     * 
-     * @param comparator
-     *            Comparator to add to the end of the chain
-     * @param reverse
-     *            false = forward sort order; true = reverse sort order
+     *
+     * @param comparator Comparator to add to the end of the chain
+     * @param reverse    false = forward sort order; true = reverse sort order
      */
     public void addComparator(Comparator<T> comparator, boolean reverse)
     {
@@ -168,13 +165,10 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
 
     /**
      * Replace the Comparator at the given index, maintaining the existing sort order.
-     * 
-     * @param index
-     *            index of the Comparator to replace
-     * @param comparator
-     *            Comparator to place at the given index
-     * @exception IndexOutOfBoundsException
-     *                if index &lt; 0 or index &gt;= size()
+     *
+     * @param index      index of the Comparator to replace
+     * @param comparator Comparator to place at the given index
+     * @throws IndexOutOfBoundsException if index &lt; 0 or index &gt;= size()
      */
     public void setComparator(int index, Comparator<T> comparator)
             throws IndexOutOfBoundsException
@@ -184,13 +178,10 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
 
     /**
      * Replace the Comparator at the given index in the ComparatorChain, using the given sort order
-     * 
-     * @param index
-     *            index of the Comparator to replace
-     * @param comparator
-     *            Comparator to set
-     * @param reverse
-     *            false = forward sort order; true = reverse sort order
+     *
+     * @param index      index of the Comparator to replace
+     * @param comparator Comparator to set
+     * @param reverse    false = forward sort order; true = reverse sort order
      */
     public void setComparator(int index, Comparator<T> comparator, boolean reverse)
     {
@@ -209,9 +200,8 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
 
     /**
      * Change the sort order at the given index in the ComparatorChain to a forward sort.
-     * 
-     * @param index
-     *            Index of the ComparatorChain
+     *
+     * @param index Index of the ComparatorChain
      */
     public void setForwardSort(int index)
     {
@@ -221,9 +211,8 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
 
     /**
      * Change the sort order at the given index in the ComparatorChain to a reverse sort.
-     * 
-     * @param index
-     *            Index of the ComparatorChain
+     *
+     * @param index Index of the ComparatorChain
      */
     public void setReverseSort(int index)
     {
@@ -233,7 +222,7 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
 
     /**
      * Number of Comparators in the current ComparatorChain.
-     * 
+     *
      * @return Comparator count
      */
     public int size()
@@ -244,7 +233,7 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
     /**
      * Determine if modifications can still be made to the ComparatorChain. ComparatorChains cannot be modified once
      * they have performed a comparison.
-     * 
+     *
      * @return true = ComparatorChain cannot be modified; false = ComparatorChain can still be modified.
      */
     public boolean isLocked()
@@ -270,16 +259,14 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
     }
 
     // -----------------------------------------------------------------------
+
     /**
      * Perform comparisons on the Objects as per Comparator.compare(o1,o2).
-     * 
-     * @param o1
-     *            the first object to compare
-     * @param o2
-     *            the second object to compare
+     *
+     * @param o1 the first object to compare
+     * @param o2 the second object to compare
      * @return -1, 0, or 1
-     * @exception UnsupportedOperationException
-     *                if the ComparatorChain does not contain at least one Comparator
+     * @throws UnsupportedOperationException if the ComparatorChain does not contain at least one Comparator
      */
     public int compare(T o1, T o2) throws UnsupportedOperationException
     {
@@ -321,9 +308,10 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
     }
 
     // -----------------------------------------------------------------------
+
     /**
      * Implement a hash code for this comparator that is consistent with {@link #equals(Object) equals}.
-     * 
+     *
      * @return a suitable hash code
      * @since Commons Collections 3.0
      */
@@ -344,13 +332,12 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
     /**
      * Returns <code>true</code> iff <i>that</i> Object is is a {@link Comparator} whose ordering is known to be
      * equivalent to mine.
-     * <p>
+     * <p/>
      * This implementation returns <code>true</code> iff <code><i>object</i>.{@link Object#getClass() getClass()}</code>
      * equals <code>this.getClass()</code>, and the underlying comparators and order bits are equal. Subclasses may want
      * to override this behavior to remain consistent with the {@link Comparator#equals(Object)} contract.
-     * 
-     * @param object
-     *            the object to compare with
+     *
+     * @param object the object to compare with
      * @return true if equal
      * @since Commons Collections 3.0
      */
@@ -368,7 +355,7 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
         {
             ComparatorChain<?> chain = (ComparatorChain<?>) object;
             return ((null == orderingBits ? null == chain.orderingBits : orderingBits.equals(chain.orderingBits))
-            && (null == comparatorChain ? null == chain.comparatorChain : comparatorChain.equals(chain.comparatorChain)));
+                    && (null == comparatorChain ? null == chain.comparatorChain : comparatorChain.equals(chain.comparatorChain)));
         }
         else
         {

@@ -145,7 +145,7 @@ public class SSTableScanner implements ICompactionScanner
                 }
                 else
                 {
-                    RowIndexEntry.serializer.skip(ifile);
+                    RowIndexEntry.Serializer.skip(ifile);
                 }
             }
         }
@@ -226,7 +226,7 @@ public class SSTableScanner implements ICompactionScanner
                             return endOfData();
 
                         currentKey = sstable.partitioner.decorateKey(ByteBufferUtil.readWithShortLength(ifile));
-                        currentEntry = RowIndexEntry.serializer.deserialize(ifile, sstable.descriptor.version);
+                        currentEntry = sstable.metadata.comparator.rowIndexEntrySerializer().deserialize(ifile, sstable.descriptor.version);
                     } while (!currentRange.contains(currentKey));
                 }
                 else
@@ -247,7 +247,7 @@ public class SSTableScanner implements ICompactionScanner
                 {
                     // we need the position of the start of the next key, regardless of whether it falls in the current range
                     nextKey = sstable.partitioner.decorateKey(ByteBufferUtil.readWithShortLength(ifile));
-                    nextEntry = RowIndexEntry.serializer.deserialize(ifile, sstable.descriptor.version);
+                    nextEntry = sstable.metadata.comparator.rowIndexEntrySerializer().deserialize(ifile, sstable.descriptor.version);
                     readEnd = nextEntry.position;
 
                     if (!currentRange.contains(nextKey))
@@ -257,12 +257,10 @@ public class SSTableScanner implements ICompactionScanner
                     }
                 }
 
-                if (dataRange == null || dataRange.selectsFullRowFor(currentKey.key))
+                if (dataRange == null || dataRange.selectsFullRowFor(currentKey.getKey()))
                 {
                     dfile.seek(currentEntry.position);
                     ByteBufferUtil.readWithShortLength(dfile); // key
-                    if (sstable.descriptor.version.hasRowSizeAndColumnCount)
-                        dfile.readLong();
                     long dataSize = readEnd - dfile.getFilePointer();
                     return new SSTableIdentityIterator(sstable, dfile, currentKey, dataSize);
                 }
@@ -271,7 +269,7 @@ public class SSTableScanner implements ICompactionScanner
                 {
                     public OnDiskAtomIterator create()
                     {
-                        return dataRange.columnFilter(currentKey.key).getSSTableColumnIterator(sstable, dfile, currentKey, currentEntry);
+                        return dataRange.columnFilter(currentKey.getKey()).getSSTableColumnIterator(sstable, dfile, currentKey, currentEntry);
                     }
                 });
 

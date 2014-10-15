@@ -18,6 +18,7 @@
 if "%OS%" == "Windows_NT" setlocal
 
 set ARG=%1
+if /i "%ARG%" == "LEGACY" goto runLegacy
 set INSTALL="INSTALL"
 set UNINSTALL="UNINSTALL"
 
@@ -25,14 +26,36 @@ pushd %~dp0..
 if NOT DEFINED CASSANDRA_HOME set CASSANDRA_HOME=%CD%
 popd
 
+REM -----------------------------------------------------------------------------
+REM See if we have access to run unsigned powershell scripts
+for /F "delims=" %%i in ('powershell Get-ExecutionPolicy') do set PERMISSION=%%i
+if "%PERMISSION%" == "Unrestricted" goto runPowerShell
+goto runLegacy
+
+REM -----------------------------------------------------------------------------
+:runPowerShell
+echo Detected powershell execution permissions.  Running with enhanced startup scripts.
+set errorlevel=
+powershell /file "%CASSANDRA_HOME%\bin\cassandra.ps1" %*
+exit /b %errorlevel%
+
+REM -----------------------------------------------------------------------------
+:runLegacy
+echo WARNING! Powershell script execution unavailable.
+echo    Please use 'powershell Set-ExecutionPolicy Unrestricted'
+echo    on this user-account to run cassandra with fully featured
+echo    functionality on this platform.
+
+echo Starting with legacy startup options
+
 if NOT DEFINED CASSANDRA_MAIN set CASSANDRA_MAIN=org.apache.cassandra.service.CassandraDaemon
 if NOT DEFINED JAVA_HOME goto :err
 
 REM ***** JAVA options *****
 set JAVA_OPTS=-ea^
- -javaagent:"%CASSANDRA_HOME%\lib\jamm-0.2.5.jar"^
- -Xms1G^
- -Xmx1G^
+ -javaagent:"%CASSANDRA_HOME%\lib\jamm-0.2.6.jar"^
+ -Xms2G^
+ -Xmx2G^
  -XX:+HeapDumpOnOutOfMemoryError^
  -XX:+UseParNewGC^
  -XX:+UseConcMarkSweepGC^
@@ -44,8 +67,7 @@ set JAVA_OPTS=-ea^
  -Dcom.sun.management.jmxremote.port=7199^
  -Dcom.sun.management.jmxremote.ssl=false^
  -Dcom.sun.management.jmxremote.authenticate=false^
- -Dlog4j.configuration=log4j-server.properties^
- -Dlog4j.defaultInitOverride=true
+ -Dlogback.configurationFile=logback.xml
 
 REM ***** CLASSPATH library setting *****
 
@@ -64,6 +86,8 @@ goto :eof
 REM Include the build\classes\main directory so it works in development
 set CASSANDRA_CLASSPATH=%CLASSPATH%;"%CASSANDRA_HOME%\build\classes\main";"%CASSANDRA_HOME%\build\classes\thrift"
 set CASSANDRA_PARAMS=-Dcassandra -Dcassandra-foreground=yes
+set CASSANDRA_PARAMS=%CASSANDRA_PARAMS% "-Dcassandra.logdir=%CASSANDRA_HOME%\logs"
+set CASSANDRA_PARAMS=%CASSANDRA_PARAMS% "-Dcassandra.storagedir=%CASSANDRA_HOME%\data"
 if /i "%ARG%" == "INSTALL" goto doInstallOperation
 if /i "%ARG%" == "UNINSTALL" goto doInstallOperation
 goto runDaemon
@@ -103,7 +127,7 @@ rem set PR_CLASSPATH=%CASSANDRA_CLASSPATH%
  --StopMode=jvm --StopClass=%CASSANDRA_MAIN%  --StopMethod=stop ^
  ++JvmOptions=%JAVA_OPTS_DELM% ++JvmOptions=-DCassandra ^
  --PidFile pid.txt
- 
+
 echo Installation of %SERVICE_JVM% is complete
 goto finally
 

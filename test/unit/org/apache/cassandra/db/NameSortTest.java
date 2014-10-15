@@ -60,21 +60,21 @@ public class NameSortTest extends SchemaLoader
         for (int i = 0; i < N; ++i)
         {
             ByteBuffer key = ByteBufferUtil.bytes(Integer.toString(i));
-            RowMutation rm;
+            Mutation rm;
 
             // standard
             for (int j = 0; j < 8; ++j)
             {
                 ByteBuffer bytes = j % 2 == 0 ? ByteBufferUtil.bytes("a") : ByteBufferUtil.bytes("b");
-                rm = new RowMutation("Keyspace1", key);
-                rm.add("Standard1", ByteBufferUtil.bytes(("Column-" + j)), bytes, j);
+                rm = new Mutation("Keyspace1", key);
+                rm.add("Standard1", Util.cellname("Cell-" + j), bytes, j);
                 rm.applyUnsafe();
             }
 
             // super
             for (int j = 0; j < 8; ++j)
             {
-                rm = new RowMutation("Keyspace1", key);
+                rm = new Mutation("Keyspace1", key);
                 for (int k = 0; k < 4; ++k)
                 {
                     String value = (j + k) % 2 == 0 ? "a" : "b";
@@ -99,13 +99,13 @@ public class NameSortTest extends SchemaLoader
             ColumnFamily cf;
 
             cf = Util.getColumnFamily(keyspace, key, "Standard1");
-            Collection<Column> columns = cf.getSortedColumns();
-            for (Column column : columns)
+            Collection<Cell> cells = cf.getSortedColumns();
+            for (Cell cell : cells)
             {
-                String name = ByteBufferUtil.string(column.name());
+                String name = ByteBufferUtil.string(cell.name().toByteBuffer());
                 int j = Integer.valueOf(name.substring(name.length() - 1));
                 byte[] bytes = j % 2 == 0 ? "a".getBytes() : "b".getBytes();
-                assertEquals(new String(bytes), ByteBufferUtil.string(column.value()));
+                assertEquals(new String(bytes), ByteBufferUtil.string(cell.value()));
             }
         }
     }

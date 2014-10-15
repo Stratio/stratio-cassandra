@@ -26,8 +26,10 @@ import com.google.common.collect.ImmutableSet;
 
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.serializers.*;
 
 public class CollectionTypeTest
 {
@@ -52,8 +54,8 @@ public class CollectionTypeTest
         {
             for (int j = i+1; j < lists.length; j++)
             {
-                assertEquals(lt.compare(lists[i], lists[j]), -1);
-                assertEquals(lt.compare(lists[j], lists[i]), 1);
+                assertEquals(String.format("compare(lists[%d], lists[%d])", i, j), -1, lt.compare(lists[i], lists[j]));
+                assertEquals(String.format("compare(lists[%d], lists[%d])", j, i),  1, lt.compare(lists[j], lists[i]));
             }
         }
     }
@@ -79,8 +81,8 @@ public class CollectionTypeTest
         {
             for (int j = i+1; j < sets.length; j++)
             {
-                assertEquals(st.compare(sets[i], sets[j]), -1);
-                assertEquals(st.compare(sets[j], sets[i]), 1);
+                assertEquals(String.format("compare(sets[%d], sets[%d])", i, j), -1, st.compare(sets[i], sets[j]));
+                assertEquals(String.format("compare(sets[%d], sets[%d])", j, i),  1, st.compare(sets[j], sets[i]));
             }
         }
     }
@@ -108,9 +110,99 @@ public class CollectionTypeTest
         {
             for (int j = i+1; j < maps.length; j++)
             {
-                assertEquals(mt.compare(maps[i], maps[j]), -1);
-                assertEquals(mt.compare(maps[j], maps[i]), 1);
+                assertEquals(String.format("compare(maps[%d], maps[%d])", i, j), mt.compare(maps[i], maps[j]), -1);
+                assertEquals(String.format("compare(maps[%d], maps[%d])", j, i), mt.compare(maps[j], maps[i]), 1);
             }
+        }
+    }
+
+    @Test
+    public void listSerDerTest()
+    {
+        ListSerializer<String> sls = ListType.getInstance(UTF8Type.instance).getSerializer();
+        ListSerializer<Integer> ils = ListType.getInstance(Int32Type.instance).getSerializer();
+
+        List<String> sl = Arrays.asList("Foo", "Bar");
+        List<Integer> il = Arrays.asList(3, 1, 5);
+
+        ByteBuffer sb = sls.serialize(sl);
+        ByteBuffer ib = ils.serialize(il);
+
+        assertEquals(sls.deserialize(sb), sl);
+        assertEquals(ils.deserialize(ib), il);
+
+        sls.validate(sb);
+        ils.validate(ib);
+
+        // string list with integer list type
+        assertInvalid(ils, sb);
+        // non list value
+        assertInvalid(sls, UTF8Type.instance.getSerializer().serialize("foo"));
+    }
+
+    @Test
+    public void setSerDerTest()
+    {
+        SetSerializer<String> sss = SetType.getInstance(UTF8Type.instance).getSerializer();
+        SetSerializer<Integer> iss = SetType.getInstance(Int32Type.instance).getSerializer();
+
+        Set<String> ss = new HashSet(){{ add("Foo"); add("Bar"); }};
+        Set<Integer> is = new HashSet(){{ add(3); add(1); add(5); }};
+
+        ByteBuffer sb = sss.serialize(ss);
+        ByteBuffer ib = iss.serialize(is);
+
+        assertEquals(sss.deserialize(sb), ss);
+        assertEquals(iss.deserialize(ib), is);
+
+        sss.validate(sb);
+        iss.validate(ib);
+
+        // string set with integer set type
+        assertInvalid(iss, sb);
+        // non set value
+        assertInvalid(sss, UTF8Type.instance.getSerializer().serialize("foo"));
+    }
+
+    @Test
+    public void setMapDerTest()
+    {
+        MapSerializer<String, String> sms = MapType.getInstance(UTF8Type.instance, UTF8Type.instance).getSerializer();
+        MapSerializer<Integer, Integer> ims = MapType.getInstance(Int32Type.instance, Int32Type.instance).getSerializer();
+
+        Map<String, String> sm = new HashMap(){{ put("Foo", "xxx"); put("Bar", "yyy"); }};
+        Map<Integer, Integer> im = new HashMap(){{ put(3, 0); put(1, 8); put(5, 2); }};
+
+        ByteBuffer sb = sms.serialize(sm);
+        ByteBuffer ib = ims.serialize(im);
+
+        assertEquals(sms.deserialize(sb), sm);
+        assertEquals(ims.deserialize(ib), im);
+
+        sms.validate(sb);
+        ims.validate(ib);
+
+        // string map with integer map type
+        assertInvalid(ims, sb);
+        // non map value
+        assertInvalid(sms, UTF8Type.instance.getSerializer().serialize("foo"));
+
+        MapSerializer<Integer, String> sims = MapType.getInstance(Int32Type.instance, UTF8Type.instance).getSerializer();
+        MapSerializer<String, Integer> isms = MapType.getInstance(UTF8Type.instance, Int32Type.instance).getSerializer();
+
+        // only key are invalid
+        assertInvalid(isms, sb);
+        // only values are invalid
+        assertInvalid(sims, sb);
+    }
+
+    private void assertInvalid(TypeSerializer<?> type, ByteBuffer value)
+    {
+        try {
+            type.validate(value);
+            fail("Value " + ByteBufferUtil.bytesToHex(value) + " shouldn't be valid for type " + type);
+        } catch (MarshalException e) {
+            // ok, that's what we want
         }
     }
 }

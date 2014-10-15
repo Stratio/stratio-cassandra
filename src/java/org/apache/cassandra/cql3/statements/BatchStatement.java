@@ -27,8 +27,10 @@ import org.github.jamm.MemoryMeter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.QueryState;
@@ -41,9 +43,6 @@ import org.apache.cassandra.transport.messages.ResultMessage;
  */
 public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
 {
-    private static boolean loggedCASTimestamp = false;
-    private static boolean loggedCounterTimestamp = false;
-
     public static enum Type
     {
         LOGGED, UNLOGGED, COUNTER
@@ -64,8 +63,12 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
      * @param statements a list of UpdateStatements
      * @param attrs additional attributes for statement (CL, timestamp, timeToLive)
      */
-    public BatchStatement(int boundTerms, Type type, List<ModificationStatement> statements, Attributes attrs, boolean hasConditions)
+    public BatchStatement(int boundTerms, Type type, List<ModificationStatement> statements, Attributes attrs)
     {
+        boolean hasConditions = false;
+        for (ModificationStatement statement : statements)
+            hasConditions |= statement.hasConditions();
+
         this.boundTerms = boundTerms;
         this.type = type;
         this.statements = statements;
@@ -95,7 +98,8 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
             statement.checkAccess(state);
     }
 
-    public void validate(ClientState state) throws InvalidRequestException
+    // Validates a prepared batch statement without validating its nested statements.
+    public void validate() throws InvalidRequestException
     {
         if (attrs.isTimeToLiveSet())
             throw new InvalidRequestException("Global TTL on the BATCH statement is not supported.");
@@ -103,29 +107,61 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
         boolean timestampSet = attrs.isTimestampSet();
         if (timestampSet)
         {
-            if (hasConditions && !loggedCASTimestamp)
-            {
-                logger.warn("Detected use of 'USING TIMESTAMP' on a BATCH with conditions. This is invalid, " +
-                            "custom timestamps are not allowed when conditions are used and the timestamp has been ignored. " +
-                            "Such queries will be rejected in Cassandra 2.1+ - please fix your queries before then.");
-                loggedCASTimestamp = true;
-            }
-            if (type == Type.COUNTER && !loggedCounterTimestamp)
-            {
-                logger.warn("Detected use of 'USING TIMESTAMP' in a counter BATCH. This is invalid " +
-                            "because counters do not use timestamps, and the timestamp has been ignored. " +
-                            "Such queries will be rejected in Cassandra 2.1+ - please fix your queries before then.");
-                loggedCounterTimestamp = true;
-            }
+            if (hasConditions)
+                throw new InvalidRequestException("Cannot provide custom timestamp for conditional BATCH");
+            if (type == Type.COUNTER)
+                throw new InvalidRequestException("Cannot provide custom timestamp for counter BATCH");
         }
+
+        boolean hasCounters = false;
+        boolean hasNonCounters = false;
 
         for (ModificationStatement statement : statements)
         {
+            if (timestampSet && statement.isCounter())
+                throw new InvalidRequestException("Cannot provide custom timestamp for a BATCH containing counters");
+
             if (timestampSet && statement.isTimestampSet())
                 throw new InvalidRequestException("Timestamp must be set either on BATCH or individual statements");
 
-            statement.validate(state);
+            if (type == Type.COUNTER && !statement.isCounter())
+                throw new InvalidRequestException("Cannot include non-counter statement in a counter batch");
+
+            if (type == Type.LOGGED && statement.isCounter())
+                throw new InvalidRequestException("Cannot include a counter statement in a logged batch");
+
+            if (statement.isCounter())
+                hasCounters = true;
+            else
+                hasNonCounters = true;
         }
+
+        if (hasCounters && hasNonCounters)
+            throw new InvalidRequestException("Counter and non-counter mutations cannot exist in the same batch");
+
+        if (hasConditions)
+        {
+            String ksName = null;
+            String cfName = null;
+            for (ModificationStatement stmt : statements)
+            {
+                if (ksName != null && (!stmt.keyspace().equals(ksName) || !stmt.columnFamily().equals(cfName)))
+                    throw new InvalidRequestException("Batch with conditions cannot span multiple tables");
+                ksName = stmt.keyspace();
+                cfName = stmt.columnFamily();
+
+                if (stmt.requiresRead())
+                    throw new InvalidRequestException("Operations on lists requiring a read (setting by index and deletions by index or value) are not allowed with IF conditions");
+            }
+        }
+    }
+
+    // The batch itself will be validated in either Parsed#prepare() - for regular CQL3 batches,
+    //   or in QueryProcessor.processBatch() - for native protocol batches.
+    public void validate(ClientState state) throws InvalidRequestException
+    {
+        for (ModificationStatement statement : statements)
+            statement.validate(state);
     }
 
     public List<ModificationStatement> getStatements()
@@ -133,16 +169,16 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
         return statements;
     }
 
-    private Collection<? extends IMutation> getMutations(BatchVariables variables, boolean local, ConsistencyLevel cl, long now)
+    private Collection<? extends IMutation> getMutations(BatchQueryOptions options, boolean local, long now)
     throws RequestExecutionException, RequestValidationException
     {
         Map<String, Map<ByteBuffer, IMutation>> mutations = new HashMap<>();
         for (int i = 0; i < statements.size(); i++)
         {
             ModificationStatement statement = statements.get(i);
-            List<ByteBuffer> statementVariables = variables.getVariablesForStatement(i);
-            long timestamp = attrs.getTimestamp(now, statementVariables);
-            addStatementMutations(statement, statementVariables, local, cl, timestamp, mutations);
+            QueryOptions statementOptions = options.forStatement(i);
+            long timestamp = attrs.getTimestamp(now, statementOptions);
+            addStatementMutations(statement, statementOptions, local, timestamp, mutations);
         }
         return unzipMutations(mutations);
     }
@@ -160,9 +196,8 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
     }
 
     private void addStatementMutations(ModificationStatement statement,
-                                       List<ByteBuffer> variables,
+                                       QueryOptions options,
                                        boolean local,
-                                       ConsistencyLevel cl,
                                        long now,
                                        Map<String, Map<ByteBuffer, IMutation>> mutations)
     throws RequestExecutionException, RequestValidationException
@@ -178,26 +213,26 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
         // The following does the same than statement.getMutations(), but we inline it here because
         // we don't want to recreate mutations every time as this is particularly inefficient when applying
         // multiple batch to the same partition (see #6737).
-        List<ByteBuffer> keys = statement.buildPartitionKeyNames(variables);
-        ColumnNameBuilder clusteringPrefix = statement.createClusteringPrefixBuilder(variables);
-        UpdateParameters params = statement.makeUpdateParameters(keys, clusteringPrefix, variables, local, cl, now);
+        List<ByteBuffer> keys = statement.buildPartitionKeyNames(options);
+        Composite clusteringPrefix = statement.createClusteringPrefix(options);
+        UpdateParameters params = statement.makeUpdateParameters(keys, clusteringPrefix, options, local, now);
 
         for (ByteBuffer key : keys)
         {
             IMutation mutation = ksMap.get(key);
-            RowMutation rm;
+            Mutation mut;
             if (mutation == null)
             {
-                rm = new RowMutation(ksName, key);
-                mutation = type == Type.COUNTER ? new CounterMutation(rm, cl) : rm;
+                mut = new Mutation(ksName, key);
+                mutation = statement.cfm.isCounter() ? new CounterMutation(mut, options.getConsistency()) : mut;
                 ksMap.put(key, mutation);
             }
             else
             {
-                rm = type == Type.COUNTER ? ((CounterMutation)mutation).rowMutation() : (RowMutation)mutation;
+                mut = statement.cfm.isCounter() ? ((CounterMutation)mutation).getMutation() : (Mutation)mutation;
             }
 
-            statement.addUpdateForKey(rm.addOrGet(statement.cfm, UnsortedColumns.factory), key, clusteringPrefix, params);
+            statement.addUpdateForKey(mut.addOrGet(statement.cfm), key, clusteringPrefix, params);
         }
     }
 
@@ -226,29 +261,26 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
 
     public ResultMessage execute(QueryState queryState, QueryOptions options) throws RequestExecutionException, RequestValidationException
     {
-        if (options.getConsistency() == null)
-            throw new InvalidRequestException("Invalid empty consistency level");
-
-        return execute(new PreparedBatchVariables(options.getValues()), false, options.getConsistency(), options.getSerialConsistency(), queryState.getTimestamp());
+        return execute(queryState, BatchQueryOptions.withoutPerStatementVariables(options));
     }
 
-    public ResultMessage executeWithPerStatementVariables(ConsistencyLevel cl, QueryState queryState, List<List<ByteBuffer>> variables) throws RequestExecutionException, RequestValidationException
+    public ResultMessage execute(QueryState queryState, BatchQueryOptions options) throws RequestExecutionException, RequestValidationException
     {
-        if (cl == null)
-            throw new InvalidRequestException("Invalid empty consistency level");
-
-        return execute(new BatchOfPreparedVariables(variables), false, cl, ConsistencyLevel.SERIAL, queryState.getTimestamp());
+        return execute(queryState, options, false, options.getTimestamp(queryState));
     }
 
-    public ResultMessage execute(BatchVariables variables, boolean local, ConsistencyLevel cl, ConsistencyLevel serialCl, long now)
+    private ResultMessage execute(QueryState queryState, BatchQueryOptions options, boolean local, long now)
     throws RequestExecutionException, RequestValidationException
     {
-        // TODO: we don't support a serial consistency for batches in the protocol so defaulting to SERIAL for now.
-        // We'll need to fix that.
-        if (hasConditions)
-            return executeWithConditions(variables, cl, serialCl, now);
+        if (options.getConsistency() == null)
+            throw new InvalidRequestException("Invalid empty consistency level");
+        if (options.getSerialConsistency() == null)
+            throw new InvalidRequestException("Invalid empty serial consistency level");
 
-        executeWithoutConditions(getMutations(variables, local, cl, now), cl);
+        if (hasConditions)
+            return executeWithConditions(options, now);
+
+        executeWithoutConditions(getMutations(options, local, now), options.getConsistency());
         return new ResultMessage.Void();
     }
 
@@ -268,8 +300,7 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
         StorageProxy.mutateWithTriggers(mutations, cl, mutateAtomic);
     }
 
-
-    private ResultMessage executeWithConditions(BatchVariables variables, ConsistencyLevel cl, ConsistencyLevel serialCf, long now)
+    private ResultMessage executeWithConditions(BatchQueryOptions options, long now)
     throws RequestExecutionException, RequestValidationException
     {
         ByteBuffer key = null;
@@ -277,14 +308,14 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
         String cfName = null;
         ColumnFamily updates = null;
         CQL3CasConditions conditions = null;
-        Set<ColumnIdentifier> columnsWithConditions = new LinkedHashSet<ColumnIdentifier>();
+        Set<ColumnDefinition> columnsWithConditions = new LinkedHashSet<>();
 
         for (int i = 0; i < statements.size(); i++)
         {
             ModificationStatement statement = statements.get(i);
-            List<ByteBuffer> statementVariables = variables.getVariablesForStatement(i);
-            long timestamp = attrs.getTimestamp(now, statementVariables);
-            List<ByteBuffer> pks = statement.buildPartitionKeyNames(statementVariables);
+            QueryOptions statementOptions = options.forStatement(i);
+            long timestamp = attrs.getTimestamp(now, statementOptions);
+            List<ByteBuffer> pks = statement.buildPartitionKeyNames(statementOptions);
             if (pks.size() > 1)
                 throw new IllegalArgumentException("Batch with conditions cannot span multiple partitions (you cannot use IN on the partition key)");
             if (key == null)
@@ -293,17 +324,17 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
                 ksName = statement.cfm.ksName;
                 cfName = statement.cfm.cfName;
                 conditions = new CQL3CasConditions(statement.cfm, now);
-                updates = UnsortedColumns.factory.create(statement.cfm);
+                updates = ArrayBackedSortedColumns.factory.create(statement.cfm);
             }
             else if (!key.equals(pks.get(0)))
             {
                 throw new InvalidRequestException("Batch with conditions cannot span multiple partitions");
             }
 
-            ColumnNameBuilder clusteringPrefix = statement.createClusteringPrefixBuilder(statementVariables);
+            Composite clusteringPrefix = statement.createClusteringPrefix(statementOptions);
             if (statement.hasConditions())
             {
-                statement.addUpdatesAndConditions(key, clusteringPrefix, updates, conditions, statementVariables, timestamp);
+                statement.addUpdatesAndConditions(key, clusteringPrefix, updates, conditions, statementOptions, timestamp);
                 // As soon as we have a ifNotExists, we set columnsWithConditions to null so that everything is in the resultSet
                 if (statement.hasIfNotExistCondition() || statement.hasIfExistCondition())
                     columnsWithConditions = null;
@@ -312,58 +343,31 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
             }
             else
             {
-                UpdateParameters params = statement.makeUpdateParameters(Collections.singleton(key), clusteringPrefix, statementVariables, false, cl, now);
+                UpdateParameters params = statement.makeUpdateParameters(Collections.singleton(key), clusteringPrefix, statementOptions, false, now);
                 statement.addUpdateForKey(updates, key, clusteringPrefix, params);
             }
         }
 
         verifyBatchSize(Collections.singleton(updates));
-        ColumnFamily result = StorageProxy.cas(ksName, cfName, key, conditions, updates, serialCf, cl);
-        return new ResultMessage.Rows(ModificationStatement.buildCasResultSet(ksName, key, cfName, result, columnsWithConditions, true));
+        ColumnFamily result = StorageProxy.cas(ksName, cfName, key, conditions, updates, options.getSerialConsistency(), options.getConsistency());
+        return new ResultMessage.Rows(ModificationStatement.buildCasResultSet(ksName, key, cfName, result, columnsWithConditions, true, options.forStatement(0)));
     }
 
     public ResultMessage executeInternal(QueryState queryState, QueryOptions options) throws RequestValidationException, RequestExecutionException
     {
         assert !hasConditions;
-
-        for (IMutation mutation : getMutations(new PreparedBatchVariables(options.getValues()), true, null, queryState.getTimestamp()))
-            mutation.apply();
+        for (IMutation mutation : getMutations(BatchQueryOptions.withoutPerStatementVariables(options), true, queryState.getTimestamp()))
+        {
+            // We don't use counters internally.
+            assert mutation instanceof Mutation;
+            ((Mutation) mutation).apply();
+        }
         return null;
     }
 
     public interface BatchVariables
     {
         public List<ByteBuffer> getVariablesForStatement(int statementInBatch);
-    }
-
-    public static class PreparedBatchVariables implements BatchVariables
-    {
-        private final List<ByteBuffer> variables;
-
-        public PreparedBatchVariables(List<ByteBuffer> variables)
-        {
-            this.variables = variables;
-        }
-
-        public List<ByteBuffer> getVariablesForStatement(int statementInBatch)
-        {
-            return variables;
-        }
-    }
-
-    public static class BatchOfPreparedVariables implements BatchVariables
-    {
-        private final List<List<ByteBuffer>> variables;
-
-        public BatchOfPreparedVariables(List<List<ByteBuffer>> variables)
-        {
-            this.variables = variables;
-        }
-
-        public List<ByteBuffer> getVariablesForStatement(int statementInBatch)
-        {
-            return variables.get(statementInBatch);
-        }
     }
 
     public String toString()
@@ -396,40 +400,17 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
         {
             VariableSpecifications boundNames = getBoundVariables();
 
-            List<ModificationStatement> statements = new ArrayList<ModificationStatement>(parsedStatements.size());
-            boolean hasConditions = false;
+            List<ModificationStatement> statements = new ArrayList<>(parsedStatements.size());
             for (ModificationStatement.Parsed parsed : parsedStatements)
-            {
-                ModificationStatement stmt = parsed.prepare(boundNames);
-                if (stmt.hasConditions())
-                    hasConditions = true;
-
-                if (stmt.isCounter() && type != Type.COUNTER)
-                    throw new InvalidRequestException("Counter mutations are only allowed in COUNTER batches");
-
-                if (!stmt.isCounter() && type == Type.COUNTER)
-                    throw new InvalidRequestException("Only counter mutations are allowed in COUNTER batches");
-
-                statements.add(stmt);
-            }
-
-            if (hasConditions)
-            {
-                String ksName = null;
-                String cfName = null;
-                for (ModificationStatement stmt : statements)
-                {
-                    if (ksName != null && (!stmt.keyspace().equals(ksName) || !stmt.columnFamily().equals(cfName)))
-                        throw new InvalidRequestException("Batch with conditions cannot span multiple tables");
-                    ksName = stmt.keyspace();
-                    cfName = stmt.columnFamily();
-                }
-            }
+                statements.add(parsed.prepare(boundNames));
 
             Attributes prepAttrs = attrs.prepare("[batch]", "[batch]");
             prepAttrs.collectMarkerSpecification(boundNames);
 
-            return new ParsedStatement.Prepared(new BatchStatement(boundNames.size(), type, statements, prepAttrs, hasConditions), boundNames);
+            BatchStatement batchStatement = new BatchStatement(boundNames.size(), type, statements, prepAttrs);
+            batchStatement.validate();
+
+            return new ParsedStatement.Prepared(batchStatement, boundNames);
         }
     }
 }

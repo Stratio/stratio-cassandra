@@ -18,7 +18,6 @@
 */
 package org.apache.cassandra.db.compaction;
 
-import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.Set;
 import java.util.HashSet;
@@ -28,10 +27,8 @@ import org.apache.cassandra.Util;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
-import org.apache.cassandra.db.Keyspace;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.RowMutation;
-import org.apache.cassandra.db.ColumnFamilyStore;
+
+import org.apache.cassandra.db.*;
 
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.utils.ByteBufferUtil;
@@ -39,7 +36,7 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class OneCompactionTest extends SchemaLoader
 {
-    private void testCompaction(String columnFamilyName, int insertsPerTable) throws IOException, ExecutionException, InterruptedException
+    private void testCompaction(String columnFamilyName, int insertsPerTable) throws ExecutionException, InterruptedException
     {
         CompactionManager.instance.disableAutoCompaction();
 
@@ -49,8 +46,8 @@ public class OneCompactionTest extends SchemaLoader
         Set<DecoratedKey> inserted = new HashSet<DecoratedKey>();
         for (int j = 0; j < insertsPerTable; j++) {
             DecoratedKey key = Util.dk(String.valueOf(j));
-            RowMutation rm = new RowMutation("Keyspace1", key.key);
-            rm.add(columnFamilyName, ByteBufferUtil.bytes("0"), ByteBufferUtil.EMPTY_BYTE_BUFFER, j);
+            Mutation rm = new Mutation("Keyspace1", key.getKey());
+            rm.add(columnFamilyName, Util.cellname("0"), ByteBufferUtil.EMPTY_BYTE_BUFFER, j);
             rm.apply();
             inserted.add(key);
             store.forceBlockingFlush();
@@ -61,13 +58,13 @@ public class OneCompactionTest extends SchemaLoader
     }
 
     @Test
-    public void testCompaction1() throws IOException, ExecutionException, InterruptedException
+    public void testCompaction1() throws ExecutionException, InterruptedException
     {
         testCompaction("Standard1", 1);
     }
 
     @Test
-    public void testCompaction2() throws IOException, ExecutionException, InterruptedException
+    public void testCompaction2() throws ExecutionException, InterruptedException
     {
         testCompaction("Standard2", 2);
     }

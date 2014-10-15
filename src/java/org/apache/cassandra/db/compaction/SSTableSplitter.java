@@ -57,7 +57,7 @@ public class SSTableSplitter {
 
         public SplittingCompactionTask(ColumnFamilyStore cfs, SSTableReader sstable, int sstableSizeInMB)
         {
-            super(cfs, Collections.singletonList(sstable), CompactionManager.NO_GC);
+            super(cfs, Collections.singletonList(sstable), CompactionManager.NO_GC, true);
             this.sstableSizeInMB = sstableSizeInMB;
 
             if (sstableSizeInMB <= 0)
@@ -67,12 +67,7 @@ public class SSTableSplitter {
         @Override
         protected CompactionController getCompactionController(Set<SSTableReader> toCompact)
         {
-            return new SplitController(cfs, toCompact);
-        }
-
-        @Override
-        protected void replaceCompactedSSTables(Collection<SSTableReader> compacted, Collection<SSTableReader> replacements)
-        {
+            return new SplitController(cfs);
         }
 
         @Override
@@ -90,15 +85,15 @@ public class SSTableSplitter {
 
     public static class SplitController extends CompactionController
     {
-        public SplitController(ColumnFamilyStore cfs, Collection<SSTableReader> toCompact)
+        public SplitController(ColumnFamilyStore cfs)
         {
             super(cfs, CompactionManager.NO_GC);
         }
 
         @Override
-        public boolean shouldPurge(DecoratedKey key, long maxDeletionTimestamp)
+        public long maxPurgeableTimestamp(DecoratedKey key)
         {
-            return false;
+            return Long.MIN_VALUE;
         }
     }
 }

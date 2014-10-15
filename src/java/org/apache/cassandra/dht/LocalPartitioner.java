@@ -22,12 +22,16 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.cassandra.db.BufferDecoratedKey;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.ObjectSizes;
 
 public class LocalPartitioner extends AbstractPartitioner<LocalToken>
 {
+    private static final long EMPTY_SIZE = ObjectSizes.measure(new LocalToken(null, null));
+
     private final AbstractType<?> comparator;
 
     public LocalPartitioner(AbstractType<?> comparator)
@@ -37,7 +41,7 @@ public class LocalPartitioner extends AbstractPartitioner<LocalToken>
 
     public DecoratedKey decorateKey(ByteBuffer key)
     {
-        return new DecoratedKey(getToken(key), key);
+        return new BufferDecoratedKey(getToken(key), key);
     }
 
     public Token midpoint(Token left, Token right)
@@ -53,6 +57,11 @@ public class LocalPartitioner extends AbstractPartitioner<LocalToken>
     public LocalToken getToken(ByteBuffer key)
     {
         return new LocalToken(comparator, key);
+    }
+
+    public long getHeapSizeOf(LocalToken token)
+    {
+        return EMPTY_SIZE + ObjectSizes.sizeOnHeapOf(token.token);
     }
 
     public LocalToken getRandomToken()

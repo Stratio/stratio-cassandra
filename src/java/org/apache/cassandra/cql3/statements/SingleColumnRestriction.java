@@ -18,8 +18,8 @@
 package org.apache.cassandra.cql3.statements;
 
 import org.apache.cassandra.cql3.*;
+import org.apache.cassandra.db.IndexExpression;
 import org.apache.cassandra.exceptions.InvalidRequestException;
-import org.apache.cassandra.thrift.IndexOperator;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -44,9 +44,9 @@ public abstract class SingleColumnRestriction implements Restriction
             this.onToken = onToken;
         }
 
-        public List<ByteBuffer> values(List<ByteBuffer> variables) throws InvalidRequestException
+        public List<ByteBuffer> values(QueryOptions options) throws InvalidRequestException
         {
-            return Collections.singletonList(value.bindAndGet(variables));
+            return Collections.singletonList(value.bindAndGet(options));
         }
 
         public boolean isSlice()
@@ -60,6 +60,11 @@ public abstract class SingleColumnRestriction implements Restriction
         }
 
         public boolean isIN()
+        {
+            return false;
+        }
+
+        public boolean isContains()
         {
             return false;
         }
@@ -85,11 +90,11 @@ public abstract class SingleColumnRestriction implements Restriction
             this.values = values;
         }
 
-        public List<ByteBuffer> values(List<ByteBuffer> variables) throws InvalidRequestException
+        public List<ByteBuffer> values(QueryOptions options) throws InvalidRequestException
         {
             List<ByteBuffer> buffers = new ArrayList<>(values.size());
             for (Term value : values)
-                buffers.add(value.bindAndGet(variables));
+                buffers.add(value.bindAndGet(options));
             return buffers;
         }
 
@@ -113,6 +118,11 @@ public abstract class SingleColumnRestriction implements Restriction
             return true;
         }
 
+        public boolean isContains()
+        {
+            return false;
+        }
+
         public boolean isOnToken()
         {
             return false;
@@ -134,9 +144,9 @@ public abstract class SingleColumnRestriction implements Restriction
             this.marker = marker;
         }
 
-        public List<ByteBuffer> values(List<ByteBuffer> variables) throws InvalidRequestException
+        public List<ByteBuffer> values(QueryOptions options) throws InvalidRequestException
         {
-            Term.MultiItemTerminal lval = (Term.MultiItemTerminal)marker.bind(variables);
+            Term.MultiItemTerminal lval = (Term.MultiItemTerminal)marker.bind(options);
             if (lval == null)
                 throw new InvalidRequestException("Invalid null value for IN restriction");
             return lval.getElements();
@@ -160,6 +170,11 @@ public abstract class SingleColumnRestriction implements Restriction
         public boolean isIN()
         {
             return true;
+        }
+
+        public boolean isContains()
+        {
+            return false;
         }
 
         public boolean isOnToken()
@@ -202,7 +217,12 @@ public abstract class SingleColumnRestriction implements Restriction
             return false;
         }
 
-        public List<ByteBuffer> values(List<ByteBuffer> variables) throws InvalidRequestException
+        public boolean isContains()
+        {
+            return false;
+        }
+
+        public List<ByteBuffer> values(QueryOptions options) throws InvalidRequestException
         {
             throw new UnsupportedOperationException();
         }
@@ -218,9 +238,9 @@ public abstract class SingleColumnRestriction implements Restriction
             return bounds[b.idx] != null;
         }
 
-        public ByteBuffer bound(Bound b, List<ByteBuffer> variables) throws InvalidRequestException
+        public ByteBuffer bound(Bound b, QueryOptions options) throws InvalidRequestException
         {
-            return bounds[b.idx].bindAndGet(variables);
+            return bounds[b.idx].bindAndGet(options);
         }
 
         /** Returns true if the start or end bound (depending on the argument) is inclusive, false otherwise */
@@ -241,19 +261,19 @@ public abstract class SingleColumnRestriction implements Restriction
             throw new AssertionError();
         }
 
-        public IndexOperator getIndexOperator(Bound b)
+        public IndexExpression.Operator getIndexOperator(Bound b)
         {
             switch (b)
             {
                 case START:
-                    return boundInclusive[b.idx] ? IndexOperator.GTE : IndexOperator.GT;
+                    return boundInclusive[b.idx] ? IndexExpression.Operator.GTE : IndexExpression.Operator.GT;
                 case END:
-                    return boundInclusive[b.idx] ? IndexOperator.LTE : IndexOperator.LT;
+                    return boundInclusive[b.idx] ? IndexExpression.Operator.LTE : IndexExpression.Operator.LT;
             }
             throw new AssertionError();
         }
 
-        public void setBound(Relation.Type type, Term t) throws InvalidRequestException
+        public void setBound(ColumnIdentifier name, Relation.Type type, Term t) throws InvalidRequestException
         {
             Bound b;
             boolean inclusive;
@@ -281,7 +301,7 @@ public abstract class SingleColumnRestriction implements Restriction
 
             if (bounds[b.idx] != null)
                 throw new InvalidRequestException(String.format(
-                        "More than one restriction was found for the %s bound", b.name().toLowerCase()));
+                        "More than one restriction was found for the %s bound on %s", b.name().toLowerCase(), name));
 
             bounds[b.idx] = t;
             boundInclusive[b.idx] = inclusive;
@@ -295,6 +315,99 @@ public abstract class SingleColumnRestriction implements Restriction
                                  boundInclusive[1] ? "<=" : "<",
                                  bounds[1],
                                  onToken ? "*" : "");
+        }
+    }
+
+    // This holds both CONTAINS and CONTAINS_KEY restriction because we might want to have both of them.
+    public static class Contains extends SingleColumnRestriction
+    {
+        private List<Term> values; // for CONTAINS
+        private List<Term> keys;   // for CONTAINS_KEY
+
+        public boolean hasContains()
+        {
+            return values != null;
+        }
+
+        public boolean hasContainsKey()
+        {
+            return keys != null;
+        }
+
+        public void add(Term t, boolean isKey)
+        {
+            if (isKey)
+                addKey(t);
+            else
+                addValue(t);
+        }
+
+        public void addValue(Term t)
+        {
+            if (values == null)
+                values = new ArrayList<>();
+            values.add(t);
+        }
+
+        public void addKey(Term t)
+        {
+            if (keys == null)
+                keys = new ArrayList<>();
+            keys.add(t);
+        }
+
+        public List<ByteBuffer> values(QueryOptions options) throws InvalidRequestException
+        {
+            if (values == null)
+                return Collections.emptyList();
+
+            List<ByteBuffer> buffers = new ArrayList<ByteBuffer>(values.size());
+            for (Term value : values)
+                buffers.add(value.bindAndGet(options));
+            return buffers;
+        }
+
+        public List<ByteBuffer> keys(QueryOptions options) throws InvalidRequestException
+        {
+            if (keys == null)
+                return Collections.emptyList();
+
+            List<ByteBuffer> buffers = new ArrayList<ByteBuffer>(keys.size());
+            for (Term value : keys)
+                buffers.add(value.bindAndGet(options));
+            return buffers;
+        }
+
+        public boolean isSlice()
+        {
+            return false;
+        }
+
+        public boolean isEQ()
+        {
+            return false;
+        }
+
+        public boolean isIN()
+        {
+            return false;
+        }
+
+        public boolean isContains()
+        {
+            return true;
+        }
+
+        public boolean isOnToken()
+        {
+            return false;
+        }
+
+
+        @Override
+        public String toString()
+        {
+            return String.format("CONTAINS(values=%s, keys=%s)", values, keys);
         }
     }
 }

@@ -18,23 +18,26 @@
 package org.apache.cassandra.db;
 
 import java.io.DataInput;
-import java.io.DataOutput;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import com.google.common.primitives.Ints;
 
 import org.apache.cassandra.cache.IMeasurableMemory;
+import org.apache.cassandra.db.composites.CType;
+import org.apache.cassandra.io.ISerializer;
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.sstable.IndexHelper;
+import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.utils.ObjectSizes;
 
 public class RowIndexEntry implements IMeasurableMemory
 {
-    public static final Serializer serializer = new Serializer();
+    private static final long EMPTY_SIZE = ObjectSizes.measure(new RowIndexEntry(0));
 
     public final long position;
 
@@ -43,12 +46,7 @@ public class RowIndexEntry implements IMeasurableMemory
         this.position = position;
     }
 
-    public int serializedSize()
-    {
-        return TypeSizes.NATIVE.sizeof(position) + promotedSize();
-    }
-
-    protected int promotedSize()
+    protected int promotedSize(CType type)
     {
         return 0;
     }
@@ -86,24 +84,32 @@ public class RowIndexEntry implements IMeasurableMemory
         return Collections.emptyList();
     }
 
-    public long memorySize()
+    public long unsharedHeapSize()
     {
-        return ObjectSizes.getFieldSize(TypeSizes.NATIVE.sizeof(position));
+        return EMPTY_SIZE;
     }
 
     public static class Serializer
     {
-        public void serialize(RowIndexEntry rie, DataOutput out) throws IOException
+        private final CType type;
+
+        public Serializer(CType type)
+        {
+            this.type = type;
+        }
+
+        public void serialize(RowIndexEntry rie, DataOutputPlus out) throws IOException
         {
             out.writeLong(rie.position);
-            out.writeInt(rie.promotedSize());
+            out.writeInt(rie.promotedSize(type));
 
             if (rie.isIndexed())
             {
                 DeletionTime.serializer.serialize(rie.deletionTime(), out);
                 out.writeInt(rie.columnsIndex().size());
+                ISerializer<IndexHelper.IndexInfo> idxSerializer = type.indexSerializer();
                 for (IndexHelper.IndexInfo info : rie.columnsIndex())
-                    info.serialize(out);
+                    idxSerializer.serialize(info, out);
             }
         }
 
@@ -117,9 +123,10 @@ public class RowIndexEntry implements IMeasurableMemory
                 DeletionTime deletionTime = DeletionTime.serializer.deserialize(in);
 
                 int entries = in.readInt();
+                ISerializer<IndexHelper.IndexInfo> idxSerializer = type.indexSerializer();
                 List<IndexHelper.IndexInfo> columnsIndex = new ArrayList<IndexHelper.IndexInfo>(entries);
                 for (int i = 0; i < entries; i++)
-                    columnsIndex.add(IndexHelper.IndexInfo.deserialize(in));
+                    columnsIndex.add(idxSerializer.deserialize(in));
 
                 return new IndexedEntry(position, deletionTime, columnsIndex);
             }
@@ -129,19 +136,24 @@ public class RowIndexEntry implements IMeasurableMemory
             }
         }
 
-        public void skip(DataInput in) throws IOException
+        public static void skip(DataInput in) throws IOException
         {
             in.readLong();
             skipPromotedIndex(in);
         }
 
-        public void skipPromotedIndex(DataInput in) throws IOException
+        public static void skipPromotedIndex(DataInput in) throws IOException
         {
             int size = in.readInt();
             if (size <= 0)
                 return;
 
             FileUtils.skipBytesFully(in, size);
+        }
+
+        public int serializedSize(RowIndexEntry rie)
+        {
+            return TypeSizes.NATIVE.sizeof(rie.position) + rie.promotedSize(type);
         }
     }
 
@@ -152,6 +164,9 @@ public class RowIndexEntry implements IMeasurableMemory
     {
         private final DeletionTime deletionTime;
         private final List<IndexHelper.IndexInfo> columnsIndex;
+        private static final long BASE_SIZE =
+                ObjectSizes.measure(new IndexedEntry(0, DeletionTime.LIVE, Arrays.<IndexHelper.IndexInfo>asList(null, null)))
+              + ObjectSizes.measure(new ArrayList<>(1));
 
         private IndexedEntry(long position, DeletionTime deletionTime, List<IndexHelper.IndexInfo> columnsIndex)
         {
@@ -175,31 +190,29 @@ public class RowIndexEntry implements IMeasurableMemory
         }
 
         @Override
-        public int promotedSize()
+        public int promotedSize(CType type)
         {
             TypeSizes typeSizes = TypeSizes.NATIVE;
             long size = DeletionTime.serializer.serializedSize(deletionTime, typeSizes);
             size += typeSizes.sizeof(columnsIndex.size()); // number of entries
+            ISerializer<IndexHelper.IndexInfo> idxSerializer = type.indexSerializer();
             for (IndexHelper.IndexInfo info : columnsIndex)
-                size += info.serializedSize(typeSizes);
+                size += idxSerializer.serializedSize(info, typeSizes);
 
             return Ints.checkedCast(size);
         }
 
         @Override
-        public long memorySize()
+        public long unsharedHeapSize()
         {
             long entrySize = 0;
             for (IndexHelper.IndexInfo idx : columnsIndex)
-                entrySize += idx.memorySize();
+                entrySize += idx.unsharedHeapSize();
 
-            return ObjectSizes.getSuperClassFieldSize(TypeSizes.NATIVE.sizeof(position))
-                   + ObjectSizes.getFieldSize(// deletionTime
-                                              ObjectSizes.getReferenceSize() +
-                                              // columnsIndex
-                                              ObjectSizes.getReferenceSize())
-                   + deletionTime.memorySize()
-                   + ObjectSizes.getArraySize(columnsIndex.size(), ObjectSizes.getReferenceSize()) + entrySize + 4;
+            return BASE_SIZE
+                   + entrySize
+                   + deletionTime.unsharedHeapSize()
+                   + ObjectSizes.sizeOfReferenceArray(columnsIndex.size());
         }
     }
 }

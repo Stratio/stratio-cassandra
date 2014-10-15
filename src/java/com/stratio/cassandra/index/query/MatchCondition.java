@@ -15,6 +15,8 @@
  */
 package com.stratio.cassandra.index.query;
 
+import com.stratio.cassandra.index.schema.ColumnMapper;
+import com.stratio.cassandra.index.schema.Schema;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.NumericRangeQuery;
 import org.apache.lucene.search.Query;
@@ -22,34 +24,34 @@ import org.apache.lucene.search.TermQuery;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
-import com.stratio.cassandra.index.schema.CellMapper;
-import com.stratio.cassandra.index.schema.Schema;
-
 /**
  * A {@link Condition} implementation that matches documents containing a value for a field.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class MatchCondition extends Condition
 {
 
-    /** The field name */
+    /**
+     * The field name
+     */
+    @JsonProperty("field")
     private final String field;
 
-    /** The field value */
+    /**
+     * The field value
+     */
+    @JsonProperty("value")
     private Object value;
 
     /**
      * Constructor using the field name and the value to be matched.
-     * 
-     * @param boost
-     *            The boost for this query clause. Documents matching this clause will (in addition to the normal
-     *            weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link DEFAULT_BOOST}
-     *            is used as default.
-     * @param field
-     *            the field name.
-     * @param value
-     *            the field value.
+     *
+     * @param boost The boost for this query clause. Documents matching this clause will (in addition to the normal
+     *              weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link #DEFAULT_BOOST}
+     *              is used as default.
+     * @param field the field name.
+     * @param value the field value.
      */
     @JsonCreator
     public MatchCondition(@JsonProperty("boost") Float boost,
@@ -59,26 +61,6 @@ public class MatchCondition extends Condition
         super(boost);
         this.field = field;
         this.value = value;
-    }
-
-    /**
-     * Returns the field name.
-     * 
-     * @return the field name.
-     */
-    public String getField()
-    {
-        return field;
-    }
-
-    /**
-     * Returns the field value.
-     * 
-     * @return the field value.
-     */
-    public Object getValue()
-    {
-        return value;
     }
 
     /**
@@ -97,12 +79,12 @@ public class MatchCondition extends Condition
             throw new IllegalArgumentException("Field value required");
         }
 
-        CellMapper<?> cellMapper = schema.getMapper(field);
-        Class<?> clazz = cellMapper.baseClass();
+        ColumnMapper<?> columnMapper = schema.getMapper(field);
+        Class<?> clazz = columnMapper.baseClass();
         Query query;
         if (clazz == String.class)
         {
-            String value = (String) cellMapper.queryValue(field, this.value);
+            String value = (String) columnMapper.queryValue(field, this.value);
             String analyzedValue = analyze(field, value, schema.analyzer());
             if (analyzedValue == null)
             {
@@ -113,22 +95,22 @@ public class MatchCondition extends Condition
         }
         else if (clazz == Integer.class)
         {
-            Integer value = (Integer) cellMapper.queryValue(field, this.value);
+            Integer value = (Integer) columnMapper.queryValue(field, this.value);
             query = NumericRangeQuery.newIntRange(field, value, value, true, true);
         }
         else if (clazz == Long.class)
         {
-            Long value = (Long) cellMapper.queryValue(field, this.value);
+            Long value = (Long) columnMapper.queryValue(field, this.value);
             query = NumericRangeQuery.newLongRange(field, value, value, true, true);
         }
         else if (clazz == Float.class)
         {
-            Float value = (Float) cellMapper.queryValue(field, this.value);
+            Float value = (Float) columnMapper.queryValue(field, this.value);
             query = NumericRangeQuery.newFloatRange(field, value, value, true, true);
         }
         else if (clazz == Double.class)
         {
-            Double value = (Double) cellMapper.queryValue(field, this.value);
+            Double value = (Double) columnMapper.queryValue(field, this.value);
             query = NumericRangeQuery.newDoubleRange(field, value, value, true, true);
         }
         else

@@ -15,125 +15,86 @@
  */
 package com.stratio.cassandra.index.query;
 
+import com.stratio.cassandra.index.schema.ColumnMapper;
+import com.stratio.cassandra.index.schema.Schema;
 import org.apache.lucene.search.NumericRangeQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermRangeQuery;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
-import com.stratio.cassandra.index.schema.CellMapper;
-import com.stratio.cassandra.index.schema.Schema;
-
 /**
  * A {@link Condition} implementation that matches a field within an range of values.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class RangeCondition extends Condition
 {
 
-    /** The field name. */
+    public static final boolean DEFAULT_INCLUDE_LOWER = false;
+    public static final boolean DEFAULT_INCLUDE_UPPER = false;
+
+    /**
+     * The field name.
+     */
+    @JsonProperty("field")
     private final String field;
 
-    /** The lower field value included in the range. */
+    /**
+     * The lower field value included in the range.
+     */
+    @JsonProperty("lower")
     private Object lower;
 
-    /** The upper field value included in the range. */
+    /**
+     * The upper field value included in the range.
+     */
+    @JsonProperty("upper")
     private Object upper;
 
-    /** If the lower value is included in the range. */
-    private final boolean includeLower;
+    /**
+     * If the lower value is included in the range.
+     */
+    @JsonProperty("include_lower")
+    private Boolean includeLower;
 
-    /** If the upper value is included in the range. */
-    private final boolean includeUpper;
+    /**
+     * If the upper value is included in the range.
+     */
+    @JsonProperty("include_upper")
+    private Boolean includeUpper;
 
     /**
      * Constructs a query selecting all fields greater/equal than {@code lowerValue} but less/equal than
      * {@code upperValue}.
-     * 
+     * <p/>
      * If an endpoint is null, it is said to be "open". Either or both endpoints may be open. Open endpoints may not be
      * exclusive (you can't select all but the first or last term without explicitly specifying the term to exclude.)
-     * 
-     * @param boost
-     *            The boost for this query clause. Documents matching this clause will (in addition to the normal
-     *            weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link DEFAULT_BOOST}
-     *            is used as default.
-     * @param field
-     *            the field name.
-     * @param lowerValue
-     *            the field value at the lower end of the range.
-     * @param upperValue
-     *            the field value at the upper end of the range.
-     * @param includeLower
-     *            if {@code true}, the {@code lowerValue} is included in the range.
-     * @param includeUpper
-     *            if {@code true}, the {@code upperValue} is included in the range.
+     *
+     * @param boost        The boost for this query clause. Documents matching this clause will (in addition to the normal
+     *                     weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link #DEFAULT_BOOST}
+     *                     is used as default.
+     * @param field        the field name.
+     * @param lowerValue   the field value at the lower end of the range.
+     * @param upperValue   the field value at the upper end of the range.
+     * @param includeLower if {@code true}, the {@code lowerValue} is included in the range.
+     * @param includeUpper if {@code true}, the {@code upperValue} is included in the range.
      */
     @JsonCreator
     public RangeCondition(@JsonProperty("boost") Float boost,
                           @JsonProperty("field") String field,
                           @JsonProperty("lower") Object lowerValue,
                           @JsonProperty("upper") Object upperValue,
-                          @JsonProperty("include_lower") boolean includeLower,
-                          @JsonProperty("include_upper") boolean includeUpper)
+                          @JsonProperty("include_lower") Boolean includeLower,
+                          @JsonProperty("include_upper") Boolean includeUpper)
     {
         super(boost);
 
         this.field = field;
         this.lower = lowerValue;
         this.upper = upperValue;
-        this.includeLower = includeLower;
-        this.includeUpper = includeUpper;
-    }
-
-    /**
-     * Returns the field name.
-     * 
-     * @return the field name.
-     */
-    public String getField()
-    {
-        return field;
-    }
-
-    /**
-     * Returns the field value at the lower end of the range.
-     * 
-     * @return the field value at the lower end of the range.
-     */
-    public Object getLowerValue()
-    {
-        return lower;
-    }
-
-    /**
-     * Returns the field value at the upper end of the range.
-     * 
-     * @return the field value at the upper end of the range.
-     */
-    public Object getUpperValue()
-    {
-        return upper;
-    }
-
-    /**
-     * Returns {@code true} if the {@code lowerValue} is included in the range, {@code false} otherwise.
-     * 
-     * @return {@code true} if the {@code lowerValue} is included in the range, {@code false} otherwise.
-     */
-    public boolean getIncludeLower()
-    {
-        return includeLower;
-    }
-
-    /**
-     * Returns {@code true} if the {@code includeUpper} is included in the range, {@code false} otherwise.
-     * 
-     * @return {@code true} if the {@code includeUpper} is included in the range, {@code false} otherwise.
-     */
-    public boolean getIncludeUpper()
-    {
-        return includeUpper;
+        this.includeLower = includeLower == null ? DEFAULT_INCLUDE_LOWER : includeLower;
+        this.includeUpper = includeUpper == null ? DEFAULT_INCLUDE_UPPER : includeUpper;
     }
 
     /**
@@ -148,13 +109,13 @@ public class RangeCondition extends Condition
             throw new IllegalArgumentException("Field name required");
         }
 
-        CellMapper<?> cellMapper = schema.getMapper(field);
-        Class<?> clazz = cellMapper.baseClass();
+        ColumnMapper<?> columnMapper = schema.getMapper(field);
+        Class<?> clazz = columnMapper.baseClass();
         Query query;
         if (clazz == String.class)
         {
-            String lower = (String) cellMapper.queryValue(field, this.lower);
-            String upper = (String) cellMapper.queryValue(field, this.upper);
+            String lower = (String) columnMapper.queryValue(field, this.lower);
+            String upper = (String) columnMapper.queryValue(field, this.upper);
             if (lower != null)
             {
                 lower = analyze(field, lower, schema.analyzer());
@@ -167,26 +128,26 @@ public class RangeCondition extends Condition
         }
         else if (clazz == Integer.class)
         {
-            Integer lower = (Integer) cellMapper.queryValue(field, this.lower);
-            Integer upper = (Integer) cellMapper.queryValue(field, this.upper);
+            Integer lower = (Integer) columnMapper.queryValue(field, this.lower);
+            Integer upper = (Integer) columnMapper.queryValue(field, this.upper);
             query = NumericRangeQuery.newIntRange(field, lower, upper, includeLower, includeUpper);
         }
         else if (clazz == Long.class)
         {
-            Long lower = (Long) cellMapper.queryValue(field, this.lower);
-            Long upper = (Long) cellMapper.queryValue(field, this.upper);
+            Long lower = (Long) columnMapper.queryValue(field, this.lower);
+            Long upper = (Long) columnMapper.queryValue(field, this.upper);
             query = NumericRangeQuery.newLongRange(field, lower, upper, includeLower, includeUpper);
         }
         else if (clazz == Float.class)
         {
-            Float lower = (Float) cellMapper.queryValue(field, this.lower);
-            Float upper = (Float) cellMapper.queryValue(field, this.upper);
+            Float lower = (Float) columnMapper.queryValue(field, this.lower);
+            Float upper = (Float) columnMapper.queryValue(field, this.upper);
             query = NumericRangeQuery.newFloatRange(field, lower, upper, includeLower, includeUpper);
         }
         else if (clazz == Double.class)
         {
-            Double lower = (Double) cellMapper.queryValue(field, this.lower);
-            Double upper = (Double) cellMapper.queryValue(field, this.upper);
+            Double lower = (Double) columnMapper.queryValue(field, this.lower);
+            Double upper = (Double) columnMapper.queryValue(field, this.upper);
             query = NumericRangeQuery.newDoubleRange(field, lower, upper, includeLower, includeUpper);
         }
         else

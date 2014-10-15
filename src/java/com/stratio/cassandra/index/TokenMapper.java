@@ -15,33 +15,30 @@
  */
 package com.stratio.cassandra.index;
 
-import java.util.Collection;
-
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.dht.AbstractBounds;
-import org.apache.cassandra.dht.IPartitioner;
-import org.apache.cassandra.dht.Murmur3Partitioner;
-import org.apache.cassandra.dht.Range;
-import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.dht.*;
 import org.apache.cassandra.service.StorageService;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.SortField;
 
+import java.util.Collection;
+
 /**
  * Class for several row partitioning {@link Token} mappings between Cassandra and Lucene.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public abstract class TokenMapper
 {
 
-    /** The lazily created singleton instance. */
+    /**
+     * The lazily created singleton instance.
+     */
     private static TokenMapper instance;
 
     protected final ColumnFamilyStore baseCfs;
@@ -49,9 +46,8 @@ public abstract class TokenMapper
     /**
      * Returns a new {@link TokenMapper} instance for the current partitioner using the specified
      * {@link ColumnFamilyStore}.
-     * 
-     * @param baseCfs
-     *            A {@link ColumnFamilyStore}.
+     *
+     * @param baseCfs A {@link ColumnFamilyStore}.
      * @return A new {@link TokenMapper} instance for the current partitioner.
      */
     public static TokenMapper instance(ColumnFamilyStore baseCfs)
@@ -78,15 +74,13 @@ public abstract class TokenMapper
 
     /**
      * Adds to the specified {@link Document} the {@link Field}s associated to the token of the specified row key.
-     * 
-     * @param document
-     *            A {@link Document}.
-     * @param partitionKey
-     *            The raw partition key to be added.
+     *
+     * @param document     A {@link Document}.
+     * @param partitionKey The raw partition key to be added.
      */
     public abstract void addFields(Document document, DecoratedKey partitionKey);
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
+    @SuppressWarnings({"rawtypes", "unchecked"})
     private boolean needsFilter(DataRange dataRange)
     {
 
@@ -120,11 +114,10 @@ public abstract class TokenMapper
     /**
      * Returns a Lucene's {@link Filter} for filtering documents/rows according to the row token range specified in
      * {@code dataRange}.
-     * 
-     * @param dataRange
-     *            The data range containing the row token range to be filtered.
+     *
+     * @param dataRange The data range containing the row token range to be filtered.
      * @return A Lucene's {@link Filter} for filtering documents/rows according to the row token range specified in
-     *         {@code dataRage}.
+     * {@code dataRage}.
      */
     public Filter filter(DataRange dataRange)
     {
@@ -134,17 +127,16 @@ public abstract class TokenMapper
     /**
      * Returns a Lucene's {@link Filter} for filtering documents/rows according to the row token range specified in
      * {@code dataRange}.
-     * 
-     * @param dataRange
-     *            The data range containing the row token range to be filtered.
+     *
+     * @param dataRange The data range containing the row token range to be filtered.
      * @return A Lucene's {@link Filter} for filtering documents/rows according to the row token range specified in
-     *         {@code dataRage}.
+     * {@code dataRage}.
      */
     public abstract Filter newFilter(DataRange dataRange);
 
     /**
      * Returns a Lucene's {@link SortField} array for sorting documents/rows according to the current partitioner.
-     * 
+     *
      * @return A Lucene's {@link SortField} array for sorting documents/rows according to the current partitioner.
      */
     public abstract SortField[] sortFields();

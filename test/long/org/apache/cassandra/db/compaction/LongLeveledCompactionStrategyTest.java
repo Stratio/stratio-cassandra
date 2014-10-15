@@ -27,13 +27,8 @@ import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.RowMutation;
-import org.apache.cassandra.db.Keyspace;
-import org.apache.cassandra.io.sstable.SSTable;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.io.sstable.SSTableReader;
-import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 
 public class LongLeveledCompactionStrategyTest extends SchemaLoader
@@ -59,10 +54,10 @@ public class LongLeveledCompactionStrategyTest extends SchemaLoader
         for (int r = 0; r < rows; r++)
         {
             DecoratedKey key = Util.dk(String.valueOf(r));
-            RowMutation rm = new RowMutation(ksname, key.key);
+            Mutation rm = new Mutation(ksname, key.getKey());
             for (int c = 0; c < columns; c++)
             {
-                rm.add(cfname, ByteBufferUtil.bytes("column" + c), value, 0);
+                rm.add(cfname, Util.cellname("column" + c), value, 0);
             }
             rm.apply();
             store.forceBlockingFlush();
@@ -77,7 +72,7 @@ public class LongLeveledCompactionStrategyTest extends SchemaLoader
         {
             while (true)
             {
-                final AbstractCompactionTask t = lcs.getMaximalTask(Integer.MIN_VALUE);
+                final AbstractCompactionTask t = lcs.getMaximalTask(Integer.MIN_VALUE).iterator().next();
                 if (t == null)
                     break;
                 tasks.add(new Runnable()
@@ -106,7 +101,7 @@ public class LongLeveledCompactionStrategyTest extends SchemaLoader
         {
             List<SSTableReader> sstables = manifest.getLevel(level);
             // score check
-            assert (double) SSTable.getTotalBytes(sstables) / manifest.maxBytesForLevel(level) < 1.00;
+            assert (double) SSTableReader.getTotalBytes(sstables) / manifest.maxBytesForLevel(level) < 1.00;
             // overlap check for levels greater than 0
             if (level > 0)
             {

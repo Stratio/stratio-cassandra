@@ -20,43 +20,60 @@ package org.apache.cassandra.cql3;
 import java.util.Locale;
 import java.nio.ByteBuffer;
 
+import org.apache.cassandra.cache.IMeasurableMemory;
 import org.apache.cassandra.cql3.statements.Selectable;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.ObjectSizes;
+import org.apache.cassandra.utils.memory.AbstractAllocator;
 
 /**
  * Represents an identifer for a CQL column definition.
+ * TODO : should support light-weight mode without text representation for when not interned
  */
-public class ColumnIdentifier implements Selectable
+public class ColumnIdentifier implements Selectable, IMeasurableMemory
 {
-    public final ByteBuffer key;
+    public final ByteBuffer bytes;
     private final String text;
+
+    private static final long EMPTY_SIZE = ObjectSizes.measure(new ColumnIdentifier("", true));
 
     public ColumnIdentifier(String rawText, boolean keepCase)
     {
         this.text = keepCase ? rawText : rawText.toLowerCase(Locale.US);
-        this.key = ByteBufferUtil.bytes(this.text);
+        this.bytes = ByteBufferUtil.bytes(this.text);
     }
 
-    public ColumnIdentifier(ByteBuffer key, AbstractType<?> type)
+    public ColumnIdentifier(ByteBuffer bytes, AbstractType<?> type)
     {
-        this.key = key;
-        this.text = type.getString(key);
+        this.bytes = bytes;
+        this.text = type.getString(bytes);
+    }
+
+    public ColumnIdentifier(ByteBuffer bytes, String text)
+    {
+        this.bytes = bytes;
+        this.text = text;
     }
 
     @Override
     public final int hashCode()
     {
-        return key.hashCode();
+        return bytes.hashCode();
     }
 
     @Override
     public final boolean equals(Object o)
     {
+        // Note: it's worth checking for reference equality since we intern those
+        // in SparseCellNameType
+        if (this == o)
+            return true;
+
         if(!(o instanceof ColumnIdentifier))
             return false;
         ColumnIdentifier that = (ColumnIdentifier)o;
-        return key.equals(that.key);
+        return bytes.equals(that.bytes);
     }
 
     @Override
@@ -64,4 +81,24 @@ public class ColumnIdentifier implements Selectable
     {
         return text;
     }
+
+    public long unsharedHeapSize()
+    {
+        return EMPTY_SIZE
+             + ObjectSizes.sizeOnHeapOf(bytes)
+             + ObjectSizes.sizeOf(text);
+    }
+
+    public long unsharedHeapSizeExcludingData()
+    {
+        return EMPTY_SIZE
+             + ObjectSizes.sizeOnHeapExcludingData(bytes)
+             + ObjectSizes.sizeOf(text);
+    }
+
+    public ColumnIdentifier clone(AbstractAllocator allocator)
+    {
+        return new ColumnIdentifier(allocator.clone(bytes), text);
+    }
+
 }

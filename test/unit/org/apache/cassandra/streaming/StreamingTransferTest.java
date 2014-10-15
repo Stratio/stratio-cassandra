@@ -47,15 +47,13 @@ import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.sstable.SSTableUtils;
 import org.apache.cassandra.service.StorageService;
-import org.apache.cassandra.thrift.IndexExpression;
-import org.apache.cassandra.thrift.IndexOperator;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.CounterId;
 import org.apache.cassandra.utils.FBUtilities;
-import org.apache.cassandra.utils.HeapAllocator;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
+import static org.apache.cassandra.Util.cellname;
 import static org.apache.cassandra.Util.column;
 
 @RunWith(OrderedJUnit4ClassRunner.class)
@@ -169,8 +167,8 @@ public class StreamingTransferTest extends SchemaLoader
             String key = "key" + offs[i];
             String col = "col" + offs[i];
             assert cfs.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk(key), cfs.name, System.currentTimeMillis())) != null;
-            assert rows.get(i).key.key.equals(ByteBufferUtil.bytes(key));
-            assert rows.get(i).cf.getColumn(ByteBufferUtil.bytes(col)) != null;
+            assert rows.get(i).key.getKey().equals(ByteBufferUtil.bytes(key));
+            assert rows.get(i).cf.getColumn(cellname(col)) != null;
         }
 
         // and that the max timestamp for the file was rediscovered
@@ -214,7 +212,7 @@ public class StreamingTransferTest extends SchemaLoader
         {
             details.add(new StreamSession.SSTableStreamingSections(sstable,
                                                                    sstable.getPositionsForRanges(ranges),
-                                                                   sstable.estimatedKeysForRanges(ranges)));
+                                                                   sstable.estimatedKeysForRanges(ranges), sstable.getSSTableMetadata().repairedAt));
         }
         return details;
     }
@@ -229,10 +227,10 @@ public class StreamingTransferTest extends SchemaLoader
             public void mutate(String key, String col, long timestamp) throws Exception
             {
                 long val = key.hashCode();
-                ColumnFamily cf = TreeMapBackedSortedColumns.factory.create(keyspace.getName(), cfs.name);
+                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(keyspace.getName(), cfs.name);
                 cf.addColumn(column(col, "v", timestamp));
-                cf.addColumn(new Column(ByteBufferUtil.bytes("birthdate"), ByteBufferUtil.bytes(val), timestamp));
-                RowMutation rm = new RowMutation("Keyspace1", ByteBufferUtil.bytes(key), cf);
+                cf.addColumn(new BufferCell(cellname("birthdate"), ByteBufferUtil.bytes(val), timestamp));
+                Mutation rm = new Mutation("Keyspace1", ByteBufferUtil.bytes(key), cf);
                 logger.debug("Applying row to transfer " + rm);
                 rm.apply();
             }
@@ -243,14 +241,14 @@ public class StreamingTransferTest extends SchemaLoader
         {
             long val = key.hashCode();
             IndexExpression expr = new IndexExpression(ByteBufferUtil.bytes("birthdate"),
-                                                              IndexOperator.EQ,
-                                                              ByteBufferUtil.bytes(val));
+                                                       IndexExpression.Operator.EQ,
+                                                       ByteBufferUtil.bytes(val));
             List<IndexExpression> clause = Arrays.asList(expr);
             IDiskAtomFilter filter = new IdentityQueryFilter();
             Range<RowPosition> range = Util.range("", "");
             List<Row> rows = cfs.search(range, clause, filter, 100);
             assertEquals(1, rows.size());
-            assert rows.get(0).key.key.equals(ByteBufferUtil.bytes(key));
+            assert rows.get(0).key.getKey().equals(ByteBufferUtil.bytes(key));
         }
     }
 
@@ -266,14 +264,14 @@ public class StreamingTransferTest extends SchemaLoader
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(cfname);
 
         String key = "key1";
-        RowMutation rm = new RowMutation(ks, ByteBufferUtil.bytes(key));
+        Mutation rm = new Mutation(ks, ByteBufferUtil.bytes(key));
         // add columns of size slightly less than column_index_size to force insert column index
-        rm.add(cfname, ByteBufferUtil.bytes(1), ByteBuffer.wrap(new byte[DatabaseDescriptor.getColumnIndexSize() - 64]), 2);
-        rm.add(cfname, ByteBufferUtil.bytes(6), ByteBuffer.wrap(new byte[DatabaseDescriptor.getColumnIndexSize()]), 2);
+        rm.add(cfname, cellname(1), ByteBuffer.wrap(new byte[DatabaseDescriptor.getColumnIndexSize() - 64]), 2);
+        rm.add(cfname, cellname(6), ByteBuffer.wrap(new byte[DatabaseDescriptor.getColumnIndexSize()]), 2);
         ColumnFamily cf = rm.addOrGet(cfname);
         // add RangeTombstones
-        cf.delete(new DeletionInfo(ByteBufferUtil.bytes(2), ByteBufferUtil.bytes(3), cf.getComparator(), 1, (int) (System.currentTimeMillis() / 1000)));
-        cf.delete(new DeletionInfo(ByteBufferUtil.bytes(5), ByteBufferUtil.bytes(7), cf.getComparator(), 1, (int) (System.currentTimeMillis() / 1000)));
+        cf.delete(new DeletionInfo(cellname(2), cellname(3), cf.getComparator(), 1, (int) (System.currentTimeMillis() / 1000)));
+        cf.delete(new DeletionInfo(cellname(5), cellname(7), cf.getComparator(), 1, (int) (System.currentTimeMillis() / 1000)));
         rm.apply();
         cfs.forceBlockingFlush();
 
@@ -315,15 +313,15 @@ public class StreamingTransferTest extends SchemaLoader
             public void mutate(String key, String col, long timestamp) throws Exception
             {
                 Map<String, ColumnFamily> entries = new HashMap<>();
-                ColumnFamily cf = TreeMapBackedSortedColumns.factory.create(cfs.metadata);
-                ColumnFamily cfCleaned = TreeMapBackedSortedColumns.factory.create(cfs.metadata);
-                CounterContext.ContextState state = CounterContext.ContextState.allocate(0, 1, 3, HeapAllocator.instance);
+                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(cfs.metadata);
+                ColumnFamily cfCleaned = ArrayBackedSortedColumns.factory.create(cfs.metadata);
+                CounterContext.ContextState state = CounterContext.ContextState.allocate(0, 1, 3);
                 state.writeLocal(CounterId.fromInt(2), 9L, 3L);
                 state.writeRemote(CounterId.fromInt(4), 4L, 2L);
                 state.writeRemote(CounterId.fromInt(6), 3L, 3L);
                 state.writeRemote(CounterId.fromInt(8), 2L, 4L);
-                cf.addColumn(new CounterColumn(ByteBufferUtil.bytes(col), state.context, timestamp));
-                cfCleaned.addColumn(new CounterColumn(ByteBufferUtil.bytes(col), cc.clearAllLocal(state.context), timestamp));
+                cf.addColumn(new BufferCounterCell(cellname(col), state.context, timestamp));
+                cfCleaned.addColumn(new BufferCounterCell(cellname(col), cc.clearAllLocal(state.context), timestamp));
 
                 entries.put(key, cf);
                 cleanedEntries.put(key, cfCleaned);
@@ -384,8 +382,8 @@ public class StreamingTransferTest extends SchemaLoader
         ColumnFamilyStore cfstore = Keyspace.open(keyspaceName).getColumnFamilyStore(cfname);
         List<Row> rows = Util.getRangeSlice(cfstore);
         assertEquals(2, rows.size());
-        assert rows.get(0).key.key.equals(ByteBufferUtil.bytes("test"));
-        assert rows.get(1).key.key.equals(ByteBufferUtil.bytes("transfer3"));
+        assert rows.get(0).key.getKey().equals(ByteBufferUtil.bytes("test"));
+        assert rows.get(1).key.getKey().equals(ByteBufferUtil.bytes("transfer3"));
         assert rows.get(0).cf.getColumnCount() == 1;
         assert rows.get(1).cf.getColumnCount() == 1;
 
@@ -424,9 +422,9 @@ public class StreamingTransferTest extends SchemaLoader
         Map.Entry<DecoratedKey,String> last = keys.lastEntry();
         Map.Entry<DecoratedKey,String> secondtolast = keys.lowerEntry(last.getKey());
         List<Range<Token>> ranges = new ArrayList<>();
-        ranges.add(new Range<>(p.getMinimumToken(), first.getKey().token));
+        ranges.add(new Range<>(p.getMinimumToken(), first.getKey().getToken()));
         // the left hand side of the range is exclusive, so we transfer from the second-to-last token
-        ranges.add(new Range<>(secondtolast.getKey().token, p.getMinimumToken()));
+        ranges.add(new Range<>(secondtolast.getKey().getToken(), p.getMinimumToken()));
 
         // Acquiring references, transferSSTables needs it
         if (!SSTableReader.acquireReferences(ssTableReaders))
@@ -453,10 +451,10 @@ public class StreamingTransferTest extends SchemaLoader
         {
             public void mutate(String key, String colName, long timestamp) throws Exception
             {
-                ColumnFamily cf = TreeMapBackedSortedColumns.factory.create(keyspace.getName(), cfs.name);
+                ColumnFamily cf = ArrayBackedSortedColumns.factory.create(keyspace.getName(), cfs.name);
                 cf.addColumn(column(colName, "value", timestamp));
-                cf.addColumn(new Column(ByteBufferUtil.bytes("birthdate"), ByteBufferUtil.bytes(new Date(timestamp).toString()), timestamp));
-                RowMutation rm = new RowMutation("Keyspace1", ByteBufferUtil.bytes(key), cf);
+                cf.addColumn(new BufferCell(cellname("birthdate"), ByteBufferUtil.bytes(new Date(timestamp).toString()), timestamp));
+                Mutation rm = new Mutation("Keyspace1", ByteBufferUtil.bytes(key), cf);
                 logger.debug("Applying row to transfer " + rm);
                 rm.apply();
             }

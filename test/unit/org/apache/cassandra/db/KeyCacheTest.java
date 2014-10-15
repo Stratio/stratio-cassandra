@@ -17,20 +17,26 @@
  */
 package org.apache.cassandra.db;
 
-import java.io.IOException;
+import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
+import com.google.common.util.concurrent.Uninterruptibles;
 import org.junit.AfterClass;
 import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
 import org.apache.cassandra.cache.KeyCacheKey;
+import org.apache.cassandra.db.composites.*;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.db.filter.QueryFilter;
+import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.service.CacheService;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 import static org.junit.Assert.assertEquals;
@@ -113,14 +119,14 @@ public class KeyCacheTest extends SchemaLoader
 
         DecoratedKey key1 = Util.dk("key1");
         DecoratedKey key2 = Util.dk("key2");
-        RowMutation rm;
+        Mutation rm;
 
         // inserts
-        rm = new RowMutation(KEYSPACE1, key1.key);
-        rm.add(COLUMN_FAMILY1, ByteBufferUtil.bytes("1"), ByteBufferUtil.EMPTY_BYTE_BUFFER, 0);
+        rm = new Mutation(KEYSPACE1, key1.getKey());
+        rm.add(COLUMN_FAMILY1, Util.cellname("1"), ByteBufferUtil.EMPTY_BYTE_BUFFER, 0);
         rm.apply();
-        rm = new RowMutation(KEYSPACE1, key2.key);
-        rm.add(COLUMN_FAMILY1, ByteBufferUtil.bytes("2"), ByteBufferUtil.EMPTY_BYTE_BUFFER, 0);
+        rm = new Mutation(KEYSPACE1, key2.getKey());
+        rm.add(COLUMN_FAMILY1, Util.cellname("2"), ByteBufferUtil.EMPTY_BYTE_BUFFER, 0);
         rm.apply();
 
         // to make sure we have SSTable
@@ -129,45 +135,59 @@ public class KeyCacheTest extends SchemaLoader
         // reads to cache key position
         cfs.getColumnFamily(QueryFilter.getSliceFilter(key1,
                                                        COLUMN_FAMILY1,
-                                                       ByteBufferUtil.EMPTY_BYTE_BUFFER,
-                                                       ByteBufferUtil.EMPTY_BYTE_BUFFER,
+                                                       Composites.EMPTY,
+                                                       Composites.EMPTY,
                                                        false,
                                                        10,
                                                        System.currentTimeMillis()));
 
         cfs.getColumnFamily(QueryFilter.getSliceFilter(key2,
                                                        COLUMN_FAMILY1,
-                                                       ByteBufferUtil.EMPTY_BYTE_BUFFER,
-                                                       ByteBufferUtil.EMPTY_BYTE_BUFFER,
+                                                       Composites.EMPTY,
+                                                       Composites.EMPTY,
                                                        false,
                                                        10,
                                                        System.currentTimeMillis()));
 
         assertKeyCacheSize(2, KEYSPACE1, COLUMN_FAMILY1);
 
+        Set<SSTableReader> readers = cfs.getDataTracker().getSSTables();
+        for (SSTableReader reader : readers)
+            reader.acquireReference();
+
         Util.compactAll(cfs, Integer.MAX_VALUE).get();
-        // after compaction cache should have entries for
-        // new SSTables, if we had 2 keys in cache previously it should become 4
+        // after compaction cache should have entries for new SSTables,
+        // but since we have kept a reference to the old sstables,
+        // if we had 2 keys in cache previously it should become 4
         assertKeyCacheSize(4, KEYSPACE1, COLUMN_FAMILY1);
+
+        for (SSTableReader reader : readers)
+            reader.releaseReference();
+
+        Uninterruptibles.sleepUninterruptibly(10, TimeUnit.MILLISECONDS);;
+        while (StorageService.tasks.getActiveCount() + StorageService.tasks.getQueue().size() > 0);
+
+        // after releasing the reference this should drop to 2
+        assertKeyCacheSize(2, KEYSPACE1, COLUMN_FAMILY1);
 
         // re-read same keys to verify that key cache didn't grow further
         cfs.getColumnFamily(QueryFilter.getSliceFilter(key1,
                                                        COLUMN_FAMILY1,
-                                                       ByteBufferUtil.EMPTY_BYTE_BUFFER,
-                                                       ByteBufferUtil.EMPTY_BYTE_BUFFER,
+                                                       Composites.EMPTY,
+                                                       Composites.EMPTY,
                                                        false,
                                                        10,
                                                        System.currentTimeMillis()));
 
         cfs.getColumnFamily(QueryFilter.getSliceFilter(key2,
                                                        COLUMN_FAMILY1,
-                                                       ByteBufferUtil.EMPTY_BYTE_BUFFER,
-                                                       ByteBufferUtil.EMPTY_BYTE_BUFFER,
+                                                       Composites.EMPTY,
+                                                       Composites.EMPTY,
                                                        false,
                                                        10,
                                                        System.currentTimeMillis()));
 
-        assertKeyCacheSize(4, KEYSPACE1, COLUMN_FAMILY1);
+        assertKeyCacheSize(2, KEYSPACE1, COLUMN_FAMILY1);
     }
 
     private void assertKeyCacheSize(int expected, String keyspace, String columnFamily)

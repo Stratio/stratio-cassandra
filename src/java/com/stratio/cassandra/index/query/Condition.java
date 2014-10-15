@@ -15,8 +15,7 @@
  */
 package com.stratio.cassandra.index.query;
 
-import java.io.IOException;
-
+import com.stratio.cassandra.index.schema.Schema;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
@@ -30,11 +29,11 @@ import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonSubTypes;
 import org.codehaus.jackson.annotate.JsonTypeInfo;
 
-import com.stratio.cassandra.index.schema.Schema;
+import java.io.IOException;
 
 /**
  * The abstract base class for queries.
- * 
+ * <p/>
  * Known subclasses are:
  * <ul>
  * <li> {@link BooleanCondition}
@@ -45,31 +44,31 @@ import com.stratio.cassandra.index.schema.Schema;
  * <li> {@link RangeCondition}
  * <li> {@link WildcardCondition}
  * </ul>
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
-@JsonSubTypes({ @JsonSubTypes.Type(value = BooleanCondition.class, name = "boolean"),
-        @JsonSubTypes.Type(value = FuzzyCondition.class, name = "fuzzy"),
-        @JsonSubTypes.Type(value = LuceneCondition.class, name = "lucene"),
-        @JsonSubTypes.Type(value = MatchCondition.class, name = "match"),
-        @JsonSubTypes.Type(value = RangeCondition.class, name = "range"),
-        @JsonSubTypes.Type(value = PhraseCondition.class, name = "phrase"),
-        @JsonSubTypes.Type(value = PrefixCondition.class, name = "prefix"),
-        @JsonSubTypes.Type(value = RegexpCondition.class, name = "regexp"),
-        @JsonSubTypes.Type(value = WildcardCondition.class, name = "wildcard"), })
+@JsonSubTypes({
+                      @JsonSubTypes.Type(value = BooleanCondition.class, name = "boolean"),
+                      @JsonSubTypes.Type(value = FuzzyCondition.class, name = "fuzzy"),
+                      @JsonSubTypes.Type(value = LuceneCondition.class, name = "lucene"),
+                      @JsonSubTypes.Type(value = MatchCondition.class, name = "match"),
+                      @JsonSubTypes.Type(value = RangeCondition.class, name = "range"),
+                      @JsonSubTypes.Type(value = PhraseCondition.class, name = "phrase"),
+                      @JsonSubTypes.Type(value = PrefixCondition.class, name = "prefix"),
+                      @JsonSubTypes.Type(value = RegexpCondition.class, name = "regexp"),
+                      @JsonSubTypes.Type(value = WildcardCondition.class, name = "wildcard"),})
 public abstract class Condition
 {
 
     public static final float DEFAULT_BOOST = 1.0f;
 
-    protected final float boost;
+    @JsonProperty("boost")
+    protected float boost;
 
     /**
-     * 
-     * @param boost
-     *            The boost for this query clause. Documents matching this clause will (in addition to the normal
-     *            weightings) have their score multiplied by {@code boost}.
+     * @param boost The boost for this query clause. Documents matching this clause will (in addition to the normal
+     *              weightings) have their score multiplied by {@code boost}.
      */
     @JsonCreator
     public Condition(@JsonProperty("boost") Float boost)
@@ -78,30 +77,17 @@ public abstract class Condition
     }
 
     /**
-     * Returns the boost for this clause. Documents matching this clause will (in addition to the normal weightings)
-     * have their score multiplied by {@code boost}. The boost is 1.0 by default.
-     * 
-     * @return The boost for this clause.
-     */
-    public float getBoost()
-    {
-        return boost;
-    }
-
-    /**
      * Returns the Lucene's {@link Query} representation of this condition.
-     * 
-     * @param schema
-     *            The schema to be used.
+     *
+     * @param schema The schema to be used.
      * @return The Lucene's {@link Query} representation of this condition.
      */
     public abstract Query query(Schema schema);
 
     /**
      * Returns the Lucene's {@link Filter} representation of this condition.
-     * 
-     * @param schema
-     *            The schema to be used.
+     *
+     * @param schema The schema to be used.
      * @return The Lucene's {@link Filter} representation of this condition.
      */
     public Filter filter(Schema schema)

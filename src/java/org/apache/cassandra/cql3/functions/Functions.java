@@ -78,7 +78,7 @@ public abstract class Functions
                 fun.argsType().get(i));
     }
 
-    public static Function get(String name, List<? extends AssignementTestable> providedArgs, ColumnSpecification receiver) throws InvalidRequestException
+    public static Function get(String keyspace, String name, List<? extends AssignementTestable> providedArgs, ColumnSpecification receiver) throws InvalidRequestException
     {
         List<Function.Factory> factories = declared.get(name.toLowerCase());
         if (factories.isEmpty())
@@ -88,7 +88,7 @@ public abstract class Functions
         if (factories.size() == 1)
         {
             Function fun = factories.get(0).create(receiver.ksName, receiver.cfName);
-            validateTypes(fun, providedArgs, receiver);
+            validateTypes(keyspace, fun, providedArgs, receiver);
             return fun;
         }
 
@@ -96,7 +96,7 @@ public abstract class Functions
         for (Function.Factory factory : factories)
         {
             Function toTest = factory.create(receiver.ksName, receiver.cfName);
-            if (!isValidType(toTest, providedArgs, receiver))
+            if (!isValidType(keyspace, toTest, providedArgs, receiver))
                 continue;
 
             if (candidate == null)
@@ -109,7 +109,7 @@ public abstract class Functions
         return candidate;
     }
 
-    private static void validateTypes(Function fun, List<? extends AssignementTestable> providedArgs, ColumnSpecification receiver) throws InvalidRequestException
+    private static void validateTypes(String keyspace, Function fun, List<? extends AssignementTestable> providedArgs, ColumnSpecification receiver) throws InvalidRequestException
     {
         if (!receiver.type.isValueCompatibleWith(fun.returnType()))
             throw new InvalidRequestException(String.format("Type error: cannot assign result of function %s (type %s) to %s (type %s)", fun.name(), fun.returnType().asCQL3Type(), receiver, receiver.type.asCQL3Type()));
@@ -127,12 +127,12 @@ public abstract class Functions
                 continue;
 
             ColumnSpecification expected = makeArgSpec(receiver, fun, i);
-            if (!provided.isAssignableTo(expected))
+            if (!provided.isAssignableTo(keyspace, expected))
                 throw new InvalidRequestException(String.format("Type error: %s cannot be passed as argument %d of function %s of type %s", provided, i, fun.name(), expected.type.asCQL3Type()));
         }
     }
 
-    private static boolean isValidType(Function fun, List<? extends AssignementTestable> providedArgs, ColumnSpecification receiver)
+    private static boolean isValidType(String keyspace, Function fun, List<? extends AssignementTestable> providedArgs, ColumnSpecification receiver) throws InvalidRequestException
     {
         if (!receiver.type.isValueCompatibleWith(fun.returnType()))
             return false;
@@ -150,7 +150,7 @@ public abstract class Functions
                 continue;
 
             ColumnSpecification expected = makeArgSpec(receiver, fun, i);
-            if (!provided.isAssignableTo(expected))
+            if (!provided.isAssignableTo(keyspace, expected))
                 return false;
         }
         return true;

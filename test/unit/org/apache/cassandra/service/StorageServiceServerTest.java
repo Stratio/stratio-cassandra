@@ -56,10 +56,11 @@ public class StorageServiceServerTest
     {
         IEndpointSnitch snitch = new PropertyFileSnitch();
         DatabaseDescriptor.setEndpointSnitch(snitch);
+        Keyspace.setInitialized();
     }
 
     @Test
-    public void testRegularMode() throws IOException, InterruptedException, ConfigurationException
+    public void testRegularMode() throws ConfigurationException
     {
         SchemaLoader.mkdirs();
         SchemaLoader.cleanup();

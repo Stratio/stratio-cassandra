@@ -21,7 +21,6 @@ package org.apache.cassandra.db;
  */
 
 
-import java.io.IOException;
 import org.junit.Test;
 
 import org.slf4j.Logger;
@@ -69,11 +68,11 @@ public class RecoveryManager2Test extends SchemaLoader
         assert replayed == 1 : "Expecting only 1 replayed mutation, got " + replayed;
     }
 
-    private void insertRow(String cfname, String key) throws IOException
+    private void insertRow(String cfname, String key) 
     {
-        ColumnFamily cf = TreeMapBackedSortedColumns.factory.create("Keyspace1", cfname);
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create("Keyspace1", cfname);
         cf.addColumn(column("col1", "val1", 1L));
-        RowMutation rm = new RowMutation("Keyspace1", ByteBufferUtil.bytes(key), cf);
+        Mutation rm = new Mutation("Keyspace1", ByteBufferUtil.bytes(key), cf);
         rm.apply();
     }
 }

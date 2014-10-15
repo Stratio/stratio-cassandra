@@ -21,8 +21,6 @@ import java.util.List;
 import java.util.Set;
 
 import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.ConsistencyLevel;
 
 /**
@@ -169,11 +167,6 @@ public class SelectStatement
     public void extractKeyAliasFromColumns(CFMetaData cfm)
     {
         clause.extractKeysFromColumns(cfm);
-    }
-
-    public AbstractType<?> getComparator(String keyspace)
-    {
-        return Schema.instance.getComparator(keyspace, columnFamily);
     }
 
     public List<Relation> getClauseRelations()

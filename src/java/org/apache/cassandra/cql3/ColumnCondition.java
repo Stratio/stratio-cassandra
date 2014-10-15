@@ -24,8 +24,10 @@ import com.google.common.base.Objects;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterators;
 
-import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.composites.CellName;
+import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.filter.ColumnSlice;
 import org.apache.cassandra.db.marshal.*;
 import org.apache.cassandra.exceptions.InvalidRequestException;
@@ -36,26 +38,26 @@ import org.apache.cassandra.utils.ByteBufferUtil;
  */
 public class ColumnCondition
 {
-    public final CFDefinition.Name column;
+    public final ColumnDefinition column;
 
     // For collection, when testing the equality of a specific element, null otherwise.
     private final Term collectionElement;
 
     private final Term value;
 
-    private ColumnCondition(CFDefinition.Name column, Term collectionElement, Term value)
+    private ColumnCondition(ColumnDefinition column, Term collectionElement, Term value)
     {
         this.column = column;
         this.collectionElement = collectionElement;
         this.value = value;
     }
 
-    public static ColumnCondition equal(CFDefinition.Name column, Term value)
+    public static ColumnCondition equal(ColumnDefinition column, Term value)
     {
         return new ColumnCondition(column, null, value);
     }
 
-    public static ColumnCondition equal(CFDefinition.Name column, Term collectionElement, Term value)
+    public static ColumnCondition equal(ColumnDefinition column, Term collectionElement, Term value)
     {
         return new ColumnCondition(column, collectionElement, value);
     }
@@ -73,18 +75,18 @@ public class ColumnCondition
         value.collectMarkerSpecification(boundNames);
     }
 
-    public ColumnCondition.Bound bind(List<ByteBuffer> variables) throws InvalidRequestException
+    public ColumnCondition.Bound bind(QueryOptions options) throws InvalidRequestException
     {
         return column.type instanceof CollectionType
-             ? (collectionElement == null ? new CollectionBound(this, variables) : new ElementAccessBound(this, variables))
-             : new SimpleBound(this, variables);
+             ? (collectionElement == null ? new CollectionBound(this, options) : new ElementAccessBound(this, options))
+             : new SimpleBound(this, options);
     }
 
     public static abstract class Bound
     {
-        public final CFDefinition.Name column;
+        public final ColumnDefinition column;
 
-        protected Bound(CFDefinition.Name column)
+        protected Bound(ColumnDefinition column)
         {
             this.column = column;
         }
@@ -92,33 +94,28 @@ public class ColumnCondition
         /**
          * Validates whether this condition applies to {@code current}.
          */
-        public abstract boolean appliesTo(ColumnNameBuilder rowPrefix, ColumnFamily current, long now) throws InvalidRequestException;
+        public abstract boolean appliesTo(Composite rowPrefix, ColumnFamily current, long now) throws InvalidRequestException;
 
         public ByteBuffer getCollectionElementValue()
         {
             return null;
         }
 
-        protected ColumnNameBuilder copyOrUpdatePrefix(CFMetaData cfm, ColumnNameBuilder rowPrefix)
-        {
-            return column.kind == CFDefinition.Name.Kind.STATIC ? cfm.getStaticColumnNameBuilder() : rowPrefix.copy();
-        }
-
-        protected boolean equalsValue(ByteBuffer value, Column c, AbstractType<?> type, long now)
+        protected boolean equalsValue(ByteBuffer value, Cell c, AbstractType<?> type, long now)
         {
             return value == null
                  ? c == null || !c.isLive(now)
                  : c != null && c.isLive(now) && type.compare(c.value(), value) == 0;
         }
 
-        protected Iterator<Column> collectionColumns(ColumnNameBuilder collectionPrefix, ColumnFamily cf, final long now)
+        protected Iterator<Cell> collectionColumns(CellName collection, ColumnFamily cf, final long now)
         {
             // We are testing for collection equality, so we need to have the expected values *and* only those.
-            ColumnSlice[] collectionSlice = new ColumnSlice[]{ new ColumnSlice(collectionPrefix.build(), collectionPrefix.buildAsEndOfRange()) };
+            ColumnSlice[] collectionSlice = new ColumnSlice[]{ collection.slice() };
             // Filter live columns, this makes things simpler afterwards
-            return Iterators.filter(cf.iterator(collectionSlice), new Predicate<Column>()
+            return Iterators.filter(cf.iterator(collectionSlice), new Predicate<Cell>()
             {
-                public boolean apply(Column c)
+                public boolean apply(Cell c)
                 {
                     // we only care about live columns
                     return c.isLive(now);
@@ -131,21 +128,17 @@ public class ColumnCondition
     {
         public final ByteBuffer value;
 
-        private SimpleBound(ColumnCondition condition, List<ByteBuffer> variables) throws InvalidRequestException
+        private SimpleBound(ColumnCondition condition, QueryOptions options) throws InvalidRequestException
         {
             super(condition.column);
             assert !(column.type instanceof CollectionType) && condition.collectionElement == null;
-            this.value = condition.value.bindAndGet(variables);
+            this.value = condition.value.bindAndGet(options);
         }
 
-        public boolean appliesTo(ColumnNameBuilder rowPrefix, ColumnFamily current, long now) throws InvalidRequestException
+        public boolean appliesTo(Composite rowPrefix, ColumnFamily current, long now) throws InvalidRequestException
         {
-            ColumnNameBuilder prefix = copyOrUpdatePrefix(current.metadata(), rowPrefix);
-            ByteBuffer columnName = column.kind == CFDefinition.Name.Kind.VALUE_ALIAS
-                                  ? prefix.build()
-                                  : prefix.add(column.name.key).build();
-
-            return equalsValue(value, current.getColumn(columnName), column.type, now);
+            CellName name = current.metadata().comparator.create(rowPrefix, column);
+            return equalsValue(value, current.getColumn(name), column.type, now);
         }
 
         @Override
@@ -175,29 +168,28 @@ public class ColumnCondition
         public final ByteBuffer collectionElement;
         public final ByteBuffer value;
 
-        private ElementAccessBound(ColumnCondition condition, List<ByteBuffer> variables) throws InvalidRequestException
+        private ElementAccessBound(ColumnCondition condition, QueryOptions options) throws InvalidRequestException
         {
             super(condition.column);
             assert column.type instanceof CollectionType && condition.collectionElement != null;
-            this.collectionElement = condition.collectionElement.bindAndGet(variables);
-            this.value = condition.value.bindAndGet(variables);
+            this.collectionElement = condition.collectionElement.bindAndGet(options);
+            this.value = condition.value.bindAndGet(options);
         }
 
-        public boolean appliesTo(ColumnNameBuilder rowPrefix, ColumnFamily current, final long now) throws InvalidRequestException
+        public boolean appliesTo(Composite rowPrefix, ColumnFamily current, final long now) throws InvalidRequestException
         {
             if (collectionElement == null)
                 throw new InvalidRequestException("Invalid null value for " + (column.type instanceof MapType ? "map" : "list") + " element access");
 
-            ColumnNameBuilder collectionPrefix = copyOrUpdatePrefix(current.metadata(), rowPrefix).add(column.name.key);
             if (column.type instanceof MapType)
-                return equalsValue(value, current.getColumn(collectionPrefix.add(collectionElement).build()), ((MapType)column.type).values, now);
+                return equalsValue(value, current.getColumn(current.metadata().comparator.create(rowPrefix, column, collectionElement)), ((MapType)column.type).values, now);
 
             assert column.type instanceof ListType;
             int idx = ByteBufferUtil.toInt(collectionElement);
             if (idx < 0)
                 throw new InvalidRequestException(String.format("Invalid negative list index %d", idx));
 
-            Iterator<Column> iter = collectionColumns(collectionPrefix, current, now);
+            Iterator<Cell> iter = collectionColumns(current.metadata().comparator.create(rowPrefix, column), current, now);
             int adv = Iterators.advance(iter, idx);
             if (adv != idx || !iter.hasNext())
                 throw new InvalidRequestException(String.format("List index %d out of bound, list has size %d", idx, adv));
@@ -253,40 +245,31 @@ public class ColumnCondition
     {
         public final Term.Terminal value;
 
-        private CollectionBound(ColumnCondition condition, List<ByteBuffer> variables) throws InvalidRequestException
+        private CollectionBound(ColumnCondition condition, QueryOptions options) throws InvalidRequestException
         {
             super(condition.column);
             assert column.type instanceof CollectionType && condition.collectionElement == null;
-            this.value = condition.value.bind(variables);
+            this.value = condition.value.bind(options);
         }
 
-        public boolean appliesTo(ColumnNameBuilder rowPrefix, ColumnFamily current, final long now) throws InvalidRequestException
+        public boolean appliesTo(Composite rowPrefix, ColumnFamily current, final long now) throws InvalidRequestException
         {
             CollectionType type = (CollectionType)column.type;
-            CFMetaData cfm = current.metadata();
 
-            ColumnNameBuilder collectionPrefix = copyOrUpdatePrefix(cfm, rowPrefix).add(column.name.key);
-
-            Iterator<Column> iter = collectionColumns(collectionPrefix, current, now);
+            Iterator<Cell> iter = collectionColumns(current.metadata().comparator.create(rowPrefix, column), current, now);
             if (value == null)
                 return !iter.hasNext();
 
             switch (type.kind)
             {
-                case LIST: return listAppliesTo((ListType)type, cfm, iter, ((Lists.Value)value).elements);
-                case SET: return setAppliesTo((SetType)type, cfm, iter, ((Sets.Value)value).elements);
-                case MAP: return mapAppliesTo((MapType)type, cfm, iter, ((Maps.Value)value).map);
+                case LIST: return listAppliesTo((ListType)type, iter, ((Lists.Value)value).elements);
+                case SET: return setAppliesTo((SetType)type, iter, ((Sets.Value)value).elements);
+                case MAP: return mapAppliesTo((MapType)type, iter, ((Maps.Value)value).map);
             }
             throw new AssertionError();
         }
 
-        private ByteBuffer collectionKey(CFMetaData cfm, Column c)
-        {
-            ByteBuffer[] bbs = ((CompositeType)cfm.comparator).split(c.name());
-            return bbs[bbs.length - 1];
-        }
-
-        private boolean listAppliesTo(ListType type, CFMetaData cfm, Iterator<Column> iter, List<ByteBuffer> elements)
+        private boolean listAppliesTo(ListType type, Iterator<Cell> iter, List<ByteBuffer> elements)
         {
             for (ByteBuffer e : elements)
                 if (!iter.hasNext() || type.elements.compare(iter.next().value(), e) != 0)
@@ -295,7 +278,7 @@ public class ColumnCondition
             return !iter.hasNext();
         }
 
-        private boolean setAppliesTo(SetType type, CFMetaData cfm, Iterator<Column> iter, Set<ByteBuffer> elements)
+        private boolean setAppliesTo(SetType type, Iterator<Cell> iter, Set<ByteBuffer> elements)
         {
             Set<ByteBuffer> remaining = new TreeSet<>(type.elements);
             remaining.addAll(elements);
@@ -304,13 +287,13 @@ public class ColumnCondition
                 if (remaining.isEmpty())
                     return false;
 
-                if (!remaining.remove(collectionKey(cfm, iter.next())))
+                if (!remaining.remove(iter.next().name().collectionElement()))
                     return false;
             }
             return remaining.isEmpty();
         }
 
-        private boolean mapAppliesTo(MapType type, CFMetaData cfm, Iterator<Column> iter, Map<ByteBuffer, ByteBuffer> elements)
+        private boolean mapAppliesTo(MapType type, Iterator<Cell> iter, Map<ByteBuffer, ByteBuffer> elements)
         {
             Map<ByteBuffer, ByteBuffer> remaining = new TreeMap<>(type.keys);
             remaining.putAll(elements);
@@ -319,8 +302,8 @@ public class ColumnCondition
                 if (remaining.isEmpty())
                     return false;
 
-                Column c = iter.next();
-                ByteBuffer previous = remaining.remove(collectionKey(cfm, c));
+                Cell c = iter.next();
+                ByteBuffer previous = remaining.remove(c.name().collectionElement());
                 if (previous == null || type.values.compare(previous, c.value()) != 0)
                     return false;
             }
@@ -337,21 +320,38 @@ public class ColumnCondition
             if (!column.equals(that.column))
                 return false;
 
-            // Slightly inefficient because it serialize the collection just for the sake of comparison.
-            // We could improve by adding an equals() method to Lists.Value, Sets.Value and Maps.Value but
-            // this method is only called when there is 2 conditions on the same collection to make sure
-            // both are not incompatible, so overall it's probably not worth the effort.
-            ByteBuffer thisVal = value.get();
-            ByteBuffer thatVal = that.value.get();
-            return thisVal == null || thatVal == null
-                 ? thisVal == null && thatVal == null
-                 : column.type.compare(thisVal, thatVal) == 0;
+            if (value == null || that.value == null)
+                return value == null && that.value == null;
+
+            switch (((CollectionType)column.type).kind)
+            {
+                case LIST: return ((Lists.Value)value).equals((ListType)column.type, (Lists.Value)that.value);
+                case SET: return ((Sets.Value)value).equals((SetType)column.type, (Sets.Value)that.value);
+                case MAP: return ((Maps.Value)value).equals((MapType)column.type, (Maps.Value)that.value);
+            }
+            throw new AssertionError();
         }
 
         @Override
         public int hashCode()
         {
-            return Objects.hashCode(column, value.get());
+            Object val = null;
+            if (value != null)
+            {
+                switch (((CollectionType)column.type).kind)
+                {
+                    case LIST:
+                        val = ((Lists.Value)value).elements.hashCode();
+                        break;
+                    case SET:
+                        val = ((Sets.Value)value).elements.hashCode();
+                        break;
+                    case MAP:
+                        val = ((Maps.Value)value).map.hashCode();
+                        break;
+                }
+            }
+            return Objects.hashCode(column, val);
         }
     }
 
@@ -378,13 +378,13 @@ public class ColumnCondition
             return new Raw(value, collectionElement);
         }
 
-        public ColumnCondition prepare(CFDefinition.Name receiver) throws InvalidRequestException
+        public ColumnCondition prepare(String keyspace, ColumnDefinition receiver) throws InvalidRequestException
         {
             if (receiver.type instanceof CounterColumnType)
                 throw new InvalidRequestException("Condtions on counters are not supported");
 
             if (collectionElement == null)
-                return ColumnCondition.equal(receiver, value.prepare(receiver));
+                return ColumnCondition.equal(receiver, value.prepare(keyspace, receiver));
 
             if (!(receiver.type.isCollection()))
                 throw new InvalidRequestException(String.format("Invalid element access syntax for non-collection column %s", receiver.name));
@@ -392,11 +392,11 @@ public class ColumnCondition
             switch (((CollectionType)receiver.type).kind)
             {
                 case LIST:
-                    return ColumnCondition.equal(receiver, collectionElement.prepare(Lists.indexSpecOf(receiver)), value.prepare(Lists.valueSpecOf(receiver)));
+                    return ColumnCondition.equal(receiver, collectionElement.prepare(keyspace, Lists.indexSpecOf(receiver)), value.prepare(keyspace, Lists.valueSpecOf(receiver)));
                 case SET:
                     throw new InvalidRequestException(String.format("Invalid element access syntax for set column %s", receiver.name));
                 case MAP:
-                    return ColumnCondition.equal(receiver, collectionElement.prepare(Maps.keySpecOf(receiver)), value.prepare(Maps.valueSpecOf(receiver)));
+                    return ColumnCondition.equal(receiver, collectionElement.prepare(keyspace, Maps.keySpecOf(receiver)), value.prepare(keyspace, Maps.valueSpecOf(receiver)));
             }
             throw new AssertionError();
         }

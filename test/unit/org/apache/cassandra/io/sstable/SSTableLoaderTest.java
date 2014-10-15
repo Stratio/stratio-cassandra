@@ -45,6 +45,7 @@ public class SSTableLoaderTest extends SchemaLoader
     @BeforeClass
     public static void setup() throws Exception
     {
+        Keyspace.setInitialized();
         StorageService.instance.initServer();
     }
 
@@ -60,7 +61,7 @@ public class SSTableLoaderTest extends SchemaLoader
                                                                              StorageService.getPartitioner(),
                                                                              1);
         DecoratedKey key = Util.dk("key1");
-        writer.newRow(key.key);
+        writer.newRow(key.getKey());
         writer.addColumn(ByteBufferUtil.bytes("col1"), ByteBufferUtil.bytes(100), 1);
         writer.close();
 
@@ -84,6 +85,6 @@ public class SSTableLoaderTest extends SchemaLoader
         List<Row> rows = Util.getRangeSlice(Keyspace.open("Keyspace1").getColumnFamilyStore("Standard1"));
         assertEquals(1, rows.size());
         assertEquals(key, rows.get(0).key);
-        assertEquals(ByteBufferUtil.bytes(100), rows.get(0).cf.getColumn(ByteBufferUtil.bytes("col1")).value());
+        assertEquals(ByteBufferUtil.bytes(100), rows.get(0).cf.getColumn(Util.cellname("col1")).value());
     }
 }

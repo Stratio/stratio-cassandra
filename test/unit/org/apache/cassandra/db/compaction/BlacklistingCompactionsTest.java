@@ -31,16 +31,14 @@ import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.RowMutation;
-import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.apache.cassandra.Util.cellname;
 
 public class BlacklistingCompactionsTest extends SchemaLoader
 {
@@ -76,7 +74,7 @@ public class BlacklistingCompactionsTest extends SchemaLoader
         final ColumnFamilyStore cfs = keyspace.getColumnFamilyStore("Standard1");
 
         final int ROWS_PER_SSTABLE = 10;
-        final int SSTABLES = cfs.metadata.getIndexInterval() * 2 / ROWS_PER_SSTABLE;
+        final int SSTABLES = cfs.metadata.getMinIndexInterval() * 2 / ROWS_PER_SSTABLE;
 
         cfs.setCompactionStrategyClass(compactionStrategy);
 
@@ -91,11 +89,9 @@ public class BlacklistingCompactionsTest extends SchemaLoader
             for (int i = 0; i < ROWS_PER_SSTABLE; i++)
             {
                 DecoratedKey key = Util.dk(String.valueOf(i % 2));
-                RowMutation rm = new RowMutation(KEYSPACE, key.key);
+                Mutation rm = new Mutation(KEYSPACE, key.getKey());
                 long timestamp = j * ROWS_PER_SSTABLE + i;
-                rm.add("Standard1", ByteBufferUtil.bytes(String.valueOf(i / 2)),
-                       ByteBufferUtil.EMPTY_BYTE_BUFFER,
-                       timestamp);
+                rm.add("Standard1", cellname(i / 2), ByteBufferUtil.EMPTY_BYTE_BUFFER, timestamp);
                 maxTimestampExpected = Math.max(timestamp, maxTimestampExpected);
                 rm.apply();
                 inserted.add(key);

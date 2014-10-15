@@ -18,10 +18,10 @@
 package org.apache.cassandra.repair.messages;
 
 import java.io.DataInput;
-import java.io.DataOutput;
 import java.io.IOException;
 
 import org.apache.cassandra.io.IVersionedSerializer;
+import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.repair.RepairJobDesc;
@@ -42,7 +42,10 @@ public abstract class RepairMessage
         VALIDATION_REQUEST(0, ValidationRequest.serializer),
         VALIDATION_COMPLETE(1, ValidationComplete.serializer),
         SYNC_REQUEST(2, SyncRequest.serializer),
-        SYNC_COMPLETE(3, SyncComplete.serializer);
+        SYNC_COMPLETE(3, SyncComplete.serializer),
+        ANTICOMPACTION_REQUEST(4, AnticompactionRequest.serializer),
+        PREPARE_MESSAGE(5, PrepareMessage.serializer),
+        SNAPSHOT(6, SnapshotMessage.serializer);
 
         private final byte type;
         private final MessageSerializer<RepairMessage> serializer;
@@ -80,7 +83,7 @@ public abstract class RepairMessage
 
     public static class RepairMessageSerializer implements IVersionedSerializer<RepairMessage>
     {
-        public void serialize(RepairMessage message, DataOutput out, int version) throws IOException
+        public void serialize(RepairMessage message, DataOutputPlus out, int version) throws IOException
         {
             out.write(message.messageType.type);
             message.messageType.serializer.serialize(message, out, version);

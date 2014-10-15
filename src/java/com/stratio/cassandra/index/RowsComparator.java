@@ -15,15 +15,14 @@
  */
 package com.stratio.cassandra.index;
 
-import java.util.Comparator;
-
 import org.apache.cassandra.db.Row;
+
+import java.util.Comparator;
 
 /**
  * A {@link Comparator} for comparing {@link Row}s according to a certain criterion.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public interface RowsComparator extends Comparator<Row>
 {

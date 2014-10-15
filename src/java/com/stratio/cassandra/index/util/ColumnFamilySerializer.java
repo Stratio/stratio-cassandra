@@ -15,21 +15,16 @@
  */
 package com.stratio.cassandra.index.util;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-
 import org.apache.cassandra.db.ColumnFamily;
+import org.apache.cassandra.io.util.DataOutputStreamPlus;
 import org.apache.cassandra.net.MessagingService;
+
+import java.io.*;
 
 /**
  * Class for serializing {@link ColumnFamily} from/to byte array.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class ColumnFamilySerializer
 {
@@ -40,26 +35,23 @@ public class ColumnFamilySerializer
 
     /**
      * Returns the {@code byte} array representation of the specified {@link ColumnFamily}.
-     * 
-     * @param columnFamily
-     *            The column family to be serialized.
+     *
+     * @param columnFamily The column family to be serialized.
      * @return The {@code byte} array representation of the specified {@link ColumnFamily}.
      */
     public static byte[] bytes(ColumnFamily columnFamily)
     {
         int size = (int) cfs.serializedSize(columnFamily, VERSION);
         ByteArrayOutputStream os = new ByteArrayOutputStream(size);
-        DataOutputStream dos = new DataOutputStream(os);
+        DataOutputStreamPlus dos = new DataOutputStreamPlus(os);
         cfs.serialize(columnFamily, dos, VERSION);
-        byte[] bytes = os.toByteArray();
-        return bytes;
+        return os.toByteArray();
     }
 
     /**
      * Returns the {@code ColumnFamily} representation of the specified {@code byte} array.
-     * 
-     * @param bytes
-     *            The {@code byte} array to be serialized.
+     *
+     * @param bytes The {@code byte} array to be serialized.
      * @return The {@code ColumnFamily} representation of the specified {@code byte} array.
      * @throws IOException
      */

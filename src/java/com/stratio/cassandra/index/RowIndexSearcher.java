@@ -15,34 +15,28 @@
  */
 package com.stratio.cassandra.index;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
-
+import com.stratio.cassandra.index.query.Search;
+import com.stratio.cassandra.index.schema.Schema;
+import com.stratio.cassandra.index.util.Log;
 import org.apache.cassandra.db.DataRange;
+import org.apache.cassandra.db.IndexExpression;
 import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.filter.ExtendedFilter;
 import org.apache.cassandra.db.index.SecondaryIndexManager;
 import org.apache.cassandra.db.index.SecondaryIndexSearcher;
 import org.apache.cassandra.db.marshal.UTF8Type;
-import org.apache.cassandra.thrift.IndexExpression;
-import org.apache.cassandra.thrift.IndexOperator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.stratio.cassandra.index.query.Search;
-import com.stratio.cassandra.index.schema.Schema;
-import com.stratio.cassandra.index.util.Log;
+import java.nio.ByteBuffer;
+import java.util.*;
+
+import static org.apache.cassandra.db.IndexExpression.Operator.EQ;
 
 /**
  * A {@link SecondaryIndexSearcher} for {@link RowIndex}.
- * 
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
- * 
  */
 public class RowIndexSearcher extends SecondaryIndexSearcher
 {
@@ -56,15 +50,11 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
 
     /**
      * Returns a new {@code RowIndexSearcher}.
-     * 
-     * @param indexManager
-     *            A 2i manger.
-     * @param index
-     *            A {@link com.stratio.cassandra.index.RowIndex}.
-     * @param columns
-     *            A set of {@link org.apache.cassandra.db.Column}s.
-     * @param rowService
-     *            A {@link com.stratio.cassandra.index.RowService}.
+     *
+     * @param indexManager A 2i manger.
+     * @param index        A {@link com.stratio.cassandra.index.RowIndex}.
+     * @param columns      A set of columns.
+     * @param rowService   A {@link com.stratio.cassandra.index.RowService}.
      */
     public RowIndexSearcher(SecondaryIndexManager indexManager,
                             RowIndex index,
@@ -75,7 +65,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         this.index = index;
         this.rowService = rowService;
         schema = rowService.getSchema();
-        indexedColumnName = index.getColumnDefinition().name;
+        indexedColumnName = index.getColumnDefinition().name.bytes;
     }
 
     /**
@@ -113,18 +103,37 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
      * {@inheritDoc}
      */
     @Override
-    public boolean isIndexing(List<IndexExpression> clause)
+    public boolean canHandleIndexClause(List<IndexExpression> clause)
     {
         for (IndexExpression expression : clause)
         {
-            ByteBuffer columnName = expression.column_name;
+            ByteBuffer columnName = expression.column;
             boolean sameName = indexedColumnName.equals(columnName);
-            if (expression.op.equals(IndexOperator.EQ) && sameName)
+            if (expression.operator.equals(EQ) && sameName)
             {
                 return true;
             }
         }
         return false;
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public IndexExpression highestSelectivityPredicate(List<IndexExpression> clause)
+    {
+        for (IndexExpression expression : clause)
+        {
+            ByteBuffer columnName = expression.column;
+            boolean sameName = indexedColumnName.equals(columnName);
+            if (expression.operator.equals(EQ) && sameName)
+            {
+                return expression;
+            }
+        }
+        return null;
     }
 
     /**
@@ -149,9 +158,8 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
 
     /**
      * Returns the {@link Search} contained in the specified list of {@link IndexExpression}s.
-     * 
-     * @param clause
-     *            A list of {@link IndexExpression}s.
+     *
+     * @param clause A list of {@link IndexExpression}s.
      * @return The {@link Search} contained in the specified list of {@link IndexExpression}s.
      */
     private Search search(List<IndexExpression> clause)
@@ -163,16 +171,15 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
 
     /**
      * Returns the {@link IndexExpression} relative to this index.
-     * 
-     * @param clause
-     *            A list of {@link IndexExpression}s.
+     *
+     * @param clause A list of {@link IndexExpression}s.
      * @return The {@link IndexExpression} relative to this index.
      */
     private IndexExpression indexedExpression(List<IndexExpression> clause)
     {
         for (IndexExpression indexExpression : clause)
         {
-            ByteBuffer columnName = indexExpression.column_name;
+            ByteBuffer columnName = indexExpression.column;
             if (indexedColumnName.equals(columnName))
             {
                 return indexExpression;
@@ -183,9 +190,8 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
 
     /**
      * Returns the {@link IndexExpression} not relative to this index.
-     * 
-     * @param clause
-     *            A list of {@link IndexExpression}s.
+     *
+     * @param clause A list of {@link IndexExpression}s.
      * @return The {@link IndexExpression} not relative to this index.
      */
     private List<IndexExpression> filteredExpressions(List<IndexExpression> clause)
@@ -193,7 +199,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         List<IndexExpression> filteredExpressions = new ArrayList<>(clause.size());
         for (IndexExpression ie : clause)
         {
-            ByteBuffer columnName = ie.column_name;
+            ByteBuffer columnName = ie.column;
             if (!indexedColumnName.equals(columnName))
             {
                 filteredExpressions.add(ie);
@@ -207,22 +213,23 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
     {
         int startSize = rows.size();
         long startTime = System.currentTimeMillis();
-        
+
         // Remove duplicates
         TreeSet<Row> set = new TreeSet<>(rowService.naturalComparator());
         set.addAll(rows);
         List<Row> result = new ArrayList<>(set);
-        
+
         // Sort
         Search search = search(clause);
         Comparator<Row> comparator = rowService.comparator(search);
-        Collections.sort(result, comparator);        
+        Log.debug("SORTING RESULTS WITH " + comparator);
+        Collections.sort(result, comparator);
         String comparatorName = comparator.getClass().getSimpleName();
         int endSize = result.size();
         long endTime = System.currentTimeMillis() - startTime;
-        
+
         Log.debug("Sorted %d rows to %d with comparator %s in %d ms", startSize, endSize, comparatorName, endTime);
-        
+
         return result;
     }
 
@@ -233,10 +240,10 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
     public String toString()
     {
         return String.format("RowIndexSearcher [index=%s, keyspace=%s, table=%s, column=%s]",
-                             index.getIndexName(),
-                             index.getKeyspaceName(),
-                             index.getTableName(),
-                             index.getColumnName());
+                index.getIndexName(),
+                index.getKeyspaceName(),
+                index.getTableName(),
+                index.getColumnName());
     }
 
 }

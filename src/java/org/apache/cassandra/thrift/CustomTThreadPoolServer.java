@@ -126,7 +126,7 @@ public class CustomTThreadPoolServer extends TServer
             }
 
             if (activeClients.get() >= args.maxWorkerThreads)
-                logger.warn("Maximum number of clients " + args.maxWorkerThreads + " reached");
+                logger.warn("Maximum number of clients {} reached", args.maxWorkerThreads);
         }
 
         executorService.shutdown();
@@ -255,7 +255,7 @@ public class CustomTThreadPoolServer extends TServer
                 }
                 else
                 {
-                    serverTransport = new TCustomServerSocket(addr, args.keepAlive, args.sendBufferSize, args.recvBufferSize);
+                    serverTransport = new TCustomServerSocket(addr, args.keepAlive, args.sendBufferSize, args.recvBufferSize, args.listenBacklog);
                 }
             }
             catch (TTransportException e)
