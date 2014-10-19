@@ -19,6 +19,7 @@ import com.stratio.cassandra.index.util.ByteBufferUtils;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.dht.IPartitioner;
+import org.apache.cassandra.dht.Token;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -28,6 +29,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 
 import java.nio.ByteBuffer;
+import java.util.Comparator;
 
 /**
  * Class for several partition key mappings between Cassandra and Lucene.
@@ -123,6 +125,19 @@ public class PartitionKeyMapper
     public DecoratedKey decoratedKey(ByteBuffer partitionKey)
     {
         return partitioner.decorateKey(partitionKey);
+    }
+
+    public Comparator<DecoratedKey> comparator() {
+        return new Comparator<DecoratedKey>()
+        {
+            @Override
+            public int compare(DecoratedKey key1, DecoratedKey key2)
+            {
+                Token t1 = key1.getToken();
+                Token t2 = key2.getToken();
+                return t1.compareTo(t2);
+            }
+        };
     }
 
 }

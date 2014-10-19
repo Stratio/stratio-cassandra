@@ -16,12 +16,14 @@
 package com.stratio.cassandra.index;
 
 import com.stratio.cassandra.index.util.ByteBufferUtils;
+import com.stratio.cassandra.index.util.ComparatorChain;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.CellNameType;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CompositeType;
+import org.apache.cassandra.dht.Token;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -29,6 +31,7 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.Term;
 
 import java.nio.ByteBuffer;
+import java.util.Comparator;
 
 /**
  * Class for several row full key mappings between Cassandra and Lucene. The full key includes both the partitioning and
@@ -59,16 +62,40 @@ public class FullKeyMapper
      */
     public CompositeType type;
 
+    private ComparatorChain<ScoredDocument> comparator;
+
     /**
      * Returns a new {@link FullKeyMapper} using the specified column family metadata.
      *
      * @param metadata The column family metadata to be used.
      */
-    private FullKeyMapper(CFMetaData metadata)
+    private FullKeyMapper(CFMetaData metadata, final PartitionKeyMapper partitionKeyMapper, final ClusteringKeyMapper clusteringKeyMapper)
     {
         this.partitionKeyType = metadata.getKeyValidator();
         this.clusteringKeyType = metadata.comparator;
         type = CompositeType.getInstance(partitionKeyType, clusteringKeyType.asAbstractType());
+
+        comparator = new ComparatorChain<>();
+        comparator.addComparator(new Comparator<ScoredDocument>()
+        {
+            @Override
+            public int compare(ScoredDocument sd1, ScoredDocument sd2)
+            {
+                Token t1 = sd1.getToken(partitionKeyMapper);
+                Token t2 = sd2.getToken(partitionKeyMapper);
+                return t1.compareTo(t2);
+            }
+        });
+        comparator.addComparator(new Comparator<ScoredDocument>()
+        {
+            @Override
+            public int compare(ScoredDocument sd1, ScoredDocument sd2)
+            {
+                CellName name1 = sd1.getClusteringKey(clusteringKeyMapper);
+                CellName name2 = sd2.getClusteringKey(clusteringKeyMapper);
+                return clusteringKeyMapper.getType().compare(name1, name2);
+            }
+        });
     }
 
     /**
@@ -77,9 +104,9 @@ public class FullKeyMapper
      * @param metadata The column family metadata to be used.
      * @return A new {@link FullKeyMapper} using the specified column family metadata.
      */
-    public static FullKeyMapper instance(CFMetaData metadata)
+    public static FullKeyMapper instance(CFMetaData metadata, PartitionKeyMapper partitionKeyMapper, ClusteringKeyMapper clusteringKeyMapper)
     {
-        return metadata.clusteringColumns().size() > 0 ? new FullKeyMapper(metadata) : null;
+        return metadata.clusteringColumns().size() > 0 ? new FullKeyMapper(metadata, partitionKeyMapper, clusteringKeyMapper) : null;
     }
 
     /**
@@ -133,6 +160,11 @@ public class FullKeyMapper
     {
         ByteBuffer fullKey = type.builder().add(partitionKey.getKey()).add(cellName.start().toByteBuffer()).build();
         return new Term(FIELD_NAME, ByteBufferUtils.toString(fullKey));
+    }
+
+    public Comparator<ScoredDocument> comparator()
+    {
+        return comparator;
     }
 
 }

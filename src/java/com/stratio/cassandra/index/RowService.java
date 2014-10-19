@@ -98,11 +98,11 @@ public abstract class RowService
         schema = config.getSchema();
 
         luceneIndex = new LuceneIndex(config.getPath(),
-                config.getRefreshSeconds(),
-                config.getRamBufferMB(),
-                config.getMaxMergeMB(),
-                config.getMaxCachedMB(),
-                schema.analyzer());
+                                      config.getRefreshSeconds(),
+                                      config.getRamBufferMB(),
+                                      config.getMaxMergeMB(),
+                                      config.getMaxCachedMB(),
+                                      schema.analyzer());
 
         indexQueue = new TaskQueue(config.getIndexingThreads(), config.getIndexingQueuesSize());
 
@@ -266,12 +266,12 @@ public abstract class RowService
      * @return The {@link Row}s satisfying the specified restrictions.
      */
     public final List<Row> search(Search search,
-                                  List<org.apache.cassandra.db.IndexExpression> expressions,
+                                  List<IndexExpression> expressions,
                                   DataRange dataRange,
                                   final int limit,
                                   long timestamp) throws IOException
     {
-        // Log.debug("Searching with search %s ", search);
+        Log.debug("Searching with search %s ", search);
 
         // Setup search arguments
         Filter filter = cachedFilter(dataRange);
@@ -281,45 +281,48 @@ public abstract class RowService
         // Setup search pagination
         List<Row> rows = new LinkedList<>(); // The row list to be returned
         ScoredDocument lastDoc = null; // The last search result
+        boolean pageFull;
         long searchTime = 0;
         long collectTime = 0;
         int numPages = 0;
+        int numCollected = 0;
 
         // Paginate search collecting documents
         List<ScoredDocument> scoredDocuments;
         int pageSize = Math.min(limit, MAX_PAGE_SIZE);
-        boolean maybeMore;
         do
         {
             // Search rows identifiers in Lucene
             long searchStartTime = System.currentTimeMillis();
             scoredDocuments = luceneIndex.search(query, sort, lastDoc, pageSize, fieldsToLoad());
             searchTime += System.currentTimeMillis() - searchStartTime;
+            lastDoc = scoredDocuments.isEmpty() ? null : scoredDocuments.get(scoredDocuments.size() -  1);
 
             // Collect rows from Cassandra
             long collectStartTime = System.currentTimeMillis();
-            for (ScoredDocument scoredDocument : scoredDocuments)
+            for (Row row : rows(scoredDocuments, timestamp))
             {
-                lastDoc = scoredDocument;
-                Row row = row(scoredDocument, timestamp);
+                numCollected++;
                 if (row != null && accepted(row, expressions))
                 {
                     rows.add(row);
                 }
+
             }
             collectTime += System.currentTimeMillis() - collectStartTime;
 
             // Setup next iteration
-            maybeMore = scoredDocuments.size() == pageSize;
+            pageFull = scoredDocuments.size() == pageSize;
             pageSize = Math.max(FILTERING_PAGE_SIZE, rows.size() - limit);
             numPages++;
 
             // Iterate while there are still documents to read and we don't have enough rows
-        } while (maybeMore && rows.size() < limit);
+        } while (pageFull && rows.size() < limit);
 
         Log.debug("Lucene time: %d ms", searchTime);
         Log.debug("Cassandra time: %d ms", collectTime);
-        Log.debug("Collected %d rows in %d pages", rows.size(), numPages);
+        Log.debug("Collected %d rows in %d pages", numCollected, numPages);
+        Log.debug("Filtered %d rows in %d pages", rows.size(), numPages);
 
         return rows;
     }
@@ -398,14 +401,14 @@ public abstract class RowService
     }
 
     /**
-     * Returns the {@link Row} identified by the specified {@link Document}, using the specified time stamp to ignore
-     * deleted columns. The {@link Row} is retrieved from the storage engine, so it involves IO operations.
+     * Returns the {@link Row}s identified by the specified {@link Document}s, using the specified time stamp to ignore
+     * deleted columns. The {@link Row}s are retrieved from the storage engine, so it involves IO operations.
      *
-     * @param scoredDocument A {@link ScoredDocument}
-     * @param timestamp      The time stamp to ignore deleted columns.
-     * @return The {@link Row} identified by the specified {@link Document}
+     * @param scoredDocuments A list of {@link ScoredDocument}s.
+     * @param timestamp       The time stamp to ignore deleted columns.
+     * @return The {@link Row}s identified by the specified {@link Document}s
      */
-    protected abstract Row row(ScoredDocument scoredDocument, long timestamp) throws IOException;
+    protected abstract List<Row> rows(List<ScoredDocument> scoredDocuments, long timestamp) throws IOException;
 
     /**
      * Returns the CQL3 {@link Row} identified by the specified {@link QueryFilter}, using the specified time stamp to

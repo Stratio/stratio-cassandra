@@ -32,9 +32,7 @@ import org.apache.lucene.search.*;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
+import java.util.*;
 
 /**
  * {@link RowService} that manages wide rows.
@@ -67,7 +65,7 @@ public class RowServiceWide extends RowService
         super(baseCfs, columnDefinition);
 
         clusteringKeyMapper = ClusteringKeyMapper.instance(metadata);
-        fullKeyMapper = FullKeyMapper.instance(metadata);
+        fullKeyMapper = FullKeyMapper.instance(metadata, partitionKeyMapper, clusteringKeyMapper);
 
         luceneIndex.init(sort());
     }
@@ -152,24 +150,67 @@ public class RowServiceWide extends RowService
      * The {@link Row} is a logical one.
      */
     @Override
-    protected Row row(ScoredDocument scoredDocument, long timestamp) throws IOException
+    protected List<Row> rows(List<ScoredDocument> scoredDocuments, long timestamp) throws IOException
     {
-        // Extract row from document
-        Document document = scoredDocument.getDocument();
-        DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
-        CellName clusteringKey = clusteringKeyMapper.cellName(document);
-        Row row = row(partitionKey, clusteringKey, timestamp);
+        // Group scored documents by partition key
+        Map<DecoratedKey, List<ScoredDocument>> scoredDocumentsByPartition = new HashMap<>();
+        for (ScoredDocument scoredDocument : scoredDocuments)
+        {
+            DecoratedKey partitionKey = scoredDocument.getPartitionKey(partitionKeyMapper);
+            List<ScoredDocument> partitionScoredDocuments = scoredDocumentsByPartition.get(partitionKey);
+            if (partitionScoredDocuments == null)
+            {
+                partitionScoredDocuments = new ArrayList<>();
+                scoredDocumentsByPartition.put(partitionKey, partitionScoredDocuments);
+            }
+            partitionScoredDocuments.add(scoredDocument);
+        }
 
-        // Create score column from document score
-        Float score = scoredDocument.getScore();
-        ByteBuffer cellValue = UTF8Type.instance.decompose(score.toString());
-        CellName cellName = clusteringKeyMapper.makeCellName(clusteringKey, columnDefinition);
+        // Query rows per partition
+        List<Row> rows = new ArrayList<>(scoredDocuments.size());
+        for (Map.Entry<DecoratedKey, List<ScoredDocument>> entry : scoredDocumentsByPartition.entrySet())
+        {
+            DecoratedKey partitionKey = entry.getKey();
+            List<ScoredDocument> partitionScoredDocuments = entry.getValue();
 
-        // Return new row with score column
-        ColumnFamily decoratedCf = ArrayBackedSortedColumns.factory.create(baseCfs.metadata);
-        decoratedCf.addColumn(cellName, cellValue, timestamp);
-        decoratedCf.addAll(row.cf);
-        return new Row(partitionKey, decoratedCf);
+            // Read partition from disk
+            ColumnSlice[] slices = new ColumnSlice[scoredDocuments.size()];
+            int count = 0;
+            for (ScoredDocument scoredDocument : scoredDocuments)
+            {
+                CellName clusteringKey = scoredDocument.getClusteringKey(clusteringKeyMapper);
+                Composite start = clusteringKeyMapper.start(clusteringKey);
+                Composite end = clusteringKeyMapper.end(clusteringKey);
+                ColumnSlice slice = new ColumnSlice(start, end);
+                slices[count++] = slice;
+            }
+            SliceQueryFilter dataFilter = new SliceQueryFilter(slices, false, Integer.MAX_VALUE);
+            QueryFilter queryFilter = new QueryFilter(partitionKey, baseCfs.name, dataFilter, timestamp);
+            ColumnFamily columnFamily = baseCfs.getColumnFamily(queryFilter);
+
+            // Collect partition's CQL3 rows adding score
+            if (columnFamily != null)
+            {
+                for (ColumnFamily cf : clusteringKeyMapper.splitRows(columnFamily, timestamp))
+                {
+                    CellName clusteringKey = cf.iterator().next().name();
+                    for (ScoredDocument scoredDocument : partitionScoredDocuments)
+                    {
+                        CellName scoredDocumentClusteringKey = scoredDocument.getClusteringKey(clusteringKeyMapper);
+                        if (scoredDocumentClusteringKey.isSameCQL3RowAs(clusteringKeyMapper.getType(), clusteringKey))
+                        {
+                            Float score = scoredDocument.getScore();
+                            ByteBuffer scoreCellValue = UTF8Type.instance.decompose(score.toString());
+                            CellName scoreCellName = clusteringKeyMapper.makeCellName(clusteringKey, columnDefinition);
+                            cf.addColumn(scoreCellName, scoreCellValue, timestamp);
+                            rows.add(new Row(partitionKey, cf));
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        return rows;
     }
 
     /**
@@ -246,8 +287,12 @@ public class RowServiceWide extends RowService
         CellName clusteringKey = clusteringKeyMapper.cellNames(cf).iterator().next();
         CellName cellName = clusteringKeyMapper.makeCellName(clusteringKey, columnDefinition);
         Cell cell = cf.getColumn(cellName);
-        String value = UTF8Type.instance.compose(cell.value());
-        return Float.parseFloat(value);
+        if (cell != null)
+        {
+            String value = UTF8Type.instance.compose(cell.value());
+            return Float.parseFloat(value);
+        }
+        return null;
     }
 
 }

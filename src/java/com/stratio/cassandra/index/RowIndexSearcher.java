@@ -25,6 +25,7 @@ import org.apache.cassandra.db.filter.ExtendedFilter;
 import org.apache.cassandra.db.index.SecondaryIndexManager;
 import org.apache.cassandra.db.index.SecondaryIndexSearcher;
 import org.apache.cassandra.db.marshal.UTF8Type;
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,7 +75,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
     @Override
     public List<Row> search(ExtendedFilter extendedFilter)
     {
-        // Log.debug("Searching %s", extendedFilter);
+        Log.debug("Searching %s", extendedFilter);
         try
         {
             long startTime = System.currentTimeMillis();
@@ -108,8 +109,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         for (IndexExpression expression : clause)
         {
             ByteBuffer columnName = expression.column;
-            boolean sameName = indexedColumnName.equals(columnName);
-            if (expression.operator.equals(EQ) && sameName)
+            if (expression.operator.equals(EQ) && sameName(columnName))
             {
                 return true;
             }
@@ -127,8 +127,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         for (IndexExpression expression : clause)
         {
             ByteBuffer columnName = expression.column;
-            boolean sameName = indexedColumnName.equals(columnName);
-            if (expression.operator.equals(EQ) && sameName)
+            if (expression.operator.equals(EQ) && sameName(columnName))
             {
                 return expression;
             }
@@ -180,7 +179,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         for (IndexExpression indexExpression : clause)
         {
             ByteBuffer columnName = indexExpression.column;
-            if (indexedColumnName.equals(columnName))
+            if (sameName(columnName))
             {
                 return indexExpression;
             }
@@ -200,7 +199,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         for (IndexExpression ie : clause)
         {
             ByteBuffer columnName = ie.column;
-            if (!indexedColumnName.equals(columnName))
+            if (!sameName(columnName))
             {
                 filteredExpressions.add(ie);
             }
@@ -231,6 +230,11 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         Log.debug("Sorted %d rows to %d with comparator %s in %d ms", startSize, endSize, comparatorName, endTime);
 
         return result;
+    }
+
+    private boolean sameName(ByteBuffer columnName)
+    {
+        return ByteBufferUtil.compareUnsigned(indexedColumnName, columnName) == 0;
     }
 
     /**

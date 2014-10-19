@@ -22,6 +22,7 @@ import java.util.*;
 
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.filter.ExtendedFilter;
+import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
 
@@ -40,9 +41,7 @@ public abstract class SecondaryIndexSearcher
 
     public SecondaryIndex highestSelectivityIndex(List<IndexExpression> clause)
     {
-        System.out.println("highestSelectivityIndex for" + clause);
         IndexExpression expr = highestSelectivityPredicate(clause);
-        System.out.println("highestSelectivityIndex with expr " + expr);
         return expr == null ? null : indexManager.getIndexForColumn(expr.column);
     }
 

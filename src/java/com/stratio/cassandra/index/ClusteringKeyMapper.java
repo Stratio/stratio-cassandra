@@ -18,10 +18,7 @@ package com.stratio.cassandra.index;
 import com.stratio.cassandra.index.util.ByteBufferUtils;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.db.Cell;
-import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.DataRange;
-import org.apache.cassandra.db.RangeTombstone;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CBuilder;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.CellNameType;
@@ -29,6 +26,7 @@ import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.filter.IDiskAtomFilter;
 import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.db.marshal.CompositeType;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -42,8 +40,7 @@ import org.apache.lucene.util.BytesRef;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Class for several clustering key mappings between Cassandra and Lucene. This class only be used
@@ -60,6 +57,11 @@ public class ClusteringKeyMapper
     public static final String FIELD_NAME = "_clustering_key";
 
     /**
+     * The column family meta data.
+     */
+    private final CFMetaData metadata;
+
+    /**
      * The type of the clustering key, which is the type of the column names.
      */
     private final CellNameType type;
@@ -71,7 +73,8 @@ public class ClusteringKeyMapper
      */
     private ClusteringKeyMapper(CFMetaData metadata)
     {
-        type = metadata.comparator;
+        this.metadata = metadata;
+        this.type = metadata.comparator;
     }
 
     /**
@@ -102,9 +105,9 @@ public class ClusteringKeyMapper
      * @param columnFamily A storage engine {@link org.apache.cassandra.db.ColumnFamily}.
      * @return The common clustering keys of the specified column family.
      */
-    public Set<CellName> cellNames(ColumnFamily columnFamily)
+    public List<CellName> cellNames(ColumnFamily columnFamily)
     {
-        Set<CellName> cellNames = new HashSet<>();
+        List<CellName> cellNames = new LinkedList<>();
         CellName lastCellName = null;
         for (Cell cell : columnFamily)
         {
@@ -116,6 +119,36 @@ public class ClusteringKeyMapper
             }
         }
         return cellNames;
+    }
+
+    public List<ColumnFamily> splitRows(ColumnFamily columnFamily, long timestamp)
+    {
+        List<ColumnFamily> columnFamilies = new LinkedList<>();
+        CellName lastCellName = null;
+        ColumnFamily rowColumnFamily = ArrayBackedSortedColumns.factory.create(metadata);
+        boolean pending = false;
+        for (Cell cell : columnFamily)
+        {
+            CellName cellName = cell.name();
+
+            if (pending && !cellName.isSameCQL3RowAs(type, lastCellName))
+            {
+                columnFamilies.add(rowColumnFamily);
+                rowColumnFamily = ArrayBackedSortedColumns.factory.create(metadata);
+                pending = false;
+            }
+            if (cell.isLive(timestamp))
+            {
+                rowColumnFamily.addColumn(cell);
+                pending = true;
+            }
+            lastCellName = cellName;
+        }
+        if (pending)
+        {
+            columnFamilies.add(rowColumnFamily);
+        }
+        return columnFamilies;
     }
 
     /**
@@ -144,7 +177,7 @@ public class ClusteringKeyMapper
      * @param document A {@link Document}.
      * @return The clustering key contained in the specified Lucene's {@link Document}.
      */
-    public CellName cellName(Document document) throws IOException
+    public CellName cellName(Document document)
     {
         String string = document.get(FIELD_NAME);
         ByteBuffer bb = ByteBufferUtils.fromString(string);
@@ -263,6 +296,17 @@ public class ClusteringKeyMapper
     public Composite end(CellName cellName)
     {
         return start(cellName).withEOC(Composite.EOC.END);
+    }
+
+    public Comparator<CellName> comparator() {
+        return new Comparator<CellName>()
+        {
+            @Override
+            public int compare(CellName name1, CellName name2)
+            {
+                return type.compare(name1, name2);
+            }
+        };
     }
 
 }

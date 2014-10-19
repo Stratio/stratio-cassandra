@@ -210,7 +210,7 @@ public class RowIndex extends PerRowSecondaryIndex
     {
         try
         {
-            return rowService.getIndexSize();
+            return 0;
         }
         catch (Exception e)
         {

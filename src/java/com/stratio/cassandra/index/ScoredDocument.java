@@ -15,8 +15,16 @@
  */
 package com.stratio.cassandra.index;
 
+import com.stratio.cassandra.index.util.ComparatorChain;
+import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.db.composites.CellName;
+import org.apache.cassandra.dht.Token;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.search.ScoreDoc;
+
+import java.util.Comparator;
 
 /**
  * Tuple relating a {@link Document} to a search {@link ScoreDoc}.
@@ -28,6 +36,11 @@ public class ScoredDocument
 
     private final ScoreDoc scoreDoc;
     private final Document document;
+
+    private Token token;
+    private DecoratedKey partitionKey;
+    private CellName clusteringKey;
+    private ComparatorChain<ScoredDocument> comparator;
 
     /**
      * Returns a new {@link ScoredDocument} composed by the specified {@link Document} and {@link ScoreDoc}.
@@ -71,6 +84,62 @@ public class ScoredDocument
         return scoreDoc.score;
     }
 
+    public DecoratedKey getPartitionKey(final PartitionKeyMapper partitionKeyMapper)
+    {
+        if (partitionKey == null)
+        {
+            partitionKey = partitionKeyMapper.decoratedKey(document);
+        }
+        return partitionKey;
+    }
+
+    public CellName getClusteringKey(final ClusteringKeyMapper clusteringKeyMapper)
+    {
+        if (clusteringKey == null)
+        {
+            clusteringKey = clusteringKeyMapper.cellName(document);
+        }
+        return clusteringKey;
+    }
+
+    public Token<?> getToken(final PartitionKeyMapper partitionKeyMapper)
+    {
+        if (token == null)
+        {
+            token = getPartitionKey(partitionKeyMapper).getToken();
+        }
+        return token;
+    }
+
+    public Comparator<ScoredDocument> comparator(final PartitionKeyMapper partitionKeyMapper, final ClusteringKeyMapper clusteringKeyMapper)
+    {
+        if (comparator == null)
+        {
+            comparator = new ComparatorChain<>();
+            comparator.addComparator(new Comparator<ScoredDocument>()
+            {
+                @Override
+                public int compare(ScoredDocument sd1, ScoredDocument sd2)
+                {
+                    Token t1 = sd1.getToken(partitionKeyMapper);
+                    Token t2 = sd2.getToken(partitionKeyMapper);
+                    return t1.compareTo(t2);
+                }
+            });
+            comparator.addComparator(new Comparator<ScoredDocument>()
+            {
+                @Override
+                public int compare(ScoredDocument sd1, ScoredDocument sd2)
+                {
+                    CellName name1 = sd1.getClusteringKey(clusteringKeyMapper);
+                    CellName name2 = sd2.getClusteringKey(clusteringKeyMapper);
+                    return clusteringKeyMapper.comparator().compare(name1, name2);
+                }
+            });
+        }
+        return comparator;
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -80,4 +149,34 @@ public class ScoredDocument
         return String.format("ScoredDocument [scoreDoc=%s, document=%s]", scoreDoc, document);
     }
 
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (obj == null)
+        {
+            return false;
+        }
+        if (obj == this)
+        {
+            return true;
+        }
+        if (obj.getClass() != getClass())
+        {
+            return false;
+        }
+        ScoredDocument rhs = (ScoredDocument) obj;
+        return new EqualsBuilder()
+                .append(this.scoreDoc, rhs.scoreDoc)
+                .append(this.document, rhs.document)
+                .isEquals();
+    }
+
+    @Override
+    public int hashCode()
+    {
+        return new HashCodeBuilder()
+                .append(scoreDoc)
+                .append(document)
+                .toHashCode();
+    }
 }

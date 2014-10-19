@@ -28,7 +28,9 @@ import org.apache.lucene.search.Sort;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -120,32 +122,35 @@ public class RowServiceSimple extends RowService
 
     /**
      * {@inheritDoc}
-     * <p/>
-     * The {@link Row} is a physical one.
      */
     @Override
-    protected Row row(ScoredDocument scoredDocument, long timestamp)
+    protected List<Row> rows(List<ScoredDocument> scoredDocuments, long timestamp)
     {
+        List<Row> rows = new ArrayList<>(scoredDocuments.size());
+        for (ScoredDocument scoredDocument : scoredDocuments)
+        {
+            // Extract row from document
+            Document document = scoredDocument.getDocument();
+            DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
+            Row row = row(partitionKey, timestamp);
+            if (row == null) {
+                break;
+            }
 
-        // Extract row from document
-        Document document = scoredDocument.getDocument();
-        DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
-        Row row = row(partitionKey, timestamp);
+            // Create score cell from document score
+            Float score = scoredDocument.getScore();
+            ByteBuffer cellValue = UTF8Type.instance.decompose(score.toString());
+            CellName cellName = nameType.makeCellName(indexedColumnName.bytes);
 
-        // Create score cell from document score
-        Float score = scoredDocument.getScore();
-        ByteBuffer cellValue = UTF8Type.instance.decompose(score.toString());
+            // Return new row with score cell
+            ColumnFamily decoratedCf = ArrayBackedSortedColumns.factory.create(baseCfs.metadata);
+            decoratedCf.addColumn(cellName, cellValue, timestamp);
+            decoratedCf.addAll(row.cf);
 
-//        CellName cellName = nameType.cellFromByteBuffer(indexedColumnName.bytes);
-        CellName cellName = nameType.makeCellName(indexedColumnName.bytes);
-//        CellName cellName = nameType.makeCellName(nameType.builder().add(indexedColumnName.bytes).build());
-//        CellName cellName = (CellName) nameType.builder().add(indexedColumnName.bytes).build();
-
-        // Return new row with score cell
-        ColumnFamily decoratedCf = ArrayBackedSortedColumns.factory.create(baseCfs.metadata);
-        decoratedCf.addColumn(cellName, cellValue, timestamp);
-        decoratedCf.addAll(row.cf);
-        return new Row(partitionKey, decoratedCf);
+            // Collect new row
+            rows.add(new Row(partitionKey, decoratedCf));
+        }
+        return rows;
     }
 
     /**
