@@ -152,7 +152,61 @@ public class RowServiceWide extends RowService
     @Override
     protected List<Row> rows(List<ScoredDocument> scoredDocuments, long timestamp) throws IOException
     {
-        // Group scored documents by partition key
+        System.out.println(" -> QUERYING " + scoredDocuments.size() + " SCORED DOCUMENTS");
+
+        // Query rows per partition
+        List<Row> rows = new ArrayList<>(scoredDocuments.size());
+        for (Map.Entry<DecoratedKey, List<ScoredDocument>> entry : group(scoredDocuments).entrySet())
+        {
+            DecoratedKey partitionKey = entry.getKey();
+            List<ScoredDocument> partitionScoredDocuments = entry.getValue();
+            System.out.println(" -> \tQUERYING PARTITION " + partitionKey + " WITH " + partitionScoredDocuments.size() + " CLUSTERING KEYS");
+
+            for (ColumnSlice[] slice : split(slices(partitionScoredDocuments)))
+            {
+
+                SliceQueryFilter dataFilter = new SliceQueryFilter(slice, false, Integer.MAX_VALUE);
+                QueryFilter queryFilter = new QueryFilter(partitionKey, baseCfs.name, dataFilter, timestamp);
+                ColumnFamily columnFamily = baseCfs.getColumnFamily(queryFilter);
+
+                // Collect partition's CQL3 rows adding score
+                int c = 0;
+                if (columnFamily != null)
+                {
+                    for (ColumnFamily cf : clusteringKeyMapper.splitRows(columnFamily, timestamp))
+                    {
+                        CellName clusteringKey = cf.iterator().next().name();
+                        ScoredDocument scoredDocument = find(partitionScoredDocuments, clusteringKey);
+                        Float score = scoredDocument.getScore();
+                        ByteBuffer scoreCellValue = UTF8Type.instance.decompose(score.toString());
+                        CellName scoreCellName = clusteringKeyMapper.makeCellName(clusteringKey, columnDefinition);
+                        cf.addColumn(scoreCellName, scoreCellValue, timestamp);
+                        rows.add(new Row(partitionKey, cf));
+                        c++;
+                    }
+                }
+                System.out.println(" -> \tQUERYING PARTITION SLICE " + partitionKey + " WITH " + slice.length + " SLICES -> " + c + " ROWS");
+            }
+        }
+        System.out.println(" -> RETURNING " + rows.size() + " ROWS");
+        return rows;
+    }
+
+    private ScoredDocument find(List<ScoredDocument> scoredDocuments, CellName clusteringKey)
+    {
+        for (ScoredDocument scoredDocument : scoredDocuments)
+        {
+            CellName scoredDocumentClusteringKey = scoredDocument.getClusteringKey(clusteringKeyMapper);
+            if (scoredDocumentClusteringKey.isSameCQL3RowAs(clusteringKeyMapper.getType(), clusteringKey))
+            {
+                return scoredDocument;
+            }
+        }
+        return null;
+    }
+
+    private Map<DecoratedKey, List<ScoredDocument>> group(List<ScoredDocument> scoredDocuments)
+    {
         Map<DecoratedKey, List<ScoredDocument>> scoredDocumentsByPartition = new HashMap<>();
         for (ScoredDocument scoredDocument : scoredDocuments)
         {
@@ -165,52 +219,37 @@ public class RowServiceWide extends RowService
             }
             partitionScoredDocuments.add(scoredDocument);
         }
+        return scoredDocumentsByPartition;
+    }
 
-        // Query rows per partition
-        List<Row> rows = new ArrayList<>(scoredDocuments.size());
-        for (Map.Entry<DecoratedKey, List<ScoredDocument>> entry : scoredDocumentsByPartition.entrySet())
+    private List<ColumnSlice> slices(List<ScoredDocument> scoredDocuments)
+    {
+        List<ColumnSlice> slices = new ArrayList<>(scoredDocuments.size());
+        for (ScoredDocument scoredDocument : scoredDocuments)
         {
-            DecoratedKey partitionKey = entry.getKey();
-            List<ScoredDocument> partitionScoredDocuments = entry.getValue();
+            CellName clusteringKey = scoredDocument.getClusteringKey(clusteringKeyMapper);
+            Composite start = clusteringKeyMapper.start(clusteringKey);
+            Composite end = clusteringKeyMapper.end(clusteringKey);
+            slices.add(new ColumnSlice(start, end));
+        }
+        return slices;
+    }
 
-            // Read partition from disk
-            ColumnSlice[] slices = new ColumnSlice[scoredDocuments.size()];
-            int count = 0;
-            for (ScoredDocument scoredDocument : scoredDocuments)
+    private List<ColumnSlice[]> split(List<ColumnSlice> slices)
+    {
+        List<ColumnSlice[]> result = new ArrayList<>();
+        List<ColumnSlice> slicesPortion = new ArrayList<>();
+        int count = 0;
+        for (ColumnSlice slice : slices)
+        {
+            slicesPortion.add(slice);
+            if (++count % 1000 == 0 || count == slices.size())
             {
-                CellName clusteringKey = scoredDocument.getClusteringKey(clusteringKeyMapper);
-                Composite start = clusteringKeyMapper.start(clusteringKey);
-                Composite end = clusteringKeyMapper.end(clusteringKey);
-                ColumnSlice slice = new ColumnSlice(start, end);
-                slices[count++] = slice;
-            }
-            SliceQueryFilter dataFilter = new SliceQueryFilter(slices, false, Integer.MAX_VALUE);
-            QueryFilter queryFilter = new QueryFilter(partitionKey, baseCfs.name, dataFilter, timestamp);
-            ColumnFamily columnFamily = baseCfs.getColumnFamily(queryFilter);
-
-            // Collect partition's CQL3 rows adding score
-            if (columnFamily != null)
-            {
-                for (ColumnFamily cf : clusteringKeyMapper.splitRows(columnFamily, timestamp))
-                {
-                    CellName clusteringKey = cf.iterator().next().name();
-                    for (ScoredDocument scoredDocument : partitionScoredDocuments)
-                    {
-                        CellName scoredDocumentClusteringKey = scoredDocument.getClusteringKey(clusteringKeyMapper);
-                        if (scoredDocumentClusteringKey.isSameCQL3RowAs(clusteringKeyMapper.getType(), clusteringKey))
-                        {
-                            Float score = scoredDocument.getScore();
-                            ByteBuffer scoreCellValue = UTF8Type.instance.decompose(score.toString());
-                            CellName scoreCellName = clusteringKeyMapper.makeCellName(clusteringKey, columnDefinition);
-                            cf.addColumn(scoreCellName, scoreCellValue, timestamp);
-                            rows.add(new Row(partitionKey, cf));
-                            break;
-                        }
-                    }
-                }
+                result.add(slicesPortion.toArray(new ColumnSlice[slicesPortion.size()]));
+                slicesPortion = new ArrayList<>();
             }
         }
-        return rows;
+        return result;
     }
 
     /**
