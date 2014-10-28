@@ -203,7 +203,7 @@ public class LuceneIndex
     }
 
     /**
-     * Finds the top {@code count} hits for {@code query}, applying {@code filter} if non-null, and sorting the hits by
+     * Finds the top {@code count} hits for {@code query}, applying {@code clusteringKeyFilter} if non-null, and sorting the hits by
      * the criteria in {@code sort}.
      *
      * @param query        The {@link Query} to search for.

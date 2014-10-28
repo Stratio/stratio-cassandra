@@ -102,6 +102,10 @@ public class PhraseCondition extends Condition
         }
 
         ColumnMapper<?> columnMapper = schema.getMapper(field);
+        if (columnMapper == null)
+        {
+            throw new IllegalArgumentException("Not found mapper for field " + field);
+        }
         Class<?> clazz = columnMapper.baseClass();
         if (clazz == String.class)
         {

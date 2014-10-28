@@ -15,19 +15,20 @@
  */
 package com.stratio.cassandra.index;
 
+import com.stratio.cassandra.index.schema.Column;
+import com.stratio.cassandra.index.schema.ColumnMapper;
+import com.stratio.cassandra.index.schema.ColumnsMapper;
 import com.stratio.cassandra.index.util.ByteBufferUtils;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.db.Cell;
-import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.DataRange;
-import org.apache.cassandra.db.RangeTombstone;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CBuilder;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.CellNameType;
 import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.filter.IDiskAtomFilter;
 import org.apache.cassandra.db.filter.SliceQueryFilter;
+import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.lucene.document.Document;
@@ -42,7 +43,9 @@ import org.apache.lucene.util.BytesRef;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -51,13 +54,18 @@ import java.util.Set;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ClusteringKeyMapper
+public class ClusteringKeyMapper implements ColumnsMapper
 {
 
     /**
      * The Lucene's field name.
      */
     public static final String FIELD_NAME = "_clustering_key";
+
+    /**
+     * The column family meta data.
+     */
+    private final CFMetaData metadata;
 
     /**
      * The type of the clustering key, which is the type of the column names.
@@ -71,6 +79,7 @@ public class ClusteringKeyMapper
      */
     private ClusteringKeyMapper(CFMetaData metadata)
     {
+        this.metadata = metadata;
         type = metadata.comparator;
     }
 
@@ -96,6 +105,19 @@ public class ClusteringKeyMapper
         return type;
     }
 
+    public CellName cellName(ColumnFamily columnFamily)
+    {
+        for (Cell cell : columnFamily)
+        {
+            CellName cellName = cell.name();
+            if (isValidClusteringKey(cellName)) // Ignore static columns
+            {
+                return cellName;
+            }
+        }
+        return null;
+    }
+
     /**
      * Returns the common clustering keys of the specified column family.
      *
@@ -105,17 +127,32 @@ public class ClusteringKeyMapper
     public Set<CellName> cellNames(ColumnFamily columnFamily)
     {
         Set<CellName> cellNames = new HashSet<>();
-        CellName lastCellName = null;
         for (Cell cell : columnFamily)
         {
             CellName cellName = cell.name();
-            if (lastCellName == null || !cellName.isSameCQL3RowAs(type, lastCellName))
+            if (isValidClusteringKey(cellName)) // Ignore static columns
             {
                 cellNames.add(cellName);
-                lastCellName = cellName;
             }
         }
         return cellNames;
+    }
+
+    private boolean isValidClusteringKey(CellName cellName)
+    {
+        int numClusteringColumns = metadata.clusteringColumns().size();
+        for (int i = 0; i < numClusteringColumns; i++)
+        {
+            if (ByteBufferUtils.isEmpty(cellName.get(i))) // Ignore static columns
+            {
+                return false;
+            }
+        }
+        if (!ByteBufferUtils.isEmpty(cellName.get(numClusteringColumns)))
+        {
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -134,6 +171,7 @@ public class ClusteringKeyMapper
     public void addFields(Document document, CellName cellName)
     {
         String serializedKey = ByteBufferUtils.toString(cellName.toByteBuffer());
+        System.out.println(" *** ADDING CLUSTERING KEY " + cellName + " -> " + serializedKey);
         Field field = new StringField(FIELD_NAME, serializedKey, Store.YES);
         document.add(field);
     }
@@ -144,11 +182,24 @@ public class ClusteringKeyMapper
      * @param document A {@link Document}.
      * @return The clustering key contained in the specified Lucene's {@link Document}.
      */
-    public CellName cellName(Document document) throws IOException
+    public CellName cellName(Document document)
     {
         String string = document.get(FIELD_NAME);
         ByteBuffer bb = ByteBufferUtils.fromString(string);
         return type.cellFromByteBuffer(bb);
+    }
+
+    public int numColumns() {
+        return metadata.clusteringColumns().size();
+    }
+
+    /**
+     * Returns the first clustering key contained in the specified row.
+     * @param row A {@link Row}.
+     * @return The first clustering key contained in the specified row.
+     */
+    public CellName cellName(Row row) {
+        return cellName(row.cf);
     }
 
     /**
@@ -263,6 +314,30 @@ public class ClusteringKeyMapper
     public Composite end(CellName cellName)
     {
         return start(cellName).withEOC(Composite.EOC.END);
+    }
+
+    @Override
+    public List<Column> columns(Row row)
+    {
+        ColumnFamily columnFamily = row.cf;
+        int numClusteringColumns = metadata.clusteringColumns().size();
+        List<Column> columns = new ArrayList<>(numClusteringColumns);
+        if (numClusteringColumns > 0)
+        {
+            CellName cellName = cellName(columnFamily);
+            if (cellName != null)
+            {
+                for (int i = 0; i < numClusteringColumns; i++)
+                {
+                    ByteBuffer value = cellName.get(i);
+                    ColumnDefinition columnDefinition = metadata.clusteringColumns().get(i);
+                    String name = columnDefinition.name.toString();
+                    AbstractType<?> valueType = columnDefinition.type;
+                    columns.add(ColumnMapper.column(name, value, valueType));
+                }
+            }
+        }
+        return columns;
     }
 
 }

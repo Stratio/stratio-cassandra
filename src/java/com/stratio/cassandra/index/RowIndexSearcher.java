@@ -18,9 +18,7 @@ package com.stratio.cassandra.index;
 import com.stratio.cassandra.index.query.Search;
 import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.index.util.Log;
-import org.apache.cassandra.db.DataRange;
-import org.apache.cassandra.db.IndexExpression;
-import org.apache.cassandra.db.Row;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.filter.ExtendedFilter;
 import org.apache.cassandra.db.index.SecondaryIndexManager;
 import org.apache.cassandra.db.index.SecondaryIndexSearcher;
@@ -215,15 +213,15 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         long startTime = System.currentTimeMillis();
 
         // Remove duplicates
-        TreeSet<Row> set = new TreeSet<>(rowService.naturalComparator());
+        TreeSet<Row> set = new TreeSet<>(rowService.comparator());
         set.addAll(rows);
         List<Row> result = new ArrayList<>(set);
 
         // Sort
         Search search = search(clause);
         Comparator<Row> comparator = rowService.comparator(search);
-        Log.debug("SORTING RESULTS WITH " + comparator);
         Collections.sort(result, comparator);
+
         String comparatorName = comparator.getClass().getSimpleName();
         int endSize = result.size();
         long endTime = System.currentTimeMillis() - startTime;

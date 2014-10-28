@@ -40,7 +40,7 @@ public class Columns implements Iterable<Column>
     /**
      * Constructs an empty {@link Column} list.
      */
-    Columns(Row row)
+    public Columns(Row row)
     {
         this.columns = new LinkedList<>();
         this.row = row;

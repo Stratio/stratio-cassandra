@@ -34,7 +34,7 @@ import java.io.IOException;
 
 /**
  * {@link Filter} that filters documents which clustering key field satisfies a certain {@link DataRange}. This means
- * that the clustering key value must be contained in the slice query filter specified in the data range.
+ * that the clustering key value must be contained in the slice query clusteringKeyFilter specified in the data range.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */

@@ -13,18 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.stratio.cassandra.index;
+package com.stratio.cassandra.index.schema;
 
 import org.apache.cassandra.db.Row;
 
-import java.util.Comparator;
+import java.util.List;
 
 /**
- * A {@link Comparator} for comparing {@link Row}s according to a certain criterion.
- *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public interface RowsComparator extends Comparator<Row>
+public interface ColumnsMapper
 {
-
+    public List<Column> columns(Row row);
 }

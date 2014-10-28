@@ -98,7 +98,7 @@ public class CreateIndexStatement extends SchemaAlteringStatement
                 throw new InvalidRequestException("Index already exists");
         }
 
-        properties.validate();
+        properties.validate(cfm);
 
         // TODO: we could lift that limitation
         if (cfm.comparator.isDense() && cd.kind != ColumnDefinition.Kind.REGULAR)

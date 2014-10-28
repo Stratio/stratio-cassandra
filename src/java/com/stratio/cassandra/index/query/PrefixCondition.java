@@ -80,6 +80,10 @@ public class PrefixCondition extends Condition
         }
 
         ColumnMapper<?> columnMapper = schema.getMapper(field);
+        if (columnMapper == null)
+        {
+            throw new IllegalArgumentException("Not found mapper for field " + field);
+        }
         Class<?> clazz = columnMapper.baseClass();
         Query query;
         if (clazz == String.class)

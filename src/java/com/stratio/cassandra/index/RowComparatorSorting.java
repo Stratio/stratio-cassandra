@@ -20,7 +20,6 @@ import com.stratio.cassandra.index.query.SortingField;
 import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.index.util.ComparatorChain;
-import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.db.Row;
 
 import java.util.Comparator;
@@ -30,21 +29,18 @@ import java.util.Comparator;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class RowsComparatorSorting implements RowsComparator
+public class RowComparatorSorting implements RowComparator
 {
-    private final CFMetaData metadata;
-    private final Schema schema;
+    private final RowMapper rowMapper;
     private final ComparatorChain<Columns> comparatorChain;
 
     /**
-     * @param metadata The {@link CFMetaData} of the column family of the {@link Row}s to be compared.
-     * @param schema   The indexing {@link Schema} of the {@link Row}s to be compared.
-     * @param sorting  The {@link Sorting} inf which the {@link Row} comparison is based.
+     * @param rowMapper  The indexing {@link Schema} of the {@link Row}s to be compared.
+     * @param sorting The {@link Sorting} inf which the {@link Row} comparison is based.
      */
-    public RowsComparatorSorting(CFMetaData metadata, Schema schema, Sorting sorting)
+    public RowComparatorSorting(RowMapper rowMapper, Sorting sorting)
     {
-        this.metadata = metadata;
-        this.schema = schema;
+        this.rowMapper = rowMapper;
         comparatorChain = new ComparatorChain<>();
         for (SortingField sortingField : sorting.getSortingFields())
         {
@@ -64,8 +60,8 @@ public class RowsComparatorSorting implements RowsComparator
     @Override
     public int compare(Row row1, Row row2)
     {
-        Columns columns1 = schema.cells(metadata, row1);
-        Columns columns2 = schema.cells(metadata, row2);
+        Columns columns1 = rowMapper.columns(row1);
+        Columns columns2 = rowMapper.columns(row2);
         return comparatorChain.compare(columns1, columns2);
     }
 }

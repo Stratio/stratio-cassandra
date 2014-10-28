@@ -15,8 +15,8 @@
  */
 package com.stratio.cassandra.index;
 
+import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.dht.*;
@@ -41,35 +41,35 @@ public abstract class TokenMapper
      */
     private static TokenMapper instance;
 
-    protected final ColumnFamilyStore baseCfs;
+    protected final CFMetaData metadata;
 
     /**
      * Returns a new {@link TokenMapper} instance for the current partitioner using the specified
-     * {@link ColumnFamilyStore}.
+     * column family metadata.
      *
-     * @param baseCfs A {@link ColumnFamilyStore}.
+     * @param metadata The column family metadata.
      * @return A new {@link TokenMapper} instance for the current partitioner.
      */
-    public static TokenMapper instance(ColumnFamilyStore baseCfs)
+    public static TokenMapper instance(CFMetaData metadata)
     {
         if (instance == null)
         {
             IPartitioner<?> partitioner = DatabaseDescriptor.getPartitioner();
             if (partitioner instanceof Murmur3Partitioner)
             {
-                instance = new TokenMapperMurmur(baseCfs);
+                instance = new TokenMapperMurmur(metadata);
             }
             else
             {
-                instance = new TokenMapperGeneric(baseCfs);
+                instance = new TokenMapperGeneric(metadata);
             }
         }
         return instance;
     }
 
-    public TokenMapper(ColumnFamilyStore baseCfs)
+    public TokenMapper(CFMetaData metadata)
     {
-        this.baseCfs = baseCfs;
+        this.metadata = metadata;
     }
 
     /**
@@ -97,7 +97,7 @@ public abstract class TokenMapper
         }
 
         // Check if it's a full node range
-        String ksName = baseCfs.keyspace.getName();
+        String ksName = metadata.ksName;
         Collection<Range<Token>> localRanges = StorageService.instance.getLocalRanges(ksName);
         if (localRanges.size() == 1)
         { // No virtual nodes

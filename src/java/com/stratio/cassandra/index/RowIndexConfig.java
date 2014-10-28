@@ -91,7 +91,7 @@ public class RowIndexConfig
             refreshSeconds = DEFAULT_REFESH_SECONDS;
         }
 
-        // Setup filter cache size
+        // Setup clusteringKeyFilter cache size
         String filterCacheSizeOption = options.get(FILTER_CACHE_SIZE_OPTION);
         int filterCacheSize;
         if (filterCacheSizeOption != null)

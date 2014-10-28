@@ -16,8 +16,8 @@
 package com.stratio.cassandra.index;
 
 import com.stratio.cassandra.index.util.ByteBufferUtils;
+import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.dht.IPartitioner;
@@ -58,9 +58,9 @@ public class TokenMapperGeneric extends TokenMapper
     /**
      * Returns a new {@link TokenMapperGeneric}.
      */
-    public TokenMapperGeneric(ColumnFamilyStore baseCfs)
+    public TokenMapperGeneric(CFMetaData metadata)
     {
-        super(baseCfs);
+        super(metadata);
         factory = DatabaseDescriptor.getPartitioner().getTokenFactory();
     }
 
