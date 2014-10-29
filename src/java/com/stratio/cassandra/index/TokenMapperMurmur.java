@@ -85,7 +85,7 @@ public class TokenMapperMurmur extends TokenMapper
      * {@inheritDoc}
      */
     @Override
-    public SortField[] sortFields()
+    public SortField[] sort()
     {
         return new SortField[]{new SortField(FIELD_NAME, SortField.Type.LONG)};
     }

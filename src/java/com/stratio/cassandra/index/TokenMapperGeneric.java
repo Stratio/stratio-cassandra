@@ -44,7 +44,6 @@ import java.nio.ByteBuffer;
  */
 public class TokenMapperGeneric extends TokenMapper
 {
-
     /**
      * The Lucene's field name.
      */
@@ -90,7 +89,7 @@ public class TokenMapperGeneric extends TokenMapper
      * {@inheritDoc}
      */
     @Override
-    public SortField[] sortFields()
+    public SortField[] sort()
     {
         return new SortField[]{
                 new SortField(FIELD_NAME, new FieldComparatorSource()

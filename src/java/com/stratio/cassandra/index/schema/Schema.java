@@ -25,6 +25,8 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
 import org.apache.lucene.util.Version;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
@@ -145,6 +147,27 @@ public class Schema
         return perFieldAnalyzer;
     }
 
+    public void addFields(Document document, Columns columns) {
+        for (Column column : columns)
+        {
+            String name = column.getName();
+            String fieldName = column.getFieldName();
+            Object value = column.getValue();
+            ColumnMapper<?> columnMapper = getMapper(name);
+            if (columnMapper != null)
+            {
+                Field field = columnMapper.field(fieldName, value);
+                document.add(field);
+            }
+        }
+    }
+
+    /**
+     * Returns the {@link ColumnMapper} identified by the specified field name.
+     *
+     * @param field A field name.
+     * @return The {@link ColumnMapper} identified by the specified field name.
+     */
     public ColumnMapper<?> getMapper(String field)
     {
         ColumnMapper<?> columnMapper = columnMappers.get(field);

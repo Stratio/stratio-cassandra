@@ -139,6 +139,6 @@ public abstract class TokenMapper
      *
      * @return A Lucene's {@link SortField} array for sorting documents/rows according to the current partitioner.
      */
-    public abstract SortField[] sortFields();
+    public abstract SortField[] sort();
 
 }

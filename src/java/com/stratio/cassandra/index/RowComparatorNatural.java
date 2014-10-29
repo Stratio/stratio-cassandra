@@ -45,10 +45,6 @@ public class RowComparatorNatural implements RowComparator
             {
                 Token t1 = row1.key.getToken();
                 Token t2 = row2.key.getToken();
-                System.out.println("\tCOMPARING TOKENS");
-                System.out.println("\t\t" + t1);
-                System.out.println("\t\t" + t2);
-                System.out.println("\t\t" + t1.compareTo(t2));
                 return t1.compareTo(t2);
             }
         });

@@ -48,6 +48,8 @@ public class RowServiceSkinny extends RowService
         FIELDS_TO_LOAD.add(PartitionKeyMapper.FIELD_NAME);
     }
 
+    private final RowMapperSkinny rowMapper;
+
     /**
      * Returns a new {@code RowServiceSimple} for manage simple rows.
      *
@@ -57,6 +59,7 @@ public class RowServiceSkinny extends RowService
     public RowServiceSkinny(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) throws IOException
     {
         super(baseCfs, columnDefinition);
+        this.rowMapper = (RowMapperSkinny) super.rowMapper;
         luceneIndex.init(rowMapper.sort());
     }
 

@@ -17,7 +17,7 @@ package com.stratio.cassandra.index;
 
 import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.ColumnMapper;
-import com.stratio.cassandra.index.schema.ColumnsMapper;
+import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.util.ByteBufferUtils;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
@@ -43,7 +43,7 @@ import java.util.List;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class PartitionKeyMapper implements ColumnsMapper
+public class PartitionKeyMapper
 {
 
     /**
@@ -140,11 +140,10 @@ public class PartitionKeyMapper implements ColumnsMapper
         return partitioner.decorateKey(partitionKey);
     }
 
-    @Override
-    public List<Column> columns(Row row)
+    public Columns columns(Row row)
     {
         DecoratedKey partitionKey = row.key;
-        List<Column> columns = new LinkedList<>();
+        Columns columns = new Columns();
         AbstractType<?> rawKeyType = metadata.getKeyValidator();
         List<ColumnDefinition> columnDefinitions = metadata.partitionKeyColumns();
         for (ColumnDefinition columnDefinition : columnDefinitions)

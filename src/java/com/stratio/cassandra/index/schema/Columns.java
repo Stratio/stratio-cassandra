@@ -15,7 +15,6 @@
  */
 package com.stratio.cassandra.index.schema;
 
-import org.apache.cassandra.db.Row;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import java.util.Collection;
@@ -35,53 +34,52 @@ public class Columns implements Iterable<Column>
      * The wrapped columns
      */
     private List<Column> columns;
-    private final Row row;
 
     /**
      * Constructs an empty {@link Column} list.
      */
-    public Columns(Row row)
+    public Columns()
     {
         this.columns = new LinkedList<>();
-        this.row = row;
-    }
-
-    public Row getRow()
-    {
-        return row;
     }
 
     /**
      * Adds the specified {@link Column} to the existing ones.
      *
      * @param column the {@link Column} to be added.
+     * @return this
      */
-    public void add(Column column)
+    public Columns add(Column column)
     {
         columns.add(column);
+        return this;
     }
 
     /**
      * Adds the specified {@link Column}s to the existing ones.
      *
      * @param columns the {@link Column}s to be added.
+     * @return this
      */
-    public void addAll(Collection<Column> columns)
+    public Columns addAll(Collection<Column> columns)
     {
         this.columns.addAll(columns);
+        return this;
     }
 
     /**
      * Adds the specified {@link Column}s to the existing ones.
      *
      * @param columns the {@link Column}s to be added.
+     * @return this
      */
-    public void addAll(Columns columns)
+    public Columns addAll(Columns columns)
     {
         for (Column column : columns)
         {
             this.columns.add(column);
         }
+        return this;
     }
 
     /**

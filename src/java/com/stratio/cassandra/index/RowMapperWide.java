@@ -63,7 +63,7 @@ public class RowMapperWide extends RowMapper
     @Override
     public Columns columns(Row row)
     {
-        Columns columns = new Columns(row);
+        Columns columns = new Columns();
         columns.addAll(partitionKeyMapper.columns(row));
         columns.addAll(clusteringKeyMapper.columns(row));
         columns.addAll(regularCellsMapper.columns(row));
@@ -76,13 +76,15 @@ public class RowMapperWide extends RowMapper
     @Override
     public Document document(Row row)
     {
-
         DecoratedKey partitionKey = row.key;
         CellName clusteringKey = clusteringKeyMapper.cellName(row);
 
-        Document document = super.document(row);
+        Document document = new Document();
+        tokenMapper.addFields(document, partitionKey);
+        partitionKeyMapper.addFields(document, partitionKey);
         clusteringKeyMapper.addFields(document, clusteringKey);
         fullKeyMapper.addFields(document, partitionKey, clusteringKey);
+        schema.addFields(document, columns(row));
         return document;
     }
 
@@ -118,7 +120,7 @@ public class RowMapperWide extends RowMapper
     @Override
     public Sort sort()
     {
-        SortField[] partitionKeySort = tokenMapper.sortFields();
+        SortField[] partitionKeySort = tokenMapper.sort();
         SortField[] clusteringKeySort = clusteringKeyMapper.sortFields();
         return new Sort(ArrayUtils.addAll(partitionKeySort, clusteringKeySort));
     }
@@ -150,7 +152,7 @@ public class RowMapperWide extends RowMapper
      */
     public CellName clusteringKey(Document document)
     {
-        return clusteringKeyMapper.cellName(document);
+        return clusteringKeyMapper.clusteringKey(document);
     }
 
     /**
@@ -161,7 +163,7 @@ public class RowMapperWide extends RowMapper
      */
     public CellName clusteringKey(ColumnFamily columnFamily)
     {
-        return clusteringKeyMapper.cellName(columnFamily);
+        return clusteringKeyMapper.clusteringKey(columnFamily);
     }
 
     /**
@@ -172,7 +174,7 @@ public class RowMapperWide extends RowMapper
      */
     public Set<CellName> clusteringKeys(ColumnFamily columnFamily)
     {
-        return clusteringKeyMapper.cellNames(columnFamily);
+        return clusteringKeyMapper.clusteringKeys(columnFamily);
     }
 
     /**

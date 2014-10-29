@@ -67,7 +67,7 @@ public class KeysIndex extends AbstractSimplePerColumnSecondaryIndex
 
     public boolean indexes(CellName name)
     {
-        // This consider the full cellName directly
+        // This consider the full clusteringKey directly
         AbstractType<?> comparator = baseCfs.metadata.getColumnDefinitionComparator(columnDef);
         return comparator.compare(columnDef.name.bytes, name.toByteBuffer()) == 0;
     }

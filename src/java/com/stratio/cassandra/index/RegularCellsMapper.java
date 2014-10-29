@@ -15,9 +15,8 @@
  */
 package com.stratio.cassandra.index;
 
-import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.ColumnMapper;
-import com.stratio.cassandra.index.schema.ColumnsMapper;
+import com.stratio.cassandra.index.schema.Columns;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.Cell;
@@ -29,13 +28,11 @@ import org.apache.cassandra.db.marshal.CollectionType;
 
 import java.nio.ByteBuffer;
 import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
 
 /**
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class RegularCellsMapper implements ColumnsMapper
+public class RegularCellsMapper
 {
 
     /**
@@ -65,11 +62,10 @@ public class RegularCellsMapper implements ColumnsMapper
     }
 
     @SuppressWarnings("rawtypes")
-    @Override
-    public List<Column> columns(Row row)
+    public Columns columns(Row row)
     {
         ColumnFamily columnFamily = row.cf;
-        List<Column> columns = new LinkedList<>();
+        Columns columns = new Columns();
 
         // Get row's columns iterator skipping clustering column
         Iterator<Cell> cellIterator = columnFamily.iterator();
