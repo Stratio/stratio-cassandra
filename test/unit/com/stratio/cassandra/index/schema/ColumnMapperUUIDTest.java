@@ -119,12 +119,13 @@ public class ColumnMapperUUIDTest
         Assert.assertEquals(ColumnMapperUUID.class, columnMapper.getClass());
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testParseJSONEmpty() throws IOException
     {
         String json = "{fields:{}}";
         Schema schema = Schema.fromJson(json);
-        schema.getMapper("age");
+        ColumnMapper<?> columnMapper = schema.getMapper("age");
+        Assert.assertNull(columnMapper);
     }
 
     @Test(expected = IOException.class)
