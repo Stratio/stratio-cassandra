@@ -40,9 +40,7 @@ public abstract class SecondaryIndexSearcher
 
     public SecondaryIndex highestSelectivityIndex(List<IndexExpression> clause)
     {
-        System.out.println("highestSelectivityIndex for" + clause);
         IndexExpression expr = highestSelectivityPredicate(clause);
-        System.out.println("highestSelectivityIndex with expr " + expr);
         return expr == null ? null : indexManager.getIndexForColumn(expr.column);
     }
 

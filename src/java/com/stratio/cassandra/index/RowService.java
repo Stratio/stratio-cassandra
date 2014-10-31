@@ -38,10 +38,7 @@ import org.apache.lucene.search.Sort;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Class for mapping rows between Cassandra and Lucene.
@@ -293,10 +290,8 @@ public abstract class RowService
             {
                 lastDoc = scoredDocument;
                 Row row = row(scoredDocument, timestamp);
-                System.out.println(" ==> FOUND DOC " + scoredDocument);
                 if (row != null && accepted(row, expressions))
                 {
-                    System.out.println(" ==> ADDED ROW " + row);
                     rows.add(row);
                 }
                 System.out.println();
@@ -533,6 +528,34 @@ public abstract class RowService
     public long getIndexSize() throws IOException
     {
         return luceneIndex.getNumDocs();
+    }
+
+    public Row removeScoreColumn(Row row)
+    {
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(baseCfs.metadata);
+        CellName scoreCellName = rowMapper.makeCellName(row.cf);
+        for (Cell cell : row.cf)
+        {
+            CellName cellName = cell.name();
+            if (!scoreCellName.equals(cellName)) {
+                cf.addColumn(cell);
+            }
+        }
+        return new Row(row.key, cf);
+    }
+
+    public List<Row> group(List<Row> rows) {
+        LinkedList<Row> result = new LinkedList<>();
+        Row lastRow = null;
+        for (Row row : rows) {
+            if (lastRow != null && row.key.equals(lastRow.key)) {
+                lastRow.cf.addAll(row.cf);
+            } else {
+                lastRow = row;
+                result.add(row);
+            }
+        }
+        return result;
     }
 
 }

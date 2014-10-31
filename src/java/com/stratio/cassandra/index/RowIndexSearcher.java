@@ -222,6 +222,15 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         Comparator<Row> comparator = rowService.comparator(search);
         Collections.sort(result, comparator);
 
+//        // Remove score column
+//        List<Row> rowsWithoutScore = new ArrayList<>(result.size());
+//        for (Row row : result) {
+//            rowsWithoutScore.add(rowService.removeScoreColumn(row));
+//        }
+//        result = rowsWithoutScore;
+
+        result = rowService.group(result);
+
         String comparatorName = comparator.getClass().getSimpleName();
         int endSize = result.size();
         long endTime = System.currentTimeMillis() - startTime;
