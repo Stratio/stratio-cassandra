@@ -15,19 +15,19 @@
  */
 package com.stratio.cassandra.index;
 
+import com.stratio.cassandra.index.schema.ColumnMapper;
+import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.util.ByteBufferUtils;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.db.Cell;
-import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.DataRange;
-import org.apache.cassandra.db.RangeTombstone;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CBuilder;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.CellNameType;
 import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.filter.IDiskAtomFilter;
 import org.apache.cassandra.db.filter.SliceQueryFilter;
+import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.lucene.document.Document;
@@ -60,6 +60,11 @@ public class ClusteringKeyMapper
     public static final String FIELD_NAME = "_clustering_key";
 
     /**
+     * The column family meta data.
+     */
+    private final CFMetaData metadata;
+
+    /**
      * The type of the clustering key, which is the type of the column names.
      */
     private final CellNameType type;
@@ -71,6 +76,7 @@ public class ClusteringKeyMapper
      */
     private ClusteringKeyMapper(CFMetaData metadata)
     {
+        this.metadata = metadata;
         type = metadata.comparator;
     }
 
@@ -96,26 +102,55 @@ public class ClusteringKeyMapper
         return type;
     }
 
+    public CellName clusteringKey(ColumnFamily columnFamily)
+    {
+        for (Cell cell : columnFamily)
+        {
+            CellName cellName = cell.name();
+            if (isClusteringKey(cellName))
+            {
+                return cellName;
+            }
+        }
+        return null;
+    }
+
     /**
      * Returns the common clustering keys of the specified column family.
      *
      * @param columnFamily A storage engine {@link org.apache.cassandra.db.ColumnFamily}.
      * @return The common clustering keys of the specified column family.
      */
-    public Set<CellName> cellNames(ColumnFamily columnFamily)
+    public Set<CellName> clusteringKeys(ColumnFamily columnFamily)
     {
         Set<CellName> cellNames = new HashSet<>();
-        CellName lastCellName = null;
         for (Cell cell : columnFamily)
         {
             CellName cellName = cell.name();
-            if (lastCellName == null || !cellName.isSameCQL3RowAs(type, lastCellName))
+            if (isClusteringKey(cellName))
             {
                 cellNames.add(cellName);
-                lastCellName = cellName;
             }
         }
         return cellNames;
+    }
+
+    /**
+     * Returns {@code true} if the specified {@link CellName} is a valid clustering key, {@code false} otherwise.
+     * @param cellName A {@link CellName}.
+     * @return {@code true} if the specified {@link CellName} is a valid clustering key, {@code false} otherwise.
+     */
+    private boolean isClusteringKey(CellName cellName)
+    {
+        int numClusteringColumns = metadata.clusteringColumns().size();
+        for (int i = 0; i < numClusteringColumns; i++)
+        {
+            if (ByteBufferUtils.isEmpty(cellName.get(i))) // Ignore static columns
+            {
+                return false;
+            }
+        }
+        return ByteBufferUtils.isEmpty(cellName.get(numClusteringColumns));
     }
 
     /**
@@ -144,11 +179,20 @@ public class ClusteringKeyMapper
      * @param document A {@link Document}.
      * @return The clustering key contained in the specified Lucene's {@link Document}.
      */
-    public CellName cellName(Document document) throws IOException
+    public CellName clusteringKey(Document document)
     {
         String string = document.get(FIELD_NAME);
         ByteBuffer bb = ByteBufferUtils.fromString(string);
         return type.cellFromByteBuffer(bb);
+    }
+
+    /**
+     * Returns the first clustering key contained in the specified row.
+     * @param row A {@link Row}.
+     * @return The first clustering key contained in the specified row.
+     */
+    public CellName cellName(Row row) {
+        return clusteringKey(row.cf);
     }
 
     /**
@@ -240,7 +284,7 @@ public class ClusteringKeyMapper
      * specified cell name.
      *
      * @param cellName A storage engine cell name.
-     * @return The first column name of for {@code cellName}.
+     * @return The first column name of for {@code clusteringKey}.
      */
     public Composite start(CellName cellName)
     {
@@ -258,11 +302,35 @@ public class ClusteringKeyMapper
      * specified cell name.
      *
      * @param cellName A storage engine cell name.
-     * @return The first column name of for {@code cellName}.
+     * @return The first column name of for {@code clusteringKey}.
      */
     public Composite end(CellName cellName)
     {
         return start(cellName).withEOC(Composite.EOC.END);
+    }
+
+
+    public Columns columns(Row row)
+    {
+        ColumnFamily columnFamily = row.cf;
+        int numClusteringColumns = metadata.clusteringColumns().size();
+        Columns columns = new Columns();
+        if (numClusteringColumns > 0)
+        {
+            CellName cellName = clusteringKey(columnFamily);
+            if (cellName != null)
+            {
+                for (int i = 0; i < numClusteringColumns; i++)
+                {
+                    ByteBuffer value = cellName.get(i);
+                    ColumnDefinition columnDefinition = metadata.clusteringColumns().get(i);
+                    String name = columnDefinition.name.toString();
+                    AbstractType<?> valueType = columnDefinition.type;
+                    columns.add(ColumnMapper.column(name, value, valueType));
+                }
+            }
+        }
+        return columns;
     }
 
 }

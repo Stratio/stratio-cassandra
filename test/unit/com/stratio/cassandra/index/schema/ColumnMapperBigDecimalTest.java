@@ -583,12 +583,12 @@ public class ColumnMapperBigDecimalTest
         Assert.assertEquals(30, ((ColumnMapperBigDecimal) columnMapper).getDecimalDigits());
     }
 
-    @Test(expected = IllegalArgumentException.class)
     public void testParseJSONEmpty() throws IOException
     {
         String json = "{fields:{}}";
         Schema schema = Schema.fromJson(json);
-        schema.getMapper("age");
+        ColumnMapper<?> columnMapper = schema.getMapper("age");
+        Assert.assertNull(columnMapper);
     }
 
     @Test(expected = IOException.class)

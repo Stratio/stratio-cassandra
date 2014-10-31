@@ -17,14 +17,9 @@ package com.stratio.cassandra.index;
 
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.*;
-import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.filter.QueryFilter;
-import org.apache.cassandra.db.marshal.UTF8Type;
-import org.apache.cassandra.dht.Token;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.Filter;
-import org.apache.lucene.search.Sort;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -36,7 +31,7 @@ import java.util.Set;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class RowServiceSimple extends RowService
+public class RowServiceSkinny extends RowService
 {
 
     /**
@@ -50,17 +45,19 @@ public class RowServiceSimple extends RowService
         FIELDS_TO_LOAD.add(PartitionKeyMapper.FIELD_NAME);
     }
 
+    private final RowMapperSkinny rowMapper;
+
     /**
      * Returns a new {@code RowServiceSimple} for manage simple rows.
      *
      * @param baseCfs          The base column family store.
      * @param columnDefinition The indexed column definition.
      */
-    public RowServiceSimple(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) throws IOException
+    public RowServiceSkinny(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) throws IOException
     {
         super(baseCfs, columnDefinition);
-
-        luceneIndex.init(sort());
+        this.rowMapper = (RowMapperSkinny) super.rowMapper;
+        luceneIndex.init(rowMapper.sort());
     }
 
     /**
@@ -80,30 +77,18 @@ public class RowServiceSimple extends RowService
     @Override
     public void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp) throws IOException
     {
-        DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(key);
+        DecoratedKey partitionKey = rowMapper.partitionKey(key);
 
-        if (columnFamily.iterator().hasNext())
-        // Create or update row
+        if (columnFamily.iterator().hasNext()) // Create or update row
         {
-            // Load row
-            Row row = row(partitionKey, timestamp);
-
-            // Create document from row
-            Document document = new Document();
-            tokenMapper.addFields(document, partitionKey);
-            partitionKeyMapper.addFields(document, partitionKey);
-            schema.addFields(document, metadata, row);
-
-            // Create document's identifying term for insert-update
-            Term term = partitionKeyMapper.term(partitionKey);
-
-            // Insert-update on Lucene
-            luceneIndex.upsert(term, document);
+            Row row = row(partitionKey, timestamp); // Read row
+            Document document = rowMapper.document(row);
+            Term term = rowMapper.term(partitionKey);
+            luceneIndex.upsert(term, document); // Store document
         }
-        else if (columnFamily.deletionInfo() != null)
-        // Deleting full row
+        else if (columnFamily.deletionInfo() != null) // Delete full row
         {
-            Term term = partitionKeyMapper.term(partitionKey);
+            Term term = rowMapper.term(partitionKey);
             luceneIndex.delete(term);
         }
     }
@@ -114,7 +99,7 @@ public class RowServiceSimple extends RowService
     @Override
     public void deleteInner(DecoratedKey partitionKey) throws IOException
     {
-        Term term = partitionKeyMapper.term(partitionKey);
+        Term term = rowMapper.term(partitionKey);
         luceneIndex.delete(term);
     }
 
@@ -129,23 +114,16 @@ public class RowServiceSimple extends RowService
 
         // Extract row from document
         Document document = scoredDocument.getDocument();
-        DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
+        DecoratedKey partitionKey = rowMapper.partitionKey(document);
         Row row = row(partitionKey, timestamp);
 
-        // Create score cell from document score
+        if (row == null) {
+            return null;
+        }
+
+        // Return decorated row
         Float score = scoredDocument.getScore();
-        ByteBuffer cellValue = UTF8Type.instance.decompose(score.toString());
-
-//        CellName cellName = nameType.cellFromByteBuffer(indexedColumnName.bytes);
-        CellName cellName = nameType.makeCellName(indexedColumnName.bytes);
-//        CellName cellName = nameType.makeCellName(nameType.builder().add(indexedColumnName.bytes).build());
-//        CellName cellName = (CellName) nameType.builder().add(indexedColumnName.bytes).build();
-
-        // Return new row with score cell
-        ColumnFamily decoratedCf = ArrayBackedSortedColumns.factory.create(baseCfs.metadata);
-        decoratedCf.addColumn(cellName, cellValue, timestamp);
-        decoratedCf.addAll(row.cf);
-        return new Row(partitionKey, decoratedCf);
+        return decorate(row, timestamp, score);
     }
 
     /**
@@ -162,42 +140,6 @@ public class RowServiceSimple extends RowService
         return row(queryFilter, timestamp);
     }
 
-    /**
-     * {@inheritDoc}
-     * <p/>
-     * The {@link Filter} is based in {@link Token} order.
-     */
-    @Override
-    protected Sort sort()
-    {
-        return new Sort(tokenMapper.sortFields());
-    }
 
-    /**
-     * {@inheritDoc}
-     * <p/>
-     * The {@link Filter} is based on a {@link Token} range.
-     */
-    @Override
-    protected Filter filter(DataRange dataRange)
-    {
-        return tokenMapper.filter(dataRange);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    protected Float score(Row row)
-    {
-        ColumnFamily cf = row.cf;
-        CellName cellName = nameType.makeCellName(indexedColumnName.bytes);
-//        CellName cellName = (CellName) nameType.builder().add(indexedColumnName.bytes).build();
-        Cell column = cf.getColumn(cellName);
-        ByteBuffer columnValue = column.value();
-        String stringValue = UTF8Type.instance.compose(columnValue);
-        return Float.parseFloat(stringValue);
-
-    }
 
 }

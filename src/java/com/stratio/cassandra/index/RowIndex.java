@@ -16,6 +16,7 @@
 package com.stratio.cassandra.index;
 
 import com.stratio.cassandra.index.util.Log;
+import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.ColumnFamilyStore;
@@ -29,6 +30,7 @@ import org.apache.cassandra.utils.concurrent.OpOrder;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -101,6 +103,12 @@ public class RowIndex extends PerRowSecondaryIndex
         {
             lock.writeLock().unlock();
         }
+    }
+
+    @Override
+    public void validate(CFMetaData metadata, Map<String,String> indexOptions)
+    {
+        RowIndexConfig config = new RowIndexConfig(metadata, indexOptions);
     }
 
     private void setup() throws IOException

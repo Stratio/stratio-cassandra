@@ -46,9 +46,9 @@ public class SearchBuilders
     }
 
     /**
-     * Returns a new {@link SearchBuilder} using the specified {@link ConditionBuilder} as filter.
+     * Returns a new {@link SearchBuilder} using the specified {@link ConditionBuilder} as clusteringKeyFilter.
      *
-     * @return a new {@link SearchBuilder} using the specified {@link ConditionBuilder} as filter.
+     * @return a new {@link SearchBuilder} using the specified {@link ConditionBuilder} as clusteringKeyFilter.
      */
     public static SearchBuilder filter(ConditionBuilder<?, ?> filterConditionBuilder)
     {

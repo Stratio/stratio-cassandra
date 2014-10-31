@@ -15,9 +15,16 @@
  */
 package com.stratio.cassandra.index;
 
+import com.stratio.cassandra.index.schema.Column;
+import com.stratio.cassandra.index.schema.ColumnMapper;
+import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.util.ByteBufferUtils;
+import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.db.Row;
+import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -28,6 +35,8 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 
 import java.nio.ByteBuffer;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Class for several partition key mappings between Cassandra and Lucene.
@@ -47,22 +56,28 @@ public class PartitionKeyMapper
      */
     private final IPartitioner<?> partitioner;
 
+    private final CFMetaData metadata;
+
     /**
      * Returns a new {@code PartitionKeyMapper} according to the specified column family meta data.
+     *
+     * @param metadata The column family metadata.
      */
-    private PartitionKeyMapper()
+    private PartitionKeyMapper(CFMetaData metadata)
     {
         partitioner = DatabaseDescriptor.getPartitioner();
+        this.metadata = metadata;
     }
 
     /**
      * Returns a new {@code PartitionKeyMapper} according to the specified column family meta data.
      *
+     * @param metadata The column family metadata.
      * @return a new {@code PartitionKeyMapper} according to the specified column family meta data.
      */
-    public static PartitionKeyMapper instance()
+    public static PartitionKeyMapper instance(CFMetaData metadata)
     {
-        return new PartitionKeyMapper();
+        return new PartitionKeyMapper(metadata);
     }
 
     /**
@@ -123,6 +138,24 @@ public class PartitionKeyMapper
     public DecoratedKey decoratedKey(ByteBuffer partitionKey)
     {
         return partitioner.decorateKey(partitionKey);
+    }
+
+    public Columns columns(Row row)
+    {
+        DecoratedKey partitionKey = row.key;
+        Columns columns = new Columns();
+        AbstractType<?> rawKeyType = metadata.getKeyValidator();
+        List<ColumnDefinition> columnDefinitions = metadata.partitionKeyColumns();
+        for (ColumnDefinition columnDefinition : columnDefinitions)
+        {
+            String name = columnDefinition.name.toString();
+            ByteBuffer[] components = ByteBufferUtils.split(partitionKey.getKey(), rawKeyType);
+            int position = columnDefinition.position();
+            ByteBuffer value = components[position];
+            AbstractType<?> valueType = rawKeyType.getComponents().get(position);
+            columns.add(ColumnMapper.column(name, value, valueType));
+        }
+        return columns;
     }
 
 }

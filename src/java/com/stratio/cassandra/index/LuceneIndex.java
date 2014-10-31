@@ -119,9 +119,9 @@ public class LuceneIndex
         TrackingIndexWriter trackingIndexWriter = new TrackingIndexWriter(indexWriter);
         searcherManager = new SearcherManager(indexWriter, true, searcherFactory);
         searcherReopener = new ControlledRealTimeReopenThread<>(trackingIndexWriter,
-                searcherManager,
-                refreshSeconds,
-                refreshSeconds);
+                                                                searcherManager,
+                                                                refreshSeconds,
+                                                                refreshSeconds);
         searcherReopener.start(); // Start the refresher thread
     }
 
@@ -135,7 +135,7 @@ public class LuceneIndex
      */
     public void upsert(Term term, Document document) throws IOException
     {
-        Log.debug("Updating document %s with term %s", document, term);
+        // Log.debug("Updating document %s with term %s", document, term);
         indexWriter.updateDocument(term, document);
     }
 
@@ -146,7 +146,7 @@ public class LuceneIndex
      */
     public void delete(Term term) throws IOException
     {
-        Log.debug(String.format("Deleting by term %s", term));
+        // Log.debug(String.format("Deleting by term %s", term));
         indexWriter.deleteDocuments(term);
     }
 
@@ -203,7 +203,7 @@ public class LuceneIndex
     }
 
     /**
-     * Finds the top {@code count} hits for {@code query}, applying {@code filter} if non-null, and sorting the hits by
+     * Finds the top {@code count} hits for {@code query}, applying {@code clusteringKeyFilter} if non-null, and sorting the hits by
      * the criteria in {@code sort}.
      *
      * @param query        The {@link Query} to search for.
@@ -243,7 +243,6 @@ public class LuceneIndex
                 Document document = searcher.doc(scoreDoc.doc, fieldsToLoad);
                 ScoredDocument scoredDocument = new ScoredDocument(document, scoreDoc);
                 scoredDocuments.add(scoredDocument);
-                Log.debug("Found %s", scoredDocument);
             }
 
             return scoredDocuments;
@@ -258,6 +257,7 @@ public class LuceneIndex
             throws IOException
     {
         // Use default sort if the query doesn't use relevance
+        Log.debug("Querying index: %s", query);
         if (sort == null)
         {
             if (query instanceof ConstantScoreQuery)
@@ -291,6 +291,12 @@ public class LuceneIndex
         indexWriter.commit();
     }
 
+    /**
+     * Returns the total number of {@link Document}s in this index.
+     *
+     * @return The total number of {@link Document}s in this index.
+     * @throws IOException
+     */
     public long getNumDocs() throws IOException
     {
         IndexSearcher searcher = searcherManager.acquire();

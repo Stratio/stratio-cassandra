@@ -18,10 +18,7 @@
 package org.apache.cassandra.db.index;
 
 import java.nio.ByteBuffer;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
@@ -369,6 +366,10 @@ public abstract class SecondaryIndex
     }
 
     public void optimize()
+    {
+    }
+
+    public void validate(CFMetaData metadata, Map<String,String> indexOptions)
     {
     }
 

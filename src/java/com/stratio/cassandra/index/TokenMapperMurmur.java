@@ -16,7 +16,7 @@
 package com.stratio.cassandra.index;
 
 import com.stratio.cassandra.index.util.Log;
-import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.RowPosition;
@@ -41,9 +41,9 @@ public class TokenMapperMurmur extends TokenMapper
 
     private static final String FIELD_NAME = "_token_murmur";
 
-    public TokenMapperMurmur(ColumnFamilyStore baseCfs)
+    public TokenMapperMurmur(CFMetaData metadata)
     {
-        super(baseCfs);
+        super(metadata);
     }
 
     /**
@@ -85,7 +85,7 @@ public class TokenMapperMurmur extends TokenMapper
      * {@inheritDoc}
      */
     @Override
-    public SortField[] sortFields()
+    public SortField[] sort()
     {
         return new SortField[]{new SortField(FIELD_NAME, SortField.Type.LONG)};
     }

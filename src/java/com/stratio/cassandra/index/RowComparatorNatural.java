@@ -16,32 +16,43 @@
 package com.stratio.cassandra.index;
 
 import com.stratio.cassandra.index.util.ComparatorChain;
-import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.db.Cell;
 import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.CellNameType;
 import org.apache.cassandra.dht.Token;
 
 import java.util.Comparator;
-import java.util.Iterator;
 
 /**
  * A {@link Comparator} for comparing {@link Row}s according to its Cassandra's natural order.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class RowsComparatorNatural implements RowsComparator
+public class RowComparatorNatural implements RowComparator
 {
-
-    private final CellNameType nameType;
 
     private final ComparatorChain<Row> comparatorChain;
 
-    public RowsComparatorNatural(CFMetaData metadata)
+    public RowComparatorNatural()
     {
         super();
-        nameType = metadata.comparator;
+        comparatorChain = new ComparatorChain<>();
+        comparatorChain.addComparator(new Comparator<Row>()
+        {
+            @Override
+            @SuppressWarnings({"unchecked", "rawtypes"})
+            public int compare(Row row1, Row row2)
+            {
+                Token t1 = row1.key.getToken();
+                Token t2 = row2.key.getToken();
+                return t1.compareTo(t2);
+            }
+        });
+    }
+
+    public RowComparatorNatural(final ClusteringKeyMapper clusteringKeyMapper)
+    {
+        super();
         comparatorChain = new ComparatorChain<>();
         comparatorChain.addComparator(new Comparator<Row>()
         {
@@ -59,10 +70,9 @@ public class RowsComparatorNatural implements RowsComparator
             @Override
             public int compare(Row row1, Row row2)
             {
-                Iterator<Cell> i1 = row1.cf.iterator();
-                Iterator<Cell> i2 = row2.cf.iterator();
-                CellName name1 = i1.hasNext() ? i1.next().name() : null;
-                CellName name2 = i2.hasNext() ? i2.next().name() : null;
+                CellNameType nameType = clusteringKeyMapper.getType();
+                CellName name1 = clusteringKeyMapper.cellName(row1);
+                CellName name2 = clusteringKeyMapper.cellName(row2);
                 return nameType.compare(name1, name2);
             }
         });

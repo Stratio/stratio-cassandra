@@ -25,9 +25,11 @@ import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.CellNameType;
 import org.apache.cassandra.db.filter.QueryFilter;
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.search.Filter;
@@ -36,10 +38,7 @@ import org.apache.lucene.search.Sort;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Class for mapping rows between Cassandra and Lucene.
@@ -51,6 +50,7 @@ public abstract class RowService
 
     protected final ColumnFamilyStore baseCfs;
     protected final ColumnDefinition columnDefinition;
+    protected final RowMapper rowMapper;
     protected final CFMetaData metadata;
     protected final CellNameType nameType;
     protected final ColumnIdentifier indexedColumnName;
@@ -67,16 +67,6 @@ public abstract class RowService
     private TaskQueue indexQueue;
 
     /**
-     * The partitioning token mapper
-     */
-    protected final TokenMapper tokenMapper;
-
-    /**
-     * The partitioning key mapper
-     */
-    protected final PartitionKeyMapper partitionKeyMapper;
-
-    /**
      * Returns a new {@code RowService}.
      *
      * @param baseCfs          The base column family store.
@@ -87,27 +77,25 @@ public abstract class RowService
 
         this.baseCfs = baseCfs;
         this.columnDefinition = columnDefinition;
-        metadata = baseCfs.metadata;
-        nameType = metadata.comparator;
-        indexedColumnName = columnDefinition.name;
+        this.metadata = baseCfs.metadata;
+        this.nameType = metadata.comparator;
+        this.indexedColumnName = columnDefinition.name;
 
         RowIndexConfig config = new RowIndexConfig(metadata, columnDefinition.getIndexOptions());
 
-        filterCache = config.getFilterCache();
+        this.filterCache = config.getFilterCache();
 
-        schema = config.getSchema();
+        this.schema = config.getSchema();
+        this.rowMapper = RowMapper.build(metadata, columnDefinition, schema);
 
-        luceneIndex = new LuceneIndex(config.getPath(),
-                config.getRefreshSeconds(),
-                config.getRamBufferMB(),
-                config.getMaxMergeMB(),
-                config.getMaxCachedMB(),
-                schema.analyzer());
+        this.luceneIndex = new LuceneIndex(config.getPath(),
+                                           config.getRefreshSeconds(),
+                                           config.getRamBufferMB(),
+                                           config.getMaxMergeMB(),
+                                           config.getMaxCachedMB(),
+                                           schema.analyzer());
 
-        indexQueue = new TaskQueue(config.getIndexingThreads(), config.getIndexingQueuesSize());
-
-        partitionKeyMapper = PartitionKeyMapper.instance();
-        tokenMapper = TokenMapper.instance(baseCfs);
+        this.indexQueue = new TaskQueue(config.getIndexingThreads(), config.getIndexingQueuesSize());
     }
 
     /**
@@ -126,7 +114,7 @@ public abstract class RowService
         }
         else
         {
-            return new RowServiceSimple(baseCfs, columnDefinition);
+            return new RowServiceSkinny(baseCfs, columnDefinition);
         }
     }
 
@@ -281,6 +269,7 @@ public abstract class RowService
         // Setup search pagination
         List<Row> rows = new LinkedList<>(); // The row list to be returned
         ScoredDocument lastDoc = null; // The last search result
+        int collectedDocs = 0;
         long searchTime = 0;
         long collectTime = 0;
         int numPages = 0;
@@ -300,12 +289,14 @@ public abstract class RowService
             long collectStartTime = System.currentTimeMillis();
             for (ScoredDocument scoredDocument : scoredDocuments)
             {
+                collectedDocs++;
                 lastDoc = scoredDocument;
                 Row row = row(scoredDocument, timestamp);
                 if (row != null && accepted(row, expressions))
                 {
                     rows.add(row);
                 }
+                System.out.println();
             }
             collectTime += System.currentTimeMillis() - collectStartTime;
 
@@ -319,7 +310,7 @@ public abstract class RowService
 
         Log.debug("Lucene time: %d ms", searchTime);
         Log.debug("Cassandra time: %d ms", collectTime);
-        Log.debug("Collected %d rows in %d pages", rows.size(), numPages);
+        Log.debug("Collected %d docs and %d rows in %d pages", collectedDocs, rows.size(), numPages);
 
         return rows;
     }
@@ -337,7 +328,7 @@ public abstract class RowService
     {
         if (!expressions.isEmpty())
         {
-            Columns columns = schema.cells(metadata, row);
+            Columns columns = rowMapper.columns(row);
             for (IndexExpression expression : expressions)
             {
                 if (!accepted(columns, expression))
@@ -354,7 +345,7 @@ public abstract class RowService
      * {@code false} otherwise.
      *
      * @param columns    A {@link com.stratio.cassandra.index.schema.Columns}
-     * @param expression A {@link IndexExpression}s to be satisfied by {@code cells}.
+     * @param expression A {@link IndexExpression}s to be satisfied by {@code columns}.
      * @return {@code true} if the specified {@link com.stratio.cassandra.index.schema.Columns} satisfies the the specified {@link IndexExpression},
      * {@code false} otherwise.
      */
@@ -421,6 +412,10 @@ public abstract class RowService
         // Read the column family from the storage engine
         ColumnFamily columnFamily = baseCfs.getColumnFamily(queryFilter);
 
+        if (columnFamily == null) {
+            return null;
+        }
+
         // Remove deleted column families
         ColumnFamily cleanColumnFamily = ArrayBackedSortedColumns.factory.create(baseCfs.metadata);
         for (Cell cell : columnFamily)
@@ -436,20 +431,19 @@ public abstract class RowService
         return new Row(partitionKey, cleanColumnFamily);
     }
 
-    /**
-     * Returns the Lucene's {@link Sort} to be used when querying.
-     *
-     * @return The Lucene's {@link Sort} to be used when querying.
-     */
-    protected abstract Sort sort();
+    protected Row decorate(Row row, long timestamp, Float score)
+    {
 
-    /**
-     * Returns a Lucene's {@link Filter} representing the specified Cassandra's {@link DataRange}.
-     *
-     * @param dataRange The Cassandra's {@link DataRange} to be mapped.
-     * @return A Lucene's {@link Filter} representing the specified Cassandra's {@link DataRange}.
-     */
-    protected abstract Filter filter(DataRange dataRange);
+        ColumnFamily cf = row.cf;
+        CellName cellName = rowMapper.makeCellName(cf);
+        ByteBuffer cellValue = UTF8Type.instance.decompose(score.toString());
+
+        ColumnFamily dcf = ArrayBackedSortedColumns.factory.create(baseCfs.metadata);
+        dcf.addColumn(cellName, cellValue, timestamp);
+        dcf.addAll(row.cf);
+
+        return new Row(row.key, dcf);
+    }
 
     /**
      * Returns a Lucene's {@link Filter} representing the specified Cassandra's {@link DataRange} using caching.
@@ -463,12 +457,12 @@ public abstract class RowService
         if (filterCache == null)
         {
             Log.debug("Filter cache not present for range %s", keyRange);
-            return filter(dataRange);
+            return rowMapper.filter(dataRange);
         }
         Filter filter = filterCache.get(dataRange);
         if (filter == null)
         {
-            filter = filter(dataRange);
+            filter = rowMapper.filter(dataRange);
             if (filter != null)
             {
                 Log.debug("Filter cache fails for range %s", keyRange);
@@ -487,36 +481,32 @@ public abstract class RowService
     }
 
     /**
-     * Returns the {@link RowsComparator} to be used for ordering the {@link Row}s obtained from the specified
+     * Returns the {@link RowComparator} to be used for ordering the {@link Row}s obtained from the specified
      * {@link Search}. This {@link Comparator} is useful for merging the partial results obtained from running the
      * specified {@link Search} against several indexes.
      *
      * @param search A {@link Search}.
-     * @return The {@link RowsComparator} to be used for ordering the {@link Row}s obtained from the specified
+     * @return The {@link RowComparator} to be used for ordering the {@link Row}s obtained from the specified
      * {@link Search}.
      */
-    public RowsComparator comparator(Search search)
+    public RowComparator comparator(Search search)
     {
-        if (search.usesSorting())
-        // Sort with search itself
+        if (search != null)
         {
-            return new RowsComparatorSorting(metadata, schema, search.getSorting());
+            if (search.usesSorting()) // Sort with search itself
+            {
+                return new RowComparatorSorting(rowMapper, search.getSorting());
+            }
+            else if (search.usesRelevance()) // Sort with row's score
+            {
+                return new RowComparatorScoring(this);
+            }
         }
-        else if (search.usesRelevance())
-        // Sort with row's score
-        {
-            return new RowsComparatorScoring(this);
-        }
-        else
-        // No sorting is needed
-        {
-            return new RowsComparatorNatural(metadata);
-        }
+        return rowMapper.naturalComparator();
     }
 
-    public RowsComparator naturalComparator()
-    {
-        return new RowsComparatorNatural(metadata);
+    public RowComparator comparator() {
+        return rowMapper.naturalComparator();
     }
 
     /**
@@ -525,7 +515,14 @@ public abstract class RowService
      * @param row A {@link Row}.
      * @return The score of the specified {@link Row}.
      */
-    protected abstract Float score(Row row);
+    protected Float score(Row row)
+    {
+        ColumnFamily cf = row.cf;
+        CellName cellName = rowMapper.makeCellName(cf);
+        Cell cell = cf.getColumn(cellName);
+        String value = UTF8Type.instance.compose(cell.value());
+        return Float.parseFloat(value);
+    }
 
     /**
      * Optimizes the managed Lucene's index. It can be a very heavy operation.
@@ -538,6 +535,34 @@ public abstract class RowService
     public long getIndexSize() throws IOException
     {
         return luceneIndex.getNumDocs();
+    }
+
+    public Row removeScoreColumn(Row row)
+    {
+        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(baseCfs.metadata);
+        CellName scoreCellName = rowMapper.makeCellName(row.cf);
+        for (Cell cell : row.cf)
+        {
+            CellName cellName = cell.name();
+            if (!scoreCellName.equals(cellName)) {
+                cf.addColumn(cell);
+            }
+        }
+        return new Row(row.key, cf);
+    }
+
+    public List<Row> group(List<Row> rows) {
+        LinkedList<Row> result = new LinkedList<>();
+        Row lastRow = null;
+        for (Row row : rows) {
+            if (lastRow != null && row.key.equals(lastRow.key)) {
+                lastRow.cf.addAll(row.cf);
+            } else {
+                lastRow = row;
+                result.add(row);
+            }
+        }
+        return result;
     }
 
 }

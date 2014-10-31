@@ -19,6 +19,8 @@ package org.apache.cassandra.cql3.statements;
 
 import java.util.*;
 
+import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.index.SecondaryIndex;
 import org.apache.cassandra.exceptions.*;
 
@@ -37,7 +39,7 @@ public class IndexPropDefs extends PropertyDefinitions
         keywords.add(KW_OPTIONS);
     }
 
-    public void validate() throws RequestValidationException
+    public void validate(CFMetaData metadata) throws RequestValidationException
     {
         validate(keywords, obsoleteKeywords);
 
@@ -53,6 +55,24 @@ public class IndexPropDefs extends PropertyDefinitions
         if (getRawOptions().containsKey(SecondaryIndex.CUSTOM_INDEX_OPTION_NAME))
             throw new InvalidRequestException(String.format("Cannot specify %s as a CUSTOM option",
                                                             SecondaryIndex.CUSTOM_INDEX_OPTION_NAME));
+
+        if (isCustom)
+        {
+            try
+            {
+                Class<? extends SecondaryIndex> clazz = Class.forName(customClass).asSubclass(SecondaryIndex.class);
+                SecondaryIndex secondaryIndex = clazz.newInstance();
+                secondaryIndex.validate(metadata, getOptions());
+            }
+            catch (ClassNotFoundException | IllegalAccessException | InstantiationException e)
+            {
+                throw new InvalidRequestException("Class not found");
+            }
+            catch (Exception e)
+            {
+                throw new InvalidRequestException(e.getMessage());
+            }
+        }
     }
 
     public Map<String, String> getRawOptions() throws SyntaxException

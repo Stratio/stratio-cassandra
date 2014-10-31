@@ -68,7 +68,7 @@ public class CompoundDenseCellNameType extends AbstractCompoundCellNameType
     {
         assert !isStatic;
         // A composite dense table cell name don't have to have all the component set to qualify as a
-        // proper CellName (for backward compatibility reasons mostly), so always return a cellName
+        // proper CellName (for backward compatibility reasons mostly), so always return a clusteringKey
         Composite c = new CompoundDenseCellName(components, size);
         return eoc != Composite.EOC.NONE ? c.withEOC(eoc) : c;
     }

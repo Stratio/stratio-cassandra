@@ -16,19 +16,11 @@
 package com.stratio.cassandra.index.schema;
 
 import com.stratio.cassandra.index.AnalyzerFactory;
-import com.stratio.cassandra.index.util.ByteBufferUtils;
 import com.stratio.cassandra.index.util.JsonSerializer;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.db.Cell;
-import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.Row;
-import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.marshal.AbstractType;
-import org.apache.cassandra.db.marshal.CollectionType;
 import org.apache.cassandra.db.marshal.UTF8Type;
-import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
@@ -41,11 +33,12 @@ import org.codehaus.jackson.annotate.JsonProperty;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Map.Entry;
 
 /**
- * Class for several culumns mappings between Cassandra and Lucene.
+ * Class for several columns mappings between Cassandra and Lucene.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
@@ -115,9 +108,8 @@ public class Schema
      * Checks if this is consistent with the specified column family metadata.
      *
      * @param metadata A column family metadata.
-     * @throws ConfigurationException If this is not consistent with the specified column family metadata.
      */
-    public void validate(CFMetaData metadata) throws ConfigurationException
+    public void validate(CFMetaData metadata)
     {
         for (Entry<String, ColumnMapper<?>> entry : columnMappers.entrySet())
         {
@@ -132,148 +124,17 @@ public class Schema
                 throw new RuntimeException("No column definition for mapper " + name);
             }
 
+            if (columnDefinition.isStatic())
+            {
+                throw new RuntimeException("Lucene indexes are not allowed on static columns as " + name);
+            }
+
             AbstractType<?> type = columnDefinition.type;
             if (!columnMapper.supports(type))
             {
                 throw new RuntimeException("Not supported type for mapper " + name);
             }
         }
-    }
-
-    /**
-     * Returns all the {@link Column}s representing the CQL3 columns contained in the specified column family.
-     *
-     * @param metadata The column family metadata
-     * @param row      A {@link Row}.
-     * @return The cells contained in the specified columns.
-     */
-    public Columns cells(CFMetaData metadata, Row row)
-    {
-        Columns columns = new Columns(row);
-        columns.addAll(partitionKeyCells(metadata, row.key));
-        columns.addAll(clusteringKeyCells(metadata, row.cf));
-        columns.addAll(regularCells(metadata, row.cf));
-        return columns;
-    }
-
-    /**
-     * Returns the {@link Column}s representing the CQL3 cells contained in the specified partition key.
-     *
-     * @param metadata     The indexed column family meta data.
-     * @param partitionKey The partition key.
-     * @return the {@link Column}s representing the CQL3 cells contained in the specified partition key.
-     */
-    private List<Column> partitionKeyCells(CFMetaData metadata, DecoratedKey partitionKey)
-    {
-        List<Column> columns = new LinkedList<>();
-        AbstractType<?> rawKeyType = metadata.getKeyValidator();
-        List<ColumnDefinition> columnDefinitions = metadata.partitionKeyColumns();
-        for (ColumnDefinition columnDefinition : columnDefinitions)
-        {
-            String name = columnDefinition.name.toString();
-            ByteBuffer[] components = ByteBufferUtils.split(partitionKey.getKey(), rawKeyType);
-            int position = columnDefinition.position();
-            ByteBuffer value = components[position];
-            AbstractType<?> valueType = rawKeyType.getComponents().get(position);
-            columns.add(ColumnMapper.column(name, value, valueType));
-        }
-        return columns;
-    }
-
-    /**
-     * Returns the clustering key {@link Column}s representing the CQL3 cells contained in the specified column family.
-     * The clustering key, if exists, is contained in each {@link Column} of {@code columnFamily}.
-     *
-     * @param metadata     The indexed column family meta data.
-     * @param columnFamily The column family.
-     * @return The clustering key {@link Column}s representing the CQL3 columns contained in the specified column family.
-     */
-    private List<Column> clusteringKeyCells(CFMetaData metadata, ColumnFamily columnFamily)
-    {
-        int numClusteringColumns = metadata.clusteringColumns().size();
-        List<Column> columns = new ArrayList<>(numClusteringColumns);
-
-        Cell cell = columnFamily.iterator().next();
-        CellName cellName = cell.name();
-        for (int i = 0; i < numClusteringColumns; i++)
-        {
-            ByteBuffer value = cellName.get(i);
-            ColumnDefinition columnDefinition = metadata.clusteringColumns().get(i);
-            String name = columnDefinition.name.toString();
-            AbstractType<?> valueType = columnDefinition.type;
-            columns.add(ColumnMapper.column(name, value, valueType));
-        }
-        return columns;
-    }
-
-    /**
-     * Returns the regular {@link Column}s representing the CQL3 columns contained in the specified column family.
-     *
-     * @param metadata     The indexed column family meta data.
-     * @param columnFamily The column family.
-     * @return The regular {@link Column}s representing the CQL3 columns contained in the specified column family.
-     */
-    @SuppressWarnings("rawtypes")
-    private List<Column> regularCells(CFMetaData metadata, ColumnFamily columnFamily)
-    {
-        List<Column> columns = new LinkedList<>();
-
-        // Get row's cells iterator skipping clustering column
-        Iterator<Cell> cellIterator = columnFamily.iterator();
-        cellIterator.next();
-
-        // Stuff for grouping collection cells (sets, lists and maps)
-        String name;
-        CollectionType collectionType;
-
-        while (cellIterator.hasNext())
-        {
-            Cell cell = cellIterator.next();
-            CellName cellName = cell.name();
-            ColumnDefinition columnDefinition = metadata.getColumnDefinition(cellName);
-
-            AbstractType<?> valueType = columnDefinition.type;
-
-            ByteBuffer cellValue = cell.value();
-
-            name = cellName.cql3ColumnName(metadata).toString();
-
-            if (valueType.isCollection())
-            {
-                collectionType = (CollectionType<?>) valueType;
-                switch (collectionType.kind)
-                {
-                    case SET:
-                    {
-                        AbstractType<?> type = collectionType.nameComparator();
-                        ByteBuffer value = cellName.collectionElement();
-                        columns.add(ColumnMapper.column(name, value, type));
-                        break;
-                    }
-                    case LIST:
-                    {
-                        AbstractType<?> type = collectionType.valueComparator();
-                        columns.add(ColumnMapper.column(name, cellValue, type));
-                        break;
-                    }
-                    case MAP:
-                    {
-                        AbstractType<?> type = collectionType.valueComparator();
-                        ByteBuffer keyValue = cellName.collectionElement();
-                        AbstractType<?> keyType = collectionType.nameComparator();
-                        String nameSufix = keyType.compose(keyValue).toString();
-                        columns.add(ColumnMapper.column(name, nameSufix, cellValue, type));
-                        break;
-                    }
-                }
-            }
-            else
-            {
-                columns.add(ColumnMapper.column(name, cellValue, valueType));
-            }
-        }
-
-        return columns;
     }
 
     /**
@@ -286,15 +147,13 @@ public class Schema
         return perFieldAnalyzer;
     }
 
-    public void addFields(Document document, CFMetaData metadata, Row row)
-    {
-        Columns columns = cells(metadata, row);
+    public void addFields(Document document, Columns columns) {
         for (Column column : columns)
         {
             String name = column.getName();
             String fieldName = column.getFieldName();
             Object value = column.getValue();
-            ColumnMapper<?> columnMapper = columnMappers.get(name);
+            ColumnMapper<?> columnMapper = getMapper(name);
             if (columnMapper != null)
             {
                 Field field = columnMapper.field(fieldName, value);
@@ -303,6 +162,12 @@ public class Schema
         }
     }
 
+    /**
+     * Returns the {@link ColumnMapper} identified by the specified field name.
+     *
+     * @param field A field name.
+     * @return The {@link ColumnMapper} identified by the specified field name.
+     */
     public ColumnMapper<?> getMapper(String field)
     {
         ColumnMapper<?> columnMapper = columnMappers.get(field);
@@ -311,7 +176,7 @@ public class Schema
             String[] components = field.split("\\.");
             if (components.length < 2)
             {
-                throw new IllegalArgumentException("Not found mapper for field " + field);
+                return null;
             }
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < components.length - 1; i++)
@@ -345,8 +210,8 @@ public class Schema
     public String toString()
     {
         return new ToStringBuilder(this).append("defaultAnalyzer", defaultAnalyzer)
-                .append("perFieldAnalyzer", perFieldAnalyzer)
-                .append("columnMappers", columnMappers)
-                .toString();
+                                        .append("perFieldAnalyzer", perFieldAnalyzer)
+                                        .append("columnMappers", columnMappers)
+                                        .toString();
     }
 }

@@ -18,6 +18,7 @@ package com.stratio.cassandra.index;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.utils.ByteBufferUtil;
 
 import java.io.File;
 import java.util.Map;
@@ -37,7 +38,7 @@ public class RowIndexConfig
 
     private static final String FILTER_CACHE_SIZE_OPTION = "num_cached_filters";
 
-    private static final String DEFAULT_PATH_PREFIX = "lucene_idx";
+    private static final String INDEXES_DIR_NAME = "lucene";
 
     private static final String RAM_BUFFER_MB_OPTION = "ram_buffer_mb";
     private static final int DEFAULT_RAM_BUFFER_MB = 64;
@@ -91,7 +92,7 @@ public class RowIndexConfig
             refreshSeconds = DEFAULT_REFESH_SECONDS;
         }
 
-        // Setup filter cache size
+        // Setup clusteringKeyFilter cache size
         String filterCacheSizeOption = options.get(FILTER_CACHE_SIZE_OPTION);
         int filterCacheSize;
         if (filterCacheSizeOption != null)
@@ -261,8 +262,10 @@ public class RowIndexConfig
         directoryPathBuilder.append(metadata.ksName);
         directoryPathBuilder.append(File.separatorChar);
         directoryPathBuilder.append(metadata.cfName);
+        directoryPathBuilder.append("-");
+        directoryPathBuilder.append(ByteBufferUtil.bytesToHex(ByteBufferUtil.bytes(metadata.cfId)));
         directoryPathBuilder.append(File.separatorChar);
-        directoryPathBuilder.append(DEFAULT_PATH_PREFIX);
+        directoryPathBuilder.append(INDEXES_DIR_NAME);
         path = directoryPathBuilder.toString();
     }
 
