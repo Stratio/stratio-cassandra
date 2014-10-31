@@ -119,9 +119,9 @@ public class LuceneIndex
         TrackingIndexWriter trackingIndexWriter = new TrackingIndexWriter(indexWriter);
         searcherManager = new SearcherManager(indexWriter, true, searcherFactory);
         searcherReopener = new ControlledRealTimeReopenThread<>(trackingIndexWriter,
-                searcherManager,
-                refreshSeconds,
-                refreshSeconds);
+                                                                searcherManager,
+                                                                refreshSeconds,
+                                                                refreshSeconds);
         searcherReopener.start(); // Start the refresher thread
     }
 
@@ -257,6 +257,7 @@ public class LuceneIndex
             throws IOException
     {
         // Use default sort if the query doesn't use relevance
+        Log.debug("Querying index: %s", query);
         if (sort == null)
         {
             if (query instanceof ConstantScoreQuery)
@@ -290,6 +291,12 @@ public class LuceneIndex
         indexWriter.commit();
     }
 
+    /**
+     * Returns the total number of {@link Document}s in this index.
+     *
+     * @return The total number of {@link Document}s in this index.
+     * @throws IOException
+     */
     public long getNumDocs() throws IOException
     {
         IndexSearcher searcher = searcherManager.acquire();

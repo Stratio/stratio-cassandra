@@ -141,6 +141,10 @@ public class RowServiceWide extends RowService
         CellName clusteringKey = rowMapper.clusteringKey(document);
         Row row = row(partitionKey, clusteringKey, timestamp);
 
+        if (row == null) {
+            return null;
+        }
+
         // Return decorated row
         Float score = scoredDocument.getScore();
         return decorate(row, timestamp, score);

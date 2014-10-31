@@ -269,6 +269,7 @@ public abstract class RowService
         // Setup search pagination
         List<Row> rows = new LinkedList<>(); // The row list to be returned
         ScoredDocument lastDoc = null; // The last search result
+        int collectedDocs = 0;
         long searchTime = 0;
         long collectTime = 0;
         int numPages = 0;
@@ -288,6 +289,7 @@ public abstract class RowService
             long collectStartTime = System.currentTimeMillis();
             for (ScoredDocument scoredDocument : scoredDocuments)
             {
+                collectedDocs++;
                 lastDoc = scoredDocument;
                 Row row = row(scoredDocument, timestamp);
                 if (row != null && accepted(row, expressions))
@@ -308,7 +310,7 @@ public abstract class RowService
 
         Log.debug("Lucene time: %d ms", searchTime);
         Log.debug("Cassandra time: %d ms", collectTime);
-        Log.debug("Collected %d rows in %d pages", rows.size(), numPages);
+        Log.debug("Collected %d docs and %d rows in %d pages", collectedDocs, rows.size(), numPages);
 
         return rows;
     }
@@ -410,6 +412,10 @@ public abstract class RowService
         // Read the column family from the storage engine
         ColumnFamily columnFamily = baseCfs.getColumnFamily(queryFilter);
 
+        if (columnFamily == null) {
+            return null;
+        }
+
         // Remove deleted column families
         ColumnFamily cleanColumnFamily = ArrayBackedSortedColumns.factory.create(baseCfs.metadata);
         for (Cell cell : columnFamily)
@@ -428,7 +434,8 @@ public abstract class RowService
     protected Row decorate(Row row, long timestamp, Float score)
     {
 
-        CellName cellName = rowMapper.makeCellName(row.cf);
+        ColumnFamily cf = row.cf;
+        CellName cellName = rowMapper.makeCellName(cf);
         ByteBuffer cellValue = UTF8Type.instance.decompose(score.toString());
 
         ColumnFamily dcf = ArrayBackedSortedColumns.factory.create(baseCfs.metadata);

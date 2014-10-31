@@ -117,6 +117,10 @@ public class RowServiceSkinny extends RowService
         DecoratedKey partitionKey = rowMapper.partitionKey(document);
         Row row = row(partitionKey, timestamp);
 
+        if (row == null) {
+            return null;
+        }
+
         // Return decorated row
         Float score = scoredDocument.getScore();
         return decorate(row, timestamp, score);
