@@ -82,7 +82,7 @@ public class FullKeyMapperRangeTombstoneFilter extends Filter
 
         OpenBitSet bitSet = new OpenBitSet(atomicReader.maxDoc());
 
-        Terms terms = atomicReader.terms(ClusteringKeyMapper.FIELD_NAME);
+        Terms terms = atomicReader.terms(FullKeyMapper.FIELD_NAME);
         if (terms == null)
         {
             return null;
