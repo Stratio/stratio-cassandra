@@ -36,8 +36,6 @@ public class RowIndexConfig
     private static final String REFRESH_SECONDS_OPTION = "refresh_seconds";
     private static final double DEFAULT_REFESH_SECONDS = 60;
 
-    private static final String FILTER_CACHE_SIZE_OPTION = "num_cached_filters";
-
     private static final String INDEXES_DIR_NAME = "lucene";
 
     private static final String RAM_BUFFER_MB_OPTION = "ram_buffer_mb";
@@ -57,7 +55,6 @@ public class RowIndexConfig
 
     private final Schema schema;
     private final double refreshSeconds;
-    private final FilterCache filterCache;
     private final String path;
     private final int ramBufferMB;
     private final int maxMergeMB;
@@ -91,27 +88,6 @@ public class RowIndexConfig
         {
             refreshSeconds = DEFAULT_REFESH_SECONDS;
         }
-
-        // Setup clusteringKeyFilter cache size
-        String filterCacheSizeOption = options.get(FILTER_CACHE_SIZE_OPTION);
-        int filterCacheSize;
-        if (filterCacheSizeOption != null)
-        {
-            try
-            {
-                filterCacheSize = Integer.parseInt(filterCacheSizeOption);
-            }
-            catch (NumberFormatException e)
-            {
-                String msg = String.format("'%s' must be a strictly positive integer", RAM_BUFFER_MB_OPTION);
-                throw new RuntimeException(msg);
-            }
-        }
-        else
-        {
-            filterCacheSize = DatabaseDescriptor.getNumTokens() + 1;
-        }
-        filterCache = filterCacheSize <= 0 ? null : new FilterCache(filterCacheSize);
 
         // Setup write buffer size
         String ramBufferSizeOption = options.get(RAM_BUFFER_MB_OPTION);
@@ -277,11 +253,6 @@ public class RowIndexConfig
     public double getRefreshSeconds()
     {
         return refreshSeconds;
-    }
-
-    public FilterCache getFilterCache()
-    {
-        return filterCache;
     }
 
     public String getPath()

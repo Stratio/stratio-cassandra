@@ -30,14 +30,14 @@ import org.apache.lucene.util.OpenBitSet;
 import java.io.IOException;
 
 /**
- * {@link Filter} that filters documents which clustering key field satisfies a certain {@link RangeTombstone}. This
+ * {@link org.apache.lucene.search.Filter} that filters documents which clustering key field satisfies a certain {@link org.apache.cassandra.db.RangeTombstone}. This
  * means that the clustering key value must be contained in the slice query clusteringKeyFilter specified in the tombstone range.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ClusteringKeyMapperRangeTombstoneFilter extends Filter
+public class FullKeyMapperRangeTombstoneFilter extends Filter
 {
-    private final ClusteringKeyMapper clusteringKeyMapper;
+    private final FullKeyMapper fullKeyMapper;
 
     /**
      * The minimum accepted column name.
@@ -56,19 +56,19 @@ public class ClusteringKeyMapperRangeTombstoneFilter extends Filter
 
     /**
      * Returns a new {@code ClusteringKeyMapperRangeTombstoneFilter} for {@code rangeTombstone} using
-     * {@code clusteringKeyMapper}.
+     * {@code fullKeyMapper}.
      *
-     * @param clusteringKeyMapper The {@link ClusteringKeyMapper} to be used.
+     * @param fullKeyMapper The {@link com.stratio.cassandra.index.FullKeyMapper} to be used.
      * @param rangeTombstone      The filtering tombstone range.
      */
-    public ClusteringKeyMapperRangeTombstoneFilter(ClusteringKeyMapper clusteringKeyMapper,
-                                                   RangeTombstone rangeTombstone)
+    public FullKeyMapperRangeTombstoneFilter(FullKeyMapper fullKeyMapper,
+                                             RangeTombstone rangeTombstone)
     {
         super();
-        this.clusteringKeyMapper = clusteringKeyMapper;
+        this.fullKeyMapper = fullKeyMapper;
         this.min = rangeTombstone.min;
         this.max = rangeTombstone.max;
-        this.columnNameType = clusteringKeyMapper.getType();
+        this.columnNameType = fullKeyMapper.getClusteringKeyType();
     }
 
     /**
@@ -95,7 +95,7 @@ public class ClusteringKeyMapperRangeTombstoneFilter extends Filter
 
         while (bytesRef != null)
         {
-            CellName value = clusteringKeyMapper.cellName(bytesRef);
+            CellName value = fullKeyMapper.cellName(bytesRef);
             boolean accepted = true;
             if (min != null && !min.isEmpty())
             {

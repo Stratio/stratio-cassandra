@@ -44,7 +44,6 @@ public abstract class RowMapper
     protected final ColumnDefinition columnDefinition;
     protected final Schema schema;
 
-    protected final TokenMapper tokenMapper;
     protected final PartitionKeyMapper partitionKeyMapper;
     protected final RegularCellsMapper regularCellsMapper;
 
@@ -60,7 +59,6 @@ public abstract class RowMapper
         this.metadata = metadata;
         this.columnDefinition = columnDefinition;
         this.schema = schema;
-        this.tokenMapper = TokenMapper.instance(metadata);
         this.partitionKeyMapper = PartitionKeyMapper.instance(metadata);
         this.regularCellsMapper = RegularCellsMapper.instance(metadata);
     }
@@ -174,4 +172,6 @@ public abstract class RowMapper
      * @return A {@link com.stratio.cassandra.index.RowComparator} using the same order that is used in Cassandra.
      */
     public abstract RowComparator naturalComparator();
+
+
 }

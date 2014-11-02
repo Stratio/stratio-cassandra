@@ -18,7 +18,9 @@ package com.stratio.cassandra.index;
 import com.stratio.cassandra.index.query.Search;
 import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.index.util.Log;
-import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.DataRange;
+import org.apache.cassandra.db.IndexExpression;
+import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.filter.ExtendedFilter;
 import org.apache.cassandra.db.index.SecondaryIndexManager;
 import org.apache.cassandra.db.index.SecondaryIndexSearcher;
@@ -84,11 +86,11 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
             List<IndexExpression> filteredExpressions = filteredExpressions(clause);
             Search search = search(clause);
 
-            List<Row> result = rowService.search(search, filteredExpressions, dataRange, limit, timestamp);
+            List<Row> rows = rowService.search(search, filteredExpressions, dataRange, limit, timestamp);
 
             long time = System.currentTimeMillis() - startTime;
             Log.debug("Search time: %d ms", time);
-            return result;
+            return rows;
         }
         catch (Exception e)
         {
@@ -222,20 +224,14 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         Comparator<Row> comparator = rowService.comparator(search);
         Collections.sort(result, comparator);
 
-//        // Remove score column
-//        List<Row> rowsWithoutScore = new ArrayList<>(result.size());
-//        for (Row row : result) {
-//            rowsWithoutScore.add(rowService.removeScoreColumn(row));
-//        }
-//        result = rowsWithoutScore;
-
-        result = rowService.group(result);
+//        result = rowService.group(result);
 
         String comparatorName = comparator.getClass().getSimpleName();
         int endSize = result.size();
         long endTime = System.currentTimeMillis() - startTime;
 
         Log.debug("Sorted %d rows to %d with comparator %s in %d ms", startSize, endSize, comparatorName, endTime);
+        System.out.println();
 
         return result;
     }
@@ -247,10 +243,10 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
     public String toString()
     {
         return String.format("RowIndexSearcher [index=%s, keyspace=%s, table=%s, column=%s]",
-                index.getIndexName(),
-                index.getKeyspaceName(),
-                index.getTableName(),
-                index.getColumnName());
+                             index.getIndexName(),
+                             index.getKeyspaceName(),
+                             index.getTableName(),
+                             index.getColumnName());
     }
 
 }

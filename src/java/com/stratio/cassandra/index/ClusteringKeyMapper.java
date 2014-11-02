@@ -20,30 +20,21 @@ import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.util.ByteBufferUtils;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.ArrayBackedSortedColumns;
+import org.apache.cassandra.db.Cell;
+import org.apache.cassandra.db.ColumnFamily;
+import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.composites.CBuilder;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.CellNameType;
 import org.apache.cassandra.db.composites.Composite;
-import org.apache.cassandra.db.filter.IDiskAtomFilter;
-import org.apache.cassandra.db.filter.SliceQueryFilter;
+import org.apache.cassandra.db.filter.ColumnSlice;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CompositeType;
-import org.apache.cassandra.utils.ByteBufferUtil;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.Field.Store;
-import org.apache.lucene.document.StringField;
-import org.apache.lucene.search.FieldComparator;
-import org.apache.lucene.search.FieldComparatorSource;
-import org.apache.lucene.search.Filter;
-import org.apache.lucene.search.SortField;
 import org.apache.lucene.util.BytesRef;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Class for several clustering key mappings between Cassandra and Lucene. This class only be used
@@ -53,11 +44,6 @@ import java.util.Set;
  */
 public class ClusteringKeyMapper
 {
-
-    /**
-     * The Lucene's field name.
-     */
-    public static final String FIELD_NAME = "_clustering_key";
 
     /**
      * The column family meta data.
@@ -121,9 +107,9 @@ public class ClusteringKeyMapper
      * @param columnFamily A storage engine {@link org.apache.cassandra.db.ColumnFamily}.
      * @return The common clustering keys of the specified column family.
      */
-    public Set<CellName> clusteringKeys(ColumnFamily columnFamily)
+    public List<CellName> clusteringKeys(ColumnFamily columnFamily)
     {
-        Set<CellName> cellNames = new HashSet<>();
+        List<CellName> cellNames = new ArrayList<>();
         for (Cell cell : columnFamily)
         {
             CellName cellName = cell.name();
@@ -132,7 +118,7 @@ public class ClusteringKeyMapper
                 cellNames.add(cellName);
             }
         }
-        return cellNames;
+        return sort(cellNames);
     }
 
     /**
@@ -166,26 +152,6 @@ public class ClusteringKeyMapper
         return type.create(start(cellName), columnDefinition);
     }
 
-    public void addFields(Document document, CellName cellName)
-    {
-        String serializedKey = ByteBufferUtils.toString(cellName.toByteBuffer());
-        Field field = new StringField(FIELD_NAME, serializedKey, Store.YES);
-        document.add(field);
-    }
-
-    /**
-     * Returns the clustering key contained in the specified Lucene's {@link Document}.
-     *
-     * @param document A {@link Document}.
-     * @return The clustering key contained in the specified Lucene's {@link Document}.
-     */
-    public CellName clusteringKey(Document document)
-    {
-        String string = document.get(FIELD_NAME);
-        ByteBuffer bb = ByteBufferUtils.fromString(string);
-        return type.cellFromByteBuffer(bb);
-    }
-
     /**
      * Returns the first clustering key contained in the specified row.
      * @param row A {@link Row}.
@@ -208,75 +174,9 @@ public class ClusteringKeyMapper
         return type.cellFromByteBuffer(bb);
     }
 
-    private boolean needsFilter(DataRange dataRange)
+    public CellName cellName(ByteBuffer byteBuffer)
     {
-        if (dataRange.columnFilter(ByteBufferUtil.EMPTY_BYTE_BUFFER) != null)
-        {
-            IDiskAtomFilter filter = dataRange.columnFilter(ByteBufferUtil.EMPTY_BYTE_BUFFER);
-            if (filter != null)
-            {
-                SliceQueryFilter sqf = (SliceQueryFilter) dataRange.columnFilter(ByteBufferUtil.EMPTY_BYTE_BUFFER);
-                if (sqf.start().toByteBuffer().remaining() > 0 || sqf.finish().toByteBuffer().remaining() > 0)
-                {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Returns a Lucene's {@link Filter} for filtering documents/rows according to the column name
-     * range specified in {@code dataRange}.
-     *
-     * @param dataRange The data range containing the column name range to be filtered.
-     * @return A Lucene's {@link Filter} for filtering documents/rows according to the column name
-     * range specified in {@code dataRage}.
-     */
-    public Filter filter(DataRange dataRange)
-    {
-        if (needsFilter(dataRange))
-        {
-            return new ClusteringKeyMapperDataRangeFilter(this, dataRange);
-        }
-        else
-        {
-            return null;
-        }
-    }
-
-    /**
-     * Returns a Lucene's {@link Filter} for filtering documents/rows according to the column
-     * tombstone range specified in {@code rangeTombstone}.
-     *
-     * @param rangeTombstone The data range containing the column tombstone range to be filtered.
-     * @return A Lucene's {@link Filter} for filtering documents/rows according to the column
-     * tombstone range specified in {@code rangeTombstone}.
-     */
-    public Filter filter(RangeTombstone rangeTombstone)
-    {
-        return new ClusteringKeyMapperRangeTombstoneFilter(this, rangeTombstone);
-    }
-
-    /**
-     * Returns a Lucene's {@link SortField} array for sorting documents/rows according to the column
-     * family name.
-     *
-     * @return A Lucene's {@link SortField} array for sorting documents/rows according to the column
-     * family name.
-     */
-    public SortField[] sortFields()
-    {
-        return new SortField[]{
-                new SortField(FIELD_NAME, new FieldComparatorSource()
-                {
-                    @Override
-                    public FieldComparator<?>
-                    newComparator(String field, int hits, int sort, boolean reversed) throws IOException
-                    {
-                        return new ClusteringKeyMapperSorter(ClusteringKeyMapper.this, hits, field);
-                    }
-                })};
+        return type.cellFromByteBuffer(byteBuffer);
     }
 
     /**
@@ -309,7 +209,6 @@ public class ClusteringKeyMapper
         return start(cellName).withEOC(Composite.EOC.END);
     }
 
-
     public Columns columns(Row row)
     {
         ColumnFamily columnFamily = row.cf;
@@ -331,6 +230,62 @@ public class ClusteringKeyMapper
             }
         }
         return columns;
+    }
+
+    public Map<CellName,ColumnFamily> splitRows(ColumnFamily columnFamily)
+    {
+        Map<CellName,ColumnFamily> columnFamilies = new HashMap<>();
+        ColumnFamily rowColumnFamily = null;
+        CellName clusteringKey = null;
+        for (Cell cell : columnFamily)
+        {
+            CellName cellName = cell.name();
+            if (isClusteringKey(cellName))
+            {
+                if (rowColumnFamily != null) {
+                    columnFamilies.put(clusteringKey, rowColumnFamily);
+                }
+                clusteringKey = cellName;
+                rowColumnFamily = ArrayBackedSortedColumns.factory.create(metadata);
+            }
+            rowColumnFamily.addColumn(cell);
+        }
+        if (rowColumnFamily != null) {
+            columnFamilies.put(clusteringKey, rowColumnFamily);
+        }
+        return columnFamilies;
+    }
+
+    public ColumnSlice[] columnSlices(List<CellName> clusteringKeys)
+    {
+        List<CellName> sortedClusteringKeys = sort(clusteringKeys);
+        ColumnSlice[] columnSlices = new ColumnSlice[clusteringKeys.size()];
+        int i = 0;
+        for (CellName clusteringKey : sortedClusteringKeys)
+        {
+            Composite start = start(clusteringKey);
+            Composite end = end(clusteringKey);
+            ColumnSlice columnSlice = new ColumnSlice(start, end);
+            columnSlices[i++] = columnSlice;
+        }
+        return columnSlices;
+    }
+
+    public List<CellName> sort(List<CellName> clusteringKeys) {
+        List<CellName> result = new ArrayList<>(clusteringKeys);
+        Collections.sort(result, new Comparator<CellName>()
+        {
+            @Override
+            public int compare(CellName o1, CellName o2)
+            {
+                return type.compare(o1,o2);
+            }
+        });
+        return result;
+    }
+
+    public String toString(CellName cellName) {
+        return ByteBufferUtils.toString(cellName.toByteBuffer(),type.asAbstractType());
     }
 
 }

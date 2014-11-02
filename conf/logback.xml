@@ -49,7 +49,7 @@
     <appender-ref ref="STDOUT" />
   </root>
 
-  <logger level="INFO" name="stratio">
+  <logger level="DEBUG" name="stratio">
   </logger>
   
   <logger name="com.thinkaurelius.thrift" level="ERROR"/>

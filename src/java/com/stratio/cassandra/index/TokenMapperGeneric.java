@@ -18,8 +18,9 @@ package com.stratio.cassandra.index;
 import com.stratio.cassandra.index.util.ByteBufferUtils;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.db.RowPosition;
+import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.dht.Token.TokenFactory;
@@ -80,9 +81,9 @@ public class TokenMapperGeneric extends TokenMapper
      * {@inheritDoc}
      */
     @Override
-    public Filter newFilter(DataRange dataRange)
+    public Filter filter(AbstractBounds<RowPosition> keyRange)
     {
-        return new TokenMapperGenericDataRangeFilter(this, dataRange);
+        return new TokenMapperGenericDataRangeFilter(this, keyRange);
     }
 
     /**

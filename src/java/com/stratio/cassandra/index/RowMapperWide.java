@@ -21,17 +21,14 @@ import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellName;
-import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.filter.ColumnSlice;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.queries.ChainedFilter;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.SortField;
 
-import java.util.Set;
+import java.util.List;
+import java.util.Map;
 
 /**
  * {@link RowMapper} for wide rows.
@@ -54,7 +51,7 @@ public class RowMapperWide extends RowMapper
     {
         super(metadata, columnDefinition, schema);
         this.clusteringKeyMapper = ClusteringKeyMapper.instance(metadata);
-        this.fullKeyMapper = FullKeyMapper.instance(metadata);
+        this.fullKeyMapper = FullKeyMapper.instance(metadata, partitionKeyMapper, clusteringKeyMapper);
     }
 
     /**
@@ -80,9 +77,9 @@ public class RowMapperWide extends RowMapper
         CellName clusteringKey = clusteringKeyMapper.cellName(row);
 
         Document document = new Document();
-        tokenMapper.addFields(document, partitionKey);
+//        tokenMapper.addFields(document, partitionKey);
         partitionKeyMapper.addFields(document, partitionKey);
-        clusteringKeyMapper.addFields(document, clusteringKey);
+//        clusteringKeyMapper.addFields(document, clusteringKey);
         fullKeyMapper.addFields(document, partitionKey, clusteringKey);
         schema.addFields(document, columns(row));
         return document;
@@ -94,24 +91,11 @@ public class RowMapperWide extends RowMapper
     @Override
     public Filter filter(DataRange dataRange)
     {
-        Filter tokenFilter = tokenMapper.filter(dataRange);
-        Filter clusteringKeyFilter = clusteringKeyMapper.filter(dataRange);
-        if (tokenFilter == null)
-        {
-            return clusteringKeyFilter == null ? null : clusteringKeyFilter;
-        }
-        else
-        {
-            if (clusteringKeyFilter == null)
-            {
-                return tokenFilter;
-            }
-            else
-            {
-                Filter[] filters = new Filter[]{tokenFilter, clusteringKeyFilter};
-                return new ChainedFilter(filters, ChainedFilter.AND);
-            }
-        }
+        return new FullKeyMapperDataRangeFilter(fullKeyMapper, dataRange);
+//        Filter tokenFilter = tokenMapper.filter(dataRange.keyRange());
+//        Filter fullKeyFilter = new FullKeyMapperDataRangeFilter(fullKeyMapper, dataRange);
+//        Filter[] filters = new Filter[]{tokenFilter, fullKeyFilter};
+//        return new ChainedFilter(filters, ChainedFilter.AND);
     }
 
     /**
@@ -120,9 +104,9 @@ public class RowMapperWide extends RowMapper
     @Override
     public Sort sort()
     {
-        SortField[] partitionKeySort = tokenMapper.sort();
-        SortField[] clusteringKeySort = clusteringKeyMapper.sortFields();
-        return new Sort(ArrayUtils.addAll(partitionKeySort, clusteringKeySort));
+//        SortField[] partitionKeySort = tokenMapper.sort();
+//        SortField[] clusteringKeySort = clusteringKeyMapper.sortFields();
+        return new Sort(fullKeyMapper.sortFields());
     }
 
     /**
@@ -152,7 +136,7 @@ public class RowMapperWide extends RowMapper
      */
     public CellName clusteringKey(Document document)
     {
-        return clusteringKeyMapper.clusteringKey(document);
+        return fullKeyMapper.cellName(document);
     }
 
     /**
@@ -172,7 +156,7 @@ public class RowMapperWide extends RowMapper
      * @param columnFamily A {@link ColumnFamily}.
      * @return All the clustering keys contained in the specified {@link ColumnFamily}.
      */
-    public Set<CellName> clusteringKeys(ColumnFamily columnFamily)
+    public List<CellName> clusteringKeys(ColumnFamily columnFamily)
     {
         return clusteringKeyMapper.clusteringKeys(columnFamily);
     }
@@ -197,19 +181,32 @@ public class RowMapperWide extends RowMapper
      */
     public Filter filter(RangeTombstone rangeTombstone)
     {
-        return clusteringKeyMapper.filter(rangeTombstone);
+        return fullKeyMapper.filter(rangeTombstone);
     }
 
     /**
-     * Returns the {@link ColumnSlice} for selecting the logic CQL3 row identified by the specified clustering key.
+     * Returns the array of {@link ColumnSlice}s for selecting the logic CQL3 row identified by the specified clustering keys.
      *
-     * @param clusteringKey A clustering key.
-     * @return The {@link ColumnSlice} for selecting the logic CQL3 row identified by the specified clustering key.
+     * @param clusteringKeys A list of clustering keys.
+     * @return The array of {@link ColumnSlice}s for selecting the logic CQL3 row identified by the specified clustering keys.
      */
-    public ColumnSlice columnSlice(CellName clusteringKey)
+    public ColumnSlice[] columnSlices(List<CellName> clusteringKeys)
     {
-        Composite start = clusteringKeyMapper.start(clusteringKey);
-        Composite end = clusteringKeyMapper.end(clusteringKey);
-        return new ColumnSlice(start, end);
+        return clusteringKeyMapper.columnSlices(clusteringKeys);
+    }
+
+    /**
+     * Returns the logical CQL3 column families contained in the specified physical {@link org.apache.cassandra.db.ColumnFamily}.
+     *
+     * @param columnFamily A physical {@link org.apache.cassandra.db.ColumnFamily}.
+     * @return The logical CQL3 column families contained in the specified physical {@link org.apache.cassandra.db.ColumnFamily}.
+     */
+    public Map<CellName, ColumnFamily> splitRows(ColumnFamily columnFamily)
+    {
+        return clusteringKeyMapper.splitRows(columnFamily);
+    }
+
+    public String toString(CellName cellName) {
+        return clusteringKeyMapper.toString(cellName);
     }
 }

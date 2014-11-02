@@ -15,9 +15,12 @@
  */
 package com.stratio.cassandra.index.util;
 
+import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonParser;
+import org.codehaus.jackson.map.DeserializationConfig;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.SerializationConfig;
+import org.codehaus.jackson.map.annotate.JsonSerialize;
 
 import java.io.IOException;
 
@@ -34,13 +37,14 @@ public class JsonSerializer
 
     static
     {
-        // jsonMapper.configure(JsonGenerator.Feature.QUOTE_FIELD_NAMES, false);
+        jsonMapper.configure(JsonGenerator.Feature.QUOTE_FIELD_NAMES, false);
         jsonMapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
         // jsonMapper.setPropertyNamingStrategy(new LowerCaseWithUnderscoresStrategy());
         // jsonMapper.configure(SerializationConfig.Feature.INDENT_OUTPUT, true);
         jsonMapper.configure(SerializationConfig.Feature.AUTO_DETECT_IS_GETTERS, false);
         // jsonMapper.configure(SerializationConfig.Feature.WRITE_DATES_AS_TIMESTAMPS, true);
-        // jsonMapper.configure(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        jsonMapper.configure(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        jsonMapper.setSerializationInclusion(JsonSerialize.Inclusion.NON_NULL);
     }
 
     /**

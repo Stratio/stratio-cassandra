@@ -17,10 +17,9 @@ package com.stratio.cassandra.index;
 
 import com.stratio.cassandra.index.util.Log;
 import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.RowPosition;
-import org.apache.cassandra.db.RowPosition.Kind;
+import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.dht.Murmur3Partitioner;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -61,10 +60,10 @@ public class TokenMapperMurmur extends TokenMapper
      * {@inheritDoc}
      */
     @Override
-    public Filter newFilter(DataRange dataRange)
+    public Filter filter(AbstractBounds<RowPosition> keyRange)
     {
-        RowPosition startPosition = dataRange.startKey();
-        RowPosition stopPosition = dataRange.stopKey();
+        RowPosition startPosition = keyRange.left;
+        RowPosition stopPosition = keyRange.right;
         Long start = (Long) startPosition.getToken().token;
         Long stop = (Long) stopPosition.getToken().token;
         if (startPosition.isMinimum())
@@ -75,9 +74,9 @@ public class TokenMapperMurmur extends TokenMapper
         {
             stop = null;
         }
-        boolean includeLower = startPosition.kind() == Kind.MIN_BOUND;
-        boolean includeUpper = stopPosition.kind() == Kind.MAX_BOUND;
-        Log.debug("Querying %s %d %d %s", includeLower ? "[" : "{", start, stop, includeUpper ? "]" : "}");
+        boolean includeLower = includeLower(startPosition.kind());
+        boolean includeUpper = includeUpper(stopPosition.kind());
+        Log.debug("Filtering %s %d, %d %s", includeLower ? "[" : "(", start, stop, includeUpper ? "]" : ")");
         return NumericRangeFilter.newLongRange(FIELD_NAME, start, stop, includeLower, includeUpper);
     }
 

@@ -18,6 +18,7 @@ package com.stratio.cassandra.index.query;
 import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.index.util.JsonSerializer;
 import com.stratio.cassandra.index.util.Log;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.queries.ChainedFilter;
 import org.apache.lucene.search.*;
 import org.codehaus.jackson.annotate.JsonCreator;
@@ -32,9 +33,6 @@ import org.eclipse.jdt.core.dom.ReturnStatement;
  */
 public class Search
 {
-
-    private static final boolean DEFAULT_PARALLEL = false;
-
     /**
      * The querying condition.
      */
@@ -53,9 +51,6 @@ public class Search
     @JsonProperty("sort")
     private Sorting sorting;
 
-    @JsonProperty("parallel")
-    private Boolean parallel;
-
     /**
      * Returns a new {@link Search} composed by the specified querying and filtering conditions.
      *
@@ -67,13 +62,11 @@ public class Search
     @JsonCreator
     public Search(@JsonProperty("query") Condition queryCondition,
                   @JsonProperty("filter") Condition filterCondition,
-                  @JsonProperty("sort") Sorting sorting,
-                  @JsonProperty("parallel") Boolean parallel)
+                  @JsonProperty("sort") Sorting sorting)
     {
         this.queryCondition = queryCondition;
         this.filterCondition = filterCondition;
         this.sorting = sorting;
-        this.parallel = parallel == null ? DEFAULT_PARALLEL : parallel;
     }
 
     /**
@@ -140,7 +133,7 @@ public class Search
         return sorting != null;
     }
 
-    public Sorting getSorting() 
+    public Sorting getSorting()
     {
         return this.sorting;
     }
@@ -201,7 +194,7 @@ public class Search
         {
             return filter;
         }
-        else if (filter == null && rangeFilter != null)
+        else if (filter == null)
         {
             return rangeFilter;
         }
@@ -234,7 +227,7 @@ public class Search
         {
             return query;
         }
-        else if (query == null && filter != null)
+        else if (query == null)
         {
             return new ConstantScoreQuery(filter);
         }
@@ -242,17 +235,6 @@ public class Search
         {
             return new FilteredQuery(query, filter);
         }
-    }
-
-    /**
-     * Returns {@code true} if this search must be performed in a parallel fashion, {@code false} otherwise. Note that
-     * this only is applicable for relevance or sorting searches.
-     *
-     * @return {@code true} if this search must be performed in a parallel fashion, {@code false} otherwise.
-     */
-    public Boolean isParallel()
-    {
-        return parallel;
     }
 
     /**
@@ -279,15 +261,11 @@ public class Search
     @Override
     public String toString()
     {
-        StringBuilder builder = new StringBuilder();
-        builder.append("Search [queryCondition=");
-        builder.append(queryCondition);
-        builder.append(", filterCondition=");
-        builder.append(filterCondition);
-        builder.append(", sorting=");
-        builder.append(sorting);
-        builder.append("]");
-        return builder.toString();
+        return new ToStringBuilder(this)
+                .append("queryCondition", queryCondition)
+                .append("filterCondition", filterCondition)
+                .append("sorting", sorting)
+                .toString();
     }
 
 }
