@@ -257,7 +257,6 @@ public class LuceneIndex
             throws IOException
     {
         // Use default sort if the query doesn't use relevance
-        Log.debug("Querying index: %s", query);
         if (sort == null)
         {
             if (query instanceof ConstantScoreQuery)

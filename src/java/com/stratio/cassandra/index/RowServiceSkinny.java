@@ -16,14 +16,19 @@
 package com.stratio.cassandra.index;
 
 import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.ColumnFamily;
+import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.filter.QueryFilter;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -105,25 +110,26 @@ public class RowServiceSkinny extends RowService
 
     /**
      * {@inheritDoc}
-     * <p/>
-     * The {@link Row} is a physical one.
      */
-    @Override
-    protected Row row(ScoredDocument scoredDocument, long timestamp)
+    protected List<Row> rows(List<ScoredDocument> scoredDocuments, long timestamp)
     {
+        List<Row> rows = new ArrayList<>(scoredDocuments.size());
+        for (ScoredDocument scoredDocument : scoredDocuments) {
+            // Extract row from document
+            Document document = scoredDocument.getDocument();
+            DecoratedKey partitionKey = rowMapper.partitionKey(document);
+            Row row = row(partitionKey, timestamp);
 
-        // Extract row from document
-        Document document = scoredDocument.getDocument();
-        DecoratedKey partitionKey = rowMapper.partitionKey(document);
-        Row row = row(partitionKey, timestamp);
+            if (row == null) {
+                return null;
+            }
 
-        if (row == null) {
-            return null;
+            // Return decorated row
+            Float score = scoredDocument.getScore();
+            Row decoratedRow = addScoreColumn(row, timestamp, score);
+            rows.add(decoratedRow);
         }
-
-        // Return decorated row
-        Float score = scoredDocument.getScore();
-        return decorate(row, timestamp, score);
+        return rows;
     }
 
     /**
@@ -137,7 +143,13 @@ public class RowServiceSkinny extends RowService
     private Row row(DecoratedKey partitionKey, long timestamp)
     {
         QueryFilter queryFilter = QueryFilter.getIdentityFilter(partitionKey, metadata.cfName, timestamp);
-        return row(queryFilter, timestamp);
+        ColumnFamily columnFamily = baseCfs.getColumnFamily(queryFilter);
+        if (columnFamily != null)
+        {
+            ColumnFamily cleanColumnFamily = cleanExpired(columnFamily, timestamp);
+            return new Row(partitionKey, cleanColumnFamily);
+        }
+        return null;
     }
 
 

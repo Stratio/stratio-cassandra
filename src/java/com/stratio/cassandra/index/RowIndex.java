@@ -106,7 +106,7 @@ public class RowIndex extends PerRowSecondaryIndex
     }
 
     @Override
-    public void validate(CFMetaData metadata, Map<String,String> indexOptions)
+    public void validate(CFMetaData metadata, Map<String, String> indexOptions)
     {
         RowIndexConfig config = new RowIndexConfig(metadata, indexOptions);
     }
@@ -135,7 +135,7 @@ public class RowIndex extends PerRowSecondaryIndex
     @Override
     public void index(ByteBuffer key, ColumnFamily columnFamily)
     {
-        Log.debug("Indexing row %s in index %s", key, logName);
+        // Log.debug("Indexing row %s in index %s ", key, logName);
         lock.readLock().lock();
         try
         {
@@ -372,7 +372,7 @@ public class RowIndex extends PerRowSecondaryIndex
     public String toString()
     {
         return String.format("RowIndex [index=%s, keyspace=%s, table=%s, column=%s",
-                indexName, keyspaceName, tableName, columnName);
+                             indexName, keyspaceName, tableName, columnName);
     }
 
 }

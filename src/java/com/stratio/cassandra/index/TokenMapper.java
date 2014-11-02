@@ -17,16 +17,17 @@ package com.stratio.cassandra.index;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.dht.*;
-import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.db.RowPosition;
+import org.apache.cassandra.db.RowPosition.Kind;
+import org.apache.cassandra.dht.AbstractBounds;
+import org.apache.cassandra.dht.IPartitioner;
+import org.apache.cassandra.dht.Murmur3Partitioner;
+import org.apache.cassandra.dht.Token;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.SortField;
-
-import java.util.Collection;
 
 /**
  * Class for several row partitioning {@link Token} mappings between Cassandra and Lucene.
@@ -35,11 +36,6 @@ import java.util.Collection;
  */
 public abstract class TokenMapper
 {
-
-    /**
-     * The lazily created singleton instance.
-     */
-    private static TokenMapper instance;
 
     protected final CFMetaData metadata;
 
@@ -52,19 +48,15 @@ public abstract class TokenMapper
      */
     public static TokenMapper instance(CFMetaData metadata)
     {
-        if (instance == null)
+        IPartitioner<?> partitioner = DatabaseDescriptor.getPartitioner();
+        if (partitioner instanceof Murmur3Partitioner)
         {
-            IPartitioner<?> partitioner = DatabaseDescriptor.getPartitioner();
-            if (partitioner instanceof Murmur3Partitioner)
-            {
-                instance = new TokenMapperMurmur(metadata);
-            }
-            else
-            {
-                instance = new TokenMapperGeneric(metadata);
-            }
+            return new TokenMapperMurmur(metadata);
         }
-        return instance;
+        else
+        {
+            return new TokenMapperGeneric(metadata);
+        }
     }
 
     public TokenMapper(CFMetaData metadata)
@@ -80,59 +72,15 @@ public abstract class TokenMapper
      */
     public abstract void addFields(Document document, DecoratedKey partitionKey);
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private boolean needsFilter(DataRange dataRange)
-    {
-
-        // Get token bounds
-        AbstractBounds<Token> bounds = dataRange.keyRange().toTokenBounds();
-        Token left = bounds.left;
-        Token right = bounds.right;
-
-        // Check if it's a full cluster range
-        Token minimum = DatabaseDescriptor.getPartitioner().getMinimumToken();
-        if (left.compareTo(minimum) == 0 && right.compareTo(minimum) == 0)
-        {
-            return false;
-        }
-
-        // Check if it's a full node range
-        String ksName = metadata.ksName;
-        Collection<Range<Token>> localRanges = StorageService.instance.getLocalRanges(ksName);
-        if (localRanges.size() == 1)
-        { // No virtual nodes
-            Range<Token> nodeRange = localRanges.iterator().next();
-            if (left.compareTo(nodeRange.left) == 0 && right.compareTo(nodeRange.right) == 0)
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
     /**
      * Returns a Lucene's {@link Filter} for filtering documents/rows according to the row token range specified in
      * {@code dataRange}.
      *
-     * @param dataRange The data range containing the row token range to be filtered.
+     * @param keyRange The key range containing the row token range to be filtered.
      * @return A Lucene's {@link Filter} for filtering documents/rows according to the row token range specified in
      * {@code dataRage}.
      */
-    public Filter filter(DataRange dataRange)
-    {
-        return needsFilter(dataRange) ? newFilter(dataRange) : null;
-    }
-
-    /**
-     * Returns a Lucene's {@link Filter} for filtering documents/rows according to the row token range specified in
-     * {@code dataRange}.
-     *
-     * @param dataRange The data range containing the row token range to be filtered.
-     * @return A Lucene's {@link Filter} for filtering documents/rows according to the row token range specified in
-     * {@code dataRage}.
-     */
-    public abstract Filter newFilter(DataRange dataRange);
+    public abstract Filter filter(AbstractBounds<RowPosition> keyRange);
 
     /**
      * Returns a Lucene's {@link SortField} array for sorting documents/rows according to the current partitioner.
@@ -140,5 +88,47 @@ public abstract class TokenMapper
      * @return A Lucene's {@link SortField} array for sorting documents/rows according to the current partitioner.
      */
     public abstract SortField[] sort();
+
+    /**
+     * Returns {@code true} if the specified lower row position kind must be included in the filtered range, {@code false} otherwise.
+     *
+     * @param kind A {@link org.apache.cassandra.db.RowPosition} kind.
+     * @return {@code true} if the specified lower row position kind must be included in the filtered range, {@code false} otherwise.
+     */
+    protected boolean includeLower(Kind kind)
+    {
+        switch (kind)
+        {
+            case MAX_BOUND:
+                return false;
+            case MIN_BOUND:
+                return true;
+            case ROW_KEY:
+                return true;
+            default:
+                throw new IllegalArgumentException();
+        }
+    }
+
+    /**
+     * Returns {@code true} if the specified upper row position kind must be included in the filtered range, {@code false} otherwise.
+     *
+     * @param kind A {@link org.apache.cassandra.db.RowPosition} kind.
+     * @return {@code true} if the specified upper row position kind must be included in the filtered range, {@code false} otherwise.
+     */
+    protected boolean includeUpper(Kind kind)
+    {
+        switch (kind)
+        {
+            case MAX_BOUND:
+                return true;
+            case MIN_BOUND:
+                return false;
+            case ROW_KEY:
+                return true;
+            default:
+                throw new IllegalArgumentException();
+        }
+    }
 
 }

@@ -16,6 +16,7 @@
 package com.stratio.cassandra.index;
 
 import org.apache.cassandra.db.DataRange;
+import org.apache.cassandra.db.RowPosition;
 import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.dht.Token;
 import org.apache.lucene.index.*;
@@ -45,12 +46,12 @@ public class TokenMapperGenericDataRangeFilter extends Filter
      * Returns a new {@code TokenMapperGeneric} for the specified data range using the specified token mapper.
      *
      * @param tokenMapperGeneric The used token mapper.
-     * @param dataRange          The partition data range to be filtered.
+     * @param keyRange          The partition data range to be filtered.
      */
-    public TokenMapperGenericDataRangeFilter(TokenMapperGeneric tokenMapperGeneric, DataRange dataRange)
+    public TokenMapperGenericDataRangeFilter(TokenMapperGeneric tokenMapperGeneric, AbstractBounds<RowPosition> keyRange)
     {
         this.tokenMapperGeneric = tokenMapperGeneric;
-        this.keyRange = dataRange.keyRange().toTokenBounds();
+        this.keyRange = keyRange.toTokenBounds();
     }
 
     /**

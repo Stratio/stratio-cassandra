@@ -73,7 +73,7 @@ public class SearchBuilder implements Builder<Search>
     @Override
     public Search build()
     {
-        return new Search(queryCondition, filterCondition, sorting, null);
+        return new Search(queryCondition, filterCondition, sorting);
     }
 
     /**

@@ -27,10 +27,10 @@ import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.CellNameType;
-import org.apache.cassandra.db.filter.QueryFilter;
+import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.UTF8Type;
-import org.apache.cassandra.dht.AbstractBounds;
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.Query;
@@ -56,7 +56,6 @@ public abstract class RowService
     protected final ColumnIdentifier indexedColumnName;
     protected final Schema schema;
     protected final LuceneIndex luceneIndex;
-    protected final FilterCache filterCache;
 
     /**
      * The max number of rows to be read per iteration
@@ -82,8 +81,6 @@ public abstract class RowService
         this.indexedColumnName = columnDefinition.name;
 
         RowIndexConfig config = new RowIndexConfig(metadata, columnDefinition.getIndexOptions());
-
-        this.filterCache = config.getFilterCache();
 
         this.schema = config.getSchema();
         this.rowMapper = RowMapper.build(metadata, columnDefinition, schema);
@@ -254,7 +251,7 @@ public abstract class RowService
      * @return The {@link Row}s satisfying the specified restrictions.
      */
     public final List<Row> search(Search search,
-                                  List<org.apache.cassandra.db.IndexExpression> expressions,
+                                  List<IndexExpression> expressions,
                                   DataRange dataRange,
                                   final int limit,
                                   long timestamp) throws IOException
@@ -262,7 +259,7 @@ public abstract class RowService
         // Log.debug("Searching with search %s ", search);
 
         // Setup search arguments
-        Filter filter = cachedFilter(dataRange);
+        Filter filter = rowMapper.filter(dataRange);
         Query query = search.filteredQuery(schema, filter);
         Sort sort = search.sort(schema);
 
@@ -283,26 +280,24 @@ public abstract class RowService
             // Search rows identifiers in Lucene
             long searchStartTime = System.currentTimeMillis();
             scoredDocuments = luceneIndex.search(query, sort, lastDoc, pageSize, fieldsToLoad());
+            collectedDocs += scoredDocuments.size();
+            lastDoc = scoredDocuments.isEmpty() ? null : scoredDocuments.get(scoredDocuments.size() - 1);
             searchTime += System.currentTimeMillis() - searchStartTime;
 
             // Collect rows from Cassandra
             long collectStartTime = System.currentTimeMillis();
-            for (ScoredDocument scoredDocument : scoredDocuments)
+            for (Row row : rows(scoredDocuments, timestamp))
             {
-                collectedDocs++;
-                lastDoc = scoredDocument;
-                Row row = row(scoredDocument, timestamp);
                 if (row != null && accepted(row, expressions))
                 {
                     rows.add(row);
                 }
-                System.out.println();
             }
             collectTime += System.currentTimeMillis() - collectStartTime;
 
             // Setup next iteration
             maybeMore = scoredDocuments.size() == pageSize;
-            pageSize = Math.max(FILTERING_PAGE_SIZE, rows.size() - limit);
+            pageSize = Math.min(Math.max(FILTERING_PAGE_SIZE, rows.size() - limit), MAX_PAGE_SIZE);
             numPages++;
 
             // Iterate while there are still documents to read and we don't have enough rows
@@ -312,6 +307,7 @@ public abstract class RowService
         Log.debug("Cassandra time: %d ms", collectTime);
         Log.debug("Collected %d docs and %d rows in %d pages", collectedDocs, rows.size(), numPages);
 
+        Collections.sort(rows, comparator());
         return rows;
     }
 
@@ -389,34 +385,24 @@ public abstract class RowService
     }
 
     /**
-     * Returns the {@link Row} identified by the specified {@link Document}, using the specified time stamp to ignore
-     * deleted columns. The {@link Row} is retrieved from the storage engine, so it involves IO operations.
+     * Returns the {@link Row}s identified by the specified {@link Document}s, using the specified time stamp to ignore
+     * deleted columns. The {@link Row}s are retrieved from the storage engine, so it involves IO operations.
      *
-     * @param scoredDocument A {@link ScoredDocument}
-     * @param timestamp      The time stamp to ignore deleted columns.
-     * @return The {@link Row} identified by the specified {@link Document}
+     * @param scoredDocuments The {@link ScoredDocument}s
+     * @param timestamp       The time stamp to ignore deleted columns.
+     * @return The {@link Row} identified by the specified {@link Document}s
      */
-    protected abstract Row row(ScoredDocument scoredDocument, long timestamp) throws IOException;
+    protected abstract List<Row> rows(List<ScoredDocument> scoredDocuments, long timestamp) throws IOException;
 
     /**
-     * Returns the CQL3 {@link Row} identified by the specified {@link QueryFilter}, using the specified time stamp to
-     * ignore deleted columns. The {@link Row} is retrieved from the storage engine, so it involves IO operations.
+     * Returns a {@link ColumnFamily} composed by the non expired {@link Cell}s of the specified  {@link ColumnFamily}.
      *
-     * @param queryFilter A {@link QueryFilter}.
-     * @param timestamp   The time stamp to ignore deleted columns.
-     * @return The CQL3 {@link Row} identified by the specified {@link QueryFilter}
+     * @param columnFamily A {@link ColumnFamily}.
+     * @param timestamp    The max allowed timestamp for the {@link Cell}s.
+     * @return A {@link ColumnFamily} composed by the non expired {@link Cell}s of the specified  {@link ColumnFamily}.
      */
-    protected final Row row(QueryFilter queryFilter, long timestamp)
+    protected ColumnFamily cleanExpired(ColumnFamily columnFamily, long timestamp)
     {
-
-        // Read the column family from the storage engine
-        ColumnFamily columnFamily = baseCfs.getColumnFamily(queryFilter);
-
-        if (columnFamily == null) {
-            return null;
-        }
-
-        // Remove deleted column families
         ColumnFamily cleanColumnFamily = ArrayBackedSortedColumns.factory.create(baseCfs.metadata);
         for (Cell cell : columnFamily)
         {
@@ -425,15 +411,19 @@ public abstract class RowService
                 cleanColumnFamily.addColumn(cell);
             }
         }
-
-        // Build and return the row
-        DecoratedKey partitionKey = queryFilter.key;
-        return new Row(partitionKey, cleanColumnFamily);
+        return cleanColumnFamily;
     }
 
-    protected Row decorate(Row row, long timestamp, Float score)
+    /**
+     * Adds to the specified {@link Row} the specified Lucene score column.
+     *
+     * @param row       A {@link Row}.
+     * @param timestamp The score column timestamp.
+     * @param score     The score column value.
+     * @return The {@link Row} with the score.
+     */
+    protected Row addScoreColumn(Row row, long timestamp, Float score)
     {
-
         ColumnFamily cf = row.cf;
         CellName cellName = rowMapper.makeCellName(cf);
         ByteBuffer cellValue = UTF8Type.instance.decompose(score.toString());
@@ -445,40 +435,40 @@ public abstract class RowService
         return new Row(row.key, dcf);
     }
 
-    /**
-     * Returns a Lucene's {@link Filter} representing the specified Cassandra's {@link DataRange} using caching.
-     *
-     * @param dataRange The Cassandra's {@link DataRange} to be mapped.
-     * @return A Lucene's {@link Filter} representing the specified Cassandra's {@link DataRange}.
-     */
-    protected final Filter cachedFilter(DataRange dataRange)
-    {
-        AbstractBounds<RowPosition> keyRange = dataRange.keyRange();
-        if (filterCache == null)
-        {
-            Log.debug("Filter cache not present for range %s", keyRange);
-            return rowMapper.filter(dataRange);
-        }
-        Filter filter = filterCache.get(dataRange);
-        if (filter == null)
-        {
-            filter = rowMapper.filter(dataRange);
-            if (filter != null)
-            {
-                Log.debug("Filter cache fails for range %s", keyRange);
-                filterCache.put(dataRange, filter);
-            }
-            else
-            {
-                Log.debug("Filter cache unneeded for range %s", keyRange);
-            }
-        }
-        else
-        {
-            Log.debug("Filter cache hits for range %s", keyRange);
-        }
-        return filter;
-    }
+//    /**
+//     * Returns a Lucene's {@link Filter} representing the specified Cassandra's {@link DataRange} using caching.
+//     *
+//     * @param dataRange The Cassandra's {@link DataRange} to be mapped.
+//     * @return A Lucene's {@link Filter} representing the specified Cassandra's {@link DataRange}.
+//     */
+//    protected final Filter cachedFilter(DataRange dataRange)
+//    {
+//        AbstractBounds<RowPosition> keyRange = dataRange.keyRange();
+//        if (filterCache == null)
+//        {
+//            Log.debug("Filter cache not present for range %s", keyRange);
+//            return rowMapper.filter(dataRange);
+//        }
+//        Filter filter = filterCache.get(dataRange);
+//        if (filter == null)
+//        {
+//            filter = rowMapper.filter(dataRange);
+//            if (filter != null)
+//            {
+//                Log.debug("Filter cache fails for range %s", keyRange);
+//                filterCache.put(dataRange, filter);
+//            }
+//            else
+//            {
+//                Log.debug("Filter cache unneeded for range %s", keyRange);
+//            }
+//        }
+//        else
+//        {
+//            Log.debug("Filter cache hits for range %s", keyRange);
+//        }
+//        return filter;
+//    }
 
     /**
      * Returns the {@link RowComparator} to be used for ordering the {@link Row}s obtained from the specified
@@ -505,7 +495,13 @@ public abstract class RowService
         return rowMapper.naturalComparator();
     }
 
-    public RowComparator comparator() {
+    /**
+     * Returns the default {@link Row} comparator. This comparator is based on Cassandra's natural order.
+     *
+     * @return The default {@link Row} comparator.
+     */
+    public RowComparator comparator()
+    {
         return rowMapper.naturalComparator();
     }
 
@@ -532,32 +528,35 @@ public abstract class RowService
         luceneIndex.optimize();
     }
 
+    /**
+     * Returns the total number of {@link Document}s in the index.
+     *
+     * @return The total number of {@link Document}s in the index.
+     * @throws IOException
+     */
     public long getIndexSize() throws IOException
     {
         return luceneIndex.getNumDocs();
     }
 
-    public Row removeScoreColumn(Row row)
+    /**
+     * Groups the specified CQL3 {@link Row} into a list of physical storage {@link Row}s. This grouping is based in row's key.
+     *
+     * @param rows A list of CQL3 {@link Row}s.
+     * @return The specified CQL3 {@link Row} into a list of physical storage {@link Row}s.
+     */
+    public List<Row> group(List<Row> rows)
     {
-        ColumnFamily cf = ArrayBackedSortedColumns.factory.create(baseCfs.metadata);
-        CellName scoreCellName = rowMapper.makeCellName(row.cf);
-        for (Cell cell : row.cf)
-        {
-            CellName cellName = cell.name();
-            if (!scoreCellName.equals(cellName)) {
-                cf.addColumn(cell);
-            }
-        }
-        return new Row(row.key, cf);
-    }
-
-    public List<Row> group(List<Row> rows) {
         LinkedList<Row> result = new LinkedList<>();
         Row lastRow = null;
-        for (Row row : rows) {
-            if (lastRow != null && row.key.equals(lastRow.key)) {
+        for (Row row : rows)
+        {
+            if (lastRow != null && row.key.equals(lastRow.key))
+            {
                 lastRow.cf.addAll(row.cf);
-            } else {
+            }
+            else
+            {
                 lastRow = row;
                 result.add(row);
             }

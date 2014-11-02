@@ -35,6 +35,9 @@ import org.apache.lucene.search.Sort;
  */
 public class RowMapperSkinny extends RowMapper
 {
+
+    private final TokenMapper tokenMapper;
+
     /**
      * Builds a new {@link RowMapperSkinny} for the specified column family metadata, indexed column definition and {@link Schema}.
      *
@@ -45,6 +48,7 @@ public class RowMapperSkinny extends RowMapper
     RowMapperSkinny(CFMetaData metadata, ColumnDefinition columnDefinition, Schema schema)
     {
         super(metadata, columnDefinition, schema);
+        this.tokenMapper = TokenMapper.instance(metadata);
     }
 
     /**
@@ -66,7 +70,6 @@ public class RowMapperSkinny extends RowMapper
     public Document document(Row row)
     {
         DecoratedKey partitionKey = row.key;
-
         Document document = new Document();
         tokenMapper.addFields(document, partitionKey);
         partitionKeyMapper.addFields(document, partitionKey);
@@ -89,7 +92,7 @@ public class RowMapperSkinny extends RowMapper
     @Override
     public final Filter filter(DataRange dataRange)
     {
-        return tokenMapper.filter(dataRange);
+        return tokenMapper.filter(dataRange.keyRange());
     }
 
     /**

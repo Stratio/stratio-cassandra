@@ -16,12 +16,12 @@
 package com.stratio.cassandra.index;
 
 import org.apache.cassandra.db.DataRange;
+import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.CellNameType;
 import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.filter.ColumnSlice;
 import org.apache.cassandra.db.filter.SliceQueryFilter;
-import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.lucene.index.*;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -33,34 +33,31 @@ import org.apache.lucene.util.OpenBitSet;
 import java.io.IOException;
 
 /**
- * {@link Filter} that filters documents which clustering key field satisfies a certain {@link DataRange}. This means
+ * {@link org.apache.lucene.search.Filter} that filters documents which clustering key field satisfies a certain {@link org.apache.cassandra.db.DataRange}. This means
  * that the clustering key value must be contained in the slice query clusteringKeyFilter specified in the data range.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ClusteringKeyMapperDataRangeFilter extends Filter
+public class FullKeyMapperDataRangeFilter extends Filter
 {
 
     /**
-     * The {@link ClusteringKeyMapper} to be used.
+     * The {@link com.stratio.cassandra.index.FullKeyMapper} to be used.
      */
-    private final ClusteringKeyMapper clusteringKeyMapper;
+    private final FullKeyMapper fullKeyMapper;
 
-    /**
-     * The filtering column slice.
-     */
-    private final SliceQueryFilter sliceQueryFilter;
+    private final DataRange dataRange;
 
     /**
      * Returns a new {@code ClusteringKeyFilter} for {@code dataRange} using {@code clusteringKeyMapper}.
      *
-     * @param clusteringKeyMapper The {@link ClusteringKeyMapper} to be used.
-     * @param dataRange           The filtering data range.
+     * @param fullKeyMapper The {@link com.stratio.cassandra.index.FullKeyMapper} to be used.
+     * @param dataRange     The filtering data range.
      */
-    public ClusteringKeyMapperDataRangeFilter(ClusteringKeyMapper clusteringKeyMapper, DataRange dataRange)
+    public FullKeyMapperDataRangeFilter(FullKeyMapper fullKeyMapper, DataRange dataRange)
     {
-        this.clusteringKeyMapper = clusteringKeyMapper;
-        this.sliceQueryFilter = (SliceQueryFilter) dataRange.columnFilter(ByteBufferUtil.EMPTY_BYTE_BUFFER);
+        this.dataRange = dataRange;
+        this.fullKeyMapper = fullKeyMapper;
     }
 
     /**
@@ -74,7 +71,7 @@ public class ClusteringKeyMapperDataRangeFilter extends Filter
 
         OpenBitSet bitSet = new OpenBitSet(atomicReader.maxDoc());
 
-        Terms terms = atomicReader.terms(ClusteringKeyMapper.FIELD_NAME);
+        Terms terms = atomicReader.terms(FullKeyMapper.FIELD_NAME);
         if (terms == null)
         {
             return null;
@@ -87,10 +84,12 @@ public class ClusteringKeyMapperDataRangeFilter extends Filter
 
         while (bytesRef != null)
         {
-            CellName value = clusteringKeyMapper.cellName(bytesRef);
-//            ByteBuffer value = clusteringKeyMapper.byteBuffer(bytesRef);
-            boolean accepted = true;
+            DecoratedKey decoratedKey = fullKeyMapper.decoratedKey(bytesRef);
 
+            boolean accepted = dataRange.keyRange().contains(decoratedKey);
+
+            SliceQueryFilter sliceQueryFilter = (SliceQueryFilter) dataRange.columnFilter(decoratedKey.getKey());
+            CellName value = fullKeyMapper.cellName(bytesRef);
             for (ColumnSlice columnSlice : sliceQueryFilter.slices)
             {
                 accepted &= isInSlice(value, columnSlice);
@@ -122,7 +121,7 @@ public class ClusteringKeyMapperDataRangeFilter extends Filter
      */
     private boolean isInSlice(Composite key, ColumnSlice columnSlice)
     {
-        CellNameType type = clusteringKeyMapper.getType();
+        CellNameType type = fullKeyMapper.clusteringKeyType;
         boolean accepted = true;
         Composite start = columnSlice.start;
         if (!start.isEmpty())
