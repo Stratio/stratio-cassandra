@@ -447,16 +447,16 @@ public abstract class RowService
 //        if (filterCache == null)
 //        {
 //            Log.debug("Filter cache not present for range %s", keyRange);
-//            return rowMapper.filter(dataRange);
+//            return rowMapper.makeFilter(dataRange);
 //        }
-//        Filter filter = filterCache.get(dataRange);
-//        if (filter == null)
+//        Filter makeFilter = filterCache.get(dataRange);
+//        if (makeFilter == null)
 //        {
-//            filter = rowMapper.filter(dataRange);
-//            if (filter != null)
+//            makeFilter = rowMapper.makeFilter(dataRange);
+//            if (makeFilter != null)
 //            {
 //                Log.debug("Filter cache fails for range %s", keyRange);
-//                filterCache.put(dataRange, filter);
+//                filterCache.put(dataRange, makeFilter);
 //            }
 //            else
 //            {
@@ -467,7 +467,7 @@ public abstract class RowService
 //        {
 //            Log.debug("Filter cache hits for range %s", keyRange);
 //        }
-//        return filter;
+//        return makeFilter;
 //    }
 
     /**

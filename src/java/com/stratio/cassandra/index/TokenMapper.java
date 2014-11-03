@@ -26,6 +26,7 @@ import org.apache.cassandra.dht.Murmur3Partitioner;
 import org.apache.cassandra.dht.Token;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.search.CachingWrapperFilter;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.SortField;
 
@@ -72,6 +73,11 @@ public abstract class TokenMapper
      */
     public abstract void addFields(Document document, DecoratedKey partitionKey);
 
+    public Filter filter(AbstractBounds<RowPosition> keyRange) {
+        Filter filter = makeFilter(keyRange);
+        return new CachingWrapperFilter(filter);
+    }
+
     /**
      * Returns a Lucene's {@link Filter} for filtering documents/rows according to the row token range specified in
      * {@code dataRange}.
@@ -80,7 +86,7 @@ public abstract class TokenMapper
      * @return A Lucene's {@link Filter} for filtering documents/rows according to the row token range specified in
      * {@code dataRage}.
      */
-    public abstract Filter filter(AbstractBounds<RowPosition> keyRange);
+    public abstract Filter makeFilter(AbstractBounds<RowPosition> keyRange);
 
     /**
      * Returns a Lucene's {@link SortField} array for sorting documents/rows according to the current partitioner.

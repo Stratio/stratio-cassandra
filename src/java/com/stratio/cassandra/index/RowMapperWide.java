@@ -77,9 +77,7 @@ public class RowMapperWide extends RowMapper
         CellName clusteringKey = clusteringKeyMapper.cellName(row);
 
         Document document = new Document();
-//        tokenMapper.addFields(document, partitionKey);
         partitionKeyMapper.addFields(document, partitionKey);
-//        clusteringKeyMapper.addFields(document, clusteringKey);
         fullKeyMapper.addFields(document, partitionKey, clusteringKey);
         schema.addFields(document, columns(row));
         return document;
@@ -89,23 +87,8 @@ public class RowMapperWide extends RowMapper
      * {@inheritDoc}
      */
     @Override
-    public Filter filter(DataRange dataRange)
-    {
-        return new FullKeyMapperDataRangeFilter(fullKeyMapper, dataRange);
-//        Filter tokenFilter = tokenMapper.filter(dataRange.keyRange());
-//        Filter fullKeyFilter = new FullKeyMapperDataRangeFilter(fullKeyMapper, dataRange);
-//        Filter[] filters = new Filter[]{tokenFilter, fullKeyFilter};
-//        return new ChainedFilter(filters, ChainedFilter.AND);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public Sort sort()
     {
-//        SortField[] partitionKeySort = tokenMapper.sort();
-//        SortField[] clusteringKeySort = clusteringKeyMapper.sortFields();
         return new Sort(fullKeyMapper.sortFields());
     }
 
@@ -171,6 +154,17 @@ public class RowMapperWide extends RowMapper
     public Term term(DecoratedKey partitionKey, CellName clusteringKey)
     {
         return fullKeyMapper.term(partitionKey, clusteringKey);
+    }
+
+    /**
+     * Returns the Lucene {@link Filter} to get the {@link Document}s satisfying the specified {@link DataRange}.
+     *
+     * @param dataRange A {@link DataRange}.
+     * @return The Lucene {@link Filter} to get the {@link Document}s satisfying the specified {@link DataRange}.
+     */
+    public Filter filter(DataRange dataRange)
+    {
+        return fullKeyMapper.filter(dataRange);
     }
 
     /**

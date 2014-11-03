@@ -17,6 +17,7 @@ package com.stratio.cassandra.index;
 
 import com.stratio.cassandra.index.util.ByteBufferUtils;
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.RangeTombstone;
 import org.apache.cassandra.db.composites.CellName;
@@ -29,10 +30,7 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.FieldComparator;
-import org.apache.lucene.search.FieldComparatorSource;
-import org.apache.lucene.search.Filter;
-import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.*;
 import org.apache.lucene.util.BytesRef;
 
 import java.io.IOException;
@@ -192,8 +190,16 @@ public class FullKeyMapper
         return new Term(FIELD_NAME, ByteBufferUtils.toString(fullKey));
     }
 
-    public Filter filter(RangeTombstone rangeTombstone) {
-        return new FullKeyMapperRangeTombstoneFilter(this, rangeTombstone);
+    public Filter filter(DataRange dataRange)
+    {
+        Filter filter = new FullKeyMapperDataRangeFilter(this, dataRange);
+        return new CachingWrapperFilter(filter);
+    }
+
+    public Filter filter(RangeTombstone rangeTombstone)
+    {
+        Filter filter = new FullKeyMapperRangeTombstoneFilter(this, rangeTombstone);
+        return new CachingWrapperFilter(filter);
     }
 
     public SortField[] sortFields()

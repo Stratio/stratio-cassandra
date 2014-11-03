@@ -92,7 +92,7 @@ public class RowMapperSkinny extends RowMapper
     @Override
     public final Filter filter(DataRange dataRange)
     {
-        return tokenMapper.filter(dataRange.keyRange());
+        return tokenMapper.makeFilter(dataRange.keyRange());
     }
 
     /**

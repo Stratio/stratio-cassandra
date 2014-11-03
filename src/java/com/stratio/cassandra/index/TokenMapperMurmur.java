@@ -60,7 +60,7 @@ public class TokenMapperMurmur extends TokenMapper
      * {@inheritDoc}
      */
     @Override
-    public Filter filter(AbstractBounds<RowPosition> keyRange)
+    public Filter makeFilter(AbstractBounds<RowPosition> keyRange)
     {
         RowPosition startPosition = keyRange.left;
         RowPosition stopPosition = keyRange.right;

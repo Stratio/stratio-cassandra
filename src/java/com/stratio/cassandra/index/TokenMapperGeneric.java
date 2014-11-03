@@ -81,7 +81,7 @@ public class TokenMapperGeneric extends TokenMapper
      * {@inheritDoc}
      */
     @Override
-    public Filter filter(AbstractBounds<RowPosition> keyRange)
+    public Filter makeFilter(AbstractBounds<RowPosition> keyRange)
     {
         return new TokenMapperGenericDataRangeFilter(this, keyRange);
     }
