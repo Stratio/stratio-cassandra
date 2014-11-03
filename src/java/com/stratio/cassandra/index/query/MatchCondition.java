@@ -17,6 +17,8 @@ package com.stratio.cassandra.index.query;
 
 import com.stratio.cassandra.index.schema.ColumnMapper;
 import com.stratio.cassandra.index.schema.Schema;
+import org.apache.lucene.analysis.core.KeywordAnalyzer;
+import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.NumericRangeQuery;
 import org.apache.lucene.search.Query;
@@ -89,7 +91,7 @@ public class MatchCondition extends Condition
         if (clazz == String.class)
         {
             String value = (String) columnMapper.queryValue(field, this.value);
-            String analyzedValue = analyze(field, value, schema.analyzer());
+            String analyzedValue = analyze(field, value, columnMapper);
             if (analyzedValue == null)
             {
                 throw new IllegalArgumentException("Value discarded by analyzer");
