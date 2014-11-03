@@ -122,11 +122,11 @@ public class RangeCondition extends Condition
             String upper = (String) columnMapper.queryValue(field, this.upper);
             if (lower != null)
             {
-                lower = analyze(field, lower, schema.analyzer());
+                lower = analyze(field, lower, columnMapper);
             }
             if (upper != null)
             {
-                upper = analyze(field, upper, schema.analyzer());
+                upper = analyze(field, upper, columnMapper);
             }
             query = TermRangeQuery.newStringRange(field, lower, upper, includeLower, includeUpper);
         }

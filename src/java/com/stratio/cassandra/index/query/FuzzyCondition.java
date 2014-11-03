@@ -124,7 +124,7 @@ public class FuzzyCondition extends Condition
         Class<?> clazz = columnMapper.baseClass();
         if (clazz == String.class)
         {
-            String analyzedValue = analyze(field, value, schema.analyzer());
+            String analyzedValue = analyze(field, value, columnMapper);
             Term term = new Term(field, analyzedValue);
             Query query = new FuzzyQuery(term, maxEdits, prefixLength, maxExpansions, transpositions);
             query.setBoost(boost);

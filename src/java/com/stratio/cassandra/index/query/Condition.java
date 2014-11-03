@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.query;
 
+import com.stratio.cassandra.index.schema.ColumnMapper;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -95,11 +96,12 @@ public abstract class Condition
         return new QueryWrapperFilter(query(schema));
     }
 
-    protected String analyze(String field, String value, Analyzer analyzer)
+    protected String analyze(String field, String value, ColumnMapper<?> columnMapper)
     {
         TokenStream source = null;
         try
         {
+            Analyzer analyzer = columnMapper.analyzer();
             source = analyzer.tokenStream(field, value);
             source.reset();
 

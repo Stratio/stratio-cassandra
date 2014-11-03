@@ -35,7 +35,7 @@ public class ColumnMapperText extends ColumnMapper<String>
 {
 
     /**
-     * The Lucene's {@link corg.apache.lucene.analysis.Analyzer}.
+     * The Lucene's {@link org.apache.lucene.analysis.Analyzer}.
      */
     private Analyzer analyzer;
 
@@ -62,7 +62,7 @@ public class ColumnMapperText extends ColumnMapper<String>
         }
         else
         {
-            this.analyzer = null;
+            this.analyzer = Schema.DEFAULT_ANALYZER;
         }
     }
 

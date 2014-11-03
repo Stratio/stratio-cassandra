@@ -231,7 +231,6 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         long endTime = System.currentTimeMillis() - startTime;
 
         Log.debug("Sorted %d rows to %d with comparator %s in %d ms", startSize, endSize, comparatorName, endTime);
-        System.out.println();
 
         return result;
     }

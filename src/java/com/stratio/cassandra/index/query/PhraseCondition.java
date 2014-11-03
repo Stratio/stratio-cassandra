@@ -118,7 +118,7 @@ public class PhraseCondition extends Condition
             {
                 if (value != null)
                 {
-                    String analyzedValue = analyze(field, value, analyzer);
+                    String analyzedValue = analyze(field, value, columnMapper);
                     if (analyzedValue != null)
                     {
                         Term term = new Term(field, analyzedValue);
