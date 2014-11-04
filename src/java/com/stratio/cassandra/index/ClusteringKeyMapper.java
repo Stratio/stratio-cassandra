@@ -31,6 +31,7 @@ import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.filter.ColumnSlice;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CompositeType;
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.lucene.util.BytesRef;
 
 import java.nio.ByteBuffer;
@@ -109,16 +110,45 @@ public class ClusteringKeyMapper
      */
     public List<CellName> clusteringKeys(ColumnFamily columnFamily)
     {
-        List<CellName> cellNames = new ArrayList<>();
+        List<CellName> clusteringKeys = new ArrayList<>();
+        CellName lastClusteringKey = null;
         for (Cell cell : columnFamily)
         {
             CellName cellName = cell.name();
-            if (isClusteringKey(cellName))
+            if (!isStatic(cellName))
             {
-                cellNames.add(cellName);
+                CellName clusteringKey = extractClusteringKey(cellName);
+                if (lastClusteringKey == null || !lastClusteringKey.isSameCQL3RowAs(type, clusteringKey)) {
+                    lastClusteringKey = clusteringKey;
+                    clusteringKeys.add(clusteringKey);
+                }
             }
         }
-        return sort(cellNames);
+        return sort(clusteringKeys);
+    }
+
+    private CellName extractClusteringKey(CellName cellName) {
+        int numClusteringColumns = metadata.clusteringColumns().size();
+        ByteBuffer[] components = new ByteBuffer[numClusteringColumns + 1];
+        for (int i = 0; i < numClusteringColumns; i++)
+        {
+            components[i] = cellName.get(i);
+        }
+        components[numClusteringColumns] = ByteBufferUtil.EMPTY_BYTE_BUFFER;
+        return type.makeCellName(components);
+    }
+
+    private boolean isStatic(CellName cellName)
+    {
+        int numClusteringColumns = metadata.clusteringColumns().size();
+        for (int i = 0; i < numClusteringColumns; i++)
+        {
+            if (ByteBufferUtils.isEmpty(cellName.get(i))) // Ignore static columns
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
