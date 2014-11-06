@@ -19,7 +19,6 @@ import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.index.util.JsonSerializer;
 import com.stratio.cassandra.index.util.Log;
 import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.lucene.queries.ChainedFilter;
 import org.apache.lucene.search.*;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
@@ -48,7 +47,7 @@ public class Search
     /**
      * The sorting.
      */
-    @JsonProperty("sort")
+    @JsonProperty("sortFields")
     private Sorting sorting;
 
     /**
@@ -62,7 +61,7 @@ public class Search
     @JsonCreator
     public Search(@JsonProperty("query") Condition queryCondition,
                   @JsonProperty("filter") Condition filterCondition,
-                  @JsonProperty("sort") Sorting sorting)
+                  @JsonProperty("sortFields") Sorting sorting)
     {
         this.queryCondition = queryCondition;
         this.filterCondition = filterCondition;
@@ -157,9 +156,9 @@ public class Search
      * @param schema A {@link Schema}.
      * @return The Lucene's {@link Filter} represented by this filtering {@link Condition} using {@code schema}.
      */
-    public Filter filter(Schema schema)
+    public Query filter(Schema schema)
     {
-        return filterCondition == null ? null : filterCondition.filter(schema);
+        return filterCondition == null ? null : new ConstantScoreQuery(filterCondition.filter(schema));
     }
 
     /**
@@ -175,66 +174,30 @@ public class Search
     }
 
     /**
-     * Returns the Lucene's {@link Filter} represented by this filtering {@link Condition} combined with the specified
-     * range {@link Filter} using the specified {@link Schema}. Maybe {@code null} meaning no filtering.
-     *
-     * @param schema      A {@link Schema}.
-     * @param rangeFilter An additional {@link Filter} to be used.
-     * @return The Lucene's {@link Sort} represented by this {@link Sorting} combined with {@code rangeFilter} using
-     * {@code schema}.
-     */
-    public Filter filter(Schema schema, Filter rangeFilter)
-    {
-        Filter filter = filter(schema);
-        if (filter == null && rangeFilter == null)
-        {
-            return null;
-        }
-        else if (filter != null && rangeFilter == null)
-        {
-            return filter;
-        }
-        else if (filter == null)
-        {
-            return rangeFilter;
-        }
-        else
-        {
-            Filter[] filters = new Filter[]{filter, rangeFilter};
-            return new ChainedFilter(filters, ChainedFilter.AND);
-        }
-    }
-
-    /**
      * Returns the Lucene's {@link Query} representation of this search. This {@link Query} include both the querying
      * and filtering {@link Condition}s. If none of them is set, then a {@link MatchAllDocsQuery} is returned, so it
      * never {@link ReturnStatement} {@code null}.
      *
      * @param schema      The {@link Schema} to be used.
-     * @param rangeFilter An additional {@link Filter} to be used.
+     * @param rangeQuery An additional range {@link Query} to be used.
      * @return The Lucene's {@link Query} representation of this search.
      */
-    public Query filteredQuery(Schema schema, Filter rangeFilter)
+    public Query filteredQuery(Schema schema, Query rangeQuery)
     {
         Query query = query(schema);
-        Filter filter = filter(schema, rangeFilter);
+        Query filter = filter(schema);
 
-        if (query == null && filter == null)
-        {
-            return new ConstantScoreQuery(new MatchAllDocsQuery());
+        BooleanQuery booleanQuery = new BooleanQuery();
+        if (query != null) {
+            booleanQuery.add(query, BooleanClause.Occur.MUST);
         }
-        else if (query != null && filter == null)
-        {
-            return query;
+        if (filter != null) {
+            booleanQuery.add(filter, BooleanClause.Occur.MUST);
         }
-        else if (query == null)
-        {
-            return new ConstantScoreQuery(filter);
+        if (rangeQuery != null) {
+            booleanQuery.add(rangeQuery, BooleanClause.Occur.MUST);
         }
-        else
-        {
-            return new FilteredQuery(query, filter);
-        }
+        return booleanQuery;
     }
 
     /**

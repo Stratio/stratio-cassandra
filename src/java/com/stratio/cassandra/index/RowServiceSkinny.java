@@ -16,11 +16,9 @@
 package com.stratio.cassandra.index;
 
 import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.Row;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.filter.QueryFilter;
+import org.apache.cassandra.dht.Token;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
 
@@ -111,23 +109,28 @@ public class RowServiceSkinny extends RowService
     /**
      * {@inheritDoc}
      */
-    protected List<Row> rows(List<ScoredDocument> scoredDocuments, long timestamp)
+    @Override
+    protected List<Row> rows(List<ScoredDocument> scoredDocuments, DataRange dataRange, long timestamp)
     {
         List<Row> rows = new ArrayList<>(scoredDocuments.size());
         for (ScoredDocument scoredDocument : scoredDocuments) {
-            // Extract row from document
+
+            // Extract row key from document
             Document document = scoredDocument.getDocument();
             DecoratedKey partitionKey = rowMapper.partitionKey(document);
-            Row row = row(partitionKey, timestamp);
+            Token token = partitionKey.getToken();
 
-            if (row == null) {
-                return null;
+            if (dataRange.keyRange().toTokenBounds().contains(token))
+            {
+                Row row = row(partitionKey, timestamp);
+                if (row != null)
+                {
+                    // Return decorated row
+                    Float score = scoredDocument.getScore();
+                    Row decoratedRow = addScoreColumn(row, timestamp, score);
+                    rows.add(decoratedRow);
+                }
             }
-
-            // Return decorated row
-            Float score = scoredDocument.getScore();
-            Row decoratedRow = addScoreColumn(row, timestamp, score);
-            rows.add(decoratedRow);
         }
         return rows;
     }

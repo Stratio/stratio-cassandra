@@ -25,8 +25,10 @@ import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.search.Filter;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
+
+import java.util.Comparator;
 
 /**
  * {@link RowMapper} for skinny rows.
@@ -35,8 +37,7 @@ import org.apache.lucene.search.Sort;
  */
 public class RowMapperSkinny extends RowMapper
 {
-
-    private final TokenMapper tokenMapper;
+    private final Comparator<ScoredDocument> scoredDocumentComparator;
 
     /**
      * Builds a new {@link RowMapperSkinny} for the specified column family metadata, indexed column definition and {@link Schema}.
@@ -48,7 +49,18 @@ public class RowMapperSkinny extends RowMapper
     RowMapperSkinny(CFMetaData metadata, ColumnDefinition columnDefinition, Schema schema)
     {
         super(metadata, columnDefinition, schema);
-        this.tokenMapper = TokenMapper.instance(metadata);
+
+        final Comparator<DecoratedKey> partitionKeyComparator = partitionKeyMapper.comparator();
+        this.scoredDocumentComparator = new Comparator<ScoredDocument>()
+        {
+            @Override
+            public int compare(ScoredDocument o1, ScoredDocument o2)
+            {
+                DecoratedKey pk1 = partitionKeyMapper.decoratedKey(o1.getDocument());
+                DecoratedKey pk2 = partitionKeyMapper.decoratedKey(o2.getDocument());
+                return partitionKeyComparator.compare(pk1, pk2);
+            }
+        };
     }
 
     /**
@@ -83,16 +95,16 @@ public class RowMapperSkinny extends RowMapper
     @Override
     public Sort sort()
     {
-        return new Sort(tokenMapper.sort());
+        return new Sort(tokenMapper.sortFields());
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public final Filter filter(DataRange dataRange)
+    public final Query query(DataRange dataRange)
     {
-        return tokenMapper.makeFilter(dataRange.keyRange());
+        return tokenMapper.query(dataRange);
     }
 
     /**
@@ -111,5 +123,10 @@ public class RowMapperSkinny extends RowMapper
     public RowComparator naturalComparator()
     {
         return new RowComparatorNatural();
+    }
+
+    @Override
+    public Comparator<ScoredDocument> scoredDocumentsComparator() {
+        return scoredDocumentComparator;
     }
 }

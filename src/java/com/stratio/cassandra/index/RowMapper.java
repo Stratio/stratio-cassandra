@@ -19,11 +19,9 @@ import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.DataRange;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.Row;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellName;
+import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Filter;
@@ -31,6 +29,10 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 
 /**
  * Class for several {@link org.apache.cassandra.db.Row} mappings between Cassandra and Lucene.
@@ -44,6 +46,7 @@ public abstract class RowMapper
     protected final ColumnDefinition columnDefinition;
     protected final Schema schema;
 
+    protected final TokenMapper tokenMapper;
     protected final PartitionKeyMapper partitionKeyMapper;
     protected final RegularCellsMapper regularCellsMapper;
 
@@ -59,6 +62,7 @@ public abstract class RowMapper
         this.metadata = metadata;
         this.columnDefinition = columnDefinition;
         this.schema = schema;
+        this.tokenMapper = TokenMapper.instance(metadata);
         this.partitionKeyMapper = PartitionKeyMapper.instance(metadata);
         this.regularCellsMapper = RegularCellsMapper.instance(metadata);
     }
@@ -156,7 +160,7 @@ public abstract class RowMapper
      * @param dataRange A {@link org.apache.cassandra.db.DataRange}.
      * @return The Lucene {@link org.apache.lucene.search.Filter} to get the {@link org.apache.lucene.document.Document}s satisfying the specified {@link org.apache.cassandra.db.DataRange}.
      */
-    public abstract Filter filter(DataRange dataRange);
+    public abstract Query query(DataRange dataRange);
 
     /**
      * Returns a {@link org.apache.cassandra.db.composites.CellName} for the indexed column in the specified column family.
@@ -172,6 +176,19 @@ public abstract class RowMapper
      * @return A {@link com.stratio.cassandra.index.RowComparator} using the same order that is used in Cassandra.
      */
     public abstract RowComparator naturalComparator();
+
+    public abstract Comparator<ScoredDocument> scoredDocumentsComparator();
+
+    public List<ScoredDocument> sort(List<ScoredDocument> scoredDocuments)
+    {
+        List<ScoredDocument> result = new ArrayList<>(scoredDocuments);
+        Collections.sort(result, scoredDocumentsComparator());
+        return result;
+    }
+
+    public Comparator<DecoratedKey> partitionKeyComparator() {
+        return partitionKeyMapper.comparator();
+    }
 
 
 }

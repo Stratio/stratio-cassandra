@@ -204,7 +204,7 @@ public class LuceneIndex
 
     /**
      * Finds the top {@code count} hits for {@code query}, applying {@code clusteringKeyFilter} if non-null, and sorting the hits by
-     * the criteria in {@code sort}.
+     * the criteria in {@code sortFields}.
      *
      * @param query        The {@link Query} to search for.
      * @param sort         The {@link Sort} to be applied.
@@ -256,7 +256,7 @@ public class LuceneIndex
     private TopDocs topDocs(IndexSearcher searcher, Query query, Sort sort, ScoreDoc after, int count)
             throws IOException
     {
-        // Use default sort if the query doesn't use relevance
+        // Use default sortFields if the query doesn't use relevance
         if (sort == null)
         {
             if (query instanceof ConstantScoreQuery)

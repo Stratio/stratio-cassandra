@@ -33,7 +33,7 @@ public class Sorting implements Iterable<SortingField>
 {
 
     /**
-     * How to sort each field
+     * How to sortFields each field
      */
     private final List<SortingField> sortingFields;
 

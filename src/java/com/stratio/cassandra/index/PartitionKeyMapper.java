@@ -26,6 +26,7 @@ import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.dht.IPartitioner;
+import org.apache.cassandra.dht.Token;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -35,6 +36,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 
 import java.nio.ByteBuffer;
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -58,6 +60,8 @@ public class PartitionKeyMapper
 
     private final CFMetaData metadata;
 
+    private final AbstractType<?> type;
+
     /**
      * Returns a new {@code PartitionKeyMapper} according to the specified column family meta data.
      *
@@ -67,6 +71,7 @@ public class PartitionKeyMapper
     {
         partitioner = DatabaseDescriptor.getPartitioner();
         this.metadata = metadata;
+        this.type = metadata.getKeyValidator();
     }
 
     /**
@@ -78,6 +83,11 @@ public class PartitionKeyMapper
     public static PartitionKeyMapper instance(CFMetaData metadata)
     {
         return new PartitionKeyMapper(metadata);
+    }
+
+    public AbstractType<?> getType()
+    {
+        return type;
     }
 
     /**
@@ -156,6 +166,17 @@ public class PartitionKeyMapper
             columns.add(ColumnMapper.column(name, value, valueType));
         }
         return columns;
+    }
+
+    public Comparator<DecoratedKey> comparator() {
+        return new Comparator<DecoratedKey>()
+        {
+            @Override
+            public int compare(DecoratedKey o1, DecoratedKey o2)
+            {
+                return PartitionKeyMapper.this.type.compare(o1.getKey(), o2.getKey());
+            }
+        };
     }
 
 }

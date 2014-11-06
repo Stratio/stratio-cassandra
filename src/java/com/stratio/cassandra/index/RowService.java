@@ -27,12 +27,9 @@ import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.CellNameType;
-import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.UTF8Type;
-import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 
@@ -61,7 +58,7 @@ public abstract class RowService
      * The max number of rows to be read per iteration
      */
     private static final int MAX_PAGE_SIZE = 100000;
-    private static final int FILTERING_PAGE_SIZE = 1000;
+    private static final int MIN_PAGE_SIZE = 5000;
 
     private TaskQueue indexQueue;
 
@@ -259,8 +256,8 @@ public abstract class RowService
         // Log.debug("Searching with search %s ", search);
 
         // Setup search arguments
-        Filter filter = rowMapper.filter(dataRange);
-        Query query = search.filteredQuery(schema, filter);
+        Query rangeQuery = rowMapper.query(dataRange);
+        Query query = search.filteredQuery(schema, rangeQuery);
         Sort sort = search.sort(schema);
 
         // Setup search pagination
@@ -273,7 +270,7 @@ public abstract class RowService
 
         // Paginate search collecting documents
         List<ScoredDocument> scoredDocuments;
-        int pageSize = Math.min(limit, MAX_PAGE_SIZE);
+        int pageSize = pageSize(limit);
         boolean maybeMore;
         do
         {
@@ -284,9 +281,12 @@ public abstract class RowService
             lastDoc = scoredDocuments.isEmpty() ? null : scoredDocuments.get(scoredDocuments.size() - 1);
             searchTime += System.currentTimeMillis() - searchStartTime;
 
+            // Sort scored documents
+            scoredDocuments = rowMapper.sort(scoredDocuments);
+
             // Collect rows from Cassandra
             long collectStartTime = System.currentTimeMillis();
-            for (Row row : rows(scoredDocuments, timestamp))
+            for (Row row : rows(scoredDocuments, dataRange, timestamp))
             {
                 if (row != null && accepted(row, expressions))
                 {
@@ -297,7 +297,7 @@ public abstract class RowService
 
             // Setup next iteration
             maybeMore = scoredDocuments.size() == pageSize;
-            pageSize = Math.min(Math.max(FILTERING_PAGE_SIZE, rows.size() - limit), MAX_PAGE_SIZE);
+            pageSize = pageSize(limit - rows.size());
             numPages++;
 
             // Iterate while there are still documents to read and we don't have enough rows
@@ -309,6 +309,10 @@ public abstract class RowService
 
         Collections.sort(rows, comparator());
         return rows;
+    }
+
+    private int pageSize(int count) {
+        return Math.min(Math.max(MIN_PAGE_SIZE, count), MAX_PAGE_SIZE);
     }
 
     /**
@@ -392,7 +396,7 @@ public abstract class RowService
      * @param timestamp       The time stamp to ignore deleted columns.
      * @return The {@link Row} identified by the specified {@link Document}s
      */
-    protected abstract List<Row> rows(List<ScoredDocument> scoredDocuments, long timestamp) throws IOException;
+    protected abstract List<Row> rows(List<ScoredDocument> scoredDocuments, DataRange dataRange, long timestamp) throws IOException;
 
     /**
      * Returns a {@link ColumnFamily} composed by the non expired {@link Cell}s of the specified  {@link ColumnFamily}.
@@ -413,62 +417,6 @@ public abstract class RowService
         }
         return cleanColumnFamily;
     }
-
-    /**
-     * Adds to the specified {@link Row} the specified Lucene score column.
-     *
-     * @param row       A {@link Row}.
-     * @param timestamp The score column timestamp.
-     * @param score     The score column value.
-     * @return The {@link Row} with the score.
-     */
-    protected Row addScoreColumn(Row row, long timestamp, Float score)
-    {
-        ColumnFamily cf = row.cf;
-        CellName cellName = rowMapper.makeCellName(cf);
-        ByteBuffer cellValue = UTF8Type.instance.decompose(score.toString());
-
-        ColumnFamily dcf = ArrayBackedSortedColumns.factory.create(baseCfs.metadata);
-        dcf.addColumn(cellName, cellValue, timestamp);
-        dcf.addAll(row.cf);
-
-        return new Row(row.key, dcf);
-    }
-
-//    /**
-//     * Returns a Lucene's {@link Filter} representing the specified Cassandra's {@link DataRange} using caching.
-//     *
-//     * @param dataRange The Cassandra's {@link DataRange} to be mapped.
-//     * @return A Lucene's {@link Filter} representing the specified Cassandra's {@link DataRange}.
-//     */
-//    protected final Filter cachedFilter(DataRange dataRange)
-//    {
-//        AbstractBounds<RowPosition> keyRange = dataRange.keyRange();
-//        if (filterCache == null)
-//        {
-//            Log.debug("Filter cache not present for range %s", keyRange);
-//            return rowMapper.makeFilter(dataRange);
-//        }
-//        Filter makeFilter = filterCache.get(dataRange);
-//        if (makeFilter == null)
-//        {
-//            makeFilter = rowMapper.makeFilter(dataRange);
-//            if (makeFilter != null)
-//            {
-//                Log.debug("Filter cache fails for range %s", keyRange);
-//                filterCache.put(dataRange, makeFilter);
-//            }
-//            else
-//            {
-//                Log.debug("Filter cache unneeded for range %s", keyRange);
-//            }
-//        }
-//        else
-//        {
-//            Log.debug("Filter cache hits for range %s", keyRange);
-//        }
-//        return makeFilter;
-//    }
 
     /**
      * Returns the {@link RowComparator} to be used for ordering the {@link Row}s obtained from the specified
@@ -492,7 +440,7 @@ public abstract class RowService
                 return new RowComparatorScoring(this);
             }
         }
-        return rowMapper.naturalComparator();
+        return comparator();
     }
 
     /**
@@ -521,6 +469,26 @@ public abstract class RowService
     }
 
     /**
+     * Adds to the specified {@link Row} the specified Lucene score column.
+     *
+     * @param row       A {@link Row}.
+     * @param timestamp The score column timestamp.
+     * @param score     The score column value.
+     * @return The {@link Row} with the score.
+     */
+    protected Row addScoreColumn(Row row, long timestamp, Float score)
+    {
+        CellName cellName = rowMapper.makeCellName(row.cf);
+        ByteBuffer cellValue = UTF8Type.instance.decompose(score.toString());
+
+        ColumnFamily dcf = ArrayBackedSortedColumns.factory.create(metadata);
+        dcf.addColumn(cellName, cellValue, timestamp);
+        dcf.addAll(row.cf);
+
+        return new Row(row.key, dcf);
+    }
+
+    /**
      * Optimizes the managed Lucene's index. It can be a very heavy operation.
      */
     public void optimize() throws IOException
@@ -537,31 +505,6 @@ public abstract class RowService
     public long getIndexSize() throws IOException
     {
         return luceneIndex.getNumDocs();
-    }
-
-    /**
-     * Groups the specified CQL3 {@link Row} into a list of physical storage {@link Row}s. This grouping is based in row's key.
-     *
-     * @param rows A list of CQL3 {@link Row}s.
-     * @return The specified CQL3 {@link Row} into a list of physical storage {@link Row}s.
-     */
-    public List<Row> group(List<Row> rows)
-    {
-        LinkedList<Row> result = new LinkedList<>();
-        Row lastRow = null;
-        for (Row row : rows)
-        {
-            if (lastRow != null && row.key.equals(lastRow.key))
-            {
-                lastRow.cf.addAll(row.cf);
-            }
-            else
-            {
-                lastRow = row;
-                result.add(row);
-            }
-        }
-        return result;
     }
 
 }

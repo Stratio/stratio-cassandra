@@ -17,18 +17,21 @@ package com.stratio.cassandra.index;
 
 import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.schema.Schema;
+import com.stratio.cassandra.index.util.ComparatorChain;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.filter.ColumnSlice;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Filter;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
 
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * {@link RowMapper} for wide rows.
@@ -39,6 +42,8 @@ public class RowMapperWide extends RowMapper
 {
     private final ClusteringKeyMapper clusteringKeyMapper;
     private final FullKeyMapper fullKeyMapper;
+
+    private final ComparatorChain<ScoredDocument> scoredDocumentComparator;
 
     /**
      * Builds a new {@link RowMapperWide} for the specified column family metadata, indexed column definition and {@link Schema}.
@@ -51,7 +56,31 @@ public class RowMapperWide extends RowMapper
     {
         super(metadata, columnDefinition, schema);
         this.clusteringKeyMapper = ClusteringKeyMapper.instance(metadata);
-        this.fullKeyMapper = FullKeyMapper.instance(metadata, partitionKeyMapper, clusteringKeyMapper);
+        this.fullKeyMapper = FullKeyMapper.instance(partitionKeyMapper, clusteringKeyMapper);
+
+        final Comparator<DecoratedKey> partitionKeyComparator = partitionKeyMapper.comparator();
+        final Comparator<CellName> clusteringKeyComparator = clusteringKeyMapper.comparator();
+        scoredDocumentComparator = new ComparatorChain<>();
+        scoredDocumentComparator.addComparator(new Comparator<ScoredDocument>()
+        {
+            @Override
+            public int compare(ScoredDocument o1, ScoredDocument o2)
+            {
+                DecoratedKey pk1 = partitionKeyMapper.decoratedKey(o1.getDocument());
+                DecoratedKey pk2 = partitionKeyMapper.decoratedKey(o2.getDocument());
+                return partitionKeyComparator.compare(pk1, pk2);
+            }
+        });
+        scoredDocumentComparator.addComparator(new Comparator<ScoredDocument>()
+        {
+            @Override
+            public int compare(ScoredDocument o1, ScoredDocument o2)
+            {
+                CellName c1 = clusteringKeyMapper.cellName(o1.getDocument());
+                CellName c2 = clusteringKeyMapper.cellName(o2.getDocument());
+                return clusteringKeyComparator.compare(c1, c2);
+            }
+        });
     }
 
     /**
@@ -77,7 +106,9 @@ public class RowMapperWide extends RowMapper
         CellName clusteringKey = clusteringKeyMapper.cellName(row);
 
         Document document = new Document();
+        tokenMapper.addFields(document, partitionKey);
         partitionKeyMapper.addFields(document, partitionKey);
+        clusteringKeyMapper.addFields(document, clusteringKey);
         fullKeyMapper.addFields(document, partitionKey, clusteringKey);
         schema.addFields(document, columns(row));
         return document;
@@ -89,7 +120,9 @@ public class RowMapperWide extends RowMapper
     @Override
     public Sort sort()
     {
-        return new Sort(fullKeyMapper.sortFields());
+        SortField[] partitionKeySort = tokenMapper.sortFields();
+        SortField[] clusteringKeySort = clusteringKeyMapper.sortFields();
+        return new Sort(ArrayUtils.addAll(partitionKeySort, clusteringKeySort));
     }
 
     /**
@@ -98,7 +131,7 @@ public class RowMapperWide extends RowMapper
     @Override
     public CellName makeCellName(ColumnFamily columnFamily)
     {
-        CellName clusteringKey = clusteringKey(columnFamily);
+        CellName clusteringKey = clusteringKeyMapper.clusteringKey(columnFamily);
         return clusteringKeyMapper.makeCellName(clusteringKey, columnDefinition);
     }
 
@@ -119,18 +152,7 @@ public class RowMapperWide extends RowMapper
      */
     public CellName clusteringKey(Document document)
     {
-        return fullKeyMapper.cellName(document);
-    }
-
-    /**
-     * Returns the first clustering key contained in the specified {@link ColumnFamily}.
-     *
-     * @param columnFamily A {@link ColumnFamily}.
-     * @return The first clustering key contained in the specified {@link ColumnFamily}.
-     */
-    public CellName clusteringKey(ColumnFamily columnFamily)
-    {
-        return clusteringKeyMapper.clusteringKey(columnFamily);
+        return clusteringKeyMapper.cellName(document);
     }
 
     /**
@@ -162,20 +184,21 @@ public class RowMapperWide extends RowMapper
      * @param dataRange A {@link DataRange}.
      * @return The Lucene {@link Filter} to get the {@link Document}s satisfying the specified {@link DataRange}.
      */
-    public Filter filter(DataRange dataRange)
+    @Override
+    public Query query(DataRange dataRange)
     {
-        return fullKeyMapper.filter(dataRange);
+        return tokenMapper.query(dataRange);
     }
 
     /**
-     * Returns the Lucene {@link Filter} to get the {@link Document}s satisfying the specified {@link RangeTombstone}.
+     * Returns the Lucene {@link Query} to get the {@link Document}s satisfying the specified {@link RangeTombstone}.
      *
      * @param rangeTombstone A {@link RangeTombstone}.
-     * @return The Lucene {@link Filter} to get the {@link Document}s satisfying the specified {@link RangeTombstone}.
+     * @return The Lucene {@link Query} to get the {@link Document}s satisfying the specified {@link RangeTombstone}.
      */
-    public Filter filter(RangeTombstone rangeTombstone)
+    public Query query(RangeTombstone rangeTombstone)
     {
-        return fullKeyMapper.filter(rangeTombstone);
+        return clusteringKeyMapper.query(rangeTombstone);
     }
 
     /**
@@ -200,7 +223,8 @@ public class RowMapperWide extends RowMapper
         return clusteringKeyMapper.splitRows(columnFamily);
     }
 
-    public String toString(CellName cellName) {
-        return clusteringKeyMapper.toString(cellName);
+    @Override
+    public Comparator<ScoredDocument> scoredDocumentsComparator() {
+        return scoredDocumentComparator;
     }
 }

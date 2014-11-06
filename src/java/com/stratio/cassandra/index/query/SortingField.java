@@ -38,7 +38,7 @@ public class SortingField
     private static final boolean DEFAULT_REVERSE = false;
 
     /**
-     * The name of field to sort by.
+     * The name of field to sortFields by.
      */
     @JsonProperty("field")
     private final String field;
@@ -52,7 +52,7 @@ public class SortingField
     /**
      * Returns a new {@link SortingField}.
      *
-     * @param field   The name of field to sort by.
+     * @param field   The name of field to sortFields by.
      * @param reverse {@code true} if natural order should be reversed.
      */
     @JsonCreator
@@ -77,7 +77,7 @@ public class SortingField
         ColumnMapper<?> columnMapper = schema.getMapper(field);
         if (columnMapper == null)
         {
-            throw new IllegalArgumentException("No mapper found for sort field " + field);
+            throw new IllegalArgumentException("No mapper found for sortFields field " + field);
         }
         else
         {

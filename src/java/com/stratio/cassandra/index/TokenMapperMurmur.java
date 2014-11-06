@@ -17,6 +17,7 @@ package com.stratio.cassandra.index;
 
 import com.stratio.cassandra.index.util.Log;
 import org.apache.cassandra.config.CFMetaData;
+import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.RowPosition;
 import org.apache.cassandra.dht.AbstractBounds;
@@ -25,9 +26,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.LongField;
-import org.apache.lucene.search.Filter;
-import org.apache.lucene.search.NumericRangeFilter;
-import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.*;
 
 /**
  * {@link PartitionKeyMapper} to be used when {@link Murmur3Partitioner} is used. It indexes the token long value as a
@@ -60,8 +59,9 @@ public class TokenMapperMurmur extends TokenMapper
      * {@inheritDoc}
      */
     @Override
-    public Filter makeFilter(AbstractBounds<RowPosition> keyRange)
+    public Query query(DataRange dataRange)
     {
+        AbstractBounds<RowPosition> keyRange = dataRange.keyRange();
         RowPosition startPosition = keyRange.left;
         RowPosition stopPosition = keyRange.right;
         Long start = (Long) startPosition.getToken().token;
@@ -74,17 +74,17 @@ public class TokenMapperMurmur extends TokenMapper
         {
             stop = null;
         }
-        boolean includeLower = includeLower(startPosition.kind());
-        boolean includeUpper = includeUpper(stopPosition.kind());
+        boolean includeLower = includeLower(startPosition);
+        boolean includeUpper = includeUpper(stopPosition);
         Log.debug("Filtering %s %d, %d %s", includeLower ? "[" : "(", start, stop, includeUpper ? "]" : ")");
-        return NumericRangeFilter.newLongRange(FIELD_NAME, start, stop, includeLower, includeUpper);
+        return NumericRangeQuery.newLongRange(FIELD_NAME, start, stop, includeLower, includeUpper);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public SortField[] sort()
+    public SortField[] sortFields()
     {
         return new SortField[]{new SortField(FIELD_NAME, SortField.Type.LONG)};
     }

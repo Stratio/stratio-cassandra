@@ -19,14 +19,17 @@ import com.google.common.collect.Lists;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellName;
+import org.apache.cassandra.db.composites.CellNameType;
+import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.filter.ColumnSlice;
 import org.apache.cassandra.db.filter.QueryFilter;
 import org.apache.cassandra.db.filter.SliceQueryFilter;
+import org.apache.cassandra.dht.Token;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.FilteredQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryWrapperFilter;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -46,6 +49,7 @@ public class RowServiceWide extends RowService
     {
         FIELDS_TO_LOAD = new HashSet<>();
         FIELDS_TO_LOAD.add(PartitionKeyMapper.FIELD_NAME);
+        FIELDS_TO_LOAD.add(ClusteringKeyMapper.FIELD_NAME);
         FIELDS_TO_LOAD.add(FullKeyMapper.FIELD_NAME);
     }
 
@@ -105,9 +109,9 @@ public class RowServiceWide extends RowService
                 while (iterator.hasNext())
                 {
                     RangeTombstone rangeTombstone = iterator.next();
-                    Filter filter = rowMapper.filter(rangeTombstone);
+                    Query rangeTombstoneQuery = rowMapper.query(rangeTombstone);
                     Query partitionKeyQuery = rowMapper.query(partitionKey);
-                    Query query = new FilteredQuery(partitionKeyQuery, filter);
+                    Query query = new FilteredQuery(partitionKeyQuery, new QueryWrapperFilter(rangeTombstoneQuery));
                     luceneIndex.delete(query);
                 }
             }
@@ -135,48 +139,39 @@ public class RowServiceWide extends RowService
      * The {@link Row} is a logical one.
      */
     @Override
-    protected List<Row> rows(List<ScoredDocument> scoredDocuments, long timestamp)
+    protected List<Row> rows(List<ScoredDocument> scoredDocuments, DataRange dataRange, long timestamp)
     {
         // Initialize result
         List<Row> rows = new ArrayList<>(scoredDocuments.size());
 
-//        for (ScoredDocument scoredDocument : scoredDocuments) {
-//            Document document = scoredDocument.getDocument();
-//            DecoratedKey partitionKey = rowMapper.partitionKey(document);
-//            CellName clusteringKey = rowMapper.clusteringKey(document);
-//            Float score = scoredDocument.getScore();
-//            Map<CellName, Row> iRows = rows(partitionKey, Arrays.asList(clusteringKey), timestamp);
-//            Row row = iRows.get(clusteringKey);
-//            if (row != null)
-//            {
-//                Row scoredRow = addScoreColumn(row, timestamp, score);
-//                rows.add(scoredRow);
-//            }
-//        }
-
         // Group key queries by partition keys
         Map<CellName, Float> scoresByClusteringKey = new HashMap<>(scoredDocuments.size());
-        Map<DecoratedKey, List<CellName>> keys = new HashMap<>();
+        Map<DecoratedKey, List<CellName>> keys = new TreeMap<>(rowMapper.partitionKeyComparator());
         for (ScoredDocument scoredDocument : scoredDocuments)
         {
             Document document = scoredDocument.getDocument();
             DecoratedKey partitionKey = rowMapper.partitionKey(document);
             CellName clusteringKey = rowMapper.clusteringKey(document);
-            Float score = scoredDocument.getScore();
-            scoresByClusteringKey.put(clusteringKey, score);
-            List<CellName> clusteringKeys = keys.get(partitionKey);
-            if (clusteringKeys == null)
-            {
-                clusteringKeys = new ArrayList<>();
-                keys.put(partitionKey, clusteringKeys);
+
+            if (accepted(dataRange, partitionKey, clusteringKey)) {
+                Float score = scoredDocument.getScore();
+                scoresByClusteringKey.put(clusteringKey, score);
+                List<CellName> clusteringKeys = keys.get(partitionKey);
+                if (clusteringKeys == null)
+                {
+                    clusteringKeys = new ArrayList<>();
+                    keys.put(partitionKey, clusteringKeys);
+                }
+                clusteringKeys.add(clusteringKey);
             }
-            clusteringKeys.add(clusteringKey);
         }
 
+        // Read rows from C* in fixed-size slices
         for (Map.Entry<DecoratedKey, List<CellName>> entry : keys.entrySet())
         {
             DecoratedKey partitionKey = entry.getKey();
-            for (List<CellName> clusteringKeys : Lists.partition(entry.getValue(), 1000) ) {
+            for (List<CellName> clusteringKeys : Lists.partition(entry.getValue(), 1000))
+            {
                 Map<CellName, Row> partitionRows = rows(partitionKey, clusteringKeys, timestamp);
                 for (Map.Entry<CellName, Row> entry1 : partitionRows.entrySet())
                 {
@@ -189,6 +184,28 @@ public class RowServiceWide extends RowService
             }
         }
         return rows;
+    }
+
+    private boolean accepted(DataRange dataRange, DecoratedKey partitionKey, CellName clusteringKey)
+    {
+        Token token = partitionKey.getToken();
+        CellNameType clusteringKeyType = metadata.comparator;
+        if (!dataRange.keyRange().toTokenBounds().contains(token))
+        {
+            return false;
+        }
+        SliceQueryFilter sliceQueryFilter = (SliceQueryFilter) dataRange.columnFilter(partitionKey.getKey());
+        Composite start = sliceQueryFilter.start();
+        if (!start.isEmpty() && clusteringKeyType.compare(start, clusteringKey) > 0)
+        {
+            return false;
+        }
+        Composite finish = sliceQueryFilter.finish();
+        if (!finish.isEmpty() && clusteringKeyType.compare(finish, clusteringKey) < 0)
+        {
+            return false;
+        }
+        return true;
     }
 
     /**

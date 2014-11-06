@@ -33,7 +33,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
 public class ColumnMapperInteger extends ColumnMapper<Integer>
 {
 
-    private Float DEFAULT_BOOST = 1.0f;
+    public static final Float DEFAULT_BOOST = 1.0f;
 
     private final Float boost;
 

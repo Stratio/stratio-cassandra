@@ -30,7 +30,7 @@ import java.io.IOException;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class TokenMapperGenericSorter extends FieldComparator<BytesRef>
+public class TokenSorter extends FieldComparator<BytesRef>
 {
 
     private static final byte[] MISSING_BYTES = new byte[0];
@@ -55,7 +55,7 @@ public class TokenMapperGenericSorter extends FieldComparator<BytesRef>
      * @param numHits            The number of hits.
      * @param field              The field name.
      */
-    public TokenMapperGenericSorter(TokenMapperGeneric tokenMapperGeneric, int numHits, String field)
+    public TokenSorter(TokenMapperGeneric tokenMapperGeneric, int numHits, String field)
     {
         this.tokenMapperGeneric = tokenMapperGeneric;
         values = new BytesRef[numHits];
