@@ -26,6 +26,7 @@ import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 
+import org.apache.cassandra.db.index.SecondaryIndexSearcher;
 import org.github.jamm.MemoryMeter;
 
 import org.apache.cassandra.auth.Permission;
@@ -88,6 +89,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
     private boolean isKeyRange;
     private boolean keyIsInRelation;
     private boolean usesSecondaryIndexing;
+    private boolean allowsPaging = true;
 
     private Map<ColumnIdentifier, Integer> orderingIndexes;
 
@@ -200,7 +202,7 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         long now = System.currentTimeMillis();
         Pageable command = getPageableCommand(options, limit, now);
 
-        int pageSize = options.getPageSize();
+        int pageSize = allowsPaging ? options.getPageSize() : limit;
         // A count query will never be paged for the user, but we always page it internally to avoid OOM.
         // If we user provided a pageSize we'll use that to page internally (because why not), otherwise we use our default
         // Note that if there are some nodes in the cluster with a version less than 2.0, we can't use paging (CASSANDRA-6707).
@@ -1088,6 +1090,8 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
             ColumnFamilyStore cfs = Keyspace.open(keyspace()).getColumnFamilyStore(columnFamily());
             SecondaryIndexManager secondaryIndexManager = cfs.indexManager;
             secondaryIndexManager.validateIndexSearchersForQuery(expressions);
+            SecondaryIndexSearcher indexSearcher = secondaryIndexManager.getIndexSearcherForQuery(expressions);
+            allowsPaging = indexSearcher.allowsPaging(expressions);
         }
 
         return expressions;

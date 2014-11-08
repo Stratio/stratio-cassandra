@@ -69,6 +69,98 @@ public class Search
     }
 
     /**
+     * Returns {@code true} if the results must be ordered by relevance. If {@code false}, then the results are sorted
+     * by the natural Cassandra's order. Results must be ordered by relevance if the querying condition is not {code
+     * null}.
+     * <p/>
+     * Relevance is used when the query condition is set, and it is not used when only the clusteringKeyFilter condition is set.
+     *
+     * @return {@code true} if the results must be ordered by relevance. If {@code false}, then the results must be
+     * sorted by the natural Cassandra's order.
+     */
+    public boolean usesRelevanceOrSorting()
+    {
+        return usesRelevance() || usesSorting();
+    }
+
+    public boolean usesRelevance()
+    {
+        return queryCondition != null;
+    }
+
+    public boolean usesSorting()
+    {
+        return sorting != null;
+    }
+
+    public Sorting getSorting()
+    {
+        return this.sorting;
+    }
+
+    /**
+     * Returns the Lucene's {@link Sort} represented by this {@link Sorting} using the specified {@link Schema}. Maybe
+     * {@code null} meaning no sorting.
+     *
+     * @param schema A {@link Schema}.
+     * @return The Lucene's {@link Sort} represented by this {@link Sorting} using {@code schema}.
+     */
+    public Sort sort(Schema schema)
+    {
+        return sorting == null ? null : sorting.sort(schema);
+    }
+
+    /**
+     * Returns the Lucene's {@link Query} representation of this search. This {@link Query} include both the querying
+     * and filtering {@link Condition}s. If none of them is set, then a {@link MatchAllDocsQuery} is returned, so it
+     * never {@link ReturnStatement} {@code null}.
+     *
+     * @param schema     The {@link Schema} to be used.
+     * @param rangeQuery An additional range {@link Query} to be used.
+     * @return The Lucene's {@link Query} representation of this search.
+     */
+    public Query query(Schema schema, Query rangeQuery)
+    {
+        BooleanQuery booleanQuery = new BooleanQuery();
+        if (queryCondition != null)
+        {
+            Query query = queryCondition.query(schema);
+            booleanQuery.add(query, BooleanClause.Occur.MUST);
+        }
+        if (filterCondition != null)
+        {
+            Query query = new ConstantScoreQuery(filterCondition.query(schema));
+            booleanQuery.add(query, BooleanClause.Occur.MUST);
+        }
+        if (rangeQuery != null)
+        {
+            booleanQuery.add(rangeQuery, BooleanClause.Occur.MUST);
+        }
+        return booleanQuery;
+    }
+
+    /**
+     * Validates this {@link Search} against the specified {@link Schema}.
+     *
+     * @param schema A {@link Schema}.
+     */
+    public void validate(Schema schema)
+    {
+        if (queryCondition != null)
+        {
+            queryCondition.query(schema);
+        }
+        if (filterCondition != null)
+        {
+            filterCondition.query(schema);
+        }
+        if (sorting != null)
+        {
+            sorting.sort(schema);
+        }
+    }
+
+    /**
      * Returns a new {@link Search} from the specified JSON {@code String}.
      *
      * @param json A JSON {@code String} representing a {@link Search}.
@@ -104,120 +196,6 @@ public class Search
             String message = String.format("Unformateable JSON search: %s", e.getMessage());
             Log.error(e, message);
             throw new IllegalArgumentException(message, e);
-        }
-    }
-
-    /**
-     * Returns {@code true} if the results must be ordered by relevance. If {@code false}, then the results are sorted
-     * by the natural Cassandra's order. Results must be ordered by relevance if the querying condition is not {code
-     * null}.
-     * <p/>
-     * Relevance is used when the query condition is set, and it is not used when only the clusteringKeyFilter condition is set.
-     *
-     * @return {@code true} if the results must be ordered by relevance. If {@code false}, then the results must be
-     * sorted by the natural Cassandra's order.
-     */
-    public boolean usesRelevanceOrSorting()
-    {
-        return queryCondition != null || sorting != null;
-    }
-
-    public boolean usesRelevance()
-    {
-        return queryCondition != null;
-    }
-
-    public boolean usesSorting()
-    {
-        return sorting != null;
-    }
-
-    public Sorting getSorting()
-    {
-        return this.sorting;
-    }
-
-    /**
-     * Returns the Lucene's {@link Query} represented by this querying {@link Condition} using the specified
-     * {@link Schema}. Maybe {@code null} meaning no querying.
-     *
-     * @param schema A {@link Schema}.
-     * @return The Lucene's {@link Query} represented by this querying {@link Condition} using {@code schema}.
-     */
-    public Query query(Schema schema)
-    {
-        return queryCondition == null ? null : queryCondition.query(schema);
-    }
-
-    /**
-     * Returns the Lucene's {@link Filter} represented by this filtering {@link Condition} using the specified
-     * {@link Schema}. Maybe {@code null} meaning no filtering.
-     *
-     * @param schema A {@link Schema}.
-     * @return The Lucene's {@link Filter} represented by this filtering {@link Condition} using {@code schema}.
-     */
-    public Query filter(Schema schema)
-    {
-        return filterCondition == null ? null : new ConstantScoreQuery(filterCondition.filter(schema));
-    }
-
-    /**
-     * Returns the Lucene's {@link Sort} represented by this {@link Sorting} using the specified {@link Schema}. Maybe
-     * {@code null} meaning no sorting.
-     *
-     * @param schema A {@link Schema}.
-     * @return The Lucene's {@link Sort} represented by this {@link Sorting} using {@code schema}.
-     */
-    public Sort sort(Schema schema)
-    {
-        return sorting == null ? null : sorting.sort(schema);
-    }
-
-    /**
-     * Returns the Lucene's {@link Query} representation of this search. This {@link Query} include both the querying
-     * and filtering {@link Condition}s. If none of them is set, then a {@link MatchAllDocsQuery} is returned, so it
-     * never {@link ReturnStatement} {@code null}.
-     *
-     * @param schema      The {@link Schema} to be used.
-     * @param rangeQuery An additional range {@link Query} to be used.
-     * @return The Lucene's {@link Query} representation of this search.
-     */
-    public Query filteredQuery(Schema schema, Query rangeQuery)
-    {
-        Query query = query(schema);
-        Query filter = filter(schema);
-
-        BooleanQuery booleanQuery = new BooleanQuery();
-        if (query != null) {
-            booleanQuery.add(query, BooleanClause.Occur.MUST);
-        }
-        if (filter != null) {
-            booleanQuery.add(filter, BooleanClause.Occur.MUST);
-        }
-        if (rangeQuery != null) {
-            booleanQuery.add(rangeQuery, BooleanClause.Occur.MUST);
-        }
-        return booleanQuery;
-    }
-
-    /**
-     * Validates this {@link Search} against the specified {@link Schema}.
-     *
-     * @param schema A {@link Schema}.
-     */
-    public void validate(Schema schema)
-    {
-        if (queryCondition != null)
-        {
-            queryCondition.query(schema);
-        }
-        if (filterCondition != null)
-        {
-            filterCondition.filter(schema);
-        }
-        if (sorting != null)
-        {
-            sorting.sort(schema);
         }
     }
 

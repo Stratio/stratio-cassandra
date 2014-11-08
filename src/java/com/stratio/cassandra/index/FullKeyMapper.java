@@ -18,13 +18,11 @@ package com.stratio.cassandra.index;
 import com.stratio.cassandra.index.util.ByteBufferUtils;
 import com.stratio.cassandra.index.util.ComparatorChain;
 import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.db.DataRange;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.RangeTombstone;
-import org.apache.cassandra.db.Row;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.CellNameType;
 import org.apache.cassandra.db.composites.Composite;
+import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.dht.Token;
@@ -54,6 +52,9 @@ public class FullKeyMapper
      */
     public static final String FIELD_NAME = "_full_key";
 
+    private final PartitionKeyMapper partitionKeyMapper;
+    private  final  ClusteringKeyMapper clusteringKeyMapper;
+
     /**
      * The partition key type.
      */
@@ -77,6 +78,8 @@ public class FullKeyMapper
      */
     private FullKeyMapper(PartitionKeyMapper partitionKeyMapper, ClusteringKeyMapper clusteringKeyMapper)
     {
+        this.partitionKeyMapper = partitionKeyMapper;
+        this.clusteringKeyMapper = clusteringKeyMapper;
         this.partitionKeyType = partitionKeyMapper.getType();
         this.clusteringKeyType = clusteringKeyMapper.getType();
         type = CompositeType.getInstance(partitionKeyType, clusteringKeyType.asAbstractType());
@@ -123,7 +126,13 @@ public class FullKeyMapper
         return new Term(FIELD_NAME, string);
     }
 
-    private String string(DecoratedKey partitionKey, CellName cellName) {
+    public Term term(DecoratedKey partitionKey, Composite clusteringKey)
+    {
+        String string = string(partitionKey, clusteringKey);
+        return new Term(FIELD_NAME, string);
+    }
+
+    private String string(DecoratedKey partitionKey, Composite cellName) {
         ByteBuffer bb = type.builder().add(partitionKey.getKey()).add(cellName.toByteBuffer()).build();
         return ByteBufferUtils.toString(bb);
     }

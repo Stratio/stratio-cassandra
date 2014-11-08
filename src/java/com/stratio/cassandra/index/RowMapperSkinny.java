@@ -20,12 +20,10 @@ import com.stratio.cassandra.index.schema.Schema;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 
 import java.util.Comparator;
@@ -37,7 +35,8 @@ import java.util.Comparator;
  */
 public class RowMapperSkinny extends RowMapper
 {
-    private final Comparator<ScoredDocument> scoredDocumentComparator;
+    private final Comparator<SearchResult> scoredDocumentComparator;
+    private final SearchResultBuilder searchResultBuilder;
 
     /**
      * Builds a new {@link RowMapperSkinny} for the specified column family metadata, indexed column definition and {@link Schema}.
@@ -51,16 +50,18 @@ public class RowMapperSkinny extends RowMapper
         super(metadata, columnDefinition, schema);
 
         final Comparator<DecoratedKey> partitionKeyComparator = partitionKeyMapper.comparator();
-        this.scoredDocumentComparator = new Comparator<ScoredDocument>()
+        this.scoredDocumentComparator = new Comparator<SearchResult>()
         {
             @Override
-            public int compare(ScoredDocument o1, ScoredDocument o2)
+            public int compare(SearchResult o1, SearchResult o2)
             {
-                DecoratedKey pk1 = partitionKeyMapper.decoratedKey(o1.getDocument());
-                DecoratedKey pk2 = partitionKeyMapper.decoratedKey(o2.getDocument());
+                DecoratedKey pk1 = o1.getPartitionKey();
+                DecoratedKey pk2 = o2.getPartitionKey();
                 return partitionKeyComparator.compare(pk1, pk2);
             }
         };
+
+        this.searchResultBuilder = new SearchResultBuilderSkinny(partitionKeyMapper);
     }
 
     /**
@@ -102,15 +103,6 @@ public class RowMapperSkinny extends RowMapper
      * {@inheritDoc}
      */
     @Override
-    public final Query query(DataRange dataRange)
-    {
-        return tokenMapper.query(dataRange);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public CellName makeCellName(ColumnFamily columnFamily)
     {
         return metadata.comparator.makeCellName(columnDefinition.name.bytes);
@@ -126,7 +118,18 @@ public class RowMapperSkinny extends RowMapper
     }
 
     @Override
-    public Comparator<ScoredDocument> scoredDocumentsComparator() {
+    public Comparator<SearchResult> scoredDocumentsComparator() {
         return scoredDocumentComparator;
+    }
+
+    @Override
+    public String toString(SearchResult searchResult) {
+        DecoratedKey partitionKey = searchResult.getPartitionKey();
+        return partitionKeyMapper.toString(partitionKey);
+    }
+
+    @Override
+    public SearchResultBuilder searchResultBuilder() {
+        return searchResultBuilder;
     }
 }

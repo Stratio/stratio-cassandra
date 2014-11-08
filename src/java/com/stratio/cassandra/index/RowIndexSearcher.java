@@ -90,6 +90,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
 
             long time = System.currentTimeMillis() - startTime;
             Log.debug("Search time: %d ms", time);
+            Log.debug("", time);
             return rows;
         }
         catch (Exception e)
@@ -224,8 +225,6 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         Comparator<Row> comparator = rowService.comparator(search);
         Collections.sort(result, comparator);
 
-//        result = rowService.group(result);
-
         String comparatorName = comparator.getClass().getSimpleName();
         int endSize = result.size();
         long endTime = System.currentTimeMillis() - startTime;
@@ -246,6 +245,11 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
                              index.getKeyspaceName(),
                              index.getTableName(),
                              index.getColumnName());
+    }
+
+    @Override
+    public boolean allowsPaging(List<IndexExpression> clause) {
+        return false;
     }
 
 }

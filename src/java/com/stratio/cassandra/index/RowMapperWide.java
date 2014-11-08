@@ -26,12 +26,13 @@ import org.apache.cassandra.db.filter.ColumnSlice;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 
-import java.util.*;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 
 /**
  * {@link RowMapper} for wide rows.
@@ -43,7 +44,8 @@ public class RowMapperWide extends RowMapper
     private final ClusteringKeyMapper clusteringKeyMapper;
     private final FullKeyMapper fullKeyMapper;
 
-    private final ComparatorChain<ScoredDocument> scoredDocumentComparator;
+    private final ComparatorChain<SearchResult> scoredDocumentComparator;
+    private final SearchResultBuilder searchResultBuilder;
 
     /**
      * Builds a new {@link RowMapperWide} for the specified column family metadata, indexed column definition and {@link Schema}.
@@ -61,26 +63,28 @@ public class RowMapperWide extends RowMapper
         final Comparator<DecoratedKey> partitionKeyComparator = partitionKeyMapper.comparator();
         final Comparator<CellName> clusteringKeyComparator = clusteringKeyMapper.comparator();
         scoredDocumentComparator = new ComparatorChain<>();
-        scoredDocumentComparator.addComparator(new Comparator<ScoredDocument>()
+        scoredDocumentComparator.addComparator(new Comparator<SearchResult>()
         {
             @Override
-            public int compare(ScoredDocument o1, ScoredDocument o2)
+            public int compare(SearchResult o1, SearchResult o2)
             {
-                DecoratedKey pk1 = partitionKeyMapper.decoratedKey(o1.getDocument());
-                DecoratedKey pk2 = partitionKeyMapper.decoratedKey(o2.getDocument());
+                DecoratedKey pk1 = o1.getPartitionKey();
+                DecoratedKey pk2 = o2.getPartitionKey();
                 return partitionKeyComparator.compare(pk1, pk2);
             }
         });
-        scoredDocumentComparator.addComparator(new Comparator<ScoredDocument>()
+        scoredDocumentComparator.addComparator(new Comparator<SearchResult>()
         {
             @Override
-            public int compare(ScoredDocument o1, ScoredDocument o2)
+            public int compare(SearchResult o1, SearchResult o2)
             {
-                CellName c1 = clusteringKeyMapper.cellName(o1.getDocument());
-                CellName c2 = clusteringKeyMapper.cellName(o2.getDocument());
+                CellName c1 = o1.getClusteringKey();
+                CellName c2 = o2.getClusteringKey();
                 return clusteringKeyComparator.compare(c1, c2);
             }
         });
+
+        this.searchResultBuilder = new SearchResultBuilderWide(partitionKeyMapper, clusteringKeyMapper);
     }
 
     /**
@@ -179,18 +183,6 @@ public class RowMapperWide extends RowMapper
     }
 
     /**
-     * Returns the Lucene {@link Filter} to get the {@link Document}s satisfying the specified {@link DataRange}.
-     *
-     * @param dataRange A {@link DataRange}.
-     * @return The Lucene {@link Filter} to get the {@link Document}s satisfying the specified {@link DataRange}.
-     */
-    @Override
-    public Query query(DataRange dataRange)
-    {
-        return tokenMapper.query(dataRange);
-    }
-
-    /**
      * Returns the Lucene {@link Query} to get the {@link Document}s satisfying the specified {@link RangeTombstone}.
      *
      * @param rangeTombstone A {@link RangeTombstone}.
@@ -224,7 +216,35 @@ public class RowMapperWide extends RowMapper
     }
 
     @Override
-    public Comparator<ScoredDocument> scoredDocumentsComparator() {
+    public Comparator<SearchResult> scoredDocumentsComparator()
+    {
         return scoredDocumentComparator;
+    }
+
+    public boolean accepts(DataRange dataRange, SearchResult searchResult)
+    {
+        return clusteringKeyMapper.accepts(dataRange, searchResult.getPartitionKey(), searchResult.getClusteringKey());
+    }
+
+    @Override
+    public String toString(SearchResult searchResult)
+    {
+        DecoratedKey partitionKey = searchResult.getPartitionKey();
+        CellName clusteringKey = searchResult.getClusteringKey();
+        String partitionKeyString = partitionKeyMapper.toString(partitionKey);
+        String clusteringKeyString = clusteringKeyMapper.toString(clusteringKey);
+        return partitionKeyString + " - " + clusteringKeyString;
+    }
+
+    @Override
+    public SearchResultBuilder searchResultBuilder()
+    {
+        return searchResultBuilder;
+    }
+
+    public boolean equals(SearchResult searchResult, DecoratedKey partitionKey, CellName clusteringKey)
+    {
+        return partitionKeyMapper.equals(searchResult.getPartitionKey(), partitionKey)
+                && clusteringKeyMapper.equals(searchResult.getClusteringKey(), clusteringKey);
     }
 }

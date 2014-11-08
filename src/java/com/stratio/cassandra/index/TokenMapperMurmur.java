@@ -76,7 +76,6 @@ public class TokenMapperMurmur extends TokenMapper
         }
         boolean includeLower = includeLower(startPosition);
         boolean includeUpper = includeUpper(stopPosition);
-        Log.debug("Filtering %s %d, %d %s", includeLower ? "[" : "(", start, stop, includeUpper ? "]" : ")");
         return NumericRangeQuery.newLongRange(FIELD_NAME, start, stop, includeLower, includeUpper);
     }
 

@@ -56,6 +56,8 @@ public class LuceneIndex
 
     private Sort sort;
 
+    private final SearchResultBuilder searchResultBuilder;
+
     /**
      * Builds a new {@code RowDirectory} using the specified directory path and analyzer.
      *
@@ -72,7 +74,8 @@ public class LuceneIndex
                        Integer ramBufferMB,
                        Integer maxMergeMB,
                        Integer maxCachedMB,
-                       Analyzer analyzer)
+                       Analyzer analyzer,
+                       SearchResultBuilder searchResultBuilder)
     {
         this.path = path;
         this.refreshSeconds = refreshSeconds;
@@ -80,6 +83,7 @@ public class LuceneIndex
         this.maxMergeMB = maxMergeMB;
         this.maxCachedMB = maxCachedMB;
         this.analyzer = analyzer;
+        this.searchResultBuilder = searchResultBuilder;
     }
 
     /**
@@ -208,17 +212,19 @@ public class LuceneIndex
      *
      * @param query        The {@link Query} to search for.
      * @param sort         The {@link Sort} to be applied.
-     * @param after        The starting {@link com.stratio.cassandra.index.ScoredDocument}.
+     * @param after        The starting {@link SearchResult}.
      * @param count        Return only the top {@code count} results.
      * @param fieldsToLoad The name of the fields to be loaded.
      * @return The found documents, sorted according to the supplied {@link Sort} instance.
      */
-    public List<ScoredDocument> search(Query query,
-                                       Sort sort,
-                                       ScoredDocument after,
-                                       Integer count,
-                                       Set<String> fieldsToLoad) throws IOException
+    public List<SearchResult> search(Query query,
+                                     Sort sort,
+                                     SearchResult after,
+                                     Integer count,
+                                     Set<String> fieldsToLoad) throws IOException
     {
+        // Log.debug("Querying %s", query);
+
         // Validate
         if (count == null || count < 0)
         {
@@ -237,15 +243,16 @@ public class LuceneIndex
             ScoreDoc[] scoreDocs = topDocs.scoreDocs;
 
             // Collect the documents from query result
-            List<ScoredDocument> scoredDocuments = new ArrayList<>(scoreDocs.length);
+            List<SearchResult> searchResults = new ArrayList<>(scoreDocs.length);
             for (ScoreDoc scoreDoc : scoreDocs)
             {
                 Document document = searcher.doc(scoreDoc.doc, fieldsToLoad);
-                ScoredDocument scoredDocument = new ScoredDocument(document, scoreDoc);
-                scoredDocuments.add(scoredDocument);
+
+                SearchResult searchResult = searchResultBuilder.build(document, scoreDoc);
+                searchResults.add(searchResult);
             }
 
-            return scoredDocuments;
+            return searchResults;
         }
         finally
         {

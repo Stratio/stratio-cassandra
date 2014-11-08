@@ -142,7 +142,7 @@ public class ClusteringKeyMapper
         return sort(clusteringKeys);
     }
 
-    public ByteBuffer[] byteBuffers(CellName cellName)
+    public ByteBuffer[] byteBuffers(Composite cellName)
     {
         ByteBuffer[] components = new ByteBuffer[numClusteringColumns + 1];
         for (int i = 0; i < numClusteringColumns; i++)
@@ -155,8 +155,7 @@ public class ClusteringKeyMapper
 
     public CellName clusteringKey(Composite composite)
     {
-        ByteBuffer[] bbs = ByteBufferUtils.split(composite.toByteBuffer(), type.asAbstractType());
-        return type.makeCellName(bbs);
+        return type.makeCellName(byteBuffers(composite));
     }
 
     private CellName clusteringKey(CellName cellName)
@@ -391,11 +390,6 @@ public class ClusteringKeyMapper
                 })};
     }
 
-    public String toString(CellName cellName)
-    {
-        return ByteBufferUtils.toString(cellName.toByteBuffer(), type.asAbstractType());
-    }
-
     public Query query(SliceQueryFilter sliceQueryFilter)
     {
         return new ClusteringKeyColumnSliceQuery(FIELD_NAME, sliceQueryFilter, this);
@@ -416,6 +410,30 @@ public class ClusteringKeyMapper
                 return type.compare(o1, o2);
             }
         };
+    }
+
+    public boolean accepts(DataRange dataRange, DecoratedKey partitionKey, CellName clusteringKey)
+    {
+        SliceQueryFilter sliceQueryFilter = (SliceQueryFilter) dataRange.columnFilter(partitionKey.getKey());
+        Composite start = sliceQueryFilter.start();
+        if (!start.isEmpty() && type.compare(start, clusteringKey) > 0)
+        {
+            return false;
+        }
+        Composite finish = sliceQueryFilter.finish();
+        if (!finish.isEmpty() && type.compare(finish, clusteringKey) < 0)
+        {
+            return false;
+        }
+        return true;
+    }
+
+    public String toString(Composite clusteringKey) {
+        return ByteBufferUtils.toString(clusteringKey.toByteBuffer(), type.asAbstractType());
+    }
+
+    public boolean equals(CellName o1, CellName o2) {
+        return type.compare(o1, o2) == 0;
     }
 
 }

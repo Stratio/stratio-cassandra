@@ -20,16 +20,16 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.RowPosition;
-import org.apache.cassandra.dht.AbstractBounds;
+import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.Murmur3Partitioner;
 import org.apache.cassandra.dht.Token;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.search.CachingWrapperFilter;
-import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SortField;
+
+import java.nio.ByteBuffer;
 
 /**
  * Class for several row partitioning {@link Token} mappings between Cassandra and Lucene.
@@ -40,6 +40,7 @@ public abstract class TokenMapper
 {
 
     protected final CFMetaData metadata;
+    protected final AbstractType<?> keyType;
 
     /**
      * Returns a new {@link TokenMapper} instance for the current partitioner using the specified
@@ -64,6 +65,7 @@ public abstract class TokenMapper
     public TokenMapper(CFMetaData metadata)
     {
         this.metadata = metadata;
+        this.keyType = metadata.getKeyValidator();
     }
 
     /**
@@ -78,7 +80,7 @@ public abstract class TokenMapper
      * Returns a Lucene's {@link Query} for filtering documents/rows according to the row token range specified in
      * {@code dataRange}.
      *
-     * @param keyRange The key range containing the row token range to be filtered.
+     * @param dataRange The key range containing the row token range to be filtered.
      * @return A Lucene's {@link Query} for filtering documents/rows according to the row token range specified in
      * {@code dataRage}.
      */
@@ -94,7 +96,7 @@ public abstract class TokenMapper
     /**
      * Returns {@code true} if the specified lower row position kind must be included in the filtered range, {@code false} otherwise.
      *
-     * @param kind A {@link org.apache.cassandra.db.RowPosition} kind.
+     * @param rowPosition A {@link RowPosition} kind.
      * @return {@code true} if the specified lower row position kind must be included in the filtered range, {@code false} otherwise.
      */
     public boolean includeLower(RowPosition rowPosition)
@@ -115,7 +117,7 @@ public abstract class TokenMapper
     /**
      * Returns {@code true} if the specified upper row position kind must be included in the filtered range, {@code false} otherwise.
      *
-     * @param kind A {@link org.apache.cassandra.db.RowPosition} kind.
+     * @param rowPosition A {@link RowPosition} kind.
      * @return {@code true} if the specified upper row position kind must be included in the filtered range, {@code false} otherwise.
      */
     protected boolean includeUpper(RowPosition rowPosition)

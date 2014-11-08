@@ -108,16 +108,29 @@ public abstract class SecondaryIndexSearcher
     }
 
     /**
-     * Returns {@code true} if the specified {@link AbstractRangeCommand} requires a full scan of all the nodes,
+     * Returns {@code true} if the specified {@link IndexExpression}s requires a full scan of all the nodes,
      * {@code false} otherwise.
      *
      * @param clause
      *            An {@link IndexExpression}.
-     * @return {@code true} if the {@code command} requires a full scan, {@code false} otherwise.
+     * @return {@code true} if the {@link IndexExpression}s requires a full scan, {@code false} otherwise.
      */
     public boolean requiresFullScan(List<IndexExpression> clause)
     {
         return false;
+    }
+
+    /**
+     * Returns {@code true} if the specified {@link IndexExpression}s allows paging,
+     * {@code false} otherwise.
+     *
+     * @param clause
+     *            An {@link IndexExpression}.
+     * @return {@code true} if the {@link IndexExpression}s allows paging, {@code false} otherwise.
+     */
+    public boolean allowsPaging(List<IndexExpression> clause)
+    {
+        return true;
     }
 
     /**

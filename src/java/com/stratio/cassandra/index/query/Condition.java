@@ -20,9 +20,7 @@ import com.stratio.cassandra.index.schema.Schema;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
-import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.QueryWrapperFilter;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.codehaus.jackson.annotate.JsonCreator;
@@ -85,17 +83,6 @@ public abstract class Condition
      */
     public abstract Query query(Schema schema);
 
-    /**
-     * Returns the Lucene's {@link Filter} representation of this condition.
-     *
-     * @param schema The schema to be used.
-     * @return The Lucene's {@link Filter} representation of this condition.
-     */
-    public Filter filter(Schema schema)
-    {
-        return new QueryWrapperFilter(query(schema));
-    }
-
     protected String analyze(String field, String value, ColumnMapper<?> columnMapper)
     {
         TokenStream source = null;
@@ -115,7 +102,8 @@ public abstract class Condition
             termAtt.fillBytesRef();
             if (source.incrementToken())
             {
-                throw new IllegalArgumentException("analyzer returned too many terms for multiTerm term: " + value);
+                throw new IllegalArgumentException("A" +
+                                                           "nalyzer returned too many terms for multiTerm term: " + value);
             }
             source.end();
             return BytesRef.deepCopyOf(bytes).utf8ToString();
