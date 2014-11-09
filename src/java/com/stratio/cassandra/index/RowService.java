@@ -30,7 +30,9 @@ import org.apache.cassandra.db.composites.CellNameType;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 
 import java.io.IOException;
@@ -53,11 +55,6 @@ public abstract class RowService
     protected final ColumnIdentifier indexedColumnName;
     protected final Schema schema;
     protected final LuceneIndex luceneIndex;
-
-    /**
-     * The min number of rows to be read per iteration
-     */
-    private static final int MIN_PAGE_SIZE = 5000;
 
     private TaskQueue indexQueue;
 
@@ -255,37 +252,46 @@ public abstract class RowService
     {
         // Log.debug("Searching with search %s ", search);
 
+
         // Setup search arguments
-        Query rangeQuery = rowMapper.query(dataRange);
+        RowRange rowRange;
+        try {
+            rowRange = new RowRange(dataRange, metadata.comparator);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
+        Query rangeQuery = rowMapper.query(rowRange);
         Query query = search.query(schema, rangeQuery);
         Sort sort = search.sort(schema);
+        if (sort == null) sort = rowMapper.sort();
 
         // Setup search pagination
         List<Row> rows = new ArrayList<>(limit); // The row list to be returned
-        SearchResult lastDoc = null; // The last search result
+        ScoreDoc lastDoc = null; // The last search result
         int collectedDocs = 0;
         long searchTime = 0;
         long collectTime = 0;
         int numPages = 0;
 
         // Paginate search collecting documents
-        List<SearchResult> scoredDocuments;
-        int pageSize = limit;
+        List<SearchResult> searchResults;
         do
         {
             // Search rows identifiers in Lucene
             long searchStartTime = System.currentTimeMillis();
-            scoredDocuments = luceneIndex.search(query, sort, lastDoc, pageSize, fieldsToLoad());
-            collectedDocs += scoredDocuments.size();
-            lastDoc = scoredDocuments.isEmpty() ? null : scoredDocuments.get(scoredDocuments.size() - 1);
+            searchResults = luceneIndex.search(query, sort, lastDoc, limit, fieldsToLoad());
+            collectedDocs += searchResults.size();
+            lastDoc = searchResults.isEmpty() ? null : searchResults.get(searchResults.size() - 1).getScoreDoc();
             searchTime += System.currentTimeMillis() - searchStartTime;
 
             // Sort scored documents
-            scoredDocuments = rowMapper.sort(scoredDocuments);
+            List<SearchResult> cleanResults = filter(searchResults, rowRange);
+            cleanResults = rowMapper.sort(cleanResults);
 
             // Collect rows from Cassandra
             long collectStartTime = System.currentTimeMillis();
-            for (Row row : rows(scoredDocuments, timestamp, dataRange))
+            for (Row row : rows(cleanResults, timestamp))
             {
                 if (row != null && accepted(row, expressions))
                 {
@@ -295,16 +301,34 @@ public abstract class RowService
             collectTime += System.currentTimeMillis() - collectStartTime;
 
             numPages++;
-            pageSize = Math.min(MIN_PAGE_SIZE, limit - rows.size());
 
             // Iterate while there are still documents to read and we don't have enough rows
-        } while (rows.size() < limit && scoredDocuments.size() == pageSize);
+        } while (rows.size() < limit && searchResults.size() == limit);
+
+        // Sort and trim
+        Collections.sort(rows, comparator(search));
+        if (rows.size() > limit)
+        {
+            rows = rows.subList(0, limit);
+        }
 
         Log.debug("Lucene time: %d ms", searchTime);
         Log.debug("Cassandra time: %d ms", collectTime);
         Log.debug("Collected %d docs and %d rows in %d pages from %d requested", collectedDocs, rows.size(), numPages, limit);
 
         return rows;
+    }
+
+    private List<SearchResult> filter(List<SearchResult> searchResults, RowRange rowRange) {
+        List<SearchResult> result = new ArrayList<>(searchResults.size());
+        for (SearchResult searchResult : searchResults) {
+            DecoratedKey partitionKey = searchResult.getPartitionKey();
+            CellName clusteringKey = searchResult.getClusteringKey();
+            if (rowRange.accepts(partitionKey, clusteringKey)) {
+                result.add(searchResult);
+            }
+        }
+        return result;
     }
 
     /**
@@ -385,10 +409,10 @@ public abstract class RowService
      * deleted columns. The {@link Row}s are retrieved from the storage engine, so it involves IO operations.
      *
      * @param searchResults The {@link SearchResult}s
-     * @param timestamp       The time stamp to ignore deleted columns.
+     * @param timestamp     The time stamp to ignore deleted columns.
      * @return The {@link Row} identified by the specified {@link Document}s
      */
-    protected abstract List<Row> rows(List<SearchResult> searchResults, long timestamp, DataRange dataRange) throws IOException;
+    protected abstract List<Row> rows(List<SearchResult> searchResults, long timestamp) throws IOException;
 
     /**
      * Returns a {@link ColumnFamily} composed by the non expired {@link Cell}s of the specified  {@link ColumnFamily}.

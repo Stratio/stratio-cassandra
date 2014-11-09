@@ -47,7 +47,6 @@ public class RowServiceWide extends RowService
         FIELDS_TO_LOAD = new HashSet<>();
         FIELDS_TO_LOAD.add(PartitionKeyMapper.FIELD_NAME);
         FIELDS_TO_LOAD.add(ClusteringKeyMapper.FIELD_NAME);
-        FIELDS_TO_LOAD.add(FullKeyMapper.FIELD_NAME);
     }
 
     private final RowMapperWide rowMapper;
@@ -136,42 +135,37 @@ public class RowServiceWide extends RowService
      * The {@link Row} is a logical one.
      */
     @Override
-    protected List<Row> rows(List<SearchResult> searchResults, long timestamp, DataRange dataRange)
+    protected List<Row> rows(List<SearchResult> searchResults, long timestamp)
     {
-
-        // Initialize result
-        List<Row> rows = new ArrayList<>(searchResults.size());
 
         // Group key queries by partition keys
         Map<DecoratedKey, Map<CellName, Float>> scores = new LinkedHashMap<>();
         Map<DecoratedKey, List<CellName>> keys = new LinkedHashMap<>();
+        Integer count = 0;
         for (SearchResult searchResult : searchResults)
         {
             DecoratedKey partitionKey = searchResult.getPartitionKey();
             CellName clusteringKey = searchResult.getClusteringKey();
-
-            if (rowMapper.accepts(dataRange, searchResult))
+            List<CellName> clusteringKeys = keys.get(partitionKey);
+            if (clusteringKeys == null)
             {
-                List<CellName> clusteringKeys = keys.get(partitionKey);
-                if (clusteringKeys == null)
-                {
-                    clusteringKeys = new ArrayList<>();
-                    keys.put(partitionKey, clusteringKeys);
-                }
-                clusteringKeys.add(clusteringKey);
-
-                Float score = searchResult.getScore();
-                Map<CellName, Float> scoresByCellName = scores.get(partitionKey);
-                if (scoresByCellName == null)
-                {
-                    scoresByCellName = new LinkedHashMap<>();
-                    scores.put(partitionKey, scoresByCellName);
-                }
-                scoresByCellName.put(clusteringKey, score);
+                clusteringKeys = new ArrayList<>();
+                keys.put(partitionKey, clusteringKeys);
             }
+            clusteringKeys.add(clusteringKey);
+
+            Float score = searchResult.getScore();
+            Map<CellName, Float> scoresByCellName = scores.get(partitionKey);
+            if (scoresByCellName == null)
+            {
+                scoresByCellName = new LinkedHashMap<>();
+                scores.put(partitionKey, scoresByCellName);
+            }
+            scoresByCellName.put(clusteringKey, score);
         }
 
         // Read rows from C* in fixed-size slices
+        List<Row> rows = new ArrayList<>(searchResults.size());
         for (Map.Entry<DecoratedKey, List<CellName>> entry : keys.entrySet())
         {
             DecoratedKey partitionKey = entry.getKey();
@@ -188,7 +182,6 @@ public class RowServiceWide extends RowService
                 }
             }
         }
-//        Collections.sort(rows, rowComparator);
         return rows;
     }
 

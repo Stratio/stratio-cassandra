@@ -153,11 +153,6 @@ public class ClusteringKeyMapper
         return components;
     }
 
-    public CellName clusteringKey(Composite composite)
-    {
-        return type.makeCellName(byteBuffers(composite));
-    }
-
     private CellName clusteringKey(CellName cellName)
     {
         return type.makeCellName(byteBuffers(cellName));
@@ -378,6 +373,7 @@ public class ClusteringKeyMapper
      */
     public SortField[] sortFields()
     {
+//        return new SortField[]{new SortField(FIELD_NAME, SortField.Type.STRING)};
         return new SortField[]{
                 new SortField(FIELD_NAME, new FieldComparatorSource()
                 {
@@ -412,28 +408,8 @@ public class ClusteringKeyMapper
         };
     }
 
-    public boolean accepts(DataRange dataRange, DecoratedKey partitionKey, CellName clusteringKey)
-    {
-        SliceQueryFilter sliceQueryFilter = (SliceQueryFilter) dataRange.columnFilter(partitionKey.getKey());
-        Composite start = sliceQueryFilter.start();
-        if (!start.isEmpty() && type.compare(start, clusteringKey) > 0)
-        {
-            return false;
-        }
-        Composite finish = sliceQueryFilter.finish();
-        if (!finish.isEmpty() && type.compare(finish, clusteringKey) < 0)
-        {
-            return false;
-        }
-        return true;
-    }
-
-    public String toString(Composite clusteringKey) {
-        return ByteBufferUtils.toString(clusteringKey.toByteBuffer(), type.asAbstractType());
-    }
-
-    public boolean equals(CellName o1, CellName o2) {
-        return type.compare(o1, o2) == 0;
+    public String toString(Composite composite) {
+        return ByteBufferUtils.toString(composite.toByteBuffer(), type.asAbstractType());
     }
 
 }

@@ -59,11 +59,10 @@ public class TokenMapperMurmur extends TokenMapper
      * {@inheritDoc}
      */
     @Override
-    public Query query(DataRange dataRange)
+    public Query query(RowRange rowRange)
     {
-        AbstractBounds<RowPosition> keyRange = dataRange.keyRange();
-        RowPosition startPosition = keyRange.left;
-        RowPosition stopPosition = keyRange.right;
+        RowPosition startPosition = rowRange.startKey();
+        RowPosition stopPosition = rowRange.stopKey();
         Long start = (Long) startPosition.getToken().token;
         Long stop = (Long) stopPosition.getToken().token;
         if (startPosition.isMinimum())
@@ -74,8 +73,8 @@ public class TokenMapperMurmur extends TokenMapper
         {
             stop = null;
         }
-        boolean includeLower = includeLower(startPosition);
-        boolean includeUpper = includeUpper(stopPosition);
+        boolean includeLower = rowRange.includeStartKey();
+        boolean includeUpper = rowRange.includeStopKey();
         return NumericRangeQuery.newLongRange(FIELD_NAME, start, stop, includeLower, includeUpper);
     }
 

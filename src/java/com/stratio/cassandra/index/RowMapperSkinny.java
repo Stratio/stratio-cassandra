@@ -123,12 +123,6 @@ public class RowMapperSkinny extends RowMapper
     }
 
     @Override
-    public String toString(SearchResult searchResult) {
-        DecoratedKey partitionKey = searchResult.getPartitionKey();
-        return partitionKeyMapper.toString(partitionKey);
-    }
-
-    @Override
     public SearchResultBuilder searchResultBuilder() {
         return searchResultBuilder;
     }

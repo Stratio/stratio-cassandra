@@ -83,9 +83,9 @@ public class TokenMapperGeneric extends TokenMapper
      * {@inheritDoc}
      */
     @Override
-    public Query query(DataRange dataRange)
+    public Query query(RowRange rowRange)
     {
-        return new TokenDataRangeQuery(FIELD_NAME, dataRange, this);
+        return new TokenDataRangeQuery(FIELD_NAME, rowRange, this);
     }
 
     /**

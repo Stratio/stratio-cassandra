@@ -205,10 +205,10 @@ public class RowMapperWide extends RowMapper
     }
 
     /**
-     * Returns the logical CQL3 column families contained in the specified physical {@link org.apache.cassandra.db.ColumnFamily}.
+     * Returns the logical CQL3 column families contained in the specified physical {@link ColumnFamily}.
      *
-     * @param columnFamily A physical {@link org.apache.cassandra.db.ColumnFamily}.
-     * @return The logical CQL3 column families contained in the specified physical {@link org.apache.cassandra.db.ColumnFamily}.
+     * @param columnFamily A physical {@link ColumnFamily}.
+     * @return The logical CQL3 column families contained in the specified physical {@link ColumnFamily}.
      */
     public Map<CellName, ColumnFamily> splitRows(ColumnFamily columnFamily)
     {
@@ -221,30 +221,9 @@ public class RowMapperWide extends RowMapper
         return scoredDocumentComparator;
     }
 
-    public boolean accepts(DataRange dataRange, SearchResult searchResult)
-    {
-        return clusteringKeyMapper.accepts(dataRange, searchResult.getPartitionKey(), searchResult.getClusteringKey());
-    }
-
-    @Override
-    public String toString(SearchResult searchResult)
-    {
-        DecoratedKey partitionKey = searchResult.getPartitionKey();
-        CellName clusteringKey = searchResult.getClusteringKey();
-        String partitionKeyString = partitionKeyMapper.toString(partitionKey);
-        String clusteringKeyString = clusteringKeyMapper.toString(clusteringKey);
-        return partitionKeyString + " - " + clusteringKeyString;
-    }
-
     @Override
     public SearchResultBuilder searchResultBuilder()
     {
         return searchResultBuilder;
-    }
-
-    public boolean equals(SearchResult searchResult, DecoratedKey partitionKey, CellName clusteringKey)
-    {
-        return partitionKeyMapper.equals(searchResult.getPartitionKey(), partitionKey)
-                && clusteringKeyMapper.equals(searchResult.getClusteringKey(), clusteringKey);
     }
 }

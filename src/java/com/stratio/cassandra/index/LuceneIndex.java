@@ -107,7 +107,7 @@ public class LuceneIndex
         config.setRAMBufferSizeMB(ramBufferMB);
         config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
         config.setUseCompoundFile(true);
-        config.setMergePolicy(new SortingMergePolicy(config.getMergePolicy(), sort));
+//        config.setMergePolicy(new SortingMergePolicy(config.getMergePolicy(), sort));
         indexWriter = new IndexWriter(directory, config);
 
         // Setup NRT search
@@ -219,11 +219,11 @@ public class LuceneIndex
      */
     public List<SearchResult> search(Query query,
                                      Sort sort,
-                                     SearchResult after,
+                                     ScoreDoc after,
                                      Integer count,
                                      Set<String> fieldsToLoad) throws IOException
     {
-        // Log.debug("Querying %s", query);
+        Log.debug("Querying %s after %s", query, after);
 
         // Validate
         if (count == null || count < 0)
@@ -238,8 +238,7 @@ public class LuceneIndex
         try
         {
             // Search
-            ScoreDoc start = after == null ? null : after.getScoreDoc();
-            TopDocs topDocs = topDocs(searcher, query, sort, start, count);
+            TopDocs topDocs = topDocs(searcher, query, sort, after, count);
             ScoreDoc[] scoreDocs = topDocs.scoreDocs;
 
             // Collect the documents from query result
@@ -260,29 +259,35 @@ public class LuceneIndex
         }
     }
 
+    public SearcherManager searcherManager() {
+        return searcherManager;
+    }
+
     private TopDocs topDocs(IndexSearcher searcher, Query query, Sort sort, ScoreDoc after, int count)
             throws IOException
     {
-        // Use default sortFields if the query doesn't use relevance
-        if (sort == null)
-        {
-            if (query instanceof ConstantScoreQuery)
-            {
-                FieldDoc start = after == null ? null : (FieldDoc) after;
-                TopFieldCollector tfc = TopFieldCollector.create(this.sort, count, start, true, false, false, false);
-                Collector collector = new EarlyTerminatingSortingCollector(tfc, this.sort, count);
-                searcher.search(query, collector);
-                return tfc.topDocs();
-            }
-            else
-            {
-                return searcher.searchAfter(after, query, count);
-            }
-        }
-        else
-        {
+
+//        // Use default sortFields if the query doesn't use relevance
+//        if (sort == null)
+//        {
+//            if (query instanceof ConstantScoreQuery)
+//            {
+//                FieldDoc start = after == null ? null : (FieldDoc) after;
+//                TopFieldCollector tfc = TopFieldCollector.create(this.sort, count, start, true, false, false, false);
+//                Collector collector = new EarlyTerminatingSortingCollector(tfc, this.sort, count);
+//                searcher.search(query, collector);
+//                return tfc.topDocs();
+//            }
+//            else
+//            {
+//                return searcher.searchAfter(after, query, count);
+//            }
+//        }
+//        else
+//        {
+//            System.out.println("SEARCHING AFTER " + (after==null ? null : after.doc) + " WITH SORT " + sort);
             return searcher.searchAfter(after, query, count, sort);
-        }
+//        }
     }
 
     /**

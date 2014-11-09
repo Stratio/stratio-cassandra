@@ -1,6 +1,5 @@
 package com.stratio.cassandra.index;
 
-import org.apache.cassandra.db.DataRange;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
@@ -14,35 +13,27 @@ import java.io.IOException;
  */
 public class TokenDataRangeQuery extends MultiTermQuery
 {
-    private DataRange dataRange;
+    private RowRange rowRange;
     private TokenMapperGeneric tokenMapper;
 
 
-    public TokenDataRangeQuery(String field, DataRange dataRange, TokenMapperGeneric tokenMapper) {
+    public TokenDataRangeQuery(String field, RowRange rowRange, TokenMapperGeneric tokenMapper) {
         super(field);
-        this.dataRange = dataRange;
+        this.rowRange = rowRange;
         this.tokenMapper = tokenMapper;
     }
 
     @Override
     protected TermsEnum getTermsEnum(Terms terms, AttributeSource atts) throws IOException {
-//        if (lowerTerm != null && upperTerm != null && lowerTerm.compareTo(upperTerm) > 0) {
-//            return TermsEnum.EMPTY;
-//        }
-
         TermsEnum tenum = terms.iterator(null);
-
-//        if ((lowerTerm == null || (includeLower && lowerTerm.length == 0)) && upperTerm == null) {
-//            return tenum;
-//        }
-        return new TokenDataRangeFilteredTermsEnum(tenum, dataRange, tokenMapper);
+        return new TokenDataRangeFilteredTermsEnum(tenum, rowRange, tokenMapper);
     }
 
     @Override
     public String toString(String field)
     {
         return new ToStringBuilder(this)
-                .append("dataRange", dataRange)
+                .append("rowRange", rowRange)
                 .append("tokenMapper", tokenMapper)
                 .toString();
     }
@@ -56,7 +47,7 @@ public class TokenDataRangeQuery extends MultiTermQuery
 
         TokenDataRangeQuery that = (TokenDataRangeQuery) o;
 
-        if (dataRange != null ? !dataRange.equals(that.dataRange) : that.dataRange != null) return false;
+        if (rowRange != null ? !rowRange.equals(that.rowRange) : that.rowRange != null) return false;
         if (tokenMapper != null ? !tokenMapper.equals(that.tokenMapper) : that.tokenMapper != null) return false;
 
         return true;
@@ -66,7 +57,7 @@ public class TokenDataRangeQuery extends MultiTermQuery
     public int hashCode()
     {
         int result = super.hashCode();
-        result = 31 * result + (dataRange != null ? dataRange.hashCode() : 0);
+        result = 31 * result + (rowRange != null ? rowRange.hashCode() : 0);
         result = 31 * result + (tokenMapper != null ? tokenMapper.hashCode() : 0);
         return result;
     }

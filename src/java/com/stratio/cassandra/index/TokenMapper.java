@@ -78,13 +78,13 @@ public abstract class TokenMapper
 
     /**
      * Returns a Lucene's {@link Query} for filtering documents/rows according to the row token range specified in
-     * {@code dataRange}.
+     * {@link RowRange}.
      *
-     * @param dataRange The key range containing the row token range to be filtered.
+     * @param rowRange The key range containing the row token range to be filtered.
      * @return A Lucene's {@link Query} for filtering documents/rows according to the row token range specified in
-     * {@code dataRage}.
+     * {@link RowRange}.
      */
-    public abstract Query query(DataRange dataRange);
+    public abstract Query query(RowRange rowRange);
 
     /**
      * Returns a Lucene's {@link SortField} array for sorting documents/rows according to the current partitioner.

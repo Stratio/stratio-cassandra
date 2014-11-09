@@ -249,7 +249,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
 
     @Override
     public boolean allowsPaging(List<IndexExpression> clause) {
-        return false;
+        return true;
     }
 
 }

@@ -211,6 +211,7 @@ public class ClusteringKeyMapperSorter extends FieldComparator<BytesRef>
         CellName bb1 = clusteringKeyMapper.cellName(fieldValue1);
         CellName bb2 = clusteringKeyMapper.cellName(fieldValue2);
         CellNameType type = clusteringKeyMapper.getType();
-        return type.compare(bb1, bb2);
+//        System.out.println("COMPARING " + clusteringKeyMapper.toString(bb1) + " TO " +clusteringKeyMapper.toString(bb2));
+        return type.asAbstractType().compare(bb1.toByteBuffer(), bb2.toByteBuffer());
     }
 }

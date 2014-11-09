@@ -25,11 +25,11 @@ public class TokenDataRangeFilteredTermsEnum extends FilteredTermsEnum
     final private AbstractBounds<Token> tokenBounds;
     final private TokenMapperGeneric tokenMapper;
 
-    public TokenDataRangeFilteredTermsEnum(TermsEnum tenum, DataRange dataRange, TokenMapperGeneric tokenMapper)
+    public TokenDataRangeFilteredTermsEnum(TermsEnum tenum, RowRange rowRange, TokenMapperGeneric tokenMapper)
     {
         super(tenum);
 
-        this.tokenBounds = dataRange.keyRange().toTokenBounds();
+        this.tokenBounds = rowRange.getTokenBounds();
         this.tokenMapper = tokenMapper;
 
         this.lowerBytesRef = tokenMapper.bytesRef(tokenBounds.left);

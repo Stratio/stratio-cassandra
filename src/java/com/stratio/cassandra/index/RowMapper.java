@@ -17,22 +17,22 @@ package com.stratio.cassandra.index;
 
 import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.schema.Schema;
-import com.stratio.cassandra.index.util.ByteBufferUtils;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.ColumnFamily;
+import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.composites.CellName;
-import org.apache.cassandra.db.composites.Composite;
-import org.apache.cassandra.db.marshal.UTF8Type;
-import org.apache.cassandra.dht.Token;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 
 /**
  * Class for several {@link Row} mappings between Cassandra and Lucene.
@@ -155,14 +155,14 @@ public abstract class RowMapper
     public abstract Sort sort();
 
     /**
-     * Returns a Lucene {@link Query} to get the {@link Document}s satisfying the specified {@link DataRange}.
+     * Returns a Lucene {@link Query} to get the {@link Document}s satisfying the specified {@link RowRange}.
      *
-     * @param dataRange A {@link DataRange}.
-     * @return A Lucene {@link Query} to get the {@link Document}s satisfying the specified {@link DataRange}.
+     * @param rowRange A {@link RowRange}.
+     * @return A Lucene {@link Query} to get the {@link Document}s satisfying the specified {@link RowRange}.
      */
-    public Query query(DataRange dataRange)
+    public Query query(RowRange rowRange)
     {
-        return tokenMapper.query(dataRange);
+        return tokenMapper.query(rowRange);
     }
 
     /**
@@ -187,20 +187,6 @@ public abstract class RowMapper
         List<SearchResult> result = new ArrayList<>(searchResults);
         Collections.sort(result, scoredDocumentsComparator());
         return result;
-    }
-
-    public Comparator<DecoratedKey> partitionKeyComparator() {
-        return partitionKeyMapper.comparator();
-    }
-
-    public abstract String toString(SearchResult searchResult);
-
-    public String toString(DecoratedKey partitionKey) {
-        return partitionKeyMapper.toString(partitionKey);
-    }
-
-    public String toString(Composite cellName) {
-        return ByteBufferUtils.toString(cellName.toByteBuffer(), metadata.comparator.asAbstractType());
     }
 
     public abstract SearchResultBuilder searchResultBuilder();

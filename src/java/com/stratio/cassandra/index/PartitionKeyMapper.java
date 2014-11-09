@@ -179,12 +179,4 @@ public class PartitionKeyMapper
             }
         };
     }
-
-    public String toString(DecoratedKey partitionKey) {
-        return partitionKey.getToken() + " - " + ByteBufferUtils.toString(partitionKey.getKey(), type);
-    }
-
-    public boolean equals(DecoratedKey o1, DecoratedKey o2) {
-        return type.compare(o1.getKey(), o2.getKey()) == 0;
-    }
 }

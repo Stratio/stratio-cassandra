@@ -18,7 +18,6 @@ package com.stratio.cassandra.index;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.filter.QueryFilter;
-import org.apache.cassandra.dht.Token;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
 
@@ -110,7 +109,7 @@ public class RowServiceSkinny extends RowService
      * {@inheritDoc}
      */
     @Override
-    protected List<Row> rows(List<SearchResult> searchResults, long timestamp, DataRange dataRange)
+    protected List<Row> rows(List<SearchResult> searchResults, long timestamp)
     {
         List<Row> rows = new ArrayList<>(searchResults.size());
         for (SearchResult searchResult : searchResults)
