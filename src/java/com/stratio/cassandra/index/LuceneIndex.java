@@ -20,7 +20,6 @@ import org.apache.cassandra.io.util.FileUtils;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.*;
-import org.apache.lucene.index.sorter.EarlyTerminatingSortingCollector;
 import org.apache.lucene.index.sorter.SortingMergePolicy;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
@@ -107,7 +106,7 @@ public class LuceneIndex
         config.setRAMBufferSizeMB(ramBufferMB);
         config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
         config.setUseCompoundFile(true);
-//        config.setMergePolicy(new SortingMergePolicy(config.getMergePolicy(), sort));
+        config.setMergePolicy(new SortingMergePolicy(config.getMergePolicy(), sort));
         indexWriter = new IndexWriter(directory, config);
 
         // Setup NRT search
@@ -212,44 +211,56 @@ public class LuceneIndex
      *
      * @param query        The {@link Query} to search for.
      * @param sort         The {@link Sort} to be applied.
-     * @param after        The starting {@link SearchResult}.
      * @param count        Return only the top {@code count} results.
      * @param fieldsToLoad The name of the fields to be loaded.
      * @return The found documents, sorted according to the supplied {@link Sort} instance.
      */
     public List<SearchResult> search(Query query,
                                      Sort sort,
-                                     ScoreDoc after,
                                      Integer count,
-                                     Set<String> fieldsToLoad) throws IOException
+                                     Set<String> fieldsToLoad, RowRange rowRange) throws IOException
     {
-        Log.debug("Querying %s after %s", query, after);
+        Log.debug("Querying %s", query);
 
-        // Validate
-        if (count == null || count < 0)
-        {
-            throw new IllegalArgumentException("Positive count required");
-        }
-        if (fieldsToLoad == null || fieldsToLoad.isEmpty())
-        {
-            throw new IllegalArgumentException("Fields to load required");
-        }
         IndexSearcher searcher = searcherManager.acquire();
         try
         {
-            // Search
-            TopDocs topDocs = topDocs(searcher, query, sort, after, count);
-            ScoreDoc[] scoreDocs = topDocs.scoreDocs;
 
-            // Collect the documents from query result
-            List<SearchResult> searchResults = new ArrayList<>(scoreDocs.length);
-            for (ScoreDoc scoreDoc : scoreDocs)
+            List<SearchResult> searchResults = new ArrayList<>(count);
+            int pageSize = count;
+            Integer lastDoc = null;
+            boolean more = false;
+            ScoreDoc[] scoreDocs;
+
+            do
             {
-                Document document = searcher.doc(scoreDoc.doc, fieldsToLoad);
+                TopDocs topDocs = topDocs(searcher, query, sort, pageSize);
+                scoreDocs = topDocs.scoreDocs;
 
-                SearchResult searchResult = searchResultBuilder.build(document, scoreDoc);
-                searchResults.add(searchResult);
-            }
+                // Collect the documents from query result
+                boolean foundLast = false;
+                for (ScoreDoc scoreDoc : scoreDocs)
+                {
+                    if (lastDoc == null || foundLast)
+                    {
+                        Document document = searcher.doc(scoreDoc.doc, fieldsToLoad);
+                        SearchResult searchResult = searchResultBuilder.build(document, scoreDoc);
+                        if (rowRange.accepts(searchResult))
+                        {
+                            searchResults.add(searchResult);
+                        }
+                    }
+                    if (!foundLast && lastDoc != null && scoreDoc.doc == lastDoc)
+                    {
+                        foundLast = true;
+                    }
+                }
+                lastDoc = scoreDocs.length > 0 ? scoreDocs[scoreDocs.length - 1].doc : null;
+
+                more = scoreDocs.length == pageSize;
+                pageSize += count;
+
+            } while (searchResults.size() < count && more);
 
             return searchResults;
         }
@@ -259,11 +270,7 @@ public class LuceneIndex
         }
     }
 
-    public SearcherManager searcherManager() {
-        return searcherManager;
-    }
-
-    private TopDocs topDocs(IndexSearcher searcher, Query query, Sort sort, ScoreDoc after, int count)
+    private TopDocs topDocs(IndexSearcher searcher, Query query, Sort sort, int count)
             throws IOException
     {
 
@@ -286,7 +293,7 @@ public class LuceneIndex
 //        else
 //        {
 //            System.out.println("SEARCHING AFTER " + (after==null ? null : after.doc) + " WITH SORT " + sort);
-            return searcher.searchAfter(after, query, count, sort);
+        return searcher.search(query, count, sort);
 //        }
     }
 

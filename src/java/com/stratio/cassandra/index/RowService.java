@@ -16,8 +16,6 @@
 package com.stratio.cassandra.index;
 
 import com.stratio.cassandra.index.query.Search;
-import com.stratio.cassandra.index.schema.Column;
-import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.index.util.Log;
 import com.stratio.cassandra.index.util.TaskQueue;
@@ -27,12 +25,9 @@ import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.CellNameType;
-import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 
 import java.io.IOException;
@@ -255,9 +250,12 @@ public abstract class RowService
 
         // Setup search arguments
         RowRange rowRange;
-        try {
+        try
+        {
             rowRange = new RowRange(dataRange, metadata.comparator);
-        } catch (Exception e) {
+        }
+        catch (Exception e)
+        {
             e.printStackTrace();
             throw e;
         }
@@ -267,43 +265,19 @@ public abstract class RowService
         if (sort == null) sort = rowMapper.sort();
 
         // Setup search pagination
-        List<Row> rows = new ArrayList<>(limit); // The row list to be returned
-        ScoreDoc lastDoc = null; // The last search result
-        int collectedDocs = 0;
         long searchTime = 0;
         long collectTime = 0;
-        int numPages = 0;
 
-        // Paginate search collecting documents
-        List<SearchResult> searchResults;
-        do
-        {
-            // Search rows identifiers in Lucene
-            long searchStartTime = System.currentTimeMillis();
-            searchResults = luceneIndex.search(query, sort, lastDoc, limit, fieldsToLoad());
-            collectedDocs += searchResults.size();
-            lastDoc = searchResults.isEmpty() ? null : searchResults.get(searchResults.size() - 1).getScoreDoc();
-            searchTime += System.currentTimeMillis() - searchStartTime;
+        // Search rows identifiers in Lucene
+        long searchStartTime = System.currentTimeMillis();
+        List<SearchResult> searchResults = luceneIndex.search(query, sort, limit, fieldsToLoad(), rowRange);
+        searchTime += System.currentTimeMillis() - searchStartTime;
 
-            // Sort scored documents
-            List<SearchResult> cleanResults = filter(searchResults, rowRange);
-            cleanResults = rowMapper.sort(cleanResults);
+        // Collect rows from Cassandra
+        long collectStartTime = System.currentTimeMillis();
+        List<Row> rows = rows(searchResults, timestamp);
+        collectTime += System.currentTimeMillis() - collectStartTime;
 
-            // Collect rows from Cassandra
-            long collectStartTime = System.currentTimeMillis();
-            for (Row row : rows(cleanResults, timestamp))
-            {
-                if (row != null && accepted(row, expressions))
-                {
-                    rows.add(row);
-                }
-            }
-            collectTime += System.currentTimeMillis() - collectStartTime;
-
-            numPages++;
-
-            // Iterate while there are still documents to read and we don't have enough rows
-        } while (rows.size() < limit && searchResults.size() == limit);
 
         // Sort and trim
         Collections.sort(rows, comparator(search));
@@ -314,94 +288,9 @@ public abstract class RowService
 
         Log.debug("Lucene time: %d ms", searchTime);
         Log.debug("Cassandra time: %d ms", collectTime);
-        Log.debug("Collected %d docs and %d rows in %d pages from %d requested", collectedDocs, rows.size(), numPages, limit);
+        Log.debug("Collected %d docs and %d rows from %d requested", searchResults.size(), rows.size(), limit);
 
         return rows;
-    }
-
-    private List<SearchResult> filter(List<SearchResult> searchResults, RowRange rowRange) {
-        List<SearchResult> result = new ArrayList<>(searchResults.size());
-        for (SearchResult searchResult : searchResults) {
-            DecoratedKey partitionKey = searchResult.getPartitionKey();
-            CellName clusteringKey = searchResult.getClusteringKey();
-            if (rowRange.accepts(partitionKey, clusteringKey)) {
-                result.add(searchResult);
-            }
-        }
-        return result;
-    }
-
-    /**
-     * Returns {@code true} if the specified {@link Row} satisfies the all the specified {@link IndexExpression}s,
-     * {@code false} otherwise.
-     *
-     * @param row         A {@link Row}.
-     * @param expressions A list of {@link IndexExpression}s to be satisfied by {@code row}.
-     * @return {@code true} if the specified {@link Row} satisfies the all the specified {@link IndexExpression}s,
-     * {@code false} otherwise.
-     */
-    private boolean accepted(Row row, List<IndexExpression> expressions)
-    {
-        if (!expressions.isEmpty())
-        {
-            Columns columns = rowMapper.columns(row);
-            for (IndexExpression expression : expressions)
-            {
-                if (!accepted(columns, expression))
-                {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Returns {@code true} if the specified {@link Columns} satisfies the the specified {@link IndexExpression},
-     * {@code false} otherwise.
-     *
-     * @param columns    A {@link Columns}
-     * @param expression A {@link IndexExpression}s to be satisfied by {@code columns}.
-     * @return {@code true} if the specified {@link Columns} satisfies the the specified {@link IndexExpression},
-     * {@code false} otherwise.
-     */
-    private boolean accepted(Columns columns, IndexExpression expression)
-    {
-
-        ByteBuffer expectedValue = expression.value;
-
-        ColumnDefinition def = metadata.getColumnDefinition(expression.column);
-        String name = def.name.toString();
-
-        Column column = columns.getCell(name);
-        if (column == null)
-        {
-            return false;
-        }
-
-        ByteBuffer actualValue = column.getRawValue();
-        if (actualValue == null)
-        {
-            return false;
-        }
-
-        AbstractType<?> validator = def.type;
-        int comparison = validator.compare(actualValue, expectedValue);
-        switch (expression.operator)
-        {
-            case EQ:
-                return comparison == 0;
-            case GTE:
-                return comparison >= 0;
-            case GT:
-                return comparison > 0;
-            case LTE:
-                return comparison <= 0;
-            case LT:
-                return comparison < 0;
-            default:
-                throw new IllegalStateException();
-        }
     }
 
     /**
