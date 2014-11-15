@@ -26,14 +26,14 @@ import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 
 import java.nio.ByteBuffer;
 
 /**
- * Class for several {@link org.apache.cassandra.db.Row} mappings between Cassandra and Lucene.
+ * Class for several {@link Row} mappings between Cassandra and Lucene.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
@@ -48,11 +48,11 @@ public abstract class RowMapper
     protected final RegularCellsMapper regularCellsMapper;
 
     /**
-     * Builds a new {@link com.stratio.cassandra.index.RowMapper} for the specified column family metadata, indexed column definition and {@link com.stratio.cassandra.index.schema.Schema}.
+     * Builds a new {@link RowMapper} for the specified column family metadata, indexed column definition and {@link Schema}.
      *
      * @param metadata         The indexed column family metadata.
      * @param columnDefinition The indexed column definition.
-     * @param schema           The mapping {@link com.stratio.cassandra.index.schema.Schema}.
+     * @param schema           The mapping {@link Schema}.
      */
     RowMapper(CFMetaData metadata, ColumnDefinition columnDefinition, Schema schema)
     {
@@ -64,12 +64,12 @@ public abstract class RowMapper
     }
 
     /**
-     * Returns a new {@link com.stratio.cassandra.index.RowMapper} for the specified column family metadata, indexed column definition and {@link com.stratio.cassandra.index.schema.Schema}.
+     * Returns a new {@link RowMapper} for the specified column family metadata, indexed column definition and {@link Schema}.
      *
      * @param metadata         The indexed column family metadata.
      * @param columnDefinition The indexed column definition.
-     * @param schema           The mapping {@link com.stratio.cassandra.index.schema.Schema}.
-     * @return A new {@link com.stratio.cassandra.index.RowMapper} for the specified column family metadata, indexed column definition and {@link com.stratio.cassandra.index.schema.Schema}.
+     * @param schema           The mapping {@link Schema}.
+     * @return A new {@link RowMapper} for the specified column family metadata, indexed column definition and {@link Schema}.
      */
     public static RowMapper build(CFMetaData metadata, ColumnDefinition columnDefinition, Schema schema)
     {
@@ -84,18 +84,18 @@ public abstract class RowMapper
     }
 
     /**
-     * Returns the {@link com.stratio.cassandra.index.schema.Columns} representing the specified {@link org.apache.cassandra.db.Row}.
+     * Returns the {@link Columns} representing the specified {@link Row}.
      *
-     * @param row A {@link org.apache.cassandra.db.Row}.
+     * @param row A {@link Row}.
      * @return The columns contained in the specified columns.
      */
     public abstract Columns columns(Row row);
 
     /**
-     * Returns the {@link org.apache.lucene.document.Document} representing the specified {@link org.apache.cassandra.db.Row}.
+     * Returns the {@link Document} representing the specified {@link Row}.
      *
-     * @param row A {@link org.apache.cassandra.db.Row}.
-     * @return The {@link org.apache.lucene.document.Document} representing the specified {@link org.apache.cassandra.db.Row}.
+     * @param row A {@link Row}.
+     * @return The {@link Document} representing the specified {@link Row}.
      */
     public abstract Document document(Row row);
 
@@ -111,10 +111,10 @@ public abstract class RowMapper
     }
 
     /**
-     * Returns the decorated partition key contained in the specified {@link org.apache.lucene.document.Document}.
+     * Returns the decorated partition key contained in the specified {@link Document}.
      *
-     * @param document A {@link org.apache.lucene.document.Document}.
-     * @return The decorated partition key contained in the specified {@link org.apache.lucene.document.Document}.
+     * @param document A {@link Document}.
+     * @return The decorated partition key contained in the specified {@link Document}.
      */
     public final DecoratedKey partitionKey(Document document)
     {
@@ -122,10 +122,10 @@ public abstract class RowMapper
     }
 
     /**
-     * Returns the Lucene {@link org.apache.lucene.search.Query} to get the {@link org.apache.lucene.document.Document}s containing the specified decorated partition key.
+     * Returns the Lucene {@link Query} to get the {@link Document}s containing the specified decorated partition key.
      *
      * @param partitionKey A decorated partition key.
-     * @return The Lucene {@link org.apache.lucene.search.Query} to get the {@link org.apache.lucene.document.Document}s containing the specified decorated partition key.
+     * @return The Lucene {@link Query} to get the {@link Document}s containing the specified decorated partition key.
      */
     public final Query query(DecoratedKey partitionKey)
     {
@@ -133,10 +133,10 @@ public abstract class RowMapper
     }
 
     /**
-     * Returns the Lucene {@link org.apache.lucene.index.Term} to get the {@link org.apache.lucene.document.Document}s containing the specified decorated partition key.
+     * Returns the Lucene {@link Term} to get the {@link Document}s containing the specified decorated partition key.
      *
      * @param partitionKey A decorated partition key.
-     * @return The Lucene {@link org.apache.lucene.index.Term} to get the {@link org.apache.lucene.document.Document}s containing the specified decorated partition key.
+     * @return The Lucene {@link Term} to get the {@link Document}s containing the specified decorated partition key.
      */
     public Term term(DecoratedKey partitionKey)
     {
@@ -144,34 +144,35 @@ public abstract class RowMapper
     }
 
     /**
-     * Returns the Lucene {@link org.apache.lucene.search.Sort} to get {@link org.apache.lucene.document.Document}s in the same order that is used in Cassandra.
+     * Returns the Lucene {@link Sort} to get {@link Document}s in the same order that is used in Cassandra.
      *
-     * @return The Lucene {@link org.apache.lucene.search.Sort} to get {@link org.apache.lucene.document.Document}s in the same order that is used in Cassandra.
+     * @return The Lucene {@link Sort} to get {@link Document}s in the same order that is used in Cassandra.
      */
     public abstract Sort sort();
 
     /**
-     * Returns the Lucene {@link org.apache.lucene.search.Filter} to get the {@link org.apache.lucene.document.Document}s satisfying the specified {@link org.apache.cassandra.db.DataRange}.
+     * Returns the Lucene {@link Query} to get the {@link Document}s satisfying the specified {@link DataRange}.
      *
-     * @param dataRange A {@link org.apache.cassandra.db.DataRange}.
-     * @return The Lucene {@link org.apache.lucene.search.Filter} to get the {@link org.apache.lucene.document.Document}s satisfying the specified {@link org.apache.cassandra.db.DataRange}.
+     * @param dataRange A {@link DataRange}.
+     * @return The Lucene {@link Query} to get the {@link Document}s satisfying the specified {@link DataRange}.
      */
-    public abstract Filter filter(DataRange dataRange);
+    public abstract Query query(DataRange dataRange);
 
     /**
-     * Returns a {@link org.apache.cassandra.db.composites.CellName} for the indexed column in the specified column family.
+     * Returns a {@link CellName} for the indexed column in the specified column family.
      *
      * @param columnFamily A column family.
-     * @return A {@link org.apache.cassandra.db.composites.CellName} for the indexed column in the specified column family.
+     * @return A {@link CellName} for the indexed column in the specified column family.
      */
     public abstract CellName makeCellName(ColumnFamily columnFamily);
 
     /**
-     * Returns a {@link com.stratio.cassandra.index.RowComparator} using the same order that is used in Cassandra.
+     * Returns a {@link RowComparator} using the same order that is used in Cassandra.
      *
-     * @return A {@link com.stratio.cassandra.index.RowComparator} using the same order that is used in Cassandra.
+     * @return A {@link RowComparator} using the same order that is used in Cassandra.
      */
     public abstract RowComparator naturalComparator();
 
+    public abstract SearchResult searchResult(Document document, ScoreDoc scoreDoc);
 
 }

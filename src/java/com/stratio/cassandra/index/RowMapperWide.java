@@ -25,6 +25,8 @@ import org.apache.cassandra.db.filter.ColumnSlice;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Filter;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 
 import java.util.List;
@@ -74,7 +76,7 @@ public class RowMapperWide extends RowMapper
     public Document document(Row row)
     {
         DecoratedKey partitionKey = row.key;
-        CellName clusteringKey = clusteringKeyMapper.cellName(row);
+        CellName clusteringKey = clusteringKeyMapper.clusteringKey(row);
 
         Document document = new Document();
         partitionKeyMapper.addFields(document, partitionKey);
@@ -119,7 +121,7 @@ public class RowMapperWide extends RowMapper
      */
     public CellName clusteringKey(Document document)
     {
-        return fullKeyMapper.cellName(document);
+        return fullKeyMapper.clusteringKey(document);
     }
 
     /**
@@ -162,20 +164,21 @@ public class RowMapperWide extends RowMapper
      * @param dataRange A {@link DataRange}.
      * @return The Lucene {@link Filter} to get the {@link Document}s satisfying the specified {@link DataRange}.
      */
-    public Filter filter(DataRange dataRange)
+    public Query query(DataRange dataRange)
     {
-        return fullKeyMapper.filter(dataRange);
+        return fullKeyMapper.query(dataRange);
     }
 
     /**
-     * Returns the Lucene {@link Filter} to get the {@link Document}s satisfying the specified {@link RangeTombstone}.
+     * Returns the Lucene {@link Query} to get the {@link Document}s satisfying the specified partition key and {@link RangeTombstone}.
      *
+     * @param partitionKey A partition key.
      * @param rangeTombstone A {@link RangeTombstone}.
-     * @return The Lucene {@link Filter} to get the {@link Document}s satisfying the specified {@link RangeTombstone}.
+     * @return The Lucene {@link Query} to get the {@link Document}s satisfying the specified partition key and {@link RangeTombstone}.
      */
-    public Filter filter(RangeTombstone rangeTombstone)
+    public Query query(DecoratedKey partitionKey, RangeTombstone rangeTombstone)
     {
-        return fullKeyMapper.filter(rangeTombstone);
+        return fullKeyMapper.query(partitionKey, rangeTombstone);
     }
 
     /**
@@ -190,10 +193,10 @@ public class RowMapperWide extends RowMapper
     }
 
     /**
-     * Returns the logical CQL3 column families contained in the specified physical {@link org.apache.cassandra.db.ColumnFamily}.
+     * Returns the logical CQL3 column families contained in the specified physical {@link ColumnFamily}.
      *
-     * @param columnFamily A physical {@link org.apache.cassandra.db.ColumnFamily}.
-     * @return The logical CQL3 column families contained in the specified physical {@link org.apache.cassandra.db.ColumnFamily}.
+     * @param columnFamily A physical {@link ColumnFamily}.
+     * @return The logical CQL3 column families contained in the specified physical {@link ColumnFamily}.
      */
     public Map<CellName, ColumnFamily> splitRows(ColumnFamily columnFamily)
     {
@@ -202,5 +205,12 @@ public class RowMapperWide extends RowMapper
 
     public String toString(CellName cellName) {
         return clusteringKeyMapper.toString(cellName);
+    }
+
+    @Override
+    public SearchResult searchResult(Document document, ScoreDoc scoreDoc) {
+        DecoratedKey partitionKey = fullKeyMapper.partitionKey(document);
+        CellName clusteringKey = fullKeyMapper.clusteringKey(document);
+        return new SearchResult(partitionKey, clusteringKey, scoreDoc);
     }
 }

@@ -52,9 +52,9 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
      * Returns a new {@code RowIndexSearcher}.
      *
      * @param indexManager A 2i manger.
-     * @param index        A {@link com.stratio.cassandra.index.RowIndex}.
+     * @param index        A {@link RowIndex}.
      * @param columns      A set of columns.
-     * @param rowService   A {@link com.stratio.cassandra.index.RowService}.
+     * @param rowService   A {@link RowService}.
      */
     public RowIndexSearcher(SecondaryIndexManager indexManager,
                             RowIndex index,
@@ -223,8 +223,6 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         Search search = search(clause);
         Comparator<Row> comparator = rowService.comparator(search);
         Collections.sort(result, comparator);
-
-//        result = rowService.group(result);
 
         String comparatorName = comparator.getClass().getSimpleName();
         int endSize = result.size();

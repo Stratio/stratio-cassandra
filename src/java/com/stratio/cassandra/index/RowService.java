@@ -27,12 +27,9 @@ import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.CellNameType;
-import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.UTF8Type;
-import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 
@@ -85,7 +82,8 @@ public abstract class RowService
         this.schema = config.getSchema();
         this.rowMapper = RowMapper.build(metadata, columnDefinition, schema);
 
-        this.luceneIndex = new LuceneIndex(config.getPath(),
+        this.luceneIndex = new LuceneIndex(rowMapper,
+                                           config.getPath(),
                                            config.getRefreshSeconds(),
                                            config.getRamBufferMB(),
                                            config.getMaxMergeMB(),
@@ -259,34 +257,34 @@ public abstract class RowService
         // Log.debug("Searching with search %s ", search);
 
         // Setup search arguments
-        Filter filter = rowMapper.filter(dataRange);
-        Query query = search.filteredQuery(schema, filter);
+        Query rangeQuery = rowMapper.query(dataRange);
+        Query query = search.query(schema, rangeQuery);
         Sort sort = search.sort(schema);
 
         // Setup search pagination
         List<Row> rows = new LinkedList<>(); // The row list to be returned
-        ScoredDocument lastDoc = null; // The last search result
+        SearchResult lastDoc = null; // The last search result
         int collectedDocs = 0;
         long searchTime = 0;
         long collectTime = 0;
         int numPages = 0;
 
         // Paginate search collecting documents
-        List<ScoredDocument> scoredDocuments;
+        List<SearchResult> searchResults;
         int pageSize = Math.min(limit, MAX_PAGE_SIZE);
         boolean maybeMore;
         do
         {
             // Search rows identifiers in Lucene
             long searchStartTime = System.currentTimeMillis();
-            scoredDocuments = luceneIndex.search(query, sort, lastDoc, pageSize, fieldsToLoad());
-            collectedDocs += scoredDocuments.size();
-            lastDoc = scoredDocuments.isEmpty() ? null : scoredDocuments.get(scoredDocuments.size() - 1);
+            searchResults = luceneIndex.search(query, sort, lastDoc, pageSize, fieldsToLoad());
+            collectedDocs += searchResults.size();
+            lastDoc = searchResults.isEmpty() ? null : searchResults.get(searchResults.size() - 1);
             searchTime += System.currentTimeMillis() - searchStartTime;
 
             // Collect rows from Cassandra
             long collectStartTime = System.currentTimeMillis();
-            for (Row row : rows(scoredDocuments, timestamp))
+            for (Row row : rows(searchResults, timestamp))
             {
                 if (row != null && accepted(row, expressions))
                 {
@@ -296,7 +294,7 @@ public abstract class RowService
             collectTime += System.currentTimeMillis() - collectStartTime;
 
             // Setup next iteration
-            maybeMore = scoredDocuments.size() == pageSize;
+            maybeMore = searchResults.size() == pageSize;
             pageSize = Math.min(Math.max(FILTERING_PAGE_SIZE, rows.size() - limit), MAX_PAGE_SIZE);
             numPages++;
 
@@ -337,12 +335,12 @@ public abstract class RowService
     }
 
     /**
-     * Returns {@code true} if the specified {@link com.stratio.cassandra.index.schema.Columns} satisfies the the specified {@link IndexExpression},
+     * Returns {@code true} if the specified {@link Columns} satisfies the the specified {@link IndexExpression},
      * {@code false} otherwise.
      *
-     * @param columns    A {@link com.stratio.cassandra.index.schema.Columns}
+     * @param columns    A {@link Columns}
      * @param expression A {@link IndexExpression}s to be satisfied by {@code columns}.
-     * @return {@code true} if the specified {@link com.stratio.cassandra.index.schema.Columns} satisfies the the specified {@link IndexExpression},
+     * @return {@code true} if the specified {@link Columns} satisfies the the specified {@link IndexExpression},
      * {@code false} otherwise.
      */
     private boolean accepted(Columns columns, IndexExpression expression)
@@ -388,11 +386,11 @@ public abstract class RowService
      * Returns the {@link Row}s identified by the specified {@link Document}s, using the specified time stamp to ignore
      * deleted columns. The {@link Row}s are retrieved from the storage engine, so it involves IO operations.
      *
-     * @param scoredDocuments The {@link ScoredDocument}s
-     * @param timestamp       The time stamp to ignore deleted columns.
+     * @param searchResults The {@link SearchResult}s
+     * @param timestamp     The time stamp to ignore deleted columns.
      * @return The {@link Row} identified by the specified {@link Document}s
      */
-    protected abstract List<Row> rows(List<ScoredDocument> scoredDocuments, long timestamp) throws IOException;
+    protected abstract List<Row> rows(List<SearchResult> searchResults, long timestamp) throws IOException;
 
     /**
      * Returns a {@link ColumnFamily} composed by the non expired {@link Cell}s of the specified  {@link ColumnFamily}.
@@ -434,41 +432,6 @@ public abstract class RowService
 
         return new Row(row.key, dcf);
     }
-
-//    /**
-//     * Returns a Lucene's {@link Filter} representing the specified Cassandra's {@link DataRange} using caching.
-//     *
-//     * @param dataRange The Cassandra's {@link DataRange} to be mapped.
-//     * @return A Lucene's {@link Filter} representing the specified Cassandra's {@link DataRange}.
-//     */
-//    protected final Filter cachedFilter(DataRange dataRange)
-//    {
-//        AbstractBounds<RowPosition> keyRange = dataRange.keyRange();
-//        if (filterCache == null)
-//        {
-//            Log.debug("Filter cache not present for range %s", keyRange);
-//            return rowMapper.makeFilter(dataRange);
-//        }
-//        Filter makeFilter = filterCache.get(dataRange);
-//        if (makeFilter == null)
-//        {
-//            makeFilter = rowMapper.makeFilter(dataRange);
-//            if (makeFilter != null)
-//            {
-//                Log.debug("Filter cache fails for range %s", keyRange);
-//                filterCache.put(dataRange, makeFilter);
-//            }
-//            else
-//            {
-//                Log.debug("Filter cache unneeded for range %s", keyRange);
-//            }
-//        }
-//        else
-//        {
-//            Log.debug("Filter cache hits for range %s", keyRange);
-//        }
-//        return makeFilter;
-//    }
 
     /**
      * Returns the {@link RowComparator} to be used for ordering the {@link Row}s obtained from the specified

@@ -187,7 +187,7 @@ public class ClusteringKeyMapper
      * @param row A {@link Row}.
      * @return The first clustering key contained in the specified row.
      */
-    public CellName cellName(Row row) {
+    public CellName clusteringKey(Row row) {
         return clusteringKey(row.cf);
     }
 
@@ -197,14 +197,14 @@ public class ClusteringKeyMapper
      * @param bytesRef The {@link BytesRef} containing the raw clustering key to be get.
      * @return The raw clustering key contained in the specified Lucene's field value.
      */
-    public CellName cellName(BytesRef bytesRef)
+    public CellName clusteringKey(BytesRef bytesRef)
     {
         String string = bytesRef.utf8ToString();
         ByteBuffer bb = ByteBufferUtils.fromString(string);
         return type.cellFromByteBuffer(bb);
     }
 
-    public CellName cellName(ByteBuffer byteBuffer)
+    public CellName clusteringKey(ByteBuffer byteBuffer)
     {
         return type.cellFromByteBuffer(byteBuffer);
     }
@@ -315,7 +315,7 @@ public class ClusteringKeyMapper
     }
 
     public String toString(CellName cellName) {
-        return ByteBufferUtils.toString(cellName.toByteBuffer(),type.asAbstractType());
+        return ByteBufferUtils.toString(cellName.toByteBuffer(), type.asAbstractType());
     }
 
 }

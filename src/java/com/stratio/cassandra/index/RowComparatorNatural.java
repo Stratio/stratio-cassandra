@@ -71,8 +71,8 @@ public class RowComparatorNatural implements RowComparator
             public int compare(Row row1, Row row2)
             {
                 CellNameType nameType = clusteringKeyMapper.getType();
-                CellName name1 = clusteringKeyMapper.cellName(row1);
-                CellName name2 = clusteringKeyMapper.cellName(row2);
+                CellName name1 = clusteringKeyMapper.clusteringKey(row1);
+                CellName name2 = clusteringKeyMapper.clusteringKey(row2);
                 return nameType.compare(name1, name2);
             }
         });

@@ -15,7 +15,6 @@
  */
 package com.stratio.cassandra.index;
 
-import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.ColumnMapper;
 import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.util.ByteBufferUtils;
@@ -35,7 +34,6 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 
 import java.nio.ByteBuffer;
-import java.util.LinkedList;
 import java.util.List;
 
 /**

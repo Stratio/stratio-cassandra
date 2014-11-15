@@ -208,8 +208,8 @@ public class ClusteringKeyMapperSorter extends FieldComparator<BytesRef>
      */
     private int compare(BytesRef fieldValue1, BytesRef fieldValue2)
     {
-        CellName bb1 = clusteringKeyMapper.cellName(fieldValue1);
-        CellName bb2 = clusteringKeyMapper.cellName(fieldValue2);
+        CellName bb1 = clusteringKeyMapper.clusteringKey(fieldValue1);
+        CellName bb2 = clusteringKeyMapper.clusteringKey(fieldValue2);
         CellNameType type = clusteringKeyMapper.getType();
         return type.compare(bb1, bb2);
     }

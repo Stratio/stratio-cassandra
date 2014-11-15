@@ -18,9 +18,8 @@ package com.stratio.cassandra.index;
 import com.stratio.cassandra.index.util.ByteBufferUtils;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.RowPosition;
-import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.dht.Token.TokenFactory;
@@ -30,7 +29,7 @@ import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.FieldComparatorSource;
-import org.apache.lucene.search.Filter;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.util.BytesRef;
 
@@ -81,9 +80,9 @@ public class TokenMapperGeneric extends TokenMapper
      * {@inheritDoc}
      */
     @Override
-    public Filter makeFilter(AbstractBounds<RowPosition> keyRange)
+    public Query query(DataRange dataRange)
     {
-        return new TokenMapperGenericDataRangeFilter(this, keyRange);
+        return new TokenDataRangeQuery(FIELD_NAME, dataRange, this);
     }
 
     /**
@@ -115,6 +114,12 @@ public class TokenMapperGeneric extends TokenMapper
         String string = bytesRef.utf8ToString();
         ByteBuffer bb = ByteBufferUtils.fromString(string);
         return factory.fromByteArray(bb);
+    }
+
+    public BytesRef bytesRef(Token token) {
+        ByteBuffer bb = factory.toByteArray(token);
+        byte[] bytes = ByteBufferUtils.asArray(bb);
+        return new BytesRef(bytes);
     }
 
 }

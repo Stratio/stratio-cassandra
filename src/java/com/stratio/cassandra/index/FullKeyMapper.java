@@ -30,7 +30,10 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.FieldComparator;
+import org.apache.lucene.search.FieldComparatorSource;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.SortField;
 import org.apache.lucene.util.BytesRef;
 
 import java.io.IOException;
@@ -127,34 +130,41 @@ public class FullKeyMapper
         return type.builder().add(partitionKey.getKey()).add(cellName.toByteBuffer()).build();
     }
 
-    public DecoratedKey decoratedKey(BytesRef bytesRef)
+    public DecoratedKey partitionKey(Document document)
+    {
+        String string = document.get(FIELD_NAME);
+        ByteBuffer bb = ByteBufferUtils.fromString(string);
+        return partitionKey(bb);
+    }
+
+    public DecoratedKey partitionKey(BytesRef bytesRef)
     {
         String string = bytesRef.utf8ToString();
         ByteBuffer bb = ByteBufferUtils.fromString(string);
-        return decoratedKey(bb);
+        return partitionKey(bb);
     }
 
-    public DecoratedKey decoratedKey(ByteBuffer byteBuffer)
+    public DecoratedKey partitionKey(ByteBuffer byteBuffer)
     {
         ByteBuffer[] components = type.split(byteBuffer);
         return partitionKeyMapper.decoratedKey(components[0]);
     }
 
-    public CellName cellName(Document document)
+    public CellName clusteringKey(Document document)
     {
         String string = document.get(FIELD_NAME);
         ByteBuffer bb = ByteBufferUtils.fromString(string);
-        return cellName(bb);
+        return clusteringKey(bb);
     }
 
-    public CellName cellName(BytesRef bytesRef)
+    public CellName clusteringKey(BytesRef bytesRef)
     {
         String string = bytesRef.utf8ToString();
         ByteBuffer bb = ByteBufferUtils.fromString(string);
-        return cellName(bb);
+        return clusteringKey(bb);
     }
 
-    public CellName cellName(ByteBuffer byteBuffer)
+    public CellName clusteringKey(ByteBuffer byteBuffer)
     {
         ByteBuffer[] components = type.split(byteBuffer);
         ByteBuffer bb = components[1];
@@ -190,16 +200,21 @@ public class FullKeyMapper
         return new Term(FIELD_NAME, ByteBufferUtils.toString(fullKey));
     }
 
-    public Filter filter(DataRange dataRange)
+    public Query query(DataRange dataRange)
     {
-        Filter filter = new FullKeyMapperDataRangeFilter(this, dataRange);
-        return new CachingWrapperFilter(filter);
+        return new FullKeyDataRangeQuery(FIELD_NAME, dataRange, this);
     }
 
-    public Filter filter(RangeTombstone rangeTombstone)
+    /**
+     * Returns the Lucene {@link Query} to get the {@link Document}s satisfying the specified partition key and {@link RangeTombstone}.
+     *
+     * @param partitionKey A partition key.
+     * @param rangeTombstone A {@link RangeTombstone}.
+     * @return The Lucene {@link Query} to get the {@link Document}s satisfying the specified partition key and {@link RangeTombstone}.
+     */
+    public Query query(DecoratedKey partitionKey, RangeTombstone rangeTombstone)
     {
-        Filter filter = new FullKeyMapperRangeTombstoneFilter(this, rangeTombstone);
-        return new CachingWrapperFilter(filter);
+        return new FullKeyRangeTombstoneQuery(FIELD_NAME, partitionKey, rangeTombstone, this);
     }
 
     public SortField[] sortFields()
@@ -218,13 +233,13 @@ public class FullKeyMapper
 
     public int compare(BytesRef bytesRef1, BytesRef bytesRef2)
     {
-        Token token1 = decoratedKey(bytesRef1).getToken();
-        Token token2 = decoratedKey(bytesRef2).getToken();
+        Token token1 = partitionKey(bytesRef1).getToken();
+        Token token2 = partitionKey(bytesRef2).getToken();
         int comp = token1.compareTo(token2);
         if (comp == 0)
         {
-            CellName bb1 = cellName(bytesRef1);
-            CellName bb2 = cellName(bytesRef2);
+            CellName bb1 = clusteringKey(bytesRef1);
+            CellName bb2 = clusteringKey(bytesRef2);
             comp = clusteringKeyType.compare(bb1, bb2);
         }
         return comp;

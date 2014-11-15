@@ -25,7 +25,8 @@ import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.search.Filter;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 
 /**
@@ -90,9 +91,9 @@ public class RowMapperSkinny extends RowMapper
      * {@inheritDoc}
      */
     @Override
-    public final Filter filter(DataRange dataRange)
+    public final Query query(DataRange dataRange)
     {
-        return tokenMapper.makeFilter(dataRange.keyRange());
+        return tokenMapper.query(dataRange);
     }
 
     /**
@@ -111,5 +112,11 @@ public class RowMapperSkinny extends RowMapper
     public RowComparator naturalComparator()
     {
         return new RowComparatorNatural();
+    }
+
+    @Override
+    public SearchResult searchResult(Document document, ScoreDoc scoreDoc) {
+        DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
+        return new SearchResult(partitionKey, null, scoreDoc);
     }
 }
