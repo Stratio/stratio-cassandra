@@ -36,7 +36,7 @@ public class BooleanConditionBuilder extends ConditionBuilder<BooleanCondition, 
     /**
      * Returns a new {@link BooleanConditionBuilder}.
      */
-    protected BooleanConditionBuilder()
+    BooleanConditionBuilder()
     {
     }
 

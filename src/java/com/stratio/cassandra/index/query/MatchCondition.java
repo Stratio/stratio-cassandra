@@ -17,6 +17,7 @@ package com.stratio.cassandra.index.query;
 
 import com.stratio.cassandra.index.schema.ColumnMapper;
 import com.stratio.cassandra.index.schema.Schema;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.NumericRangeQuery;
 import org.apache.lucene.search.Query;
@@ -132,16 +133,9 @@ public class MatchCondition extends Condition
     @Override
     public String toString()
     {
-        StringBuilder builder = new StringBuilder();
-        builder.append(getClass().getSimpleName());
-        builder.append(" [boost=");
-        builder.append(boost);
-        builder.append(", field=");
-        builder.append(field);
-        builder.append(", value=");
-        builder.append(value);
-        builder.append("]");
-        return builder.toString();
+        return new ToStringBuilder(this)
+                .append("field", field)
+                .append("value", value)
+                .toString();
     }
-
 }

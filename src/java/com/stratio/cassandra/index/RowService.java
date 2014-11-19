@@ -46,10 +46,8 @@ public abstract class RowService
 {
 
     protected final ColumnFamilyStore baseCfs;
-    protected final ColumnDefinition columnDefinition;
     protected final RowMapper rowMapper;
     protected final CFMetaData metadata;
-    protected final CellNameType nameType;
     protected final ColumnIdentifier indexedColumnName;
     protected final Schema schema;
     protected final LuceneIndex luceneIndex;
@@ -72,9 +70,7 @@ public abstract class RowService
     {
 
         this.baseCfs = baseCfs;
-        this.columnDefinition = columnDefinition;
         this.metadata = baseCfs.metadata;
-        this.nameType = metadata.comparator;
         this.indexedColumnName = columnDefinition.name;
 
         RowIndexConfig config = new RowIndexConfig(metadata, columnDefinition.getIndexOptions());
@@ -260,6 +256,7 @@ public abstract class RowService
         Query rangeQuery = rowMapper.query(dataRange);
         Query query = search.query(schema, rangeQuery);
         Sort sort = search.sort(schema);
+        boolean usesRelevance = search.usesRelevance();
 
         // Setup search pagination
         List<Row> rows = new LinkedList<>(); // The row list to be returned
@@ -277,7 +274,7 @@ public abstract class RowService
         {
             // Search rows identifiers in Lucene
             long searchStartTime = System.currentTimeMillis();
-            searchResults = luceneIndex.search(query, sort, lastDoc, pageSize, fieldsToLoad());
+            searchResults = luceneIndex.search(query, sort, lastDoc, pageSize, fieldsToLoad(), usesRelevance);
             collectedDocs += searchResults.size();
             lastDoc = searchResults.isEmpty() ? null : searchResults.get(searchResults.size() - 1);
             searchTime += System.currentTimeMillis() - searchStartTime;

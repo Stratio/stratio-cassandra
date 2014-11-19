@@ -25,16 +25,17 @@ import org.codehaus.jackson.map.annotate.JsonSerialize;
 import java.io.IOException;
 
 /**
+ * A JSON mapper based on {@link org.codehaus.jackson} annotations.
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class JsonSerializer
 {
 
-    /**
-     * The embedded JSON serializer.
-     */
+    /** The embedded JSON serializer. */
     private static final ObjectMapper jsonMapper = new ObjectMapper();
 
+    // Setup serialization options
     static
     {
         jsonMapper.configure(JsonGenerator.Feature.QUOTE_FIELD_NAMES, false);
@@ -48,29 +49,28 @@ public class JsonSerializer
     }
 
     /**
-     * Hidden constructor.
+     * Returns the JSON {@code String} representation of the specified object.
+     *
+     * @param value A object to be serialized.
+     * @return The JSON {@code String} representation of the specified object.
+     * @throws IOException If there are serialization problems.
      */
-    private JsonSerializer()
-    {
-    }
-
     public static String toString(Object value) throws IOException
     {
         return jsonMapper.writeValueAsString(value);
     }
 
-    public static byte[] toBytes(Object value) throws IOException
+    /**
+     * Returns the object of the specified class represented by the specified JSON {@code String}.
+     *
+     * @param value     A JSON {@code String} to be parsed.
+     * @param valueType The class of the object to be parsed.
+     * @param <T>       The type of the object to be parsed.
+     * @return The object of the specified class represented by the specified JSON {@code String}.
+     * @throws IOException If there are parsing problems.
+     */
+    public static <T> T fromString(String value, Class<T> valueType) throws IOException
     {
-        return jsonMapper.writeValueAsBytes(value);
-    }
-
-    public static <T> T fromString(String content, Class<T> valueType) throws IOException
-    {
-        return jsonMapper.readValue(content, valueType);
-    }
-
-    public static <T> T fromBytes(byte[] content, Class<T> valueType) throws IOException
-    {
-        return jsonMapper.readValue(content, valueType);
+        return jsonMapper.readValue(value, valueType);
     }
 }

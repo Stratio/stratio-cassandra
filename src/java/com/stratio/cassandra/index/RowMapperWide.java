@@ -21,16 +21,19 @@ import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellName;
+import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.filter.ColumnSlice;
+import org.apache.cassandra.dht.Token;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.Filter;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.*;
 
 import java.util.List;
 import java.util.Map;
+
+import static org.apache.lucene.search.BooleanClause.Occur.MUST;
+import static org.apache.lucene.search.BooleanClause.Occur.SHOULD;
 
 /**
  * {@link RowMapper} for wide rows.
@@ -53,7 +56,7 @@ public class RowMapperWide extends RowMapper
     {
         super(metadata, columnDefinition, schema);
         this.clusteringKeyMapper = ClusteringKeyMapper.instance(metadata);
-        this.fullKeyMapper = FullKeyMapper.instance(metadata, partitionKeyMapper, clusteringKeyMapper);
+        this.fullKeyMapper = FullKeyMapper.instance(partitionKeyMapper, clusteringKeyMapper);
     }
 
     /**
@@ -79,19 +82,24 @@ public class RowMapperWide extends RowMapper
         CellName clusteringKey = clusteringKeyMapper.clusteringKey(row);
 
         Document document = new Document();
+        tokenMapper.addFields(document, partitionKey);
         partitionKeyMapper.addFields(document, partitionKey);
+        clusteringKeyMapper.addFields(document, clusteringKey);
         fullKeyMapper.addFields(document, partitionKey, clusteringKey);
         schema.addFields(document, columns(row));
         return document;
     }
 
     /**
-     * {@inheritDoc}
+     * Returns the Lucene {@link Sort} to get {@link Document}s in the same order that is used in Cassandra.
+     *
+     * @return The Lucene {@link Sort} to get {@link Document}s in the same order that is used in Cassandra.
      */
-    @Override
     public Sort sort()
     {
-        return new Sort(fullKeyMapper.sortFields());
+        SortField[] partitionKeySort = tokenMapper.sortFields();
+        SortField[] clusteringKeySort = clusteringKeyMapper.sortFields();
+        return new Sort(ArrayUtils.addAll(partitionKeySort, clusteringKeySort));
     }
 
     /**
@@ -111,17 +119,6 @@ public class RowMapperWide extends RowMapper
     public RowComparator naturalComparator()
     {
         return new RowComparatorNatural(clusteringKeyMapper);
-    }
-
-    /**
-     * Returns the clustering key contained in the specified {@link Document}.
-     *
-     * @param document A {@link Document}.
-     * @return The clustering key contained in the specified {@link Document}.
-     */
-    public CellName clusteringKey(Document document)
-    {
-        return fullKeyMapper.clusteringKey(document);
     }
 
     /**
@@ -166,19 +163,65 @@ public class RowMapperWide extends RowMapper
      */
     public Query query(DataRange dataRange)
     {
-        return fullKeyMapper.query(dataRange);
+        RowPosition startPosition = dataRange.startKey();
+        RowPosition stopPosition = dataRange.stopKey();
+        Token startToken = startPosition.getToken();
+        Token stopToken = stopPosition.getToken();
+        boolean includeStart = tokenMapper.includeStart(startPosition);
+        boolean includeStop = tokenMapper.includeStop(stopPosition);
+
+        if (dataRange instanceof DataRange.Paging)
+        {
+            DataRange.Paging paging = (DataRange.Paging) dataRange;
+            BooleanQuery query = new BooleanQuery();
+
+            Composite startName = paging.columnStart;
+            if (!startName.isEmpty())
+            {
+                BooleanQuery q = new BooleanQuery();
+                DecoratedKey startKey = (DecoratedKey) startPosition;
+                q.add(partitionKeyMapper.query(startKey), MUST);
+                q.add(clusteringKeyMapper.query(startName, null), MUST);
+                query.add(q, SHOULD);
+                includeStart = false;
+            }
+
+            Composite stopName = paging.columnFinish;
+            if (!stopName.isEmpty())
+            {
+                BooleanQuery q = new BooleanQuery();
+                DecoratedKey stopKey = (DecoratedKey) stopPosition;
+                q.add(partitionKeyMapper.query(stopKey), MUST);
+                q.add(clusteringKeyMapper.query(null, stopName), MUST);
+                query.add(q, SHOULD);
+                includeStop = false;
+            }
+
+            Query rangeQuery = tokenMapper.query(startToken, stopToken, includeStart, includeStop);
+            if (rangeQuery != null) query.add(rangeQuery, SHOULD);
+
+            return query.getClauses().length == 0 ? null : query;
+
+        }
+        else
+        {
+            return tokenMapper.query(startToken, stopToken, includeStart, includeStop);
+        }
     }
 
     /**
      * Returns the Lucene {@link Query} to get the {@link Document}s satisfying the specified partition key and {@link RangeTombstone}.
      *
-     * @param partitionKey A partition key.
+     * @param partitionKey   A partition key.
      * @param rangeTombstone A {@link RangeTombstone}.
      * @return The Lucene {@link Query} to get the {@link Document}s satisfying the specified partition key and {@link RangeTombstone}.
      */
     public Query query(DecoratedKey partitionKey, RangeTombstone rangeTombstone)
     {
-        return fullKeyMapper.query(partitionKey, rangeTombstone);
+        BooleanQuery query = new BooleanQuery();
+        query.add(partitionKeyMapper.query(partitionKey), MUST);
+        query.add(clusteringKeyMapper.query(rangeTombstone.min, rangeTombstone.max), MUST);
+        return query;
     }
 
     /**
@@ -203,14 +246,16 @@ public class RowMapperWide extends RowMapper
         return clusteringKeyMapper.splitRows(columnFamily);
     }
 
-    public String toString(CellName cellName) {
+    public String toString(CellName cellName)
+    {
         return clusteringKeyMapper.toString(cellName);
     }
 
     @Override
-    public SearchResult searchResult(Document document, ScoreDoc scoreDoc) {
-        DecoratedKey partitionKey = fullKeyMapper.partitionKey(document);
-        CellName clusteringKey = fullKeyMapper.clusteringKey(document);
+    public SearchResult searchResult(Document document, ScoreDoc scoreDoc)
+    {
+        DecoratedKey partitionKey = partitionKeyMapper.partitionKey(document);
+        CellName clusteringKey = clusteringKeyMapper.clusteringKey(document);
         return new SearchResult(partitionKey, clusteringKey, scoreDoc);
     }
 }

@@ -54,11 +54,9 @@ public abstract class ColumnMapper<BASE>
 
     protected static final Analyzer EMPTY_ANALYZER = new KeywordAnalyzer();
 
-    protected static final Store STORE = Store.NO;
+    private final AbstractType<?>[] supportedTypes;
 
-    protected final AbstractType<?>[] supportedTypes;
-
-    protected ColumnMapper(AbstractType<?>[] supportedTypes)
+    ColumnMapper(AbstractType<?>[] supportedTypes)
     {
         this.supportedTypes = supportedTypes;
     }
@@ -76,15 +74,16 @@ public abstract class ColumnMapper<BASE>
     public abstract Analyzer analyzer();
 
     /**
-     * Returns the Lucene's {@link org.apache.lucene.document.Field} resulting from the mapping of {@code value}, using
+     * Returns the Lucene {@link Field} resulting from the mapping of {@code value}, using
      * {@code name} as field's name.
      *
-     * @param name  The name of the Lucene's field.
-     * @param value The value of the Lucene's field.
-     * @return The Lucene's {@link org.apache.lucene.document.Field} resulting from the mapping of {@code value}, using
+     * @param name  The name of the Lucene {@link Field}.
+     * @param value The value of the Lucene {@link Field}.
+     * @param store If the value must be stored.
+     * @return The Lucene {@link Field} resulting from the mapping of {@code value}, using
      * {@code name} as field's name.
      */
-    public abstract Field field(String name, Object value);
+    public abstract Field field(String name, Object value, Store store);
 
     /**
      * Returns the Lucene's type for this mapper.

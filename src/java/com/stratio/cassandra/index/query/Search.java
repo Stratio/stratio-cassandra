@@ -47,7 +47,7 @@ public class Search
     /**
      * The sorting.
      */
-    @JsonProperty("sort")
+    @JsonProperty("sortFields")
     private Sorting sorting;
 
     /**
@@ -61,7 +61,7 @@ public class Search
     @JsonCreator
     public Search(@JsonProperty("query") Condition queryCondition,
                   @JsonProperty("filter") Condition filterCondition,
-                  @JsonProperty("sort") Sorting sorting)
+                  @JsonProperty("sortFields") Sorting sorting)
     {
         this.queryCondition = queryCondition;
         this.filterCondition = filterCondition;
@@ -160,6 +160,9 @@ public class Search
      */
     public Query query(Schema schema, Query rangeQuery)
     {
+        if (queryCondition == null && filterCondition == null && rangeQuery == null) {
+            return new MatchAllDocsQuery();
+        }
         BooleanQuery booleanQuery = new BooleanQuery();
         if (queryCondition != null)
         {
@@ -185,13 +188,9 @@ public class Search
      */
     public void validate(Schema schema)
     {
-        if (queryCondition != null)
+        if (queryCondition != null || filterCondition != null)
         {
-            queryCondition.query(schema);
-        }
-        if (filterCondition != null)
-        {
-            filterCondition.filter(schema);
+            query(schema, null);
         }
         if (sorting != null)
         {

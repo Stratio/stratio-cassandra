@@ -208,7 +208,7 @@ public class LuceneIndex
 
     /**
      * Finds the top {@code count} hits for {@code query}, applying {@code clusteringKeyFilter} if non-null, and sorting the hits by
-     * the criteria in {@code sort}.
+     * the criteria in {@code sortFields}.
      *
      * @param query        The {@link Query} to search for.
      * @param sort         The {@link Sort} to be applied.
@@ -221,23 +221,16 @@ public class LuceneIndex
                                        Sort sort,
                                        SearchResult after,
                                        Integer count,
-                                       Set<String> fieldsToLoad) throws IOException
+                                       Set<String> fieldsToLoad, boolean usesRelevance) throws IOException
     {
-        // Validate
-        if (count == null || count < 0)
-        {
-            throw new IllegalArgumentException("Positive count required");
-        }
-        if (fieldsToLoad == null || fieldsToLoad.isEmpty())
-        {
-            throw new IllegalArgumentException("Fields to load required");
-        }
+        Log.debug("Searching by query %s", query);
+
         IndexSearcher searcher = searcherManager.acquire();
         try
         {
             // Search
             ScoreDoc start = after == null ? null : after.getScoreDoc();
-            TopDocs topDocs = topDocs(searcher, query, sort, start, count);
+            TopDocs topDocs = topDocs(searcher, query, sort, start, count, usesRelevance);
             ScoreDoc[] scoreDocs = topDocs.scoreDocs;
 
             // Collect the documents from query result
@@ -257,30 +250,30 @@ public class LuceneIndex
         }
     }
 
-    private TopDocs topDocs(IndexSearcher searcher, Query query, Sort sort, ScoreDoc after, int count)
+    private TopDocs topDocs(IndexSearcher searcher, Query query, Sort sort, ScoreDoc after, int count, boolean usesRelevance)
             throws IOException
     {
-        if (sort == null) sort = this.sort;
-//        // Use default sort if the query doesn't use relevance
-//        if (sort == null)
-//        {
-//            if (query instanceof ConstantScoreQuery)
-//            {
-//                FieldDoc start = after == null ? null : (FieldDoc) after;
-//                TopFieldCollector tfc = TopFieldCollector.create(this.sort, count, start, true, false, false, false);
-//                Collector collector = new EarlyTerminatingSortingCollector(tfc, this.sort, count);
-//                searcher.search(query, collector);
-//                return tfc.topDocs();
-//            }
-//            else
-//            {
-//                return searcher.searchAfter(after, query, count);
-//            }
-//        }
-//        else
-//        {
+//        if (sortFields == null) sortFields = this.sortFields;
+        // Use default sortFields if the query doesn't use relevance
+        if (sort == null)
+        {
+            if (!usesRelevance)
+            {
+                FieldDoc start = after == null ? null : (FieldDoc) after;
+                TopFieldCollector tfc = TopFieldCollector.create(this.sort, count, start, true, false, false, false);
+                Collector collector = new EarlyTerminatingSortingCollector(tfc, this.sort, count);
+                searcher.search(query, collector);
+                return tfc.topDocs();
+            }
+            else
+            {
+                return searcher.searchAfter(after, query, count);
+            }
+        }
+        else
+        {
             return searcher.searchAfter(after, query, count, sort);
-//        }
+        }
     }
 
     /**

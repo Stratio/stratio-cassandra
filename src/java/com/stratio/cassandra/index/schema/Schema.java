@@ -156,7 +156,7 @@ public class Schema
             ColumnMapper<?> columnMapper = getMapper(name);
             if (columnMapper != null)
             {
-                Field field = columnMapper.field(fieldName, value);
+                Field field = columnMapper.field(fieldName, value, Field.Store.NO);
                 document.add(field);
             }
         }

@@ -23,14 +23,14 @@ import org.junit.Assert;
  */
 public class AbstractConditionTest
 {
-    public void testJsonCondition(Search search)
+    protected void testJsonCondition(Search search)
     {
         String json1 = search.toJson();
         String json2 = Search.fromJson(json1).toJson();
         Assert.assertEquals(json1, json2);
     }
 
-    public void testJsonCondition(SearchBuilder searchBuilder)
+    protected void testJsonCondition(SearchBuilder searchBuilder)
     {
         String json1 = searchBuilder.build().toJson();
         String json2 = Search.fromJson(json1).toJson();

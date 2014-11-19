@@ -18,7 +18,6 @@ package com.stratio.cassandra.index;
 import com.stratio.cassandra.index.util.ByteBufferUtils;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.Token;
@@ -27,10 +26,8 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.search.FieldComparator;
-import org.apache.lucene.search.FieldComparatorSource;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.SortField;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.search.*;
 import org.apache.lucene.util.BytesRef;
 
 import java.io.IOException;
@@ -80,16 +77,25 @@ public class TokenMapperGeneric extends TokenMapper
      * {@inheritDoc}
      */
     @Override
-    public Query query(DataRange dataRange)
-    {
-        return new TokenDataRangeQuery(FIELD_NAME, dataRange, this);
+    protected Query makeQuery(Token lower, Token upper, boolean includeLower, boolean includeUpper) {
+        return new TokenRangeQuery(lower, upper, includeLower, includeUpper, this);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public SortField[] sort()
+    public Query query(Token token) {
+        BytesRef ref = bytesRef(token);
+        Term term = new Term(FIELD_NAME, ref);
+        return new TermQuery(term);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public SortField[] sortFields()
     {
         return new SortField[]{
                 new SortField(FIELD_NAME, new FieldComparatorSource()
@@ -116,6 +122,7 @@ public class TokenMapperGeneric extends TokenMapper
         return factory.fromByteArray(bb);
     }
 
+    @SuppressWarnings("unchecked")
     public BytesRef bytesRef(Token token) {
         ByteBuffer bb = factory.toByteArray(token);
         byte[] bytes = ByteBufferUtils.asArray(bb);

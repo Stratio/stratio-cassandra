@@ -32,7 +32,7 @@ import java.io.IOException;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ClusteringKeyMapperSorter extends FieldComparator<BytesRef>
+class ClusteringKeySorter extends FieldComparator<BytesRef>
 {
 
     private static final byte[] MISSING_BYTES = new byte[0];
@@ -57,7 +57,7 @@ public class ClusteringKeyMapperSorter extends FieldComparator<BytesRef>
      * @param numHits             The number of hits.
      * @param field               The field name.
      */
-    public ClusteringKeyMapperSorter(ClusteringKeyMapper clusteringKeyMapper, int numHits, String field)
+    public ClusteringKeySorter(ClusteringKeyMapper clusteringKeyMapper, int numHits, String field)
     {
         this.clusteringKeyMapper = clusteringKeyMapper;
         values = new BytesRef[numHits];

@@ -19,16 +19,12 @@ import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.DataRange;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.Row;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellName;
+import org.apache.cassandra.dht.Token;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.*;
 
 import java.nio.ByteBuffer;
 
@@ -44,6 +40,7 @@ public abstract class RowMapper
     protected final ColumnDefinition columnDefinition;
     protected final Schema schema;
 
+    protected final TokenMapper tokenMapper;
     protected final PartitionKeyMapper partitionKeyMapper;
     protected final RegularCellsMapper regularCellsMapper;
 
@@ -59,6 +56,7 @@ public abstract class RowMapper
         this.metadata = metadata;
         this.columnDefinition = columnDefinition;
         this.schema = schema;
+        this.tokenMapper = TokenMapper.instance(metadata);
         this.partitionKeyMapper = PartitionKeyMapper.instance(metadata);
         this.regularCellsMapper = RegularCellsMapper.instance(metadata);
     }
@@ -107,7 +105,7 @@ public abstract class RowMapper
      */
     public final DecoratedKey partitionKey(ByteBuffer key)
     {
-        return partitionKeyMapper.decoratedKey(key);
+        return partitionKeyMapper.partitionKey(key);
     }
 
     /**
@@ -118,18 +116,7 @@ public abstract class RowMapper
      */
     public final DecoratedKey partitionKey(Document document)
     {
-        return partitionKeyMapper.decoratedKey(document);
-    }
-
-    /**
-     * Returns the Lucene {@link Query} to get the {@link Document}s containing the specified decorated partition key.
-     *
-     * @param partitionKey A decorated partition key.
-     * @return The Lucene {@link Query} to get the {@link Document}s containing the specified decorated partition key.
-     */
-    public final Query query(DecoratedKey partitionKey)
-    {
-        return partitionKeyMapper.query(partitionKey);
+        return partitionKeyMapper.partitionKey(document);
     }
 
     /**
@@ -142,13 +129,6 @@ public abstract class RowMapper
     {
         return partitionKeyMapper.term(partitionKey);
     }
-
-    /**
-     * Returns the Lucene {@link Sort} to get {@link Document}s in the same order that is used in Cassandra.
-     *
-     * @return The Lucene {@link Sort} to get {@link Document}s in the same order that is used in Cassandra.
-     */
-    public abstract Sort sort();
 
     /**
      * Returns the Lucene {@link Query} to get the {@link Document}s satisfying the specified {@link DataRange}.

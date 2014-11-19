@@ -44,7 +44,7 @@ public class RowServiceWide extends RowService
     {
         FIELDS_TO_LOAD = new HashSet<>();
         FIELDS_TO_LOAD.add(PartitionKeyMapper.FIELD_NAME);
-        FIELDS_TO_LOAD.add(FullKeyMapper.FIELD_NAME);
+        FIELDS_TO_LOAD.add(ClusteringKeyMapper.FIELD_NAME);
     }
 
     private final RowMapperWide rowMapper;

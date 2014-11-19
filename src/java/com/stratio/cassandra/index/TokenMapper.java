@@ -19,7 +19,7 @@ import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.RowPosition.Kind;
+import org.apache.cassandra.db.RowPosition;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.Murmur3Partitioner;
 import org.apache.cassandra.dht.Token;
@@ -79,24 +79,48 @@ public abstract class TokenMapper
      * @return A Lucene's {@link Query} for filtering documents/rows according to the row token range specified in
      * {@code dataRage}.
      */
-    public abstract Query query(DataRange dataRange);
+    public Query query(DataRange dataRange) {
+        RowPosition startPosition = dataRange.startKey();
+        RowPosition stopPosition = dataRange.stopKey();
+        Token start = startPosition.getToken();
+        Token stop = stopPosition.getToken();
+        boolean includeLower = includeStart(startPosition);
+        boolean includeUpper = includeStop(stopPosition);
+        return query(start, stop, includeLower, includeUpper);
+    }
+
+    @SuppressWarnings("unchecked")
+    public Query query(Token lower, Token upper, boolean includeLower, boolean includeUpper) {
+        Token minimum = DatabaseDescriptor.getPartitioner().getMinimumToken();
+        if (lower != null && upper != null && lower.compareTo(minimum) == 0 && upper.compareTo(minimum) == 0 && (includeLower || includeUpper))
+        {
+            return null;
+        }
+        else {
+            return makeQuery(lower, upper, includeLower, includeUpper);
+        }
+    }
+
+    public abstract Query query(Token token);
+
+    protected abstract Query makeQuery(Token lower, Token upper, boolean includeLower, boolean includeUpper);
 
     /**
      * Returns a Lucene's {@link SortField} array for sorting documents/rows according to the current partitioner.
      *
      * @return A Lucene's {@link SortField} array for sorting documents/rows according to the current partitioner.
      */
-    public abstract SortField[] sort();
+    public abstract SortField[] sortFields();
 
     /**
      * Returns {@code true} if the specified lower row position kind must be included in the filtered range, {@code false} otherwise.
      *
-     * @param kind A {@link Kind}.
+     * @param rowPosition A {@link RowPosition}.
      * @return {@code true} if the specified lower row position kind must be included in the filtered range, {@code false} otherwise.
      */
-    protected boolean includeLower(Kind kind)
+    protected boolean includeStart(RowPosition rowPosition)
     {
-        switch (kind)
+        switch (rowPosition.kind())
         {
             case MAX_BOUND:
                 return false;
@@ -112,12 +136,12 @@ public abstract class TokenMapper
     /**
      * Returns {@code true} if the specified upper row position kind must be included in the filtered range, {@code false} otherwise.
      *
-     * @param kind A {@link Kind}.
+     * @param rowPosition A {@link RowPosition}.
      * @return {@code true} if the specified upper row position kind must be included in the filtered range, {@code false} otherwise.
      */
-    protected boolean includeUpper(Kind kind)
+    protected boolean includeStop(RowPosition rowPosition)
     {
-        switch (kind)
+        switch (rowPosition.kind())
         {
             case MAX_BOUND:
                 return true;

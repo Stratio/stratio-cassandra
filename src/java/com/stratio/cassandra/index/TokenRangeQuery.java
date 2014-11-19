@@ -15,8 +15,6 @@
  */
 package com.stratio.cassandra.index;
 
-import org.apache.cassandra.db.DataRange;
-import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.dht.Token;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.index.FilteredTermsEnum;
@@ -31,15 +29,21 @@ import java.io.IOException;
 /**
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class TokenDataRangeQuery extends MultiTermQuery
+public class TokenRangeQuery extends MultiTermQuery
 {
     private final TokenMapperGeneric tokenMapper;
-    private final AbstractBounds<Token> tokenBounds;
+    private final Token lower;
+    private final Token upper;
+    private final boolean includeLower;
+    private final boolean includeUpper;
 
-    public TokenDataRangeQuery(String field, DataRange dataRange, TokenMapperGeneric tokenMapper) {
-        super(field);
+    public TokenRangeQuery(Token lower, Token upper, boolean includeLower, boolean includeUpper, TokenMapperGeneric tokenMapper) {
+        super(TokenMapperGeneric.FIELD_NAME);
         this.tokenMapper = tokenMapper;
-        this.tokenBounds = dataRange.keyRange().toTokenBounds();
+        this.lower = lower;
+        this.upper = upper;
+        this.includeLower = includeLower;
+        this.includeUpper = includeUpper;
     }
 
     @Override
@@ -52,8 +56,11 @@ public class TokenDataRangeQuery extends MultiTermQuery
     public String toString(String field)
     {
         return new ToStringBuilder(this)
-                .append("tokenBounds", tokenBounds)
-                .append("tokenMapper", tokenMapper)
+                .append("field", field)
+                .append("lower", lower)
+                .append("upper", upper)
+                .append("includeStart", includeLower)
+                .append("includeStop", includeUpper)
                 .toString();
     }
 
@@ -63,23 +70,20 @@ public class TokenDataRangeQuery extends MultiTermQuery
         public TokenDataRangeFilteredTermsEnum(TermsEnum tenum)
         {
             super(tenum);
-            setInitialSeekTerm(tokenMapper.bytesRef(tokenBounds.left));
+            setInitialSeekTerm(new BytesRef());
         }
 
         @Override
+        @SuppressWarnings("unchecked")
         protected AcceptStatus accept(BytesRef term)
         {
-
             Token token = tokenMapper.token(term);
-
-            if (tokenBounds.contains(token)) {
-                if (token.compareTo(tokenBounds.right) > 0) {
-                    return AcceptStatus.END;
-                } else {
-                    return AcceptStatus.YES;
-                }
-            } else {
+            if (includeLower ? token.compareTo(lower) < 0 : token.compareTo(lower) <= 0) {
                 return AcceptStatus.NO;
+            } else if (includeUpper ? token.compareTo(upper) > 0 : token.compareTo(upper) >= 0) {
+                return AcceptStatus.NO;
+            } else {
+                return AcceptStatus.YES;
             }
         }
     }

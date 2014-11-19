@@ -20,6 +20,7 @@ import org.apache.cassandra.db.marshal.*;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
@@ -92,10 +93,10 @@ public class ColumnMapperText extends ColumnMapper<String>
     }
 
     @Override
-    public Field field(String name, Object value)
+    public Field field(String name, Object value, Store store)
     {
         String text = indexValue(name, value);
-        return new TextField(name, text, STORE);
+        return new TextField(name, text, store);
     }
 
     @Override

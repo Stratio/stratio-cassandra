@@ -19,6 +19,7 @@ import org.apache.cassandra.db.marshal.*;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.LongField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
@@ -113,9 +114,9 @@ public class ColumnMapperDate extends ColumnMapper<Long>
     }
 
     @Override
-    public Field field(String name, Object value)
+    public Field field(String name, Object value, Store store)
     {
-        return new LongField(name, indexValue(name, value), STORE);
+        return new LongField(name, indexValue(name, value), store);
     }
 
     @Override

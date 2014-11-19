@@ -22,6 +22,7 @@ import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
@@ -94,9 +95,9 @@ public class ColumnMapperBoolean extends ColumnMapper<String>
     }
 
     @Override
-    public Field field(String name, Object value)
+    public Field field(String name, Object value, Store store)
     {
-        return new StringField(name, indexValue(name, value), STORE);
+        return new StringField(name, indexValue(name, value), store);
     }
 
     @Override

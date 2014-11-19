@@ -17,10 +17,7 @@ package com.stratio.cassandra.index;
 
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.composites.CellName;
-import org.apache.cassandra.dht.Token;
 import org.apache.lucene.search.ScoreDoc;
-
-import java.nio.ByteBuffer;
 
 /**
  * @author Andres de la Pena <adelapena@stratio.com>
@@ -41,14 +38,6 @@ public class SearchResult
     public DecoratedKey getPartitionKey()
     {
         return partitionKey;
-    }
-
-    public ByteBuffer getKey() {
-        return partitionKey.getKey();
-    }
-
-    public Token<?> getToken() {
-        return partitionKey.getToken();
     }
 
     public CellName getClusteringKey()

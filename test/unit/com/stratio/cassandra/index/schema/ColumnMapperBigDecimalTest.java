@@ -520,7 +520,7 @@ public class ColumnMapperBigDecimalTest
     public void testField()
     {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
-        Field field = mapper.field("name", 42.43);
+        Field field = mapper.field("name", 42.43, Field.Store.NO);
         Assert.assertNotNull(field);
         Assert.assertEquals("10042.4299", field.stringValue());
         Assert.assertEquals("name", field.name());
@@ -583,6 +583,7 @@ public class ColumnMapperBigDecimalTest
         Assert.assertEquals(30, ((ColumnMapperBigDecimal) columnMapper).getDecimalDigits());
     }
 
+    @Test
     public void testParseJSONEmpty() throws IOException
     {
         String json = "{fields:{}}";

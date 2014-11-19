@@ -90,6 +90,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
 
             long time = System.currentTimeMillis() - startTime;
             Log.debug("Search time: %d ms", time);
+            System.out.println();
             return rows;
         }
         catch (Exception e)

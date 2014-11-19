@@ -16,6 +16,7 @@
 package com.stratio.cassandra.index.query;
 
 import com.stratio.cassandra.index.schema.Schema;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.Query;
@@ -94,18 +95,10 @@ public class BooleanCondition extends Condition
     @Override
     public String toString()
     {
-        StringBuilder builder = new StringBuilder();
-        builder.append(getClass().getSimpleName());
-        builder.append(" [boost=");
-        builder.append(boost);
-        builder.append(", must=");
-        builder.append(must);
-        builder.append(", should=");
-        builder.append(should);
-        builder.append(", not=");
-        builder.append(not);
-        builder.append("]");
-        return builder.toString();
+        return new ToStringBuilder(this)
+                .append("must", must)
+                .append("should", should)
+                .append("not", not)
+                .toString();
     }
-
 }

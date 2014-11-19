@@ -138,7 +138,7 @@ public class ColumnMapperStringTest
     public void testField()
     {
         ColumnMapperString mapper = new ColumnMapperString();
-        Field field = mapper.field("name", "hello");
+        Field field = mapper.field("name", "hello", Field.Store.NO);
         Assert.assertNotNull(field);
         Assert.assertEquals("hello", field.stringValue());
         Assert.assertEquals("name", field.name());

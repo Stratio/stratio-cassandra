@@ -32,8 +32,16 @@ import org.apache.cassandra.db.filter.ColumnSlice;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.StringField;
+import org.apache.lucene.search.FieldComparator;
+import org.apache.lucene.search.FieldComparatorSource;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.SortField;
 import org.apache.lucene.util.BytesRef;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.*;
 
@@ -45,6 +53,10 @@ import java.util.*;
  */
 public class ClusteringKeyMapper
 {
+    /**
+     * The Lucene's field name.
+     */
+    public static final String FIELD_NAME = "_clustering_key";
 
     /**
      * The column family meta data.
@@ -89,6 +101,13 @@ public class ClusteringKeyMapper
         return type;
     }
 
+    public void addFields(Document document, CellName cellName)
+    {
+        String serializedKey = ByteBufferUtils.toString(cellName.toByteBuffer());
+        Field field = new StringField(FIELD_NAME, serializedKey, Field.Store.YES);
+        document.add(field);
+    }
+
     public CellName clusteringKey(ColumnFamily columnFamily)
     {
         for (Cell cell : columnFamily)
@@ -118,7 +137,8 @@ public class ClusteringKeyMapper
             if (!isStatic(cellName))
             {
                 CellName clusteringKey = extractClusteringKey(cellName);
-                if (lastClusteringKey == null || !lastClusteringKey.isSameCQL3RowAs(type, clusteringKey)) {
+                if (lastClusteringKey == null || !lastClusteringKey.isSameCQL3RowAs(type, clusteringKey))
+                {
                     lastClusteringKey = clusteringKey;
                     clusteringKeys.add(clusteringKey);
                 }
@@ -127,7 +147,8 @@ public class ClusteringKeyMapper
         return sort(clusteringKeys);
     }
 
-    private CellName extractClusteringKey(CellName cellName) {
+    private CellName extractClusteringKey(CellName cellName)
+    {
         int numClusteringColumns = metadata.clusteringColumns().size();
         ByteBuffer[] components = new ByteBuffer[numClusteringColumns + 1];
         for (int i = 0; i < numClusteringColumns; i++)
@@ -153,6 +174,7 @@ public class ClusteringKeyMapper
 
     /**
      * Returns {@code true} if the specified {@link CellName} is a valid clustering key, {@code false} otherwise.
+     *
      * @param cellName A {@link CellName}.
      * @return {@code true} if the specified {@link CellName} is a valid clustering key, {@code false} otherwise.
      */
@@ -184,11 +206,20 @@ public class ClusteringKeyMapper
 
     /**
      * Returns the first clustering key contained in the specified row.
+     *
      * @param row A {@link Row}.
      * @return The first clustering key contained in the specified row.
      */
-    public CellName clusteringKey(Row row) {
+    public CellName clusteringKey(Row row)
+    {
         return clusteringKey(row.cf);
+    }
+
+    public CellName clusteringKey(Document document)
+    {
+        String string = document.get(FIELD_NAME);
+        ByteBuffer bb = ByteBufferUtils.fromString(string);
+        return type.cellFromByteBuffer(bb);
     }
 
     /**
@@ -204,11 +235,6 @@ public class ClusteringKeyMapper
         return type.cellFromByteBuffer(bb);
     }
 
-    public CellName clusteringKey(ByteBuffer byteBuffer)
-    {
-        return type.cellFromByteBuffer(byteBuffer);
-    }
-
     /**
      * Returns the first possible cell name of those having the same clustering key that the
      * specified cell name.
@@ -216,7 +242,7 @@ public class ClusteringKeyMapper
      * @param cellName A storage engine cell name.
      * @return The first column name of for {@code clusteringKey}.
      */
-    public Composite start(CellName cellName)
+    Composite start(CellName cellName)
     {
         CBuilder builder = type.builder();
         for (int i = 0; i < cellName.clusteringSize(); i++)
@@ -234,7 +260,7 @@ public class ClusteringKeyMapper
      * @param cellName A storage engine cell name.
      * @return The first column name of for {@code clusteringKey}.
      */
-    public Composite end(CellName cellName)
+    Composite end(CellName cellName)
     {
         return start(cellName).withEOC(Composite.EOC.END);
     }
@@ -262,9 +288,9 @@ public class ClusteringKeyMapper
         return columns;
     }
 
-    public Map<CellName,ColumnFamily> splitRows(ColumnFamily columnFamily)
+    public Map<CellName, ColumnFamily> splitRows(ColumnFamily columnFamily)
     {
-        Map<CellName,ColumnFamily> columnFamilies = new HashMap<>();
+        Map<CellName, ColumnFamily> columnFamilies = new HashMap<>();
         ColumnFamily rowColumnFamily = null;
         CellName clusteringKey = null;
         for (Cell cell : columnFamily)
@@ -272,7 +298,8 @@ public class ClusteringKeyMapper
             CellName cellName = cell.name();
             if (isClusteringKey(cellName))
             {
-                if (rowColumnFamily != null) {
+                if (rowColumnFamily != null)
+                {
                     columnFamilies.put(clusteringKey, rowColumnFamily);
                 }
                 clusteringKey = cellName;
@@ -280,7 +307,8 @@ public class ClusteringKeyMapper
             }
             rowColumnFamily.addColumn(cell);
         }
-        if (rowColumnFamily != null) {
+        if (rowColumnFamily != null)
+        {
             columnFamilies.put(clusteringKey, rowColumnFamily);
         }
         return columnFamilies;
@@ -301,20 +329,48 @@ public class ClusteringKeyMapper
         return columnSlices;
     }
 
-    public List<CellName> sort(List<CellName> clusteringKeys) {
+    List<CellName> sort(List<CellName> clusteringKeys)
+    {
         List<CellName> result = new ArrayList<>(clusteringKeys);
         Collections.sort(result, new Comparator<CellName>()
         {
             @Override
             public int compare(CellName o1, CellName o2)
             {
-                return type.compare(o1,o2);
+                return type.compare(o1, o2);
             }
         });
         return result;
     }
 
-    public String toString(CellName cellName) {
+    /**
+     * Returns a Lucene's {@link SortField} array for sorting documents/rows according to the column
+     * family name.
+     *
+     * @return A Lucene's {@link SortField} array for sorting documents/rows according to the column
+     * family name.
+     */
+    public SortField[] sortFields()
+    {
+        return new SortField[]{
+                new SortField(FIELD_NAME, new FieldComparatorSource()
+                {
+                    @Override
+                    public FieldComparator<?>
+                    newComparator(String field, int hits, int sort, boolean reversed) throws IOException
+                    {
+                        return new ClusteringKeySorter(ClusteringKeyMapper.this, hits, field);
+                    }
+                })};
+    }
+
+    public Query query(Composite start, Composite stop)
+    {
+        return new ClusteringKeyQuery(start, stop, this);
+    }
+
+    public String toString(Composite cellName)
+    {
         return ByteBufferUtils.toString(cellName.toByteBuffer(), type.asAbstractType());
     }
 

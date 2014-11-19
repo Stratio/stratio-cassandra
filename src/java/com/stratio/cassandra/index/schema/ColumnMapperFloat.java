@@ -19,6 +19,7 @@ import org.apache.cassandra.db.marshal.*;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FloatField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
@@ -33,7 +34,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
 public class ColumnMapperFloat extends ColumnMapper<Float>
 {
 
-    private Float DEFAULT_BOOST = 1.0f;
+    public static final Float DEFAULT_BOOST = 1.0f;
 
     private final Float boost;
 
@@ -96,10 +97,10 @@ public class ColumnMapperFloat extends ColumnMapper<Float>
     }
 
     @Override
-    public Field field(String name, Object value)
+    public Field field(String name, Object value, Store store)
     {
         Float number = indexValue(name, value);
-        Field field = new FloatField(name, number, STORE);
+        Field field = new FloatField(name, number, store);
         field.setBoost(boost);
         return field;
     }

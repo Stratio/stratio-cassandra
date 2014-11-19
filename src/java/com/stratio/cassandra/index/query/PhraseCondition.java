@@ -17,6 +17,7 @@ package com.stratio.cassandra.index.query;
 
 import com.stratio.cassandra.index.schema.ColumnMapper;
 import com.stratio.cassandra.index.schema.Schema;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.PhraseQuery;
@@ -109,7 +110,6 @@ public class PhraseCondition extends Condition
         Class<?> clazz = columnMapper.baseClass();
         if (clazz == String.class)
         {
-            Analyzer analyzer = schema.analyzer();
             PhraseQuery query = new PhraseQuery();
             query.setSlop(slop);
             query.setBoost(boost);
@@ -136,24 +136,13 @@ public class PhraseCondition extends Condition
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String toString()
     {
-        StringBuilder builder = new StringBuilder();
-        builder.append(getClass().getSimpleName());
-        builder.append(" [boost=");
-        builder.append(boost);
-        builder.append(", field=");
-        builder.append(field);
-        builder.append(", values=");
-        builder.append(values);
-        builder.append(", slop=");
-        builder.append(slop);
-        builder.append("]");
-        return builder.toString();
+        return new ToStringBuilder(this)
+                .append("field", field)
+                .append("values", values)
+                .append("slop", slop)
+                .toString();
     }
-
 }

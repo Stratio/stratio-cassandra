@@ -20,6 +20,7 @@ import com.stratio.cassandra.index.schema.ColumnMapper;
 import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.search.SortField;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
@@ -38,7 +39,7 @@ public class SortingField
     private static final boolean DEFAULT_REVERSE = false;
 
     /**
-     * The name of field to sort by.
+     * The name of field to sortFields by.
      */
     @JsonProperty("field")
     private final String field;
@@ -52,7 +53,7 @@ public class SortingField
     /**
      * Returns a new {@link SortingField}.
      *
-     * @param field   The name of field to sort by.
+     * @param field   The name of field to sortFields by.
      * @param reverse {@code true} if natural order should be reversed.
      */
     @JsonCreator
@@ -77,7 +78,7 @@ public class SortingField
         ColumnMapper<?> columnMapper = schema.getMapper(field);
         if (columnMapper == null)
         {
-            throw new IllegalArgumentException("No mapper found for sort field " + field);
+            throw new IllegalArgumentException("No mapper found for sortFields field " + field);
         }
         else
         {
@@ -124,13 +125,9 @@ public class SortingField
     @Override
     public String toString()
     {
-        StringBuilder builder = new StringBuilder();
-        builder.append("Sort [field=");
-        builder.append(field);
-        builder.append(", reverse=");
-        builder.append(reverse);
-        builder.append("]");
-        return builder.toString();
+        return new ToStringBuilder(this)
+                .append("field", field)
+                .append("reverse", reverse)
+                .toString();
     }
-
 }

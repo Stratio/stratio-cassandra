@@ -16,6 +16,7 @@
 package com.stratio.cassandra.index.query;
 
 import com.stratio.cassandra.index.schema.Schema;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
@@ -98,17 +99,9 @@ public class LuceneCondition extends Condition
     @Override
     public String toString()
     {
-        StringBuilder builder = new StringBuilder();
-        builder.append(getClass().getSimpleName());
-        builder.append(" [boost=");
-        builder.append(boost);
-        builder.append(", defaultField=");
-
-        builder.append(defaultField);
-        builder.append(", query=");
-        builder.append(query);
-        builder.append("]");
-        return builder.toString();
+        return new ToStringBuilder(this)
+                .append("query", query)
+                .append("defaultField", defaultField)
+                .toString();
     }
-
 }

@@ -130,7 +130,7 @@ public class ColumnMapperFloatTest
     public void testField()
     {
         ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
-        Field field = mapper.field("name", "3.2");
+        Field field = mapper.field("name", "3.2", Field.Store.NO);
         Assert.assertNotNull(field);
         Assert.assertEquals(Float.valueOf(3.2f), field.numericValue());
         Assert.assertEquals("name", field.name());

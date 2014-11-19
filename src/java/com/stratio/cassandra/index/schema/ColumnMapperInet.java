@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.schema;
 
+import com.stratio.cassandra.index.util.Log;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.InetAddressType;
@@ -22,6 +23,7 @@ import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
@@ -81,6 +83,7 @@ public class ColumnMapperInet extends ColumnMapper<String>
                 }
                 catch (UnknownHostException e)
                 {
+                    Log.error(e, e.getMessage());
                 }
             }
         }
@@ -111,6 +114,7 @@ public class ColumnMapperInet extends ColumnMapper<String>
                 }
                 catch (UnknownHostException e)
                 {
+                    Log.error(e, e.getMessage());
                 }
             }
             else
@@ -122,10 +126,10 @@ public class ColumnMapperInet extends ColumnMapper<String>
     }
 
     @Override
-    public Field field(String name, Object value)
+    public Field field(String name, Object value, Store store)
     {
         String string = indexValue(name, value);
-        return new StringField(name, string, STORE);
+        return new StringField(name, string, store);
     }
 
     @Override

@@ -94,7 +94,7 @@ public class ColumnMapperUUIDTest
     {
         ColumnMapperUUID mapper = new ColumnMapperUUID();
         UUID uuid = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
-        Field field = mapper.field("name", uuid);
+        Field field = mapper.field("name", uuid, Field.Store.NO);
         Assert.assertNotNull(field);
         Assert.assertEquals("name", field.name());
         Assert.assertEquals(uuid.toString(), field.stringValue());

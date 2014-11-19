@@ -22,6 +22,7 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
@@ -121,10 +122,10 @@ public class ColumnMapperBigInteger extends ColumnMapper<String>
     }
 
     @Override
-    public Field field(String name, Object value)
+    public Field field(String name, Object value, Store store)
     {
         String string = indexValue(name, value);
-        return new StringField(name, string, STORE);
+        return new StringField(name, string, store);
     }
 
     @Override

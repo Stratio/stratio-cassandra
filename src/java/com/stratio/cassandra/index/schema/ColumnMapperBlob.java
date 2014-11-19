@@ -24,6 +24,7 @@ import org.apache.cassandra.utils.Hex;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
@@ -95,10 +96,10 @@ public class ColumnMapperBlob extends ColumnMapper<String>
     }
 
     @Override
-    public Field field(String name, Object value)
+    public Field field(String name, Object value, Store store)
     {
         String string = indexValue(name, value);
-        return new StringField(name, string, STORE);
+        return new StringField(name, string, store);
     }
 
     @Override

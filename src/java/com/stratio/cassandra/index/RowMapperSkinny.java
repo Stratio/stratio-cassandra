@@ -19,10 +19,7 @@ import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.db.ColumnFamily;
-import org.apache.cassandra.db.DataRange;
-import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.Row;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.search.Query;
@@ -37,7 +34,6 @@ import org.apache.lucene.search.Sort;
 public class RowMapperSkinny extends RowMapper
 {
 
-    private final TokenMapper tokenMapper;
 
     /**
      * Builds a new {@link RowMapperSkinny} for the specified column family metadata, indexed column definition and {@link Schema}.
@@ -49,7 +45,6 @@ public class RowMapperSkinny extends RowMapper
     RowMapperSkinny(CFMetaData metadata, ColumnDefinition columnDefinition, Schema schema)
     {
         super(metadata, columnDefinition, schema);
-        this.tokenMapper = TokenMapper.instance(metadata);
     }
 
     /**
@@ -79,12 +74,13 @@ public class RowMapperSkinny extends RowMapper
     }
 
     /**
-     * {@inheritDoc}
+     * Returns the Lucene {@link Sort} to get {@link Document}s in the same order that is used in Cassandra.
+     *
+     * @return The Lucene {@link Sort} to get {@link Document}s in the same order that is used in Cassandra.
      */
-    @Override
     public Sort sort()
     {
-        return new Sort(tokenMapper.sort());
+        return new Sort(tokenMapper.sortFields());
     }
 
     /**
@@ -116,7 +112,7 @@ public class RowMapperSkinny extends RowMapper
 
     @Override
     public SearchResult searchResult(Document document, ScoreDoc scoreDoc) {
-        DecoratedKey partitionKey = partitionKeyMapper.decoratedKey(document);
+        DecoratedKey partitionKey = partitionKeyMapper.partitionKey(document);
         return new SearchResult(partitionKey, null, scoreDoc);
     }
 }

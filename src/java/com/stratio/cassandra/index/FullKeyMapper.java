@@ -16,27 +16,16 @@
 package com.stratio.cassandra.index;
 
 import com.stratio.cassandra.index.util.ByteBufferUtils;
-import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.RangeTombstone;
 import org.apache.cassandra.db.composites.CellName;
-import org.apache.cassandra.db.composites.CellNameType;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CompositeType;
-import org.apache.cassandra.dht.Token;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.FieldComparator;
-import org.apache.lucene.search.FieldComparatorSource;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.SortField;
-import org.apache.lucene.util.BytesRef;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
@@ -53,19 +42,6 @@ public class FullKeyMapper
      */
     public static final String FIELD_NAME = "_full_key";
 
-    private final PartitionKeyMapper partitionKeyMapper;
-    private final ClusteringKeyMapper clusteringKeyMapper;
-
-    /**
-     * The partition key type.
-     */
-    public AbstractType<?> partitionKeyType;
-
-    /**
-     * The clustering key type.
-     */
-    public CellNameType clusteringKeyType;
-
     /**
      * The type of the full row key, which is composed by the partition and clustering key types.
      */
@@ -74,47 +50,26 @@ public class FullKeyMapper
     /**
      * Returns a new {@link FullKeyMapper} using the specified column family metadata.
      *
-     * @param metadata The column family metadata to be used.
+     * @param partitionKeyMapper  A {@link PartitionKeyMapper}.
+     * @param clusteringKeyMapper A {@link ClusteringKeyMapper}.
      */
-    private FullKeyMapper(CFMetaData metadata, PartitionKeyMapper partitionKeyMapper, ClusteringKeyMapper clusteringKeyMapper)
+    private FullKeyMapper(PartitionKeyMapper partitionKeyMapper, ClusteringKeyMapper clusteringKeyMapper)
     {
-        this.partitionKeyMapper = partitionKeyMapper;
-        this.clusteringKeyMapper = clusteringKeyMapper;
-        this.partitionKeyType = metadata.getKeyValidator();
-        this.clusteringKeyType = metadata.comparator;
-        type = CompositeType.getInstance(partitionKeyType, clusteringKeyType.asAbstractType());
+        AbstractType<?> partitionKeyType = partitionKeyMapper.getType();
+        AbstractType<?> clusteringKeyType = clusteringKeyMapper.getType().asAbstractType();
+        type = CompositeType.getInstance(partitionKeyType, clusteringKeyType);
     }
 
     /**
      * Returns a new {@link FullKeyMapper} using the specified column family metadata.
      *
-     * @param metadata The column family metadata to be used.
+     * @param partitionKeyMapper  A {@link PartitionKeyMapper}.
+     * @param clusteringKeyMapper A {@link ClusteringKeyMapper}.
      * @return A new {@link FullKeyMapper} using the specified column family metadata.
      */
-    public static FullKeyMapper instance(CFMetaData metadata, PartitionKeyMapper partitionKeyMapper, ClusteringKeyMapper clusteringKeyMapper)
+    public static FullKeyMapper instance(PartitionKeyMapper partitionKeyMapper, ClusteringKeyMapper clusteringKeyMapper)
     {
-        return metadata.clusteringColumns().size() > 0 ? new FullKeyMapper(metadata, partitionKeyMapper, clusteringKeyMapper) : null;
-    }
-
-    public AbstractType<?> getPartitionKeyType()
-    {
-        return partitionKeyType;
-    }
-
-    public CellNameType getClusteringKeyType()
-    {
-        return clusteringKeyType;
-    }
-
-    /**
-     * Returns the type of the full row key, which is a {@link CompositeType} composed by the partition key and the
-     * clustering key.
-     *
-     * @return The type of the full row key
-     */
-    public CompositeType getType()
-    {
-        return type;
+        return new FullKeyMapper(partitionKeyMapper, clusteringKeyMapper);
     }
 
     /**
@@ -130,59 +85,18 @@ public class FullKeyMapper
         return type.builder().add(partitionKey.getKey()).add(cellName.toByteBuffer()).build();
     }
 
-    public DecoratedKey partitionKey(Document document)
-    {
-        String string = document.get(FIELD_NAME);
-        ByteBuffer bb = ByteBufferUtils.fromString(string);
-        return partitionKey(bb);
-    }
-
-    public DecoratedKey partitionKey(BytesRef bytesRef)
-    {
-        String string = bytesRef.utf8ToString();
-        ByteBuffer bb = ByteBufferUtils.fromString(string);
-        return partitionKey(bb);
-    }
-
-    public DecoratedKey partitionKey(ByteBuffer byteBuffer)
-    {
-        ByteBuffer[] components = type.split(byteBuffer);
-        return partitionKeyMapper.decoratedKey(components[0]);
-    }
-
-    public CellName clusteringKey(Document document)
-    {
-        String string = document.get(FIELD_NAME);
-        ByteBuffer bb = ByteBufferUtils.fromString(string);
-        return clusteringKey(bb);
-    }
-
-    public CellName clusteringKey(BytesRef bytesRef)
-    {
-        String string = bytesRef.utf8ToString();
-        ByteBuffer bb = ByteBufferUtils.fromString(string);
-        return clusteringKey(bb);
-    }
-
-    public CellName clusteringKey(ByteBuffer byteBuffer)
-    {
-        ByteBuffer[] components = type.split(byteBuffer);
-        ByteBuffer bb = components[1];
-        return clusteringKeyType.cellFromByteBuffer(bb);
-    }
-
     /**
      * Adds to the specified Lucene's {@link Document} the full row key formed by the specified partition key and the
      * clustering key.
      *
      * @param document     A Lucene's {@link Document}.
      * @param partitionKey A partition key.
-     * @param cellName     A clustering key.
+     * @param clusteringKey     A clustering key.
      */
-    public void addFields(Document document, DecoratedKey partitionKey, CellName cellName)
+    public void addFields(Document document, DecoratedKey partitionKey, CellName clusteringKey)
     {
-        ByteBuffer fullKey = byteBuffer(partitionKey, cellName);
-        Field field = new StringField(FIELD_NAME, ByteBufferUtils.toString(fullKey), Store.YES);
+        ByteBuffer fullKey = byteBuffer(partitionKey, clusteringKey);
+        Field field = new StringField(FIELD_NAME, ByteBufferUtils.toString(fullKey), Store.NO);
         document.add(field);
     }
 
@@ -191,58 +105,13 @@ public class FullKeyMapper
      * clustering key.
      *
      * @param partitionKey A partition key.
-     * @param cellName     A clustering key.
+     * @param clusteringKey     A clustering key.
      * @return The Lucene's {@link Term} representing the full row key formed by the specified key pair.
      */
-    public Term term(DecoratedKey partitionKey, CellName cellName)
+    public Term term(DecoratedKey partitionKey, CellName clusteringKey)
     {
-        ByteBuffer fullKey = type.builder().add(partitionKey.getKey()).add(cellName.toByteBuffer()).build();
+        ByteBuffer fullKey = byteBuffer(partitionKey, clusteringKey);
         return new Term(FIELD_NAME, ByteBufferUtils.toString(fullKey));
-    }
-
-    public Query query(DataRange dataRange)
-    {
-        return new FullKeyDataRangeQuery(FIELD_NAME, dataRange, this);
-    }
-
-    /**
-     * Returns the Lucene {@link Query} to get the {@link Document}s satisfying the specified partition key and {@link RangeTombstone}.
-     *
-     * @param partitionKey A partition key.
-     * @param rangeTombstone A {@link RangeTombstone}.
-     * @return The Lucene {@link Query} to get the {@link Document}s satisfying the specified partition key and {@link RangeTombstone}.
-     */
-    public Query query(DecoratedKey partitionKey, RangeTombstone rangeTombstone)
-    {
-        return new FullKeyRangeTombstoneQuery(FIELD_NAME, partitionKey, rangeTombstone, this);
-    }
-
-    public SortField[] sortFields()
-    {
-        return new SortField[]{
-                new SortField(FIELD_NAME, new FieldComparatorSource()
-                {
-                    @Override
-                    public FieldComparator<?>
-                    newComparator(String field, int hits, int sort, boolean reversed) throws IOException
-                    {
-                        return new FullKeyMapperSorter(FullKeyMapper.this, hits, field);
-                    }
-                })};
-    }
-
-    public int compare(BytesRef bytesRef1, BytesRef bytesRef2)
-    {
-        Token token1 = partitionKey(bytesRef1).getToken();
-        Token token2 = partitionKey(bytesRef2).getToken();
-        int comp = token1.compareTo(token2);
-        if (comp == 0)
-        {
-            CellName bb1 = clusteringKey(bytesRef1);
-            CellName bb2 = clusteringKey(bytesRef2);
-            comp = clusteringKeyType.compare(bb1, bb2);
-        }
-        return comp;
     }
 
 }

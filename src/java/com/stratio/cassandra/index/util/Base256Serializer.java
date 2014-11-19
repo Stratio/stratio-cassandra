@@ -24,7 +24,7 @@ import java.nio.ByteBuffer;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class Base256Serializer
+class Base256Serializer
 {
 
     /**
@@ -33,7 +33,7 @@ public class Base256Serializer
      * @param bytes The {@code byte} array to be converted.
      * @return The {@code char} array representation of the specified {@code byte} array.
      */
-    public static char[] chars(byte[] bytes)
+    private static char[] chars(byte[] bytes)
     {
         char[] chars = new char[bytes.length];
         for (int i = 0; i < bytes.length; i++)
@@ -50,7 +50,7 @@ public class Base256Serializer
      * @param chars The {@code char} array to be converted.
      * @return The {@code byte} array representation of the specified {@code char} array.
      */
-    public static byte[] bytes(char[] chars)
+    private static byte[] bytes(char[] chars)
     {
         byte[] bytes = new byte[chars.length];
         for (int i = 0; i < bytes.length; i++)
@@ -67,20 +67,9 @@ public class Base256Serializer
      * @param string The {@code String} to be converted.
      * @return The {@code byte} array representation of the specified {@code String}.
      */
-    public static byte[] bytes(String string)
+    private static byte[] bytes(String string)
     {
         return bytes(string.toCharArray());
-    }
-
-    /**
-     * Returns the {@code String} representation of the specified {@code byte} array.
-     *
-     * @param bytes The {@code byte} array to be converted.
-     * @return The {@code String} representation of the specified {@code byte} array.
-     */
-    public static String string(byte[] bytes)
-    {
-        return new String(chars(bytes));
     }
 
     /**

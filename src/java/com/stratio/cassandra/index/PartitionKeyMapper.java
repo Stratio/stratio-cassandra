@@ -32,6 +32,7 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.util.BytesRef;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -56,6 +57,8 @@ public class PartitionKeyMapper
 
     private final CFMetaData metadata;
 
+    private final AbstractType<?> type;
+
     /**
      * Returns a new {@code PartitionKeyMapper} according to the specified column family meta data.
      *
@@ -65,6 +68,7 @@ public class PartitionKeyMapper
     {
         partitioner = DatabaseDescriptor.getPartitioner();
         this.metadata = metadata;
+        this.type = metadata.getKeyValidator();
     }
 
     /**
@@ -76,6 +80,10 @@ public class PartitionKeyMapper
     public static PartitionKeyMapper instance(CFMetaData metadata)
     {
         return new PartitionKeyMapper(metadata);
+    }
+
+    public AbstractType<?> getType() {
+        return type;
     }
 
     /**
@@ -120,11 +128,11 @@ public class PartitionKeyMapper
      * @param document the {@link Document} containing the partition key to be get.
      * @return The {@link DecoratedKey} contained in the specified Lucene's {@link Document}.
      */
-    public DecoratedKey decoratedKey(Document document)
+    public DecoratedKey partitionKey(Document document)
     {
         String string = document.get(FIELD_NAME);
         ByteBuffer partitionKey = ByteBufferUtils.fromString(string);
-        return decoratedKey(partitionKey);
+        return partitionKey(partitionKey);
     }
 
     /**
@@ -133,7 +141,7 @@ public class PartitionKeyMapper
      * @param partitionKey The raw partition key to be converted.
      * @return The specified raw partition key as a a {@link DecoratedKey}.
      */
-    public DecoratedKey decoratedKey(ByteBuffer partitionKey)
+    public DecoratedKey partitionKey(ByteBuffer partitionKey)
     {
         return partitioner.decorateKey(partitionKey);
     }
@@ -154,6 +162,14 @@ public class PartitionKeyMapper
             columns.add(ColumnMapper.column(name, value, valueType));
         }
         return columns;
+    }
+
+    public String toString(ByteBuffer key) {
+        return ByteBufferUtils.toString(key, type);
+    }
+
+    public String toString(DecoratedKey decoratedKey) {
+        return ByteBufferUtils.toString(decoratedKey.getKey(), type);
     }
 
 }
