@@ -19,7 +19,6 @@ import org.apache.cassandra.db.marshal.*;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FloatField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
@@ -49,7 +48,8 @@ public class ColumnMapperFloat extends ColumnMapper<Float>
                 IntegerType.instance,
                 FloatType.instance,
                 DoubleType.instance,
-                DecimalType.instance});
+                DecimalType.instance},
+              new AbstractType[]{FloatType.instance});
         this.boost = boost == null ? DEFAULT_BOOST : boost;
     }
 
@@ -97,10 +97,10 @@ public class ColumnMapperFloat extends ColumnMapper<Float>
     }
 
     @Override
-    public Field field(String name, Object value, Store store)
+    public Field field(String name, Object value)
     {
         Float number = indexValue(name, value);
-        Field field = new FloatField(name, number, store);
+        Field field = new FloatField(name, number, STORE);
         field.setBoost(boost);
         return field;
     }

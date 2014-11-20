@@ -34,7 +34,7 @@ public class MatchConditionBuilder extends ConditionBuilder<MatchCondition, Matc
      * @param field the name of the field to be matched.
      * @param value the value of the field to be matched.
      */
-    protected MatchConditionBuilder(String field, Object value)
+    public MatchConditionBuilder(String field, Object value)
     {
         this.field = field;
         this.value = value;

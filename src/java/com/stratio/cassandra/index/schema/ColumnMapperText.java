@@ -20,7 +20,6 @@ import org.apache.cassandra.db.marshal.*;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
@@ -56,7 +55,8 @@ public class ColumnMapperText extends ColumnMapper<String>
                 TimeUUIDType.instance,
                 TimestampType.instance,
                 BytesType.instance,
-                InetAddressType.instance});
+                InetAddressType.instance},
+              new AbstractType[]{});
         if (analyzerClassName != null)
         {
             this.analyzer = AnalyzerFactory.getAnalyzer(analyzerClassName);
@@ -93,10 +93,10 @@ public class ColumnMapperText extends ColumnMapper<String>
     }
 
     @Override
-    public Field field(String name, Object value, Store store)
+    public Field field(String name, Object value)
     {
         String text = indexValue(name, value);
-        return new TextField(name, text, store);
+        return new TextField(name, text, STORE);
     }
 
     @Override

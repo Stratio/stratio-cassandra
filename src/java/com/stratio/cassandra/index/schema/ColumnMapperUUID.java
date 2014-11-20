@@ -19,7 +19,6 @@ import org.apache.cassandra.db.marshal.*;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
@@ -38,7 +37,8 @@ public class ColumnMapperUUID extends ColumnMapper<String>
     @JsonCreator
     public ColumnMapperUUID()
     {
-        super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, UUIDType.instance, TimeUUIDType.instance});
+        super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, UUIDType.instance, TimeUUIDType.instance},
+              new AbstractType[]{});
     }
 
     @Override
@@ -82,10 +82,10 @@ public class ColumnMapperUUID extends ColumnMapper<String>
     }
 
     @Override
-    public Field field(String name, Object value, Store store)
+    public Field field(String name, Object value)
     {
         String uuid = indexValue(name, value);
-        return new StringField(name, uuid, store);
+        return new StringField(name, uuid, STORE);
     }
 
     @Override

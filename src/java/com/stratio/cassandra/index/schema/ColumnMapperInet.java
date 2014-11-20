@@ -23,7 +23,6 @@ import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
@@ -50,7 +49,8 @@ public class ColumnMapperInet extends ColumnMapper<String>
     @JsonCreator
     public ColumnMapperInet()
     {
-        super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, InetAddressType.instance});
+        super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, InetAddressType.instance},
+              new AbstractType[]{});
     }
 
     @Override
@@ -126,10 +126,10 @@ public class ColumnMapperInet extends ColumnMapper<String>
     }
 
     @Override
-    public Field field(String name, Object value, Store store)
+    public Field field(String name, Object value)
     {
         String string = indexValue(name, value);
-        return new StringField(name, string, store);
+        return new StringField(name, string, STORE);
     }
 
     @Override

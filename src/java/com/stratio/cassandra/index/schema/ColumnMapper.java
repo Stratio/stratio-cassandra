@@ -53,12 +53,15 @@ public abstract class ColumnMapper<BASE>
 {
 
     protected static final Analyzer EMPTY_ANALYZER = new KeywordAnalyzer();
+    protected static final Store STORE = Store.NO;
 
     private final AbstractType<?>[] supportedTypes;
+    private final AbstractType<?>[] supportedClusteringTypes;
 
-    ColumnMapper(AbstractType<?>[] supportedTypes)
+    ColumnMapper(AbstractType<?>[] supportedTypes, AbstractType<?>[] supportedClusteringTypes)
     {
         this.supportedTypes = supportedTypes;
+        this.supportedClusteringTypes = supportedClusteringTypes;
     }
 
     public static Column column(String name, ByteBuffer value, AbstractType<?> type)
@@ -79,11 +82,10 @@ public abstract class ColumnMapper<BASE>
      *
      * @param name  The name of the Lucene {@link Field}.
      * @param value The value of the Lucene {@link Field}.
-     * @param store If the value must be stored.
      * @return The Lucene {@link Field} resulting from the mapping of {@code value}, using
      * {@code name} as field's name.
      */
-    public abstract Field field(String name, Object value, Store store);
+    public abstract Field field(String name, Object value);
 
     /**
      * Returns the Lucene's type for this mapper.
@@ -128,6 +130,18 @@ public abstract class ColumnMapper<BASE>
         for (AbstractType<?> n : supportedTypes)
         {
             if (checkedType.getClass() == n.getClass())
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean supportsClustering(final AbstractType<?> type)
+    {
+        for (AbstractType<?> supportedClusteringType : supportedClusteringTypes)
+        {
+            if (type.getClass() == supportedClusteringType.getClass())
             {
                 return true;
             }

@@ -24,7 +24,6 @@ import org.apache.cassandra.utils.Hex;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
@@ -43,7 +42,8 @@ public class ColumnMapperBlob extends ColumnMapper<String>
     @JsonCreator
     public ColumnMapperBlob()
     {
-        super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, BytesType.instance});
+        super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, BytesType.instance},
+              new AbstractType[]{});
     }
 
     @Override
@@ -96,10 +96,10 @@ public class ColumnMapperBlob extends ColumnMapper<String>
     }
 
     @Override
-    public Field field(String name, Object value, Store store)
+    public Field field(String name, Object value)
     {
         String string = indexValue(name, value);
-        return new StringField(name, string, store);
+        return new StringField(name, string, STORE);
     }
 
     @Override

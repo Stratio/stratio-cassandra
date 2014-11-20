@@ -104,6 +104,7 @@ public class RowServiceWide extends RowService
                 {
                     RangeTombstone rangeTombstone = iterator.next();
                     Query query = rowMapper.query(partitionKey, rangeTombstone);
+                    System.out.println("DELETING WITH RANGE TOMBSTONE " + query);
                     luceneIndex.delete(query);
                 }
             }
@@ -131,7 +132,7 @@ public class RowServiceWide extends RowService
      * The {@link Row} is a logical one.
      */
     @Override
-    protected List<Row> rows(List<SearchResult> searchResults, long timestamp)
+    protected List<Row> rows(List<SearchResult> searchResults, long timestamp, boolean usesRelevance)
     {
         // Initialize result
         List<Row> rows = new ArrayList<>(searchResults.size());
@@ -157,15 +158,23 @@ public class RowServiceWide extends RowService
         for (Map.Entry<DecoratedKey, List<CellName>> entry : keys.entrySet())
         {
             DecoratedKey partitionKey = entry.getKey();
-            for (List<CellName> clusteringKeys : Lists.partition(entry.getValue(), 1000) ) {
+            for (List<CellName> clusteringKeys : Lists.partition(entry.getValue(), 1000))
+            {
                 Map<CellName, Row> partitionRows = rows(partitionKey, clusteringKeys, timestamp);
                 for (Map.Entry<CellName, Row> entry1 : partitionRows.entrySet())
                 {
-                    CellName clusteringKey = entry1.getKey();
                     Row row = entry1.getValue();
-                    Float score = scoresByClusteringKey.get(clusteringKey);
-                    Row scoredRow = addScoreColumn(row, timestamp, score);
-                    rows.add(scoredRow);
+                    if (usesRelevance)
+                    {
+                        CellName clusteringKey = entry1.getKey();
+                        Float score = scoresByClusteringKey.get(clusteringKey);
+                        Row scoredRow = addScoreColumn(row, timestamp, score);
+                        rows.add(scoredRow);
+                    }
+                    else
+                    {
+                        rows.add(row);
+                    }
                 }
             }
         }

@@ -20,7 +20,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
@@ -50,14 +49,15 @@ public class ColumnMapperBigDecimal extends ColumnMapper<String>
                                   @JsonProperty("decimal_digits") Integer decimalDigits)
     {
         super(new AbstractType<?>[]{
-                AsciiType.instance,
-                UTF8Type.instance,
-                Int32Type.instance,
-                LongType.instance,
-                IntegerType.instance,
-                FloatType.instance,
-                DoubleType.instance,
-                DecimalType.instance});
+                      AsciiType.instance,
+                      UTF8Type.instance,
+                      Int32Type.instance,
+                      LongType.instance,
+                      IntegerType.instance,
+                      FloatType.instance,
+                      DoubleType.instance,
+                      DecimalType.instance},
+              new AbstractType[]{});
 
         // Setup integer part mapping
         if (integerDigits != null && integerDigits <= 0)
@@ -149,10 +149,10 @@ public class ColumnMapperBigDecimal extends ColumnMapper<String>
     }
 
     @Override
-    public Field field(String name, Object value, Store store)
+    public Field field(String name, Object value)
     {
         String string = indexValue(name, value);
-        return new StringField(name, string, store);
+        return new StringField(name, string, STORE);
     }
 
     @Override

@@ -22,7 +22,6 @@ import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
@@ -42,7 +41,8 @@ public class ColumnMapperBoolean extends ColumnMapper<String>
     @JsonCreator
     public ColumnMapperBoolean()
     {
-        super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, BooleanType.instance});
+        super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, BooleanType.instance},
+              new AbstractType[]{});
     }
 
     @Override
@@ -95,9 +95,9 @@ public class ColumnMapperBoolean extends ColumnMapper<String>
     }
 
     @Override
-    public Field field(String name, Object value, Store store)
+    public Field field(String name, Object value)
     {
-        return new StringField(name, indexValue(name, value), store);
+        return new StringField(name, indexValue(name, value), STORE);
     }
 
     @Override

@@ -36,7 +36,7 @@ public class RangeConditionBuilder extends ConditionBuilder<RangeCondition, Rang
      *
      * @param field the name of the field to be matched.
      */
-    protected RangeConditionBuilder(String field)
+    public RangeConditionBuilder(String field)
     {
         this.field = field;
     }

@@ -26,7 +26,6 @@ import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellName;
-import org.apache.cassandra.db.composites.CellNameType;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.document.Document;
@@ -281,7 +280,7 @@ public abstract class RowService
 
             // Collect rows from Cassandra
             long collectStartTime = System.currentTimeMillis();
-            for (Row row : rows(searchResults, timestamp))
+            for (Row row : rows(searchResults, timestamp, usesRelevance))
             {
                 if (row != null && accepted(row, expressions))
                 {
@@ -385,9 +384,10 @@ public abstract class RowService
      *
      * @param searchResults The {@link SearchResult}s
      * @param timestamp     The time stamp to ignore deleted columns.
+     * @param usesRelevance If the search uses relevance.
      * @return The {@link Row} identified by the specified {@link Document}s
      */
-    protected abstract List<Row> rows(List<SearchResult> searchResults, long timestamp) throws IOException;
+    protected abstract List<Row> rows(List<SearchResult> searchResults, long timestamp, boolean usesRelevance) throws IOException;
 
     /**
      * Returns a {@link ColumnFamily} composed by the non expired {@link Cell}s of the specified  {@link ColumnFamily}.

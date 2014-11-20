@@ -90,7 +90,6 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
 
             long time = System.currentTimeMillis() - startTime;
             Log.debug("Search time: %d ms", time);
-            System.out.println();
             return rows;
         }
         catch (Exception e)
@@ -229,7 +228,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         int endSize = result.size();
         long endTime = System.currentTimeMillis() - startTime;
 
-        Log.debug("Sorted %d rows to %d with comparator %s in %d ms", startSize, endSize, comparatorName, endTime);
+        Log.debug("Sorted %d rows to %d with comparator %s in %d ms\n", startSize, endSize, comparatorName, endTime);
 
         return result;
     }

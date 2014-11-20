@@ -20,7 +20,6 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.DoubleField;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
@@ -43,7 +42,8 @@ public class ColumnMapperDouble extends ColumnMapper<Double>
     {
         super(new AbstractType<?>[]{
                 AsciiType.instance, UTF8Type.instance, Int32Type.instance, LongType.instance,
-                IntegerType.instance, FloatType.instance, DoubleType.instance, DecimalType.instance});
+                IntegerType.instance, FloatType.instance, DoubleType.instance, DecimalType.instance},
+              new AbstractType[]{DoubleType.instance});
         this.boost = boost == null ? DEFAULT_BOOST : boost;
     }
 
@@ -91,10 +91,10 @@ public class ColumnMapperDouble extends ColumnMapper<Double>
     }
 
     @Override
-    public Field field(String name, Object value, Store store)
+    public Field field(String name, Object value)
     {
         Double number = indexValue(name, value);
-        Field field = new DoubleField(name, number, store);
+        Field field = new DoubleField(name, number, STORE);
         field.setBoost(boost);
         return field;
     }

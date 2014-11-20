@@ -19,7 +19,6 @@ import org.apache.cassandra.db.marshal.*;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.LongField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
@@ -55,9 +54,10 @@ public class ColumnMapperDate extends ColumnMapper<Long>
     public ColumnMapperDate(@JsonProperty("pattern") String pattern)
     {
         super(new AbstractType<?>[]{
-                AsciiType.instance, UTF8Type.instance, Int32Type.instance, LongType.instance,
-                IntegerType.instance, FloatType.instance, DoubleType.instance, DecimalType.instance,
-                TimestampType.instance});
+                      AsciiType.instance, UTF8Type.instance, Int32Type.instance, LongType.instance,
+                      IntegerType.instance, FloatType.instance, DoubleType.instance, DecimalType.instance,
+                      TimestampType.instance},
+              new AbstractType[]{LongType.instance, TimestampType.instance});
         this.pattern = pattern == null ? DEFAULT_PATTERN : pattern;
         concurrentDateFormat = new ThreadLocal<DateFormat>()
         {
@@ -114,9 +114,9 @@ public class ColumnMapperDate extends ColumnMapper<Long>
     }
 
     @Override
-    public Field field(String name, Object value, Store store)
+    public Field field(String name, Object value)
     {
-        return new LongField(name, indexValue(name, value), store);
+        return new LongField(name, indexValue(name, value), STORE);
     }
 
     @Override
