@@ -33,7 +33,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
 public class ColumnMapperDouble extends ColumnMapper<Double>
 {
 
-    private Float DEFAULT_BOOST = 1.0f;
+    public static final Float DEFAULT_BOOST = 1.0f;
 
     private final Float boost;
 
@@ -42,7 +42,8 @@ public class ColumnMapperDouble extends ColumnMapper<Double>
     {
         super(new AbstractType<?>[]{
                 AsciiType.instance, UTF8Type.instance, Int32Type.instance, LongType.instance,
-                IntegerType.instance, FloatType.instance, DoubleType.instance, DecimalType.instance});
+                IntegerType.instance, FloatType.instance, DoubleType.instance, DecimalType.instance},
+              new AbstractType[]{DoubleType.instance});
         this.boost = boost == null ? DEFAULT_BOOST : boost;
     }
 

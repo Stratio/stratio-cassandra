@@ -21,12 +21,14 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 
 /**
+ * Utility class for Stratio log messages.
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class Log
 {
 
-    protected static final Logger log = LoggerFactory.getLogger("stratio");
+    private static final Logger log = LoggerFactory.getLogger("stratio");
 
     public static void info(String message, Object... options)
     {

@@ -159,7 +159,7 @@ public class RowIndex extends PerRowSecondaryIndex
     /**
      * cleans up deleted columns from cassandra cleanup compaction
      *
-     * @param key The partition key of the physical {@link org.apache.cassandra.db.Row} to be deleted.
+     * @param key The partition key of the physical row to be deleted.
      */
     @Override
     public void delete(DecoratedKey key, OpOrder.Group opGroup)

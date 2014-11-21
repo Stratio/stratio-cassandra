@@ -37,7 +37,8 @@ public class ColumnMapperUUID extends ColumnMapper<String>
     @JsonCreator
     public ColumnMapperUUID()
     {
-        super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, UUIDType.instance, TimeUUIDType.instance});
+        super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, UUIDType.instance, TimeUUIDType.instance},
+              new AbstractType[]{});
     }
 
     @Override

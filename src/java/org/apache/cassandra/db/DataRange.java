@@ -126,8 +126,8 @@ public class DataRange
     {
         private final SliceQueryFilter sliceFilter;
         private final Comparator<Composite> comparator;
-        private final Composite columnStart;
-        private final Composite columnFinish;
+        public final Composite columnStart;
+        public final Composite columnFinish;
 
         private Paging(AbstractBounds<RowPosition> range, SliceQueryFilter filter, Composite columnStart, Composite columnFinish, Comparator<Composite> comparator)
         {

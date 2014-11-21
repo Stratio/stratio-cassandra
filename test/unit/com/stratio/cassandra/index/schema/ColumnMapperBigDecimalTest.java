@@ -583,6 +583,7 @@ public class ColumnMapperBigDecimalTest
         Assert.assertEquals(30, ((ColumnMapperBigDecimal) columnMapper).getDecimalDigits());
     }
 
+    @Test
     public void testParseJSONEmpty() throws IOException
     {
         String json = "{fields:{}}";

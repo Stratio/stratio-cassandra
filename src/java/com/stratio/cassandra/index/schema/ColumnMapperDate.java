@@ -54,9 +54,10 @@ public class ColumnMapperDate extends ColumnMapper<Long>
     public ColumnMapperDate(@JsonProperty("pattern") String pattern)
     {
         super(new AbstractType<?>[]{
-                AsciiType.instance, UTF8Type.instance, Int32Type.instance, LongType.instance,
-                IntegerType.instance, FloatType.instance, DoubleType.instance, DecimalType.instance,
-                TimestampType.instance});
+                      AsciiType.instance, UTF8Type.instance, Int32Type.instance, LongType.instance,
+                      IntegerType.instance, FloatType.instance, DoubleType.instance, DecimalType.instance,
+                      TimestampType.instance},
+              new AbstractType[]{LongType.instance, TimestampType.instance});
         this.pattern = pattern == null ? DEFAULT_PATTERN : pattern;
         concurrentDateFormat = new ThreadLocal<DateFormat>()
         {

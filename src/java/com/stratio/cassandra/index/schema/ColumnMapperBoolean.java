@@ -41,7 +41,8 @@ public class ColumnMapperBoolean extends ColumnMapper<String>
     @JsonCreator
     public ColumnMapperBoolean()
     {
-        super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, BooleanType.instance});
+        super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, BooleanType.instance},
+              new AbstractType[]{});
     }
 
     @Override

@@ -111,23 +111,32 @@ public class RowServiceSkinny extends RowService
     /**
      * {@inheritDoc}
      */
-    protected List<Row> rows(List<ScoredDocument> scoredDocuments, long timestamp)
+    protected List<Row> rows(List<SearchResult> searchResults, long timestamp, boolean usesRelevance)
     {
-        List<Row> rows = new ArrayList<>(scoredDocuments.size());
-        for (ScoredDocument scoredDocument : scoredDocuments) {
+        List<Row> rows = new ArrayList<>(searchResults.size());
+        for (SearchResult searchResult : searchResults)
+        {
+
             // Extract row from document
-            Document document = scoredDocument.getDocument();
-            DecoratedKey partitionKey = rowMapper.partitionKey(document);
+            DecoratedKey partitionKey = searchResult.getPartitionKey();
             Row row = row(partitionKey, timestamp);
 
-            if (row == null) {
+            if (row == null)
+            {
                 return null;
             }
 
             // Return decorated row
-            Float score = scoredDocument.getScore();
-            Row decoratedRow = addScoreColumn(row, timestamp, score);
-            rows.add(decoratedRow);
+            if (usesRelevance)
+            {
+                Float score = searchResult.getScore();
+                Row decoratedRow = addScoreColumn(row, timestamp, score);
+                rows.add(decoratedRow);
+            }
+            else
+            {
+                rows.add(row);
+            }
         }
         return rows;
     }
@@ -151,7 +160,6 @@ public class RowServiceSkinny extends RowService
         }
         return null;
     }
-
 
 
 }

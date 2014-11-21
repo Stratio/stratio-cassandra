@@ -54,74 +54,6 @@ public class ByteBufferUtils
     }
 
     /**
-     * Replaces the last component of the specified {@link java.nio.ByteBuffer} by an
-     * {@link org.apache.cassandra.utils.ByteBufferUtil.EMPTY_BYTE_BUFFER} if the {@code byteBuffer} is a composite.
-     * Otherwise, replaces {@code byteBuffer} by an empty {@link java.nio.ByteBuffer}.
-     *
-     * @param byteBuffer the {@link java.nio.ByteBuffer} which last component is to be cleared.
-     * @param type       the type of {@code byteBuffer}.
-     * @return a {@code byteBuffer} copy with its last component cleared.
-     */
-    public static ByteBuffer clearLastComponent(ByteBuffer byteBuffer, AbstractType<?> type)
-    {
-        if (type instanceof CompositeType)
-        {
-            CompositeType c = (CompositeType) type;
-            List<CompositeComponent> components = c.deconstruct(byteBuffer);
-            components.remove(components.size() - 1);
-            CompositeType.Builder builder = c.builder();
-            for (CompositeComponent cc : components)
-            {
-                builder.add(cc.value);
-            }
-            builder.add(ByteBufferUtil.EMPTY_BYTE_BUFFER);
-            return builder.build();
-        }
-        else
-        {
-            return ByteBufferUtil.EMPTY_BYTE_BUFFER;
-        }
-    }
-
-    /**
-     * Removes the last {@link AbstractType} of those contained in {@code comparator}.
-     *
-     * @param type an {@link AbstractType}.
-     * @return the last {@link AbstractType} of those contained in {@code comparator}.
-     */
-    public static AbstractType<?> removeLastComponent(AbstractType<?> type)
-    {
-        LinkedList<AbstractType<?>> components = new LinkedList<>(split(type));
-        components.removeLast();
-        return CompositeType.getInstance(components);
-    }
-
-    /**
-     * Returns the last {@link java.nio.ByteBuffer} of those contained in {@code byteBuffer} if it is a composite.
-     *
-     * @param byteBuffer the {@link java.nio.ByteBuffer}.
-     * @param type       the {@link AbstractType} of {@code byteBuffer}.
-     * @return the last {@link java.nio.ByteBuffer} of those contained in {@code byteBuffer} if it is a composite.
-     */
-    public static ByteBuffer getLastComponent(ByteBuffer byteBuffer, AbstractType<?> type)
-    {
-        ByteBuffer[] components = split(byteBuffer, type);
-        return components[components.length - 1];
-    }
-
-    /**
-     * Returns the last {@link AbstractType} of those contained in {@code type}.
-     *
-     * @param type an {@link AbstractType}.
-     * @return the last {@link AbstractType} of those contained in {@code type}.
-     */
-    public static AbstractType<?> getLastComponent(AbstractType<?> type)
-    {
-        List<AbstractType<?>> components = split(type);
-        return components.get(components.size() - 1);
-    }
-
-    /**
      * Returns the {@link AbstractType}s contained in {@code type}.
      *
      * @param type the {@link AbstractType} to be split.
@@ -131,7 +63,7 @@ public class ByteBufferUtils
     {
         if (type instanceof CompositeType)
         {
-            return ((CompositeType) type).getComponents();
+            return type.getComponents();
         }
         else
         {
@@ -194,10 +126,10 @@ public class ByteBufferUtils
     }
 
     /**
-     * Returns a {@code String} representation of {@link byteBuffer}.
+     * Returns a {@code String} representation of {@code byteBuffer}.
      *
      * @param byteBuffer the {@link java.nio.ByteBuffer} to be converted to {@link String}.
-     * @return a {@code String} representation of {@link byteBuffer}.
+     * @return a {@code String} representation of {@code byteBuffer}.
      */
     public static String toString(ByteBuffer byteBuffer)
     {

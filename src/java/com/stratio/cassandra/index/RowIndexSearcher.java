@@ -21,6 +21,7 @@ import com.stratio.cassandra.index.util.Log;
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.IndexExpression;
 import org.apache.cassandra.db.Row;
+import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.filter.ExtendedFilter;
 import org.apache.cassandra.db.index.SecondaryIndexManager;
 import org.apache.cassandra.db.index.SecondaryIndexSearcher;
@@ -52,9 +53,9 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
      * Returns a new {@code RowIndexSearcher}.
      *
      * @param indexManager A 2i manger.
-     * @param index        A {@link com.stratio.cassandra.index.RowIndex}.
+     * @param index        A {@link RowIndex}.
      * @param columns      A set of columns.
-     * @param rowService   A {@link com.stratio.cassandra.index.RowService}.
+     * @param rowService   A {@link RowService}.
      */
     public RowIndexSearcher(SecondaryIndexManager indexManager,
                             RowIndex index,
@@ -80,7 +81,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
             long startTime = System.currentTimeMillis();
 
             long timestamp = extendedFilter.timestamp;
-            int limit = extendedFilter.maxColumns();
+            int limit = extendedFilter.currentLimit();
             DataRange dataRange = extendedFilter.dataRange;
             List<IndexExpression> clause = extendedFilter.getClause();
             List<IndexExpression> filteredExpressions = filteredExpressions(clause);
@@ -224,13 +225,13 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         Comparator<Row> comparator = rowService.comparator(search);
         Collections.sort(result, comparator);
 
-//        result = rowService.group(result);
-
         String comparatorName = comparator.getClass().getSimpleName();
         int endSize = result.size();
         long endTime = System.currentTimeMillis() - startTime;
 
-        Log.debug("Sorted %d rows to %d with comparator %s in %d ms", startSize, endSize, comparatorName, endTime);
+//        result = rowService.group(result);
+
+        Log.debug("Sorted %d rows to %d with comparator %s in %d ms\n", startSize, endSize, comparatorName, endTime);
 
         return result;
     }

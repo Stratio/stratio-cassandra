@@ -33,9 +33,9 @@ import java.util.*;
  * </p>
  * <p/>
  * <p>
- * Calling a method that adds new Comparators or changes the ascend/descend sort <i>after compare(Object, Object) has
+ * Calling a method that adds new Comparators or changes the ascend/descend sortFields <i>after compare(Object, Object) has
  * been called</i> will result in an UnsupportedOperationException. However, <i>take care</i> to not alter the
- * underlying List of Comparators or the BitSet that defines the sort order.
+ * underlying List of Comparators or the BitSet that defines the sortFields order.
  * </p>
  * <p/>
  * <p>
@@ -93,7 +93,7 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
      * Construct a Comparator chain with a single Comparator, sorting in the given order
      *
      * @param comparator First Comparator in the ComparatorChain
-     * @param reverse    false = forward sort; true = reverse sort
+     * @param reverse    false = forward sortFields; true = reverse sortFields
      */
     public ComparatorChain(Comparator<T> comparator, boolean reverse)
     {
@@ -107,7 +107,7 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
     }
 
     /**
-     * Construct a ComparatorChain from the Comparators in the List. All Comparators will default to the forward sort
+     * Construct a ComparatorChain from the Comparators in the List. All Comparators will default to the forward sortFields
      * order.
      *
      * @param list List of Comparators
@@ -119,10 +119,10 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
     }
 
     /**
-     * Construct a ComparatorChain from the Comparators in the given List. The sort order of each column will be drawn
-     * from the given BitSet. When determining the sort order for Comparator at index <i>i</i> in the List, the
-     * ComparatorChain will call BitSet.get(<i>i</i>). If that method returns <i>false</i>, the forward sort order is
-     * used; a return value of <i>true</i> indicates reverse sort order.
+     * Construct a ComparatorChain from the Comparators in the given List. The sortFields order of each column will be drawn
+     * from the given BitSet. When determining the sortFields order for Comparator at index <i>i</i> in the List, the
+     * ComparatorChain will call BitSet.get(<i>i</i>). If that method returns <i>false</i>, the forward sortFields order is
+     * used; a return value of <i>true</i> indicates reverse sortFields order.
      *
      * @param list List of Comparators. NOTE: This constructor does not perform a defensive copy of the list
      * @param bits Sort order for each Comparator. Extra bits are ignored, unless extra Comparators are added by another
@@ -137,9 +137,9 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
     // -----------------------------------------------------------------------
 
     /**
-     * Add a Comparator to the end of the chain using the forward sort order
+     * Add a Comparator to the end of the chain using the forward sortFields order
      *
-     * @param comparator Comparator with the forward sort order
+     * @param comparator Comparator with the forward sortFields order
      */
     public void addComparator(Comparator<T> comparator)
     {
@@ -147,10 +147,10 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
     }
 
     /**
-     * Add a Comparator to the end of the chain using the given sort order
+     * Add a Comparator to the end of the chain using the given sortFields order
      *
      * @param comparator Comparator to add to the end of the chain
-     * @param reverse    false = forward sort order; true = reverse sort order
+     * @param reverse    false = forward sortFields order; true = reverse sortFields order
      */
     public void addComparator(Comparator<T> comparator, boolean reverse)
     {
@@ -164,7 +164,7 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
     }
 
     /**
-     * Replace the Comparator at the given index, maintaining the existing sort order.
+     * Replace the Comparator at the given index, maintaining the existing sortFields order.
      *
      * @param index      index of the Comparator to replace
      * @param comparator Comparator to place at the given index
@@ -177,11 +177,11 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
     }
 
     /**
-     * Replace the Comparator at the given index in the ComparatorChain, using the given sort order
+     * Replace the Comparator at the given index in the ComparatorChain, using the given sortFields order
      *
      * @param index      index of the Comparator to replace
      * @param comparator Comparator to set
-     * @param reverse    false = forward sort order; true = reverse sort order
+     * @param reverse    false = forward sortFields order; true = reverse sortFields order
      */
     public void setComparator(int index, Comparator<T> comparator, boolean reverse)
     {
@@ -199,7 +199,7 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
     }
 
     /**
-     * Change the sort order at the given index in the ComparatorChain to a forward sort.
+     * Change the sortFields order at the given index in the ComparatorChain to a forward sortFields.
      *
      * @param index Index of the ComparatorChain
      */
@@ -210,7 +210,7 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
     }
 
     /**
-     * Change the sort order at the given index in the ComparatorChain to a reverse sort.
+     * Change the sortFields order at the given index in the ComparatorChain to a reverse sortFields.
      *
      * @param index Index of the ComparatorChain
      */
@@ -285,7 +285,7 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
             int retval = comparator.compare(o1, o2);
             if (retval != 0)
             {
-                // invert the order if it is a reverse sort
+                // invert the order if it is a reverse sortFields
                 if (orderingBits.get(comparatorIndex) == true)
                 {
                     if (Integer.MIN_VALUE == retval)

@@ -21,14 +21,21 @@ import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellName;
+import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.filter.ColumnSlice;
+import org.apache.cassandra.db.filter.SliceQueryFilter;
+import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.Filter;
-import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.*;
 
 import java.util.List;
 import java.util.Map;
+
+import static org.apache.lucene.search.BooleanClause.Occur.MUST;
+import static org.apache.lucene.search.BooleanClause.Occur.SHOULD;
 
 /**
  * {@link RowMapper} for wide rows.
@@ -50,8 +57,8 @@ public class RowMapperWide extends RowMapper
     RowMapperWide(CFMetaData metadata, ColumnDefinition columnDefinition, Schema schema)
     {
         super(metadata, columnDefinition, schema);
-        this.clusteringKeyMapper = ClusteringKeyMapper.instance(metadata);
-        this.fullKeyMapper = FullKeyMapper.instance(metadata, partitionKeyMapper, clusteringKeyMapper);
+        this.clusteringKeyMapper = ClusteringKeyMapper.instance(metadata, schema);
+        this.fullKeyMapper = FullKeyMapper.instance(partitionKeyMapper, clusteringKeyMapper);
     }
 
     /**
@@ -74,39 +81,27 @@ public class RowMapperWide extends RowMapper
     public Document document(Row row)
     {
         DecoratedKey partitionKey = row.key;
-        CellName clusteringKey = clusteringKeyMapper.cellName(row);
+        CellName clusteringKey = clusteringKeyMapper.clusteringKey(row);
 
         Document document = new Document();
-//        tokenMapper.addFields(document, partitionKey);
+        tokenMapper.addFields(document, partitionKey);
         partitionKeyMapper.addFields(document, partitionKey);
-//        clusteringKeyMapper.addFields(document, clusteringKey);
+        clusteringKeyMapper.addFields(document, clusteringKey);
         fullKeyMapper.addFields(document, partitionKey, clusteringKey);
         schema.addFields(document, columns(row));
         return document;
     }
 
     /**
-     * {@inheritDoc}
+     * Returns the Lucene {@link Sort} to get {@link Document}s in the same order that is used in Cassandra.
+     *
+     * @return The Lucene {@link Sort} to get {@link Document}s in the same order that is used in Cassandra.
      */
-    @Override
-    public Filter filter(DataRange dataRange)
-    {
-        return new FullKeyMapperDataRangeFilter(fullKeyMapper, dataRange);
-//        Filter tokenFilter = tokenMapper.filter(dataRange.keyRange());
-//        Filter fullKeyFilter = new FullKeyMapperDataRangeFilter(fullKeyMapper, dataRange);
-//        Filter[] filters = new Filter[]{tokenFilter, fullKeyFilter};
-//        return new ChainedFilter(filters, ChainedFilter.AND);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public Sort sort()
     {
-//        SortField[] partitionKeySort = tokenMapper.sort();
-//        SortField[] clusteringKeySort = clusteringKeyMapper.sortFields();
-        return new Sort(fullKeyMapper.sortFields());
+        SortField[] partitionKeySort = tokenMapper.sortFields();
+        SortField[] clusteringKeySort = clusteringKeyMapper.sortFields();
+        return new Sort(ArrayUtils.addAll(partitionKeySort, clusteringKeySort));
     }
 
     /**
@@ -126,17 +121,6 @@ public class RowMapperWide extends RowMapper
     public RowComparator naturalComparator()
     {
         return new RowComparatorNatural(clusteringKeyMapper);
-    }
-
-    /**
-     * Returns the clustering key contained in the specified {@link Document}.
-     *
-     * @param document A {@link Document}.
-     * @return The clustering key contained in the specified {@link Document}.
-     */
-    public CellName clusteringKey(Document document)
-    {
-        return fullKeyMapper.cellName(document);
     }
 
     /**
@@ -174,14 +158,73 @@ public class RowMapperWide extends RowMapper
     }
 
     /**
-     * Returns the Lucene {@link Filter} to get the {@link Document}s satisfying the specified {@link RangeTombstone}.
+     * Returns the Lucene {@link Filter} to get the {@link Document}s satisfying the specified {@link DataRange}.
      *
-     * @param rangeTombstone A {@link RangeTombstone}.
-     * @return The Lucene {@link Filter} to get the {@link Document}s satisfying the specified {@link RangeTombstone}.
+     * @param dataRange A {@link DataRange}.
+     * @return The Lucene {@link Filter} to get the {@link Document}s satisfying the specified {@link DataRange}.
      */
-    public Filter filter(RangeTombstone rangeTombstone)
+    public Query query(DataRange dataRange)
     {
-        return fullKeyMapper.filter(rangeTombstone);
+        RowPosition startPosition = dataRange.startKey();
+        RowPosition stopPosition = dataRange.stopKey();
+        Token startToken = startPosition.getToken();
+        Token stopToken = stopPosition.getToken();
+        boolean isSameToken = startToken.compareTo(stopToken) == 0 && !tokenMapper.isMinimum(startToken);
+        BooleanClause.Occur occur = isSameToken ? MUST : SHOULD;
+        boolean includeStart = tokenMapper.includeStart(startPosition);
+        boolean includeStop = tokenMapper.includeStop(stopPosition);
+
+        SliceQueryFilter sqf = null;
+        if (startPosition instanceof  DecoratedKey)
+        {
+            sqf = (SliceQueryFilter) dataRange.columnFilter(((DecoratedKey) startPosition).getKey());
+        } else {
+            sqf = (SliceQueryFilter) dataRange.columnFilter(ByteBufferUtil.EMPTY_BYTE_BUFFER);
+        }
+        Composite startName = sqf.start();
+        Composite stopName = sqf.finish();
+
+        BooleanQuery query = new BooleanQuery();
+
+        if (!startName.isEmpty())
+        {
+            BooleanQuery q = new BooleanQuery();
+            q.add(tokenMapper.query(startToken), MUST);
+            q.add(clusteringKeyMapper.query(startName, null), MUST);
+            query.add(q,  occur);
+            includeStart = false;
+        }
+
+        if (!stopName.isEmpty())
+        {
+            BooleanQuery q = new BooleanQuery();
+            q.add(tokenMapper.query(stopToken), MUST);
+            q.add(clusteringKeyMapper.query(null, stopName), MUST);
+            query.add(q,  occur);
+            includeStop = false;
+        }
+
+        if (!isSameToken) {
+            Query rangeQuery = tokenMapper.query(startToken, stopToken, includeStart, includeStop);
+            if (rangeQuery != null) query.add(rangeQuery, SHOULD);
+        }
+
+        return query.getClauses().length == 0 ? null : query;
+    }
+
+    /**
+     * Returns the Lucene {@link Query} to get the {@link Document}s satisfying the specified partition key and {@link RangeTombstone}.
+     *
+     * @param partitionKey   A partition key.
+     * @param rangeTombstone A {@link RangeTombstone}.
+     * @return The Lucene {@link Query} to get the {@link Document}s satisfying the specified partition key and {@link RangeTombstone}.
+     */
+    public Query query(DecoratedKey partitionKey, RangeTombstone rangeTombstone)
+    {
+        BooleanQuery query = new BooleanQuery();
+        query.add(partitionKeyMapper.query(partitionKey), MUST);
+        query.add(clusteringKeyMapper.query(rangeTombstone.min, rangeTombstone.max), MUST);
+        return query;
     }
 
     /**
@@ -196,17 +239,26 @@ public class RowMapperWide extends RowMapper
     }
 
     /**
-     * Returns the logical CQL3 column families contained in the specified physical {@link org.apache.cassandra.db.ColumnFamily}.
+     * Returns the logical CQL3 column families contained in the specified physical {@link ColumnFamily}.
      *
-     * @param columnFamily A physical {@link org.apache.cassandra.db.ColumnFamily}.
-     * @return The logical CQL3 column families contained in the specified physical {@link org.apache.cassandra.db.ColumnFamily}.
+     * @param columnFamily A physical {@link ColumnFamily}.
+     * @return The logical CQL3 column families contained in the specified physical {@link ColumnFamily}.
      */
     public Map<CellName, ColumnFamily> splitRows(ColumnFamily columnFamily)
     {
         return clusteringKeyMapper.splitRows(columnFamily);
     }
 
-    public String toString(CellName cellName) {
+    public String toString(CellName cellName)
+    {
         return clusteringKeyMapper.toString(cellName);
+    }
+
+    @Override
+    public SearchResult searchResult(Document document, ScoreDoc scoreDoc)
+    {
+        DecoratedKey partitionKey = partitionKeyMapper.partitionKey(document);
+        CellName clusteringKey = clusteringKeyMapper.clusteringKey(document);
+        return new SearchResult(partitionKey, clusteringKey, scoreDoc);
     }
 }

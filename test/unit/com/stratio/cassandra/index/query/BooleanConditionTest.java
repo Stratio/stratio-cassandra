@@ -29,7 +29,7 @@ public class BooleanConditionTest extends AbstractConditionTest
     public void testJson()
     {
         testJsonCondition(query(bool().must(match("name", "jonathan"),
-                                            range("age").lower(18).includeLower(true))
+                                            range("age").lower(18).includeStart(true))
                                       .should(match("color", "green"),
                                               match("color", "blue"))
                                       .not(match("country", "england"))

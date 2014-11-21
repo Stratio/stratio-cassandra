@@ -53,14 +53,15 @@ public abstract class ColumnMapper<BASE>
 {
 
     protected static final Analyzer EMPTY_ANALYZER = new KeywordAnalyzer();
-
     protected static final Store STORE = Store.NO;
 
-    protected final AbstractType<?>[] supportedTypes;
+    private final AbstractType<?>[] supportedTypes;
+    private final AbstractType<?>[] supportedClusteringTypes;
 
-    protected ColumnMapper(AbstractType<?>[] supportedTypes)
+    ColumnMapper(AbstractType<?>[] supportedTypes, AbstractType<?>[] supportedClusteringTypes)
     {
         this.supportedTypes = supportedTypes;
+        this.supportedClusteringTypes = supportedClusteringTypes;
     }
 
     public static Column column(String name, ByteBuffer value, AbstractType<?> type)
@@ -76,12 +77,12 @@ public abstract class ColumnMapper<BASE>
     public abstract Analyzer analyzer();
 
     /**
-     * Returns the Lucene's {@link org.apache.lucene.document.Field} resulting from the mapping of {@code value}, using
+     * Returns the Lucene {@link Field} resulting from the mapping of {@code value}, using
      * {@code name} as field's name.
      *
-     * @param name  The name of the Lucene's field.
-     * @param value The value of the Lucene's field.
-     * @return The Lucene's {@link org.apache.lucene.document.Field} resulting from the mapping of {@code value}, using
+     * @param name  The name of the Lucene {@link Field}.
+     * @param value The value of the Lucene {@link Field}.
+     * @return The Lucene {@link Field} resulting from the mapping of {@code value}, using
      * {@code name} as field's name.
      */
     public abstract Field field(String name, Object value);
@@ -129,6 +130,18 @@ public abstract class ColumnMapper<BASE>
         for (AbstractType<?> n : supportedTypes)
         {
             if (checkedType.getClass() == n.getClass())
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean supportsClustering(final AbstractType<?> type)
+    {
+        for (AbstractType<?> supportedClusteringType : supportedClusteringTypes)
+        {
+            if (type.getClass() == supportedClusteringType.getClass())
             {
                 return true;
             }

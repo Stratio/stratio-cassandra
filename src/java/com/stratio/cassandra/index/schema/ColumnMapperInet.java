@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.schema;
 
+import com.stratio.cassandra.index.util.Log;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.InetAddressType;
@@ -48,7 +49,8 @@ public class ColumnMapperInet extends ColumnMapper<String>
     @JsonCreator
     public ColumnMapperInet()
     {
-        super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, InetAddressType.instance});
+        super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, InetAddressType.instance},
+              new AbstractType[]{});
     }
 
     @Override
@@ -81,6 +83,7 @@ public class ColumnMapperInet extends ColumnMapper<String>
                 }
                 catch (UnknownHostException e)
                 {
+                    Log.error(e, e.getMessage());
                 }
             }
         }
@@ -111,6 +114,7 @@ public class ColumnMapperInet extends ColumnMapper<String>
                 }
                 catch (UnknownHostException e)
                 {
+                    Log.error(e, e.getMessage());
                 }
             }
             else

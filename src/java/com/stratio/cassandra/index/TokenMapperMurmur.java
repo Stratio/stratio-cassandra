@@ -15,19 +15,21 @@
  */
 package com.stratio.cassandra.index;
 
-import com.stratio.cassandra.index.util.Log;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.RowPosition;
-import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.dht.Murmur3Partitioner;
+import org.apache.cassandra.dht.Token;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.LongField;
-import org.apache.lucene.search.Filter;
-import org.apache.lucene.search.NumericRangeFilter;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.search.NumericRangeQuery;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.NumericUtils;
 
 /**
  * {@link PartitionKeyMapper} to be used when {@link Murmur3Partitioner} is used. It indexes the token long value as a
@@ -60,31 +62,41 @@ public class TokenMapperMurmur extends TokenMapper
      * {@inheritDoc}
      */
     @Override
-    public Filter filter(AbstractBounds<RowPosition> keyRange)
-    {
-        RowPosition startPosition = keyRange.left;
-        RowPosition stopPosition = keyRange.right;
-        Long start = (Long) startPosition.getToken().token;
-        Long stop = (Long) stopPosition.getToken().token;
-        if (startPosition.isMinimum())
-        {
-            start = null;
-        }
-        if (stopPosition.isMinimum())
-        {
-            stop = null;
-        }
-        boolean includeLower = includeLower(startPosition.kind());
-        boolean includeUpper = includeUpper(stopPosition.kind());
-        Log.debug("Filtering %s %d, %d %s", includeLower ? "[" : "(", start, stop, includeUpper ? "]" : ")");
-        return NumericRangeFilter.newLongRange(FIELD_NAME, start, stop, includeLower, includeUpper);
+    public Query query(Token token) {
+        Long value = (Long) token.token;
+//        BytesRef ref = new BytesRef();
+//        NumericUtils.longToPrefixCoded(value, 0, ref);
+//        Term term = new Term(FIELD_NAME, ref);
+//        return new TermQuery(term);
+        return NumericRangeQuery.newLongRange(FIELD_NAME, value, value, true, true);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public SortField[] sort()
+    protected Query makeQuery(Token lower, Token upper, boolean includeLower, boolean includeUpper) {
+        Long start = lower == null ? null : (Long) lower.token;
+        Long stop = upper == null ? null : (Long) upper.token;
+        if (lower != null && lower.isMinimum())
+        {
+            start = null;
+        }
+        if (upper != null && upper.isMinimum())
+        {
+            stop = null;
+        }
+        if (start == null && stop == null) {
+            return null;
+        }
+        return NumericRangeQuery.newLongRange(FIELD_NAME, start, stop, includeLower, includeUpper);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public SortField[] sortFields()
     {
         return new SortField[]{new SortField(FIELD_NAME, SortField.Type.LONG)};
     }

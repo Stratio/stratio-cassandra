@@ -16,6 +16,7 @@
 package com.stratio.cassandra.index.query;
 
 import com.stratio.cassandra.index.schema.Schema;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.codehaus.jackson.annotate.JsonCreator;
@@ -33,7 +34,7 @@ public class Sorting implements Iterable<SortingField>
 {
 
     /**
-     * How to sort each field
+     * How to sortFields each field
      */
     private final List<SortingField> sortingFields;
 
@@ -55,7 +56,7 @@ public class Sorting implements Iterable<SortingField>
     /**
      * Returns the {@link SortingField}s to be used.
      *
-     * @return
+     * @return The {@link SortingField}s to be used.
      */
     public List<SortingField> getSortingFields()
     {
@@ -81,11 +82,8 @@ public class Sorting implements Iterable<SortingField>
     @Override
     public String toString()
     {
-        StringBuilder builder = new StringBuilder();
-        builder.append("Sorting [sortingFields=");
-        builder.append(sortingFields);
-        builder.append("]");
-        return builder.toString();
+        return new ToStringBuilder(this)
+                .append("sortingFields", sortingFields)
+                .toString();
     }
-
 }

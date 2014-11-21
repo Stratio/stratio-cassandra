@@ -24,8 +24,6 @@ import org.apache.cassandra.db.filter.QueryFilter;
 import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.Filter;
-import org.apache.lucene.search.FilteredQuery;
 import org.apache.lucene.search.Query;
 
 import java.io.IOException;
@@ -46,7 +44,7 @@ public class RowServiceWide extends RowService
     {
         FIELDS_TO_LOAD = new HashSet<>();
         FIELDS_TO_LOAD.add(PartitionKeyMapper.FIELD_NAME);
-        FIELDS_TO_LOAD.add(FullKeyMapper.FIELD_NAME);
+        FIELDS_TO_LOAD.add(ClusteringKeyMapper.FIELD_NAME);
     }
 
     private final RowMapperWide rowMapper;
@@ -105,9 +103,8 @@ public class RowServiceWide extends RowService
                 while (iterator.hasNext())
                 {
                     RangeTombstone rangeTombstone = iterator.next();
-                    Filter filter = rowMapper.filter(rangeTombstone);
-                    Query partitionKeyQuery = rowMapper.query(partitionKey);
-                    Query query = new FilteredQuery(partitionKeyQuery, filter);
+                    Query query = rowMapper.query(partitionKey, rangeTombstone);
+                    System.out.println("DELETING WITH RANGE TOMBSTONE " + query);
                     luceneIndex.delete(query);
                 }
             }
@@ -135,34 +132,19 @@ public class RowServiceWide extends RowService
      * The {@link Row} is a logical one.
      */
     @Override
-    protected List<Row> rows(List<ScoredDocument> scoredDocuments, long timestamp)
+    protected List<Row> rows(List<SearchResult> searchResults, long timestamp, boolean usesRelevance)
     {
         // Initialize result
-        List<Row> rows = new ArrayList<>(scoredDocuments.size());
-
-//        for (ScoredDocument scoredDocument : scoredDocuments) {
-//            Document document = scoredDocument.getDocument();
-//            DecoratedKey partitionKey = rowMapper.partitionKey(document);
-//            CellName clusteringKey = rowMapper.clusteringKey(document);
-//            Float score = scoredDocument.getScore();
-//            Map<CellName, Row> iRows = rows(partitionKey, Arrays.asList(clusteringKey), timestamp);
-//            Row row = iRows.get(clusteringKey);
-//            if (row != null)
-//            {
-//                Row scoredRow = addScoreColumn(row, timestamp, score);
-//                rows.add(scoredRow);
-//            }
-//        }
+        List<Row> rows = new ArrayList<>(searchResults.size());
 
         // Group key queries by partition keys
-        Map<CellName, Float> scoresByClusteringKey = new HashMap<>(scoredDocuments.size());
+        Map<CellName, Float> scoresByClusteringKey = new HashMap<>(searchResults.size());
         Map<DecoratedKey, List<CellName>> keys = new HashMap<>();
-        for (ScoredDocument scoredDocument : scoredDocuments)
+        for (SearchResult searchResult : searchResults)
         {
-            Document document = scoredDocument.getDocument();
-            DecoratedKey partitionKey = rowMapper.partitionKey(document);
-            CellName clusteringKey = rowMapper.clusteringKey(document);
-            Float score = scoredDocument.getScore();
+            DecoratedKey partitionKey = searchResult.getPartitionKey();
+            CellName clusteringKey = searchResult.getClusteringKey();
+            Float score = searchResult.getScore();
             scoresByClusteringKey.put(clusteringKey, score);
             List<CellName> clusteringKeys = keys.get(partitionKey);
             if (clusteringKeys == null)
@@ -176,15 +158,23 @@ public class RowServiceWide extends RowService
         for (Map.Entry<DecoratedKey, List<CellName>> entry : keys.entrySet())
         {
             DecoratedKey partitionKey = entry.getKey();
-            for (List<CellName> clusteringKeys : Lists.partition(entry.getValue(), 1000) ) {
+            for (List<CellName> clusteringKeys : Lists.partition(entry.getValue(), 1000))
+            {
                 Map<CellName, Row> partitionRows = rows(partitionKey, clusteringKeys, timestamp);
                 for (Map.Entry<CellName, Row> entry1 : partitionRows.entrySet())
                 {
-                    CellName clusteringKey = entry1.getKey();
                     Row row = entry1.getValue();
-                    Float score = scoresByClusteringKey.get(clusteringKey);
-                    Row scoredRow = addScoreColumn(row, timestamp, score);
-                    rows.add(scoredRow);
+                    if (usesRelevance)
+                    {
+                        CellName clusteringKey = entry1.getKey();
+                        Float score = scoresByClusteringKey.get(clusteringKey);
+                        Row scoredRow = addScoreColumn(row, timestamp, score);
+                        rows.add(scoredRow);
+                    }
+                    else
+                    {
+                        rows.add(row);
+                    }
                 }
             }
         }

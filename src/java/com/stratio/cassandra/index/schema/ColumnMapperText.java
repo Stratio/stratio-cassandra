@@ -55,7 +55,8 @@ public class ColumnMapperText extends ColumnMapper<String>
                 TimeUUIDType.instance,
                 TimestampType.instance,
                 BytesType.instance,
-                InetAddressType.instance});
+                InetAddressType.instance},
+              new AbstractType[]{});
         if (analyzerClassName != null)
         {
             this.analyzer = AnalyzerFactory.getAnalyzer(analyzerClassName);

@@ -48,7 +48,8 @@ public class ColumnMapperString extends ColumnMapper<String>
                 TimeUUIDType.instance,
                 TimestampType.instance,
                 BytesType.instance,
-                InetAddressType.instance});
+                InetAddressType.instance},
+              new AbstractType[]{UTF8Type.instance});
     }
 
     @Override
