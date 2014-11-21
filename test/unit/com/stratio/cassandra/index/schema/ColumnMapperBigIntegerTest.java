@@ -438,7 +438,7 @@ public class ColumnMapperBigIntegerTest
     public void testField()
     {
         ColumnMapperBigInteger mapper = new ColumnMapperBigInteger(10);
-        Field field = mapper.field("name", 42, Field.Store.NO);
+        Field field = mapper.field("name", 42);
         Assert.assertNotNull(field);
         Assert.assertEquals("04ldqpex", field.stringValue());
         Assert.assertEquals("name", field.name());

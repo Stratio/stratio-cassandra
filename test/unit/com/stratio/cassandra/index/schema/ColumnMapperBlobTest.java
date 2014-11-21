@@ -157,7 +157,7 @@ public class ColumnMapperBlobTest
     public void testField()
     {
         ColumnMapperBlob mapper = new ColumnMapperBlob();
-        Field field = mapper.field("name", "f1B2", Field.Store.NO);
+        Field field = mapper.field("name", "f1B2");
         Assert.assertNotNull(field);
         Assert.assertEquals("f1b2", field.stringValue());
         Assert.assertEquals("name", field.name());

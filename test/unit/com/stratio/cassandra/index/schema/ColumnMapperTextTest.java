@@ -154,7 +154,7 @@ public class ColumnMapperTextTest
     public void testField()
     {
         ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
-        Field field = mapper.field("name", "hello", Field.Store.NO);
+        Field field = mapper.field("name", "hello");
         Assert.assertNotNull(field);
         Assert.assertEquals("hello", field.stringValue());
         Assert.assertEquals("name", field.name());

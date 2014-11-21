@@ -520,7 +520,7 @@ public class ColumnMapperBigDecimalTest
     public void testField()
     {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
-        Field field = mapper.field("name", 42.43, Field.Store.NO);
+        Field field = mapper.field("name", 42.43);
         Assert.assertNotNull(field);
         Assert.assertEquals("10042.4299", field.stringValue());
         Assert.assertEquals("name", field.name());

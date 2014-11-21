@@ -151,7 +151,7 @@ public class ColumnMapperDateTest
     public void testField() throws ParseException
     {
         ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
-        Field field = mapper.field("name", "2014-03-19", Field.Store.NO);
+        Field field = mapper.field("name", "2014-03-19");
         Assert.assertNotNull(field);
         Assert.assertEquals(sdf.parse("2014-03-19").getTime(), field.numericValue().longValue());
         Assert.assertEquals("name", field.name());

@@ -131,7 +131,7 @@ public class ColumnMapperIntegerTest
     public void testField()
     {
         ColumnMapperInteger mapper = new ColumnMapperInteger(1f);
-        Field field = mapper.field("name", "3.2", Field.Store.NO);
+        Field field = mapper.field("name", "3.2");
         Assert.assertNotNull(field);
         Assert.assertEquals(Integer.valueOf(3), field.numericValue());
         Assert.assertEquals("name", field.name());
