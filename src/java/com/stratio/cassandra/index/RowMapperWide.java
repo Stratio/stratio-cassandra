@@ -23,7 +23,9 @@ import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.filter.ColumnSlice;
+import org.apache.cassandra.db.filter.SliceQueryFilter;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
@@ -167,46 +169,47 @@ public class RowMapperWide extends RowMapper
         RowPosition stopPosition = dataRange.stopKey();
         Token startToken = startPosition.getToken();
         Token stopToken = stopPosition.getToken();
+        boolean isSameToken = startToken.compareTo(stopToken) == 0 && !tokenMapper.isMinimum(startToken);
+        BooleanClause.Occur occur = isSameToken ? MUST : SHOULD;
         boolean includeStart = tokenMapper.includeStart(startPosition);
         boolean includeStop = tokenMapper.includeStop(stopPosition);
 
-        if (dataRange instanceof DataRange.Paging)
+        SliceQueryFilter sqf = null;
+        if (startPosition instanceof  DecoratedKey)
         {
-            DataRange.Paging paging = (DataRange.Paging) dataRange;
-            BooleanQuery query = new BooleanQuery();
+            sqf = (SliceQueryFilter) dataRange.columnFilter(((DecoratedKey) startPosition).getKey());
+        } else {
+            sqf = (SliceQueryFilter) dataRange.columnFilter(ByteBufferUtil.EMPTY_BYTE_BUFFER);
+        }
+        Composite startName = sqf.start();
+        Composite stopName = sqf.finish();
 
-            Composite startName = paging.columnStart;
-            if (!startName.isEmpty())
-            {
-                BooleanQuery q = new BooleanQuery();
-                DecoratedKey startKey = (DecoratedKey) startPosition;
-                q.add(partitionKeyMapper.query(startKey), MUST);
-                q.add(clusteringKeyMapper.query(startName, null), MUST);
-                query.add(q, SHOULD);
-                includeStart = false;
-            }
+        BooleanQuery query = new BooleanQuery();
 
-            Composite stopName = paging.columnFinish;
-            if (!stopName.isEmpty())
-            {
-                BooleanQuery q = new BooleanQuery();
-                DecoratedKey stopKey = (DecoratedKey) stopPosition;
-                q.add(partitionKeyMapper.query(stopKey), MUST);
-                q.add(clusteringKeyMapper.query(null, stopName), MUST);
-                query.add(q, SHOULD);
-                includeStop = false;
-            }
+        if (!startName.isEmpty())
+        {
+            BooleanQuery q = new BooleanQuery();
+            q.add(tokenMapper.query(startToken), MUST);
+            q.add(clusteringKeyMapper.query(startName, null), MUST);
+            query.add(q,  occur);
+            includeStart = false;
+        }
 
+        if (!stopName.isEmpty())
+        {
+            BooleanQuery q = new BooleanQuery();
+            q.add(tokenMapper.query(stopToken), MUST);
+            q.add(clusteringKeyMapper.query(null, stopName), MUST);
+            query.add(q,  occur);
+            includeStop = false;
+        }
+
+        if (!isSameToken) {
             Query rangeQuery = tokenMapper.query(startToken, stopToken, includeStart, includeStop);
             if (rangeQuery != null) query.add(rangeQuery, SHOULD);
-
-            return query.getClauses().length == 0 ? null : query;
-
         }
-        else
-        {
-            return tokenMapper.query(startToken, stopToken, includeStart, includeStop);
-        }
+
+        return query.getClauses().length == 0 ? null : query;
     }
 
     /**

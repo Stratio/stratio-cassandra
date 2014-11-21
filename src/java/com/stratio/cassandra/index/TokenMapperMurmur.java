@@ -64,10 +64,11 @@ public class TokenMapperMurmur extends TokenMapper
     @Override
     public Query query(Token token) {
         Long value = (Long) token.token;
-        BytesRef ref = new BytesRef();
-        NumericUtils.longToPrefixCoded(value, 0, ref);
-        Term term = new Term(FIELD_NAME, ref);
-        return new TermQuery(term);
+//        BytesRef ref = new BytesRef();
+//        NumericUtils.longToPrefixCoded(value, 0, ref);
+//        Term term = new Term(FIELD_NAME, ref);
+//        return new TermQuery(term);
+        return NumericRangeQuery.newLongRange(FIELD_NAME, value, value, true, true);
     }
 
     /**

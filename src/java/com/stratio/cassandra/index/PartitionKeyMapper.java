@@ -169,7 +169,7 @@ public class PartitionKeyMapper
     }
 
     public String toString(DecoratedKey decoratedKey) {
-        return ByteBufferUtils.toString(decoratedKey.getKey(), type);
+        return decoratedKey.getToken() + " - "+ByteBufferUtils.toString(decoratedKey.getKey(), type);
     }
 
 }

@@ -92,13 +92,18 @@ public abstract class TokenMapper
     @SuppressWarnings("unchecked")
     public Query query(Token lower, Token upper, boolean includeLower, boolean includeUpper) {
         Token minimum = DatabaseDescriptor.getPartitioner().getMinimumToken();
-        if (lower != null && upper != null && lower.compareTo(minimum) == 0 && upper.compareTo(minimum) == 0 && (includeLower || includeUpper))
+        if (lower != null && upper != null && isMinimum(lower) && isMinimum(upper) && (includeLower || includeUpper))
         {
             return null;
         }
         else {
             return makeQuery(lower, upper, includeLower, includeUpper);
         }
+    }
+
+    public boolean isMinimum(Token token) {
+        Token minimum = DatabaseDescriptor.getPartitioner().getMinimumToken();
+        return token.compareTo(minimum) == 0;
     }
 
     public abstract Query query(Token token);

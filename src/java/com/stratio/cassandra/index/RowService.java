@@ -26,6 +26,7 @@ import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CellName;
+import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.document.Document;
@@ -302,6 +303,24 @@ public abstract class RowService
         Log.debug("Collected %d docs and %d rows in %d pages", collectedDocs, rows.size(), numPages);
 
         Collections.sort(rows, comparator());
+
+//        ClusteringKeyMapper cfm = ClusteringKeyMapper.instance(metadata, schema);
+//        PartitionKeyMapper pkm = PartitionKeyMapper.instance(metadata);
+//        if(!rows.isEmpty()) {
+//            Row firstRow = rows.get(0);
+//            Row lastRow = rows.get(rows.size() - 1);
+//            Composite first = cfm.clusteringKey(firstRow);
+//            Composite last = cfm.clusteringKey(lastRow);
+//            System.out.println("FIRST " + pkm.toString(firstRow.key) + cfm.toString(first));
+//            System.out.println("LAST " + pkm.toString(lastRow.key) + cfm.toString(last));
+//        }
+
+//        for (Row row : rows) {
+//            Composite name = cfm.clusteringKey(row);
+//            dataRange.columnFilter(row.key.getKey());
+//            System.out.println("\tROW " + pkm.toString(row.key) +" - " + cfm.toString(name));
+//        }
+
         return rows;
     }
 
