@@ -71,7 +71,7 @@ public class RangeConditionBuilder extends ConditionBuilder<RangeCondition, Rang
      * @param includeLower If the lower value must be included.
      * @return This builder with the specified lower interval option.
      */
-    public RangeConditionBuilder includeLower(Boolean includeLower)
+    public RangeConditionBuilder includeStart(Boolean includeLower)
     {
         this.includeLower = includeLower;
         return this;
@@ -83,7 +83,7 @@ public class RangeConditionBuilder extends ConditionBuilder<RangeCondition, Rang
      * @param includeUpper If the upper value must be included.
      * @return This builder with the specified upper interval option.
      */
-    public RangeConditionBuilder includeUpper(Boolean includeUpper)
+    public RangeConditionBuilder includeStop(Boolean includeUpper)
     {
         this.includeUpper = includeUpper;
         return this;

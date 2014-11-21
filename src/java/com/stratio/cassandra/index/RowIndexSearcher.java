@@ -21,6 +21,7 @@ import com.stratio.cassandra.index.util.Log;
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.IndexExpression;
 import org.apache.cassandra.db.Row;
+import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.filter.ExtendedFilter;
 import org.apache.cassandra.db.index.SecondaryIndexManager;
 import org.apache.cassandra.db.index.SecondaryIndexSearcher;
@@ -80,7 +81,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
             long startTime = System.currentTimeMillis();
 
             long timestamp = extendedFilter.timestamp;
-            int limit = extendedFilter.maxColumns();
+            int limit = extendedFilter.currentLimit();
             DataRange dataRange = extendedFilter.dataRange;
             List<IndexExpression> clause = extendedFilter.getClause();
             List<IndexExpression> filteredExpressions = filteredExpressions(clause);
@@ -227,6 +228,8 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         String comparatorName = comparator.getClass().getSimpleName();
         int endSize = result.size();
         long endTime = System.currentTimeMillis() - startTime;
+
+//        result = rowService.group(result);
 
         Log.debug("Sorted %d rows to %d with comparator %s in %d ms\n", startSize, endSize, comparatorName, endTime);
 

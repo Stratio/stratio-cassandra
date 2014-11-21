@@ -121,6 +121,7 @@ public class ClusteringKeyMapperColumns extends ClusteringKeyMapper
 
         if (start != null && !start.isEmpty())
         {
+            boolean include = false;
             BooleanQuery startQuery = new BooleanQuery();
             for (int i = 0; i < numClusteringColumns; i++)
             {
@@ -133,7 +134,10 @@ public class ClusteringKeyMapperColumns extends ClusteringKeyMapper
                 }
                 String name = names[i];
                 Object value = queryValue(start, i);
-                q.add(new RangeConditionBuilder(name).lower(value).includeLower(false).build().query(schema), MUST);
+//                if (i == numClusteringColumns - 1 && start.eoc() == Composite.EOC.NONE) {
+//                    include = true;
+//                }
+                q.add(new RangeConditionBuilder(name).lower(value).includeStart(include).build().query(schema), MUST);
                 startQuery.add(q, SHOULD);
             }
             booleanQuery.add(startQuery, MUST);
@@ -141,6 +145,7 @@ public class ClusteringKeyMapperColumns extends ClusteringKeyMapper
 
         if (stop != null && !stop.isEmpty())
         {
+            boolean include = false;
             BooleanQuery stopQuery = new BooleanQuery();
             for (int i = 0; i < numClusteringColumns; i++)
             {
@@ -153,7 +158,10 @@ public class ClusteringKeyMapperColumns extends ClusteringKeyMapper
                 }
                 String name = names[i];
                 Object value = queryValue(stop, i);
-                q.add(new RangeConditionBuilder(name).upper(value).includeUpper(false).build().query(schema), MUST);
+//                if (i == numClusteringColumns - 1 && stop.eoc() == Composite.EOC.END) {
+//                    include = true;
+//                }
+                q.add(new RangeConditionBuilder(name).upper(value).includeStop(include).build().query(schema), MUST);
                 stopQuery.add(q, SHOULD);
             }
             booleanQuery.add(stopQuery, MUST);
