@@ -123,7 +123,7 @@ public abstract class TokenMapper
      * @param rowPosition A {@link RowPosition}.
      * @return {@code true} if the specified lower row position kind must be included in the filtered range, {@code false} otherwise.
      */
-    protected boolean includeStart(RowPosition rowPosition)
+    public boolean includeStart(RowPosition rowPosition)
     {
         switch (rowPosition.kind())
         {
@@ -144,7 +144,7 @@ public abstract class TokenMapper
      * @param rowPosition A {@link RowPosition}.
      * @return {@code true} if the specified upper row position kind must be included in the filtered range, {@code false} otherwise.
      */
-    protected boolean includeStop(RowPosition rowPosition)
+    public boolean includeStop(RowPosition rowPosition)
     {
         switch (rowPosition.kind())
         {
