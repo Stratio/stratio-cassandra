@@ -286,7 +286,7 @@ public abstract class ClusteringKeyMapper
 
     public final Map<CellName, ColumnFamily> splitRows(ColumnFamily columnFamily)
     {
-        Map<CellName, ColumnFamily> columnFamilies = new HashMap<>();
+        Map<CellName, ColumnFamily> columnFamilies = new LinkedHashMap<>();
         ColumnFamily rowColumnFamily = null;
         CellName clusteringKey = null;
         for (Cell cell : columnFamily)
