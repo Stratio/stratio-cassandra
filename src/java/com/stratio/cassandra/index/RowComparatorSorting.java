@@ -15,8 +15,8 @@
  */
 package com.stratio.cassandra.index;
 
-import com.stratio.cassandra.index.query.Sorting;
-import com.stratio.cassandra.index.query.SortingField;
+import com.stratio.cassandra.index.query.Sort;
+import com.stratio.cassandra.index.query.SortField;
 import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.index.util.ComparatorChain;
@@ -25,7 +25,7 @@ import org.apache.cassandra.db.Row;
 import java.util.Comparator;
 
 /**
- * A {@link Comparator} for comparing {@link Row}s according to a certain {@link Sorting}.
+ * A {@link Comparator} for comparing {@link Row}s according to a certain {@link com.stratio.cassandra.index.query.Sort}.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
@@ -36,15 +36,15 @@ public class RowComparatorSorting implements RowComparator
 
     /**
      * @param rowMapper  The indexing {@link Schema} of the {@link Row}s to be compared.
-     * @param sorting The {@link Sorting} inf which the {@link Row} comparison is based.
+     * @param sort The {@link com.stratio.cassandra.index.query.Sort} inf which the {@link Row} comparison is based.
      */
-    public RowComparatorSorting(RowMapper rowMapper, Sorting sorting)
+    public RowComparatorSorting(RowMapper rowMapper, Sort sort)
     {
         this.rowMapper = rowMapper;
         comparatorChain = new ComparatorChain<>();
-        for (SortingField sortingField : sorting.getSortingFields())
+        for (SortField sortField : sort.getSortFields())
         {
-            Comparator<Columns> comparator = sortingField.comparator();
+            Comparator<Columns> comparator = sortField.comparator();
             comparatorChain.addComparator(comparator);
         }
     }
@@ -55,7 +55,7 @@ public class RowComparatorSorting implements RowComparator
      * @param row1 A {@link Row}.
      * @param row2 A {@link Row}.
      * @return A negative integer, zero, or a positive integer as the first argument is less than, equal to, or greater
-     * than the second according to a {@link Sorting}.
+     * than the second according to a {@link com.stratio.cassandra.index.query.Sort}.
      */
     @Override
     public int compare(Row row1, Row row2)

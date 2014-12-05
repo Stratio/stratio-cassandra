@@ -17,8 +17,6 @@ package com.stratio.cassandra.index.query;
 
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.SortField;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
@@ -30,60 +28,60 @@ import java.util.List;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class Sorting implements Iterable<SortingField>
+public class Sort implements Iterable<SortField>
 {
 
     /**
      * How to sortFields each field
      */
-    private final List<SortingField> sortingFields;
+    private final List<SortField> sortFields;
 
     @JsonCreator
-    public Sorting(@JsonProperty("fields") List<SortingField> sortingFields)
+    public Sort(@JsonProperty("fields") List<SortField> sortFields)
     {
-        this.sortingFields = sortingFields;
+        this.sortFields = sortFields;
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public Iterator<SortingField> iterator()
+    public Iterator<SortField> iterator()
     {
-        return sortingFields.iterator();
+        return sortFields.iterator();
     }
 
     /**
-     * Returns the {@link SortingField}s to be used.
+     * Returns the {@link SortField}s to be used.
      *
-     * @return The {@link SortingField}s to be used.
+     * @return The {@link SortField}s to be used.
      */
-    public List<SortingField> getSortingFields()
+    public List<SortField> getSortFields()
     {
-        return sortingFields;
+        return sortFields;
     }
 
     /**
-     * Returns the Lucene's {@link Sort} representing this {@link Sorting}.
+     * Returns the {@link org.apache.lucene.search.Sort} representing this {@link Sort}.
      *
      * @param schema The {@link Schema} to be used.
-     * @return the Lucene's {@link Sort} representing this {@link Sorting}.
+     * @return the Lucene's {@link org.apache.lucene.search.Sort} representing this {@link Sort}.
      */
-    public Sort sort(Schema schema)
+    public org.apache.lucene.search.Sort sort(Schema schema)
     {
-        SortField[] sortFields = new SortField[sortingFields.size()];
-        for (int i = 0; i < sortingFields.size(); i++)
+        org.apache.lucene.search.SortField[] sortFields = new org.apache.lucene.search.SortField[this.sortFields.size()];
+        for (int i = 0; i < this.sortFields.size(); i++)
         {
-            sortFields[i] = sortingFields.get(i).sortField(schema);
+            sortFields[i] = this.sortFields.get(i).sortField(schema);
         }
-        return new Sort(sortFields);
+        return new org.apache.lucene.search.Sort(sortFields);
     }
 
     @Override
     public String toString()
     {
         return new ToStringBuilder(this)
-                .append("sortingFields", sortingFields)
+                .append("sortFields", sortFields)
                 .toString();
     }
 }

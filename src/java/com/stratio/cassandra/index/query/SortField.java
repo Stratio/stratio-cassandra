@@ -21,7 +21,6 @@ import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.lucene.search.SortField;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
@@ -33,43 +32,39 @@ import java.util.Comparator;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class SortingField
+public class SortField
 {
+    /** The default reverse option. */
+    public static final boolean DEFAULT_REVERSE = false;
 
-    private static final boolean DEFAULT_REVERSE = false;
-
-    /**
-     * The name of field to sortFields by.
-     */
+    /** The name of field to sortFields by. */
     @JsonProperty("field")
     private final String field;
 
-    /**
-     * {@code true} if natural order should be reversed.
-     */
+    /** {@code true} if natural order should be reversed. */
     @JsonProperty("reverse")
     private final boolean reverse;
 
     /**
-     * Returns a new {@link SortingField}.
+     * Returns a new {@link SortField}.
      *
      * @param field   The name of field to sortFields by.
      * @param reverse {@code true} if natural order should be reversed.
      */
     @JsonCreator
-    public SortingField(@JsonProperty("field") String field, @JsonProperty("reverse") Boolean reverse)
+    public SortField(@JsonProperty("field") String field, @JsonProperty("reverse") Boolean reverse)
     {
         this.field = field;
         this.reverse = reverse == null ? DEFAULT_REVERSE : reverse;
     }
 
     /**
-     * Returns the Lucene's {@link SortField} representing this {@link SortingField}.
+     * Returns the Lucene's {@link org.apache.lucene.search.SortField} representing this {@link SortField}.
      *
      * @param schema The {@link Schema} to be used.
-     * @return the Lucene's {@link SortField} representing this {@link SortingField}.
+     * @return the Lucene's {@link org.apache.lucene.search.SortField} representing this {@link SortField}.
      */
-    public SortField sortField(Schema schema)
+    public org.apache.lucene.search.SortField sortField(Schema schema)
     {
         if (field == null || field.trim().isEmpty())
         {

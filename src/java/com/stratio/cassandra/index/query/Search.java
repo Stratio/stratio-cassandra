@@ -47,25 +47,25 @@ public class Search
     /**
      * The sorting.
      */
-    @JsonProperty("sortFields")
-    private Sorting sorting;
+    @JsonProperty("sort")
+    private Sort sort;
 
     /**
      * Returns a new {@link Search} composed by the specified querying and filtering conditions.
      *
      * @param queryCondition  The {@link Condition} for querying, maybe {@code null} meaning no querying.
      * @param filterCondition The {@link Condition} for filtering, maybe {@code null} meaning no filtering.
-     * @param sorting         The {@link Sorting} for the query. Note that is the order in which the data will be read before
+     * @param sort         The {@link Sort} for the query. Note that is the order in which the data will be read before
      *                        querying, not the order of the results after querying.
      */
     @JsonCreator
     public Search(@JsonProperty("query") Condition queryCondition,
                   @JsonProperty("filter") Condition filterCondition,
-                  @JsonProperty("sortFields") Sorting sorting)
+                  @JsonProperty("sort") Sort sort)
     {
         this.queryCondition = queryCondition;
         this.filterCondition = filterCondition;
-        this.sorting = sorting;
+        this.sort = sort;
     }
 
     /**
@@ -119,7 +119,7 @@ public class Search
      */
     public boolean usesRelevanceOrSorting()
     {
-        return queryCondition != null || sorting != null;
+        return queryCondition != null || sort != null;
     }
 
     public boolean usesRelevance()
@@ -129,24 +129,24 @@ public class Search
 
     public boolean usesSorting()
     {
-        return sorting != null;
+        return sort != null;
     }
 
-    public Sorting getSorting()
+    public Sort getSort()
     {
-        return this.sorting;
+        return this.sort;
     }
 
     /**
-     * Returns the Lucene's {@link Sort} represented by this {@link Sorting} using the specified {@link Schema}. Maybe
+     * Returns the Lucene's {@link org.apache.lucene.search.Sort} represented by this {@link Sort} using the specified {@link Schema}. Maybe
      * {@code null} meaning no sorting.
      *
      * @param schema A {@link Schema}.
-     * @return The Lucene's {@link Sort} represented by this {@link Sorting} using {@code schema}.
+     * @return The Lucene's {@link org.apache.lucene.search.Sort} represented by this {@link Sort} using {@code schema}.
      */
-    public Sort sort(Schema schema)
+    public org.apache.lucene.search.Sort sort(Schema schema)
     {
-        return sorting == null ? null : sorting.sort(schema);
+        return sort == null ? null : sort.sort(schema);
     }
 
     /**
@@ -192,9 +192,9 @@ public class Search
         {
             query(schema, null);
         }
-        if (sorting != null)
+        if (sort != null)
         {
-            sorting.sort(schema);
+            sort.sort(schema);
         }
     }
 
@@ -204,7 +204,7 @@ public class Search
         return new ToStringBuilder(this)
                 .append("queryCondition", queryCondition)
                 .append("filterCondition", filterCondition)
-                .append("sorting", sorting)
+                .append("sorting", sort)
                 .toString();
     }
 

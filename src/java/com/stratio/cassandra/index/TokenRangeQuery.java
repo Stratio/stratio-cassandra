@@ -59,8 +59,8 @@ public class TokenRangeQuery extends MultiTermQuery
                 .append("field", field)
                 .append("lower", lower)
                 .append("upper", upper)
-                .append("includeStart", includeLower)
-                .append("includeStop", includeUpper)
+                .append("includeLower", includeLower)
+                .append("includeUpper", includeUpper)
                 .toString();
     }
 

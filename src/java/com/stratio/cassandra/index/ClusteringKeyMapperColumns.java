@@ -155,7 +155,7 @@ public class ClusteringKeyMapperColumns extends ClusteringKeyMapper
                 String name = names[i];
                 Object value = queryValue(start, i);
                 boolean include = (i == numClusteringColumns - 1) && includeStart(start);
-                q.add(new RangeConditionBuilder(name).lower(value).includeStart(include).build().query(schema), MUST);
+                q.add(new RangeConditionBuilder(name).lower(value).includeLower(include).build().query(schema), MUST);
                 startQuery.add(q, SHOULD);
             }
             booleanQuery.add(startQuery, MUST);
@@ -176,7 +176,7 @@ public class ClusteringKeyMapperColumns extends ClusteringKeyMapper
                 String name = names[i];
                 Object value = queryValue(stop, i);
                 boolean include = (i == numClusteringColumns - 1) && includeStop(stop);
-                q.add(new RangeConditionBuilder(name).upper(value).includeStop(include).build().query(schema), MUST);
+                q.add(new RangeConditionBuilder(name).upper(value).includeUpper(include).build().query(schema), MUST);
                 stopQuery.add(q, SHOULD);
             }
             booleanQuery.add(stopQuery, MUST);
