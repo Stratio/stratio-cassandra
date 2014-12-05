@@ -17,7 +17,7 @@ package com.stratio.cassandra.index.query.builder;
 
 import com.stratio.cassandra.index.query.Condition;
 import com.stratio.cassandra.index.query.Search;
-import com.stratio.cassandra.index.query.Sorting;
+import com.stratio.cassandra.index.query.Sort;
 
 /**
  * @author Andres de la Pena <adelapena@stratio.com>
@@ -27,7 +27,7 @@ public class SearchBuilder implements Builder<Search>
 
     private Condition queryCondition;
     private Condition filterCondition;
-    private Sorting sorting;
+    private Sort sort;
 
     /**
      * Returns this builder with the specified querying condition.
@@ -56,12 +56,12 @@ public class SearchBuilder implements Builder<Search>
     /**
      * Returns this builder with the specified sorting.
      *
-     * @param sortingBuilder The sorting to be set.
+     * @param sortFieldBuilders The sorting fields to be set.
      * @return This builder with the specified sorting.
      */
-    public SearchBuilder sorting(SortingBuilder sortingBuilder)
+    public SearchBuilder sort(SortFieldBuilder... sortFieldBuilders)
     {
-        this.sorting = sortingBuilder.build();
+        this.sort = new SortBuilder(sortFieldBuilders).build();
         return this;
     }
 
@@ -73,7 +73,7 @@ public class SearchBuilder implements Builder<Search>
     @Override
     public Search build()
     {
-        return new Search(queryCondition, filterCondition, sorting);
+        return new Search(queryCondition, filterCondition, sort);
     }
 
     /**

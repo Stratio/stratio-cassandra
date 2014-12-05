@@ -36,7 +36,6 @@ public class WildcardConditionBuilder extends ConditionBuilder<WildcardCondition
      */
     protected WildcardConditionBuilder(String field, String value)
     {
-
         this.field = field;
         this.value = value;
     }

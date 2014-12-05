@@ -174,8 +174,8 @@ public class RangeCondition extends Condition
                 .append("field", field)
                 .append("lower", lower)
                 .append("upper", upper)
-                .append("includeStart", includeLower)
-                .append("includeStop", includeUpper)
+                .append("includeLower", includeLower)
+                .append("includeUpper", includeUpper)
                 .toString();
     }
 }

@@ -18,20 +18,19 @@ package com.stratio.cassandra.index.query.builder;
 import java.util.List;
 
 /**
- * Factory for {@link com.stratio.cassandra.index.query.builder.SearchBuilder} and {@link com.stratio.cassandra.index.query.builder.ConditionBuilder}s.
+ * Factory for {@link com.stratio.cassandra.index.query.builder.SearchBuilder} and {@link
+ * com.stratio.cassandra.index.query.builder.ConditionBuilder}s.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class SearchBuilders
-{
+public class SearchBuilders {
 
     /**
      * Returns a new {@link SearchBuilder}.
      *
      * @return a new {@link SearchBuilder}.
      */
-    public static SearchBuilder search()
-    {
+    public static SearchBuilder search() {
         return new SearchBuilder();
     }
 
@@ -40,8 +39,7 @@ public class SearchBuilders
      *
      * @return a new {@link SearchBuilder} using the specified {@link ConditionBuilder} as query.
      */
-    public static SearchBuilder query(ConditionBuilder<?, ?> queryConditionBuilder)
-    {
+    public static SearchBuilder query(ConditionBuilder<?, ?> queryConditionBuilder) {
         return search().query(queryConditionBuilder);
     }
 
@@ -50,123 +48,132 @@ public class SearchBuilders
      *
      * @return a new {@link SearchBuilder} using the specified {@link ConditionBuilder} as clusteringKeyFilter.
      */
-    public static SearchBuilder filter(ConditionBuilder<?, ?> filterConditionBuilder)
-    {
+    public static SearchBuilder filter(ConditionBuilder<?, ?> filterConditionBuilder) {
         return search().filter(filterConditionBuilder);
     }
 
     /**
-     * Returns a new {@link SearchBuilder} using the specified {@link SortingBuilder} as sorting.
+     * Returns a new {@link SearchBuilder} using the specified {@link SortFieldBuilder}s as sorting.
      *
-     * @return a new {@link SearchBuilder} using the specified {@link SortingBuilder} as sorting.
+     * @return a new {@link SearchBuilder} using the specified {@link SortFieldBuilder}s as sorting.
      */
-    public static SearchBuilder sorting(SortingBuilder sortingBuilder)
-    {
-        return search().sorting(sortingBuilder);
+    public static SearchBuilder sort(SortFieldBuilder... sortFieldBuilders) {
+        return search().sort(sortFieldBuilders);
     }
 
     /**
      * Returns a new {@link BooleanConditionBuilder}.
+     *
+     * @return A new {@link BooleanConditionBuilder}.
      */
-    public static BooleanConditionBuilder bool()
-    {
+    public static BooleanConditionBuilder bool() {
         return new BooleanConditionBuilder();
     }
 
     /**
      * Returns a new {@link FuzzyConditionBuilder} for the specified field and value.
      *
-     * @param field the name of the field to be matched.
-     * @param value the value of the field to be matched.
+     * @param field The name of the field to be matched.
+     * @param value The value of the field to be matched.
+     * @return A new {@link FuzzyConditionBuilder} for the specified field and value.
      */
-    public static FuzzyConditionBuilder fuzzy(String field, String value)
-    {
+    public static FuzzyConditionBuilder fuzzy(String field, String value) {
         return new FuzzyConditionBuilder(field, value);
     }
 
     /**
      * Returns a new {@link LuceneConditionBuilder} with the specified query.
      *
-     * @param query the Lucene syntax query.
+     * @param query The Lucene syntax query.
+     * @return A new {@link LuceneConditionBuilder} with the specified query.
      */
-    public static LuceneConditionBuilder lucene(String query)
-    {
+    public static LuceneConditionBuilder lucene(String query) {
         return new LuceneConditionBuilder(query);
     }
 
     /**
      * Returns a new {@link MatchConditionBuilder} for the specified field and value.
      *
-     * @param field the name of the field to be matched.
-     * @param value the value of the field to be matched.
+     * @param field The name of the field to be matched.
+     * @param value The value of the field to be matched.
+     * @return A new {@link MatchConditionBuilder} for the specified field and value.
      */
-    public static MatchConditionBuilder match(String field, Object value)
-    {
+    public static MatchConditionBuilder match(String field, Object value) {
         return new MatchConditionBuilder(field, value);
     }
 
     /**
      * Returns a new {@link PhraseConditionBuilder} for the specified field and values.
      *
-     * @param field  the name of the field to be matched.
-     * @param values the values of the field to be matched.
+     * @param field  The name of the field to be matched.
+     * @param values The values of the field to be matched.
+     * @return A new {@link PhraseConditionBuilder} for the specified field and values.
      */
-    public static PhraseConditionBuilder phrase(String field, String... values)
-    {
+    public static PhraseConditionBuilder phrase(String field, String... values) {
         return new PhraseConditionBuilder(field, values);
     }
 
     /**
      * Returns a new {@link PhraseConditionBuilder} for the specified field and values.
      *
-     * @param field  the name of the field to be matched.
-     * @param values the values of the field to be matched.
+     * @param field  The name of the field to be matched.
+     * @param values The values of the field to be matched.
+     * @return A new {@link PhraseConditionBuilder} for the specified field and values.
      */
-    public static PhraseConditionBuilder phrase(String field, List<String> values)
-    {
+    public static PhraseConditionBuilder phrase(String field, List<String> values) {
         return new PhraseConditionBuilder(field, values);
     }
 
     /**
      * Returns a new {@link PrefixConditionBuilder} for the specified field and value.
      *
-     * @param field the name of the field to be matched.
-     * @param value the value of the field to be matched.
+     * @param field The name of the field to be matched.
+     * @param value The value of the field to be matched.
+     * @return A new {@link PrefixConditionBuilder} for the specified field and value.
      */
-    public static PrefixConditionBuilder prefix(String field, String value)
-    {
+    public static PrefixConditionBuilder prefix(String field, String value) {
         return new PrefixConditionBuilder(field, value);
     }
 
     /**
      * Returns a new {@link RangeConditionBuilder} for the specified field.
      *
-     * @param field the name of the field to be matched.
+     * @param field The name of the field to be matched.
+     * @return A new {@link RangeConditionBuilder} for the specified field.
      */
-    public static RangeConditionBuilder range(String field)
-    {
+    public static RangeConditionBuilder range(String field) {
         return new RangeConditionBuilder(field);
     }
 
     /**
      * Returns a new {@link RegexpConditionBuilder} for the specified field and value.
      *
-     * @param field the name of the field to be matched.
-     * @param value the value of the field to be matched.
+     * @param field The name of the field to be matched.
+     * @param value The value of the field to be matched.
+     * @return A new {@link RegexpConditionBuilder} for the specified field and value.
      */
-    public static RegexpConditionBuilder regexp(String field, String value)
-    {
+    public static RegexpConditionBuilder regexp(String field, String value) {
         return new RegexpConditionBuilder(field, value);
     }
 
     /**
      * Returns a new {@link WildcardConditionBuilder} for the specified field and value.
      *
-     * @param field the name of the field to be matched.
-     * @param value the value of the field to be matched.
+     * @param field The name of the field to be matched.
+     * @param value The value of the field to be matched.
+     * @return A new {@link WildcardConditionBuilder} for the specified field and value.
      */
-    public static WildcardConditionBuilder wildcard(String field, String value)
-    {
+    public static WildcardConditionBuilder wildcard(String field, String value) {
         return new WildcardConditionBuilder(field, value);
+    }
+
+    /**
+     * Returns a new {@link SortFieldBuilder} for the specified field.
+     *
+     * @param field The name of the field to be sorted.
+     * @return A new {@link SortFieldBuilder} for the specified field.
+     */
+    public static SortFieldBuilder sortField(String field) {
+        return new SortFieldBuilder(field);
     }
 }

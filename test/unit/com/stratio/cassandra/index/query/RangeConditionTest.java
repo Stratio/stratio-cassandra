@@ -279,8 +279,8 @@ public class RangeConditionTest extends AbstractConditionTest
         RangeCondition rangeCondition = range("name").boost(0.5f)
                                                      .lower("2001:DB8:2de::e13")
                                                      .upper("2001:DB8:02de::e23")
-                                                     .includeStart(true)
-                                                     .includeStop(true)
+                                                     .includeLower(true)
+                                                     .includeUpper(true)
                                                      .build();
         Query query = rangeCondition.query(mappers);
 
@@ -299,8 +299,8 @@ public class RangeConditionTest extends AbstractConditionTest
     {
         RangeConditionBuilder rangeCondition = range("name").lower(1)
                                                             .upper(2)
-                                                            .includeStart(true)
-                                                            .includeStop(false)
+                                                            .includeLower(true)
+                                                            .includeUpper(false)
                                                             .boost(0.5f);
         SearchBuilder searchBuilder = query(rangeCondition);
 
@@ -312,8 +312,8 @@ public class RangeConditionTest extends AbstractConditionTest
     {
         testJsonCondition(query(range("name").lower(1.6)
                                              .upper(2.5)
-                                             .includeStart(true)
-                                             .includeStop(false)
+                                             .includeLower(true)
+                                             .includeUpper(false)
                                              .boost(0.5f)));
     }
 
@@ -322,8 +322,8 @@ public class RangeConditionTest extends AbstractConditionTest
     {
         testJsonCondition(query(range("name").lower("a")
                                              .upper("b")
-                                             .includeStart(true)
-                                             .includeStop(false)
+                                             .includeLower(true)
+                                             .includeUpper(false)
                                              .boost(0.5f))
                                   .filter(bool().must(match("", "").boost(2),
                                                       match("", ""))

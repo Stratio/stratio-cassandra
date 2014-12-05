@@ -15,36 +15,42 @@
  */
 package com.stratio.cassandra.index.query.builder;
 
-import com.stratio.cassandra.index.query.SortingField;
+import com.stratio.cassandra.index.query.SortField;
 
 /**
- * {@link Builder} for building a new {@link SortingField}.
+ * {@link Builder} for building a new {@link SortField}.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class SortingFieldBuilder implements Builder<SortingField>
-{
+public class SortFieldBuilder implements Builder<SortField> {
     private final String field;
-    private final boolean reverse;
+    private boolean reverse;
 
     /**
-     * Creates a new {@link SortingFieldBuilder} for the specified field and reverse option.
+     * Creates a new {@link SortFieldBuilder} for the specified field and reverse option.
      *
-     * @param field   the name of the field to be sorted.
-     * @param reverse if the sorting is reverse.
+     * @param field the name of the field to be sorted.
      */
-    public SortingFieldBuilder(String field, boolean reverse)
-    {
+    public SortFieldBuilder(String field) {
         this.field = field;
+        this.reverse = SortField.DEFAULT_REVERSE;
+    }
+
+    /**
+     * Returns this {@link SortFieldBuilder} with the specified reverse option.
+     *
+     * @param reverse {@code true} if natural order should be reversed.
+     */
+    public SortFieldBuilder reverse(boolean reverse) {
         this.reverse = reverse;
+        return this;
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public SortingField build()
-    {
-        return new SortingField(field, reverse);
+    public SortField build() {
+        return new SortField(field, reverse);
     }
 }
