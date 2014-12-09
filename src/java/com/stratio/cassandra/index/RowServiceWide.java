@@ -202,7 +202,10 @@ public class RowServiceWide extends RowService
             slices = l.toArray(slices);
         }
 
-        SliceQueryFilter dataFilter = new SliceQueryFilter(slices, false, Integer.MAX_VALUE, baseCfs.metadata.clusteringColumns().size());
+        SliceQueryFilter dataFilter = new SliceQueryFilter(slices,
+                                                           false,
+                                                           Integer.MAX_VALUE,
+                                                           baseCfs.metadata.clusteringColumns().size());
         QueryFilter queryFilter = new QueryFilter(partitionKey, baseCfs.name, dataFilter, timestamp);
 
         ColumnFamily queryColumnFamily = baseCfs.getColumnFamily(queryFilter);

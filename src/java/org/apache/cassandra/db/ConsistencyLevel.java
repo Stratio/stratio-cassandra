@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.google.common.collect.Iterables;
+import net.nicoulaj.compilecommand.annotations.Inline;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -145,12 +146,12 @@ public enum ConsistencyLevel
         return isDCLocal;
     }
 
-    private boolean isLocal(InetAddress endpoint)
+    public boolean isLocal(InetAddress endpoint)
     {
         return DatabaseDescriptor.getLocalDataCenter().equals(DatabaseDescriptor.getEndpointSnitch().getDatacenter(endpoint));
     }
 
-    private int countLocalEndpoints(Iterable<InetAddress> liveEndpoints)
+    public int countLocalEndpoints(Iterable<InetAddress> liveEndpoints)
     {
         int count = 0;
         for (InetAddress endpoint : liveEndpoints)

@@ -37,7 +37,12 @@ public class TokenRangeQuery extends MultiTermQuery
     private final boolean includeLower;
     private final boolean includeUpper;
 
-    public TokenRangeQuery(Token lower, Token upper, boolean includeLower, boolean includeUpper, TokenMapperGeneric tokenMapper) {
+    public TokenRangeQuery(Token lower,
+                           Token upper,
+                           boolean includeLower,
+                           boolean includeUpper,
+                           TokenMapperGeneric tokenMapper)
+    {
         super(TokenMapperGeneric.FIELD_NAME);
         this.tokenMapper = tokenMapper;
         this.lower = lower;
@@ -47,7 +52,8 @@ public class TokenRangeQuery extends MultiTermQuery
     }
 
     @Override
-    protected TermsEnum getTermsEnum(Terms terms, AttributeSource atts) throws IOException {
+    protected TermsEnum getTermsEnum(Terms terms, AttributeSource atts) throws IOException
+    {
         TermsEnum tenum = terms.iterator(null);
         return new TokenDataRangeFilteredTermsEnum(tenum);
     }
@@ -55,13 +61,12 @@ public class TokenRangeQuery extends MultiTermQuery
     @Override
     public String toString(String field)
     {
-        return new ToStringBuilder(this)
-                .append("field", field)
-                .append("lower", lower)
-                .append("upper", upper)
-                .append("includeLower", includeLower)
-                .append("includeUpper", includeUpper)
-                .toString();
+        return new ToStringBuilder(this).append("field", field)
+                                        .append("lower", lower)
+                                        .append("upper", upper)
+                                        .append("includeLower", includeLower)
+                                        .append("includeUpper", includeUpper)
+                                        .toString();
     }
 
     private class TokenDataRangeFilteredTermsEnum extends FilteredTermsEnum
@@ -78,11 +83,16 @@ public class TokenRangeQuery extends MultiTermQuery
         protected AcceptStatus accept(BytesRef term)
         {
             Token token = tokenMapper.token(term);
-            if (includeLower ? token.compareTo(lower) < 0 : token.compareTo(lower) <= 0) {
+            if (includeLower ? token.compareTo(lower) < 0 : token.compareTo(lower) <= 0)
+            {
                 return AcceptStatus.NO;
-            } else if (includeUpper ? token.compareTo(upper) > 0 : token.compareTo(upper) >= 0) {
+            }
+            else if (includeUpper ? token.compareTo(upper) > 0 : token.compareTo(upper) >= 0)
+            {
                 return AcceptStatus.NO;
-            } else {
+            }
+            else
+            {
                 return AcceptStatus.YES;
             }
         }

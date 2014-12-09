@@ -49,6 +49,7 @@ import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.concurrent.WaitQueue;
+import org.apache.cassandra.utils.JVMStabilityInspector;
 import org.apache.cassandra.utils.WrappedRunnable;
 
 import static org.apache.cassandra.db.commitlog.CommitLogSegment.Allocation;
@@ -159,6 +160,7 @@ public class CommitLogSegmentManager
                     }
                     catch (Throwable t)
                     {
+                        JVMStabilityInspector.inspectThrowable(t);
                         if (!CommitLog.handleCommitError("Failed managing commit log segments", t))
                             return;
                         // sleep some arbitrary period to avoid spamming CL
@@ -178,11 +180,12 @@ public class CommitLogSegmentManager
      *
      * @return the provided Allocation object
      */
-    public Allocation allocate(Mutation mutation, int size, Allocation alloc)
+    public Allocation allocate(Mutation mutation, int size)
     {
         CommitLogSegment segment = allocatingFrom();
 
-        while (!segment.allocate(mutation, size, alloc))
+        Allocation alloc;
+        while ( null == (alloc = segment.allocate(mutation, size)) )
         {
             // failed to allocate, so move to a new segment with enough room
             advanceAllocatingFrom(segment);

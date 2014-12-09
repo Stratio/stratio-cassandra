@@ -36,8 +36,8 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
- * A {@link PerRowSecondaryIndex} that uses Apache Lucene as backend. It allows, among others, multi-comun and full-text
- * search.
+ * A {@link PerRowSecondaryIndex} that uses Apache Lucene as backend. It allows, among others, multi-column and
+ * full-text search.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
@@ -372,7 +372,10 @@ public class RowIndex extends PerRowSecondaryIndex
     public String toString()
     {
         return String.format("RowIndex [index=%s, keyspace=%s, table=%s, column=%s",
-                             indexName, keyspaceName, tableName, columnName);
+                             indexName,
+                             keyspaceName,
+                             tableName,
+                             columnName);
     }
 
 }

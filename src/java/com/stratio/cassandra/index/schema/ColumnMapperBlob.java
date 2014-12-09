@@ -42,8 +42,7 @@ public class ColumnMapperBlob extends ColumnMapper<String>
     @JsonCreator
     public ColumnMapperBlob()
     {
-        super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, BytesType.instance},
-              new AbstractType[]{});
+        super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, BytesType.instance}, new AbstractType[]{});
     }
 
     @Override

@@ -18,14 +18,16 @@ package com.stratio.cassandra.index.query.builder;
 import com.stratio.cassandra.index.query.LuceneCondition;
 
 /**
- * {@link ConditionBuilder} for building a new {@link com.stratio.cassandra.index.query.LuceneCondition}.
+ * {@link ConditionBuilder} for building a new {@link LuceneCondition}.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class LuceneConditionBuilder extends ConditionBuilder<LuceneCondition, LuceneConditionBuilder>
 {
-
+    /** The Lucene query expression. */
     private final String query;
+
+    /** The name of the field where the clauses will be applied by default. */
     private String defaultField;
 
     /**
@@ -39,9 +41,10 @@ public class LuceneConditionBuilder extends ConditionBuilder<LuceneCondition, Lu
     }
 
     /**
-     * Returns this builder with the specified default field name.
+     * Returns this builder with the specified default field name. This is the field where the clauses will be applied
+     * by default.
      *
-     * @param defaultField The default field name.
+     * @param defaultField The name of the field where the clauses will be applied by default.
      * @return This builder with the specified name of the default field.
      */
     public LuceneConditionBuilder defaultField(String defaultField)

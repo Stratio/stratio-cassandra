@@ -44,6 +44,7 @@ import org.apache.cassandra.OrderedJUnit4ClassRunner;
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.Util;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.cql3.Operator;
 import org.apache.cassandra.db.BufferDecoratedKey;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.ColumnFamilyStore;
@@ -185,6 +186,34 @@ public class SSTableReaderTest extends SchemaLoader
     {
         cfs.clearUnsafe();
         cfs.loadNewSSTables();
+    }
+
+    @Test
+    public void testReadRateTracking()
+    {
+        // try to make sure CASSANDRA-8239 never happens again
+        Keyspace keyspace = Keyspace.open("Keyspace1");
+        ColumnFamilyStore store = keyspace.getColumnFamilyStore("Standard1");
+
+        for (int j = 0; j < 10; j++)
+        {
+            ByteBuffer key = ByteBufferUtil.bytes(String.valueOf(j));
+            Mutation rm = new Mutation("Keyspace1", key);
+            rm.add("Standard1", cellname("0"), ByteBufferUtil.EMPTY_BYTE_BUFFER, j);
+            rm.apply();
+        }
+        store.forceBlockingFlush();
+
+        SSTableReader sstable = store.getSSTables().iterator().next();
+        assertEquals(0, sstable.readMeter.count());
+
+        DecoratedKey key = sstable.partitioner.decorateKey(ByteBufferUtil.bytes("4"));
+        store.getColumnFamily(key, Composites.EMPTY, Composites.EMPTY, false, 100, 100);
+        assertEquals(1, sstable.readMeter.count());
+        store.getColumnFamily(key, cellname("0"), cellname("0"), false, 100, 100);
+        assertEquals(2, sstable.readMeter.count());
+        store.getColumnFamily(Util.namesQueryFilter(store, key, cellname("0")));
+        assertEquals(3, sstable.readMeter.count());
     }
 
     @Test
@@ -412,7 +441,7 @@ public class SSTableReaderTest extends SchemaLoader
         }
 
         SSTableReader replacement = sstable.cloneWithNewSummarySamplingLevel(store, 1);
-        store.getDataTracker().replaceReaders(Arrays.asList(sstable), Arrays.asList(replacement));
+        store.getDataTracker().replaceWithNewInstances(Arrays.asList(sstable), Arrays.asList(replacement));
         for (Future future : futures)
             future.get();
 
@@ -428,7 +457,7 @@ public class SSTableReaderTest extends SchemaLoader
             clearAndLoad(cfs);
 
         // query using index to see if sstable for secondary index opens
-        IndexExpression expr = new IndexExpression(ByteBufferUtil.bytes("birthdate"), IndexExpression.Operator.EQ, ByteBufferUtil.bytes(1L));
+        IndexExpression expr = new IndexExpression(ByteBufferUtil.bytes("birthdate"), Operator.EQ, ByteBufferUtil.bytes(1L));
         List<IndexExpression> clause = Arrays.asList(expr);
         Range<RowPosition> range = Util.range("", "");
         List<Row> rows = indexedCFS.search(range, clause, new IdentityQueryFilter(), 100);

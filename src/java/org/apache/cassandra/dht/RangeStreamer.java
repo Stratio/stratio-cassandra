@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.gms.IFailureDetector;
@@ -141,7 +142,7 @@ public class RangeStreamer
         {
             if (logger.isDebugEnabled())
             {
-                for (Range r : entry.getValue())
+                for (Range<Token> r : entry.getValue())
                     logger.debug(String.format("%s: range %s from source %s for keyspace %s", description, r, entry.getKey(), keyspaceName));
             }
             toFetch.put(keyspaceName, entry);
@@ -305,11 +306,12 @@ public class RangeStreamer
         {
             String keyspace = entry.getKey();
             InetAddress source = entry.getValue().getKey();
+            InetAddress preferred = SystemKeyspace.getPreferredIP(source);
             Collection<Range<Token>> ranges = entry.getValue().getValue();
             /* Send messages to respective folks to stream data over to me */
             if (logger.isDebugEnabled())
                 logger.debug("{}ing from {} ranges {}", description, source, StringUtils.join(ranges, ", "));
-            streamPlan.requestRanges(source, keyspace, ranges);
+            streamPlan.requestRanges(source, preferred, keyspace, ranges);
         }
 
         return streamPlan.execute();

@@ -48,8 +48,7 @@ public class ColumnMapperFloat extends ColumnMapper<Float>
                 IntegerType.instance,
                 FloatType.instance,
                 DoubleType.instance,
-                DecimalType.instance},
-              new AbstractType[]{FloatType.instance});
+                DecimalType.instance}, new AbstractType[]{FloatType.instance});
         this.boost = boost == null ? DEFAULT_BOOST : boost;
     }
 

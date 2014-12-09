@@ -23,7 +23,6 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -32,7 +31,6 @@ import com.google.common.util.concurrent.RateLimiter;
 import com.google.common.util.concurrent.Uninterruptibles;
 
 import org.apache.cassandra.stress.generate.Partition;
-import org.apache.cassandra.stress.generate.SeedGenerator;
 import org.apache.cassandra.stress.operations.OpDistribution;
 import org.apache.cassandra.stress.operations.OpDistributionFactory;
 import org.apache.cassandra.stress.settings.*;
@@ -58,17 +56,24 @@ public class StressAction implements Runnable
         // creating keyspace and column families
         settings.maybeCreateKeyspaces();
 
+        // TODO: warmup should operate configurably over op/pk/row, and be of configurable length
         if (!settings.command.noWarmup)
             warmup(settings.command.getFactory(settings));
 
         output.println("Sleeping 2s...");
         Uninterruptibles.sleepUninterruptibly(2, TimeUnit.SECONDS);
 
+        // TODO : move this to a new queue wrapper that gates progress based on a poisson (or configurable) distribution
+        RateLimiter rateLimiter = null;
+        if (settings.rate.opRateTargetPerSecond > 0)
+            rateLimiter = RateLimiter.create(settings.rate.opRateTargetPerSecond);
+
         boolean success;
-        if (settings.rate.auto)
-            success = runAuto();
+        if (settings.rate.minThreads > 0)
+            success = runMulti(settings.rate.auto, rateLimiter);
         else
-            success = null != run(settings.command.getFactory(settings), settings.rate.threadCount, settings.command.count, output);
+            success = null != run(settings.command.getFactory(settings), settings.rate.threadCount, settings.command.count,
+                                  settings.command.duration, rateLimiter, settings.command.durationUnits, output);
 
         if (success)
             output.println("END");
@@ -89,23 +94,26 @@ public class StressAction implements Runnable
             // we need to warm up all the nodes in the cluster ideally, but we may not be the only stress instance;
             // so warm up all the nodes we're speaking to only.
             output.println(String.format("Warming up %s with %d iterations...", single.desc(), iterations));
-            run(single, 20, iterations, warmupOutput);
+            run(single, 20, iterations, 0, null, null, warmupOutput);
         }
     }
 
     // TODO : permit varying more than just thread count
     // TODO : vary thread count based on percentage improvement of previous increment, not by fixed amounts
-    private boolean runAuto()
+    private boolean runMulti(boolean auto, RateLimiter rateLimiter)
     {
+        if (settings.command.targetUncertainty >= 0)
+            output.println("WARNING: uncertainty mode (err<) results in uneven workload between thread runs, so should be used for high level analysis only");
         int prevThreadCount = -1;
-        int threadCount = settings.rate.minAutoThreads;
+        int threadCount = settings.rate.minThreads;
         List<StressMetrics> results = new ArrayList<>();
         List<String> runIds = new ArrayList<>();
         do
         {
             output.println(String.format("Running with %d threadCount", threadCount));
 
-            StressMetrics result = run(settings.command.getFactory(settings), threadCount, settings.command.count, output);
+            StressMetrics result = run(settings.command.getFactory(settings), threadCount, settings.command.count,
+                                       settings.command.duration, rateLimiter, settings.command.durationUnits, output);
             if (result == null)
                 return false;
             results.add(result);
@@ -121,7 +129,7 @@ public class StressAction implements Runnable
             else
                 threadCount *= 1.5;
 
-            if (!results.isEmpty() && threadCount > settings.rate.maxAutoThreads)
+            if (!results.isEmpty() && threadCount > settings.rate.maxThreads)
                 break;
 
             if (settings.command.type.updates)
@@ -138,7 +146,7 @@ public class StressAction implements Runnable
                 }
             }
             // run until we have not improved throughput significantly for previous three runs
-        } while (hasAverageImprovement(results, 3, 0) && hasAverageImprovement(results, 5, settings.command.targetUncertainty));
+        } while (!auto || (hasAverageImprovement(results, 3, 0) && hasAverageImprovement(results, 5, settings.command.targetUncertainty)));
 
         // summarise all results
         StressMetrics.summarise(runIds, results, output);
@@ -155,37 +163,33 @@ public class StressAction implements Runnable
         double improvement = 0;
         for (int i = results.size() - count ; i < results.size() ; i++)
         {
-            double prev = results.get(i - 1).getTiming().getHistory().realOpRate();
-            double cur = results.get(i).getTiming().getHistory().realOpRate();
+            double prev = results.get(i - 1).getTiming().getHistory().opRate();
+            double cur = results.get(i).getTiming().getHistory().opRate();
             improvement += (cur - prev) / prev;
         }
         return improvement / count;
     }
 
-    private StressMetrics run(OpDistributionFactory operations, int threadCount, long opCount, PrintStream output)
+    private StressMetrics run(OpDistributionFactory operations, int threadCount, long opCount, long duration, RateLimiter rateLimiter, TimeUnit durationUnits, PrintStream output)
     {
-
         output.println(String.format("Running %s with %d threads %s",
                                      operations.desc(),
                                      threadCount,
-                                     opCount > 0 ? " for " + opCount + " iterations" : "until stderr of mean < " + settings.command.targetUncertainty));
-        final WorkQueue workQueue;
+                                     durationUnits != null ? duration + " " + durationUnits.toString().toLowerCase()
+                                        : opCount > 0      ? "for " + opCount + " iteration"
+                                                           : "until stderr of mean < " + settings.command.targetUncertainty));
+        final WorkManager workManager;
         if (opCount < 0)
-            workQueue = new ContinuousWorkQueue(50);
+            workManager = new ContinuousWorkManager();
         else
-            workQueue = FixedWorkQueue.build(opCount);
+            workManager = new FixedWorkManager(opCount);
 
-        RateLimiter rateLimiter = null;
-        // TODO : move this to a new queue wrapper that gates progress based on a poisson (or configurable) distribution
-        if (settings.rate.opRateTargetPerSecond > 0)
-            rateLimiter = RateLimiter.create(settings.rate.opRateTargetPerSecond);
-
-        final StressMetrics metrics = new StressMetrics(output, settings.log.intervalMillis);
+        final StressMetrics metrics = new StressMetrics(output, settings.log.intervalMillis, settings);
 
         final CountDownLatch done = new CountDownLatch(threadCount);
         final Consumer[] consumers = new Consumer[threadCount];
         for (int i = 0; i < threadCount; i++)
-            consumers[i] = new Consumer(operations, done, workQueue, metrics, rateLimiter);
+            consumers[i] = new Consumer(operations, done, workManager, metrics, rateLimiter);
 
         // starting worker threadCount
         for (int i = 0; i < threadCount; i++)
@@ -193,7 +197,12 @@ public class StressAction implements Runnable
 
         metrics.start();
 
-        if (opCount <= 0)
+        if (durationUnits != null)
+        {
+            Uninterruptibles.sleepUninterruptibly(duration, durationUnits);
+            workManager.stop();
+        }
+        else if (opCount <= 0)
         {
             try
             {
@@ -201,14 +210,15 @@ public class StressAction implements Runnable
                         settings.command.minimumUncertaintyMeasurements,
                         settings.command.maximumUncertaintyMeasurements);
             } catch (InterruptedException e) { }
-            workQueue.stop();
+            workManager.stop();
         }
 
         try
         {
             done.await();
             metrics.stop();
-        } catch (InterruptedException e) {}
+        }
+        catch (InterruptedException e) {}
 
         if (metrics.wasCancelled())
             return null;
@@ -231,20 +241,18 @@ public class StressAction implements Runnable
         private final OpDistribution operations;
         private final StressMetrics metrics;
         private final Timer timer;
-        private final SeedGenerator seedGenerator;
         private final RateLimiter rateLimiter;
         private volatile boolean success = true;
-        private final WorkQueue workQueue;
+        private final WorkManager workManager;
         private final CountDownLatch done;
 
-        public Consumer(OpDistributionFactory operations, CountDownLatch done, WorkQueue workQueue, StressMetrics metrics, RateLimiter rateLimiter)
+        public Consumer(OpDistributionFactory operations, CountDownLatch done, WorkManager workManager, StressMetrics metrics, RateLimiter rateLimiter)
         {
             this.done = done;
             this.rateLimiter = rateLimiter;
-            this.workQueue = workQueue;
+            this.workManager = workManager;
             this.metrics = metrics;
             this.timer = metrics.getTiming().newTimer();
-            this.seedGenerator = settings.keys.newSeedGenerator();
             this.operations = operations.get(timer);
         }
 
@@ -275,41 +283,32 @@ public class StressAction implements Runnable
                 }
 
                 int maxBatchSize = operations.maxBatchSize();
-                Work work = workQueue.poll();
                 Partition[] partitions = new Partition[maxBatchSize];
-                int workDone = 0;
-                while (work != null)
+                while (true)
                 {
 
+                    // TODO: Operation should be able to ecapsulate much of this behaviour
                     Operation op = operations.next();
                     op.generator.reset();
-                    int batchSize = Math.max(1, (int) op.partitionCount.next());
-                    int partitionCount = 0;
 
+                    int batchSize = workManager.takePermits(Math.max(1, (int) op.partitionCount.next()));
+                    if (batchSize < 0)
+                        break;
+
+                    if (rateLimiter != null)
+                        rateLimiter.acquire(batchSize);
+
+                    int partitionCount = 0;
                     while (partitionCount < batchSize)
                     {
-                        int count = Math.min((work.count - workDone), batchSize - partitionCount);
-                        for (int i = 0 ; i < count ; i++)
-                        {
-                            long seed = seedGenerator.next(work.offset + workDone + i);
-                            partitions[partitionCount + i] = op.generator.generate(seed);
-                        }
-                        workDone += count;
-                        partitionCount += count;
-                        if (workDone == work.count)
-                        {
-                            workDone = 0;
-                            work = workQueue.poll();
-                            if (work == null)
-                            {
-                                if (partitionCount == 0)
-                                    return;
-                                break;
-                            }
-                            if (rateLimiter != null)
-                                rateLimiter.acquire(work.count);
-                        }
+                        Partition p = op.generator.generate(op);
+                        if (p == null)
+                            break;
+                        partitions[partitionCount++] = p;
                     }
+
+                    if (partitionCount == 0)
+                        break;
 
                     op.setPartitions(Arrays.asList(partitions).subList(0, partitionCount));
 
@@ -340,7 +339,7 @@ public class StressAction implements Runnable
 
                         e.printStackTrace(output);
                         success = false;
-                        workQueue.stop();
+                        workManager.stop();
                         metrics.cancel();
                         return;
                     }
@@ -356,107 +355,58 @@ public class StressAction implements Runnable
 
     }
 
-    private interface WorkQueue
+    private interface WorkManager
     {
-        // null indicates consumer should terminate
-        Work poll();
+        // -1 indicates consumer should terminate
+        int takePermits(int count);
 
         // signal all consumers to terminate
         void stop();
     }
 
-    private static final class Work
-    {
-        // index of operations
-        final long offset;
-
-        // how many operations to perform
-        final int count;
-
-        public Work(long offset, int count)
-        {
-            this.offset = offset;
-            this.count = count;
-        }
-    }
-
-    private static final class FixedWorkQueue implements WorkQueue
+    private static final class FixedWorkManager implements WorkManager
     {
 
-        final ArrayBlockingQueue<Work> work;
-        volatile boolean stop = false;
+        final AtomicLong permits;
 
-        public FixedWorkQueue(ArrayBlockingQueue<Work> work)
+        public FixedWorkManager(long permits)
         {
-            this.work = work;
+            this.permits = new AtomicLong(permits);
         }
 
         @Override
-        public Work poll()
+        public int takePermits(int count)
         {
-            if (stop)
-                return null;
-            return work.poll();
-        }
-
-        @Override
-        public void stop()
-        {
-            stop = true;
-        }
-
-        static FixedWorkQueue build(long operations)
-        {
-            // target splitting into around 50-500k items, with a minimum size of 20
-            if (operations > Integer.MAX_VALUE * (1L << 19))
-                throw new IllegalStateException("Cannot currently support more than approx 2^50 operations for one stress run. This is a LOT.");
-            int batchSize = (int) (operations / (1 << 19));
-            if (batchSize < 20)
-                batchSize = 20;
-            ArrayBlockingQueue<Work> work = new ArrayBlockingQueue<>(
-                    (int) ((operations / batchSize)
-                  + (operations % batchSize == 0 ? 0 : 1))
-            );
-            long offset = 0;
-            while (offset < operations)
-            {
-                work.add(new Work(offset, (int) Math.min(batchSize, operations - offset)));
-                offset += batchSize;
-            }
-            return new FixedWorkQueue(work);
-        }
-
-    }
-
-    private static final class ContinuousWorkQueue implements WorkQueue
-    {
-
-        final AtomicLong offset = new AtomicLong();
-        final int batchSize;
-        volatile boolean stop = false;
-
-        private ContinuousWorkQueue(int batchSize)
-        {
-            this.batchSize = batchSize;
-        }
-
-        @Override
-        public Work poll()
-        {
-            if (stop)
-                return null;
-            return new Work(nextOffset(), batchSize);
-        }
-
-        private long nextOffset()
-        {
-            final int inc = batchSize;
             while (true)
             {
-                final long cur = offset.get();
-                if (offset.compareAndSet(cur, cur + inc))
-                    return cur;
+                long cur = permits.get();
+                if (cur == 0)
+                    return -1;
+                count = (int) Math.min(count, cur);
+                long next = cur - count;
+                if (permits.compareAndSet(cur, next))
+                    return count;
             }
+        }
+
+        @Override
+        public void stop()
+        {
+            permits.getAndSet(0);
+        }
+    }
+
+    private static final class ContinuousWorkManager implements WorkManager
+    {
+
+        volatile boolean stop = false;
+
+        @Override
+        public int takePermits(int count)
+        {
+            if (stop)
+                return -1;
+            return count;
         }
 
         @Override
@@ -466,5 +416,4 @@ public class StressAction implements Runnable
         }
 
     }
-
 }

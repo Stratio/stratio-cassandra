@@ -48,9 +48,9 @@ public class LuceneCondition extends Condition
     /**
      * Constructor using the field name and the value to be matched.
      *
-     * @param boost        The boost for this query clause. Documents matching this clause will (in addition to the normal
-     *                     weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link #DEFAULT_BOOST}
-     *                     is used as default.
+     * @param boost        The boost for this query clause. Documents matching this clause will (in addition to the
+     *                     normal weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link
+     *                     #DEFAULT_BOOST} is used as default.
      * @param defaultField the default field name.
      * @param query        the Lucene Query Syntax query.
      */
@@ -99,9 +99,6 @@ public class LuceneCondition extends Condition
     @Override
     public String toString()
     {
-        return new ToStringBuilder(this)
-                .append("query", query)
-                .append("defaultField", defaultField)
-                .toString();
+        return new ToStringBuilder(this).append("query", query).append("defaultField", defaultField).toString();
     }
 }

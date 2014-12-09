@@ -71,7 +71,7 @@ public final class StreamResultFuture extends AbstractFuture<StreamState>
 
     private StreamResultFuture(UUID planId, String description)
     {
-        this(planId, description, new StreamCoordinator(0));
+        this(planId, description, new StreamCoordinator(0, new DefaultConnectionFactory()));
     }
 
     static StreamResultFuture init(UUID planId, String description, Collection<StreamEventHandler> listeners, StreamCoordinator coordinator)
@@ -126,7 +126,7 @@ public final class StreamResultFuture extends AbstractFuture<StreamState>
 
     private void attachSocket(InetAddress from, int sessionIndex, Socket socket, boolean isForOutgoing, int version) throws IOException
     {
-        StreamSession session = coordinator.getOrCreateSessionById(from, sessionIndex);
+        StreamSession session = coordinator.getOrCreateSessionById(from, sessionIndex, socket.getInetAddress());
         session.init(this);
         session.handler.initiateOnReceivingSide(socket, isForOutgoing, version);
     }

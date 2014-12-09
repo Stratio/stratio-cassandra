@@ -40,7 +40,7 @@ public class RowServiceSkinny extends RowService
 {
 
     /**
-     * The Lucene's fields to be loaded
+     * The Lucene fields to be loaded
      */
     private static final Set<String> FIELDS_TO_LOAD;
 
@@ -160,6 +160,5 @@ public class RowServiceSkinny extends RowService
         }
         return null;
     }
-
 
 }

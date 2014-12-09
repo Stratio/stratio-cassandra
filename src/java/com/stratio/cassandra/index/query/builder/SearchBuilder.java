@@ -24,9 +24,16 @@ import com.stratio.cassandra.index.query.Sort;
  */
 public class SearchBuilder implements Builder<Search>
 {
-
+    /** he {@link Condition} for querying, maybe {@code null} meaning no querying. */
     private Condition queryCondition;
+
+    /** The {@link Condition} for filtering, maybe {@code null} meaning no filtering. */
     private Condition filterCondition;
+
+    /**
+     * The {@link Sort} for the query. Note that is the order in which the data will be read before querying, not the
+     * order of the results after querying.
+     */
     private Sort sort;
 
     /**

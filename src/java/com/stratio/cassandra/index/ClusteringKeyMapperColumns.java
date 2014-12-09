@@ -34,7 +34,11 @@ public class ClusteringKeyMapperColumns extends ClusteringKeyMapper
     private final AbstractType[] types;
     private final int numClusteringColumns;
 
-    private ClusteringKeyMapperColumns(Schema schema, CFMetaData metadata, String[] names, ColumnMapper[] columnMappers, AbstractType[] types)
+    private ClusteringKeyMapperColumns(Schema schema,
+                                       CFMetaData metadata,
+                                       String[] names,
+                                       ColumnMapper[] columnMappers,
+                                       AbstractType[] types)
     {
         super(metadata);
         this.schema = schema;
@@ -45,13 +49,13 @@ public class ClusteringKeyMapperColumns extends ClusteringKeyMapper
     }
 
     /**
-     * Returns a new {@link ClusteringKeyMapperColumns} for the specified {@link CFMetaData} and {@link Schema}, or {@code null}
-     * if this implementation is not able to manage the specified parameters.
+     * Returns a new {@link ClusteringKeyMapperColumns} for the specified {@link CFMetaData} and {@link Schema}, or
+     * {@code null} if this implementation is not able to manage the specified parameters.
      *
      * @param metadata A {@link CFMetaData}.
      * @param schema   A {@link Schema}.
-     * @return A new {@link ClusteringKeyMapperColumns} for the specified {@link CFMetaData} and {@link Schema}, or {@code null}
-     * if this implementation is not able to manage the specified parameters.
+     * @return A new {@link ClusteringKeyMapperColumns} for the specified {@link CFMetaData} and {@link Schema}, or
+     * {@code null} if this implementation is not able to manage the specified parameters.
      */
     @SuppressWarnings("unchecked")
     public static ClusteringKeyMapperColumns instance(CFMetaData metadata, Schema schema)
@@ -118,9 +122,12 @@ public class ClusteringKeyMapperColumns extends ClusteringKeyMapper
     private boolean includeStart(Composite composite)
     {
         ByteBuffer[] components = ByteBufferUtils.split(composite.toByteBuffer(), compositeType);
-        if (components.length > numClusteringColumns) {
+        if (components.length > numClusteringColumns)
+        {
             return false;
-        } else {
+        }
+        else
+        {
             return composite.eoc() == Composite.EOC.NONE;
         }
     }
@@ -128,9 +135,12 @@ public class ClusteringKeyMapperColumns extends ClusteringKeyMapper
     private boolean includeStop(Composite composite)
     {
         ByteBuffer[] components = ByteBufferUtils.split(composite.toByteBuffer(), compositeType);
-        if (components.length > numClusteringColumns) {
+        if (components.length > numClusteringColumns)
+        {
             return true;
-        } else {
+        }
+        else
+        {
             return composite.eoc() == Composite.EOC.END;
         }
     }

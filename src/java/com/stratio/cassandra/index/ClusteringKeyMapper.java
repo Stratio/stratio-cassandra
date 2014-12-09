@@ -44,14 +44,14 @@ import java.nio.ByteBuffer;
 import java.util.*;
 
 /**
- * Class for several clustering key mappings between Cassandra and Lucene. This class only be used
- * in column families with wide rows.
+ * Class for several clustering key mappings between Cassandra and Lucene. This class only be used in column families
+ * with wide rows.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public abstract class ClusteringKeyMapper
 {
-    /** The Lucene's field name */
+    /** The Lucene field name */
     public static final String FIELD_NAME = "_clustering_key";
 
     /** The column family meta data */
@@ -88,8 +88,7 @@ public abstract class ClusteringKeyMapper
     }
 
     /**
-     * Returns the clustering key validation type. It's always a {@link CompositeType} in CQL3
-     * tables.
+     * Returns the clustering key validation type. It's always a {@link CompositeType} in CQL3 tables.
      *
      * @return The clustering key validation type.
      */
@@ -98,7 +97,8 @@ public abstract class ClusteringKeyMapper
         return cellNameType;
     }
 
-    public final void addFields(Document document, CellName cellName) {
+    public final void addFields(Document document, CellName cellName)
+    {
         String serializedKey = ByteBufferUtils.toString(cellName.toByteBuffer());
         Field field = new StringField(FIELD_NAME, serializedKey, Field.Store.YES);
         document.add(field);
@@ -188,8 +188,7 @@ public abstract class ClusteringKeyMapper
     }
 
     /**
-     * Returns the storage engine column name for the specified column identifier using the
-     * specified clustering key.
+     * Returns the storage engine column name for the specified column identifier using the specified clustering key.
      *
      * @param cellName         The clustering key.
      * @param columnDefinition The column definition.
@@ -219,10 +218,10 @@ public abstract class ClusteringKeyMapper
     }
 
     /**
-     * Returns the raw clustering key contained in the specified Lucene's field value.
+     * Returns the raw clustering key contained in the specified Lucene field value.
      *
      * @param bytesRef The {@link BytesRef} containing the raw clustering key to be get.
-     * @return The raw clustering key contained in the specified Lucene's field value.
+     * @return The raw clustering key contained in the specified Lucene field value.
      */
     public final CellName clusteringKey(BytesRef bytesRef)
     {
@@ -232,8 +231,7 @@ public abstract class ClusteringKeyMapper
     }
 
     /**
-     * Returns the first possible cell name of those having the same clustering key that the
-     * specified cell name.
+     * Returns the first possible cell name of those having the same clustering key that the specified cell name.
      *
      * @param cellName A storage engine cell name.
      * @return The first column name of for {@code clusteringKey}.
@@ -250,8 +248,7 @@ public abstract class ClusteringKeyMapper
     }
 
     /**
-     * Returns the last possible cell name of those having the same clustering key that the
-     * specified cell name.
+     * Returns the last possible cell name of those having the same clustering key that the specified cell name.
      *
      * @param cellName A storage engine cell name.
      * @return The first column name of for {@code clusteringKey}.
@@ -340,11 +337,9 @@ public abstract class ClusteringKeyMapper
     }
 
     /**
-     * Returns a Lucene's {@link SortField} array for sorting documents/rows according to the column
-     * family name.
+     * Returns a Lucene {@link SortField} array for sorting documents/rows according to the column family name.
      *
-     * @return A Lucene's {@link SortField} array for sorting documents/rows according to the column
-     * family name.
+     * @return A Lucene {@link SortField} array for sorting documents/rows according to the column family name.
      */
     public abstract SortField[] sortFields();
 

@@ -23,25 +23,26 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.LongField;
-import org.apache.lucene.index.Term;
 import org.apache.lucene.search.NumericRangeQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.NumericUtils;
 
 /**
  * {@link PartitionKeyMapper} to be used when {@link Murmur3Partitioner} is used. It indexes the token long value as a
- * Lucene's long field.
+ * Lucene long field.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class TokenMapperMurmur extends TokenMapper
 {
-
+    /** The Lucene field name. */
     private static final String FIELD_NAME = "_token_murmur";
 
+    /**
+     * Builds a new {@link TokenMapperMurmur} using the specified {@link CFMetaData}.
+     *
+     * @param metadata A column family metadata.
+     */
     public TokenMapperMurmur(CFMetaData metadata)
     {
         super(metadata);
@@ -53,7 +54,7 @@ public class TokenMapperMurmur extends TokenMapper
     @Override
     public void addFields(Document document, DecoratedKey partitionKey)
     {
-        Long value = (Long) partitionKey.getToken().token;
+        Long value = (Long) partitionKey.getToken().getTokenValue();
         Field tokenField = new LongField(FIELD_NAME, value, Store.NO);
         document.add(tokenField);
     }
@@ -62,12 +63,9 @@ public class TokenMapperMurmur extends TokenMapper
      * {@inheritDoc}
      */
     @Override
-    public Query query(Token token) {
-        Long value = (Long) token.token;
-//        BytesRef ref = new BytesRef();
-//        NumericUtils.longToPrefixCoded(value, 0, ref);
-//        Term term = new Term(FIELD_NAME, ref);
-//        return new TermQuery(term);
+    public Query query(Token token)
+    {
+        Long value = (Long) token.getTokenValue();
         return NumericRangeQuery.newLongRange(FIELD_NAME, value, value, true, true);
     }
 
@@ -75,9 +73,10 @@ public class TokenMapperMurmur extends TokenMapper
      * {@inheritDoc}
      */
     @Override
-    protected Query makeQuery(Token lower, Token upper, boolean includeLower, boolean includeUpper) {
-        Long start = lower == null ? null : (Long) lower.token;
-        Long stop = upper == null ? null : (Long) upper.token;
+    protected Query makeQuery(Token lower, Token upper, boolean includeLower, boolean includeUpper)
+    {
+        Long start = lower == null ? null : (Long) lower.getTokenValue();
+        Long stop = upper == null ? null : (Long) upper.getTokenValue();
         if (lower != null && lower.isMinimum())
         {
             start = null;
@@ -86,7 +85,8 @@ public class TokenMapperMurmur extends TokenMapper
         {
             stop = null;
         }
-        if (start == null && stop == null) {
+        if (start == null && stop == null)
+        {
             return null;
         }
         return NumericRangeQuery.newLongRange(FIELD_NAME, start, stop, includeLower, includeUpper);

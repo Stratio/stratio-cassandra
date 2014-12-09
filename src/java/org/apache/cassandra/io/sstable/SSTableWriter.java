@@ -123,7 +123,7 @@ public class SSTableWriter extends SSTable
                          long keyCount,
                          long repairedAt,
                          CFMetaData metadata,
-                         IPartitioner<?> partitioner,
+                         IPartitioner partitioner,
                          MetadataCollector sstableMetadataCollector)
     {
         super(Descriptor.fromFilename(filename),
@@ -244,10 +244,9 @@ public class SSTableWriter extends SSTable
     {
         long currentPosition = beforeAppend(key);
 
-        // deserialize each column to obtain maxTimestamp and immediately serialize it.
-        long minTimestamp = Long.MAX_VALUE;
-        long maxTimestamp = Long.MIN_VALUE;
-        int maxLocalDeletionTime = Integer.MIN_VALUE;
+        ColumnStats.MaxLongTracker maxTimestampTracker = new ColumnStats.MaxLongTracker(Long.MAX_VALUE);
+        ColumnStats.MinLongTracker minTimestampTracker = new ColumnStats.MinLongTracker(Long.MIN_VALUE);
+        ColumnStats.MaxIntTracker maxDeletionTimeTracker = new ColumnStats.MaxIntTracker(Integer.MAX_VALUE);
         List<ByteBuffer> minColumnNames = Collections.emptyList();
         List<ByteBuffer> maxColumnNames = Collections.emptyList();
         StreamingHistogram tombstones = new StreamingHistogram(TOMBSTONE_HISTOGRAM_BIN_SIZE);
@@ -259,16 +258,21 @@ public class SSTableWriter extends SSTable
         ColumnIndex.Builder columnIndexer = new ColumnIndex.Builder(cf, key.getKey(), dataFile.stream);
 
         if (cf.deletionInfo().getTopLevelDeletion().localDeletionTime < Integer.MAX_VALUE)
+        {
             tombstones.update(cf.deletionInfo().getTopLevelDeletion().localDeletionTime);
+            maxDeletionTimeTracker.update(cf.deletionInfo().getTopLevelDeletion().localDeletionTime);
+            minTimestampTracker.update(cf.deletionInfo().getTopLevelDeletion().markedForDeleteAt);
+            maxTimestampTracker.update(cf.deletionInfo().getTopLevelDeletion().markedForDeleteAt);
+        }
 
         Iterator<RangeTombstone> rangeTombstoneIterator = cf.deletionInfo().rangeIterator();
         while (rangeTombstoneIterator.hasNext())
         {
             RangeTombstone rangeTombstone = rangeTombstoneIterator.next();
             tombstones.update(rangeTombstone.getLocalDeletionTime());
-            minTimestamp = Math.min(minTimestamp, rangeTombstone.timestamp());
-            maxTimestamp = Math.max(maxTimestamp, rangeTombstone.timestamp());
-
+            minTimestampTracker.update(rangeTombstone.timestamp());
+            maxTimestampTracker.update(rangeTombstone.timestamp());
+            maxDeletionTimeTracker.update(rangeTombstone.getLocalDeletionTime());
             minColumnNames = ColumnNameHelper.minComponents(minColumnNames, rangeTombstone.min, metadata.comparator);
             maxColumnNames = ColumnNameHelper.maxComponents(maxColumnNames, rangeTombstone.max, metadata.comparator);
         }
@@ -278,8 +282,6 @@ public class SSTableWriter extends SSTable
         {
             while (iter.hasNext())
             {
-                // deserialize column with PRESERVE_SIZE because we've written the cellDataSize based on the
-                // data size received, so we must reserialize the exact same data
                 OnDiskAtom atom = iter.next();
                 if (atom == null)
                     break;
@@ -293,11 +295,11 @@ public class SSTableWriter extends SSTable
                 int deletionTime = atom.getLocalDeletionTime();
                 if (deletionTime < Integer.MAX_VALUE)
                     tombstones.update(deletionTime);
-                minTimestamp = Math.min(minTimestamp, atom.timestamp());
-                maxTimestamp = Math.max(maxTimestamp, atom.timestamp());
+                minTimestampTracker.update(atom.timestamp());
+                maxTimestampTracker.update(atom.timestamp());
                 minColumnNames = ColumnNameHelper.minComponents(minColumnNames, atom.name(), metadata.comparator);
                 maxColumnNames = ColumnNameHelper.maxComponents(maxColumnNames, atom.name(), metadata.comparator);
-                maxLocalDeletionTime = Math.max(maxLocalDeletionTime, atom.getLocalDeletionTime());
+                maxDeletionTimeTracker.update(atom.getLocalDeletionTime());
 
                 columnIndexer.add(atom); // This write the atom on disk too
             }
@@ -310,9 +312,9 @@ public class SSTableWriter extends SSTable
             throw new FSWriteError(e, dataFile.getPath());
         }
 
-        sstableMetadataCollector.updateMinTimestamp(minTimestamp)
-                                .updateMaxTimestamp(maxTimestamp)
-                                .updateMaxLocalDeletionTime(maxLocalDeletionTime)
+        sstableMetadataCollector.updateMinTimestamp(minTimestampTracker.get())
+                                .updateMaxTimestamp(maxTimestampTracker.get())
+                                .updateMaxLocalDeletionTime(maxDeletionTimeTracker.get())
                                 .addRowSize(dataFile.getFilePointer() - currentPosition)
                                 .addColumnCount(columnIndexer.writtenAtomCount())
                                 .mergeTombstoneHistogram(tombstones)
@@ -395,7 +397,7 @@ public class SSTableWriter extends SSTable
                                                            components, metadata,
                                                            partitioner, ifile,
                                                            dfile, iwriter.summary.build(partitioner, exclusiveUpperBoundOfReadableIndex),
-                                                           iwriter.bf, maxDataAge, sstableMetadata, true);
+                                                           iwriter.bf, maxDataAge, sstableMetadata, SSTableReader.OpenReason.EARLY);
 
         // now it's open, find the ACTUAL last readable key (i.e. for which the data file has also been flushed)
         sstable.first = getMinimalKey(first);
@@ -446,7 +448,7 @@ public class SSTableWriter extends SSTable
                                                            iwriter.bf,
                                                            maxDataAge,
                                                            sstableMetadata,
-                                                           false);
+                                                           SSTableReader.OpenReason.NORMAL);
         sstable.first = getMinimalKey(first);
         sstable.last = getMinimalKey(last);
         // try to save the summaries to disk

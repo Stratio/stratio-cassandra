@@ -34,7 +34,7 @@ public class RowIndexConfig
     private static final String SCHEMA_OPTION = "schema";
 
     private static final String REFRESH_SECONDS_OPTION = "refresh_seconds";
-    private static final double DEFAULT_REFESH_SECONDS = 60;
+    private static final double DEFAULT_REFRESH_SECONDS = 60;
 
     private static final String INDEXES_DIR_NAME = "lucene";
 
@@ -86,7 +86,7 @@ public class RowIndexConfig
         }
         else
         {
-            refreshSeconds = DEFAULT_REFESH_SECONDS;
+            refreshSeconds = DEFAULT_REFRESH_SECONDS;
         }
 
         // Setup write buffer size
@@ -230,7 +230,7 @@ public class RowIndexConfig
             throw new RuntimeException(msg);
         }
 
-        // Get Lucene's directory path
+        // Get Lucene directory path
         String[] dataFileLocations = DatabaseDescriptor.getAllDataFileLocations();
         StringBuilder directoryPathBuilder = new StringBuilder();
         directoryPathBuilder.append(dataFileLocations[0]);

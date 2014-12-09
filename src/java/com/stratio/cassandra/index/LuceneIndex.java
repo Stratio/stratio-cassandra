@@ -35,7 +35,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Class wrapping a Lucene's directory and its readers , writers and searchers for NRT.
+ * Class wrapping a Lucene directory and its readers , writers and searchers for NRT.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
@@ -60,10 +60,11 @@ public class LuceneIndex
     /**
      * Builds a new {@code RowDirectory} using the specified directory path and analyzer.
      *
-     * @param rowMapper A {@link RowMapper}.
-     * @param path           The analyzer to be used. The path of the directory in where the Lucene's files will be stored.
-     * @param refreshSeconds The index readers refresh time in seconds. No guarantees that the writings are visible until this
-     *                       time.
+     * @param rowMapper      A {@link RowMapper}.
+     * @param path           The analyzer to be used. The path of the directory in where the Lucene files will be
+     *                       stored.
+     * @param refreshSeconds The index readers refresh time in seconds. No guarantees that the writings are visible
+     *                       until this time.
      * @param ramBufferMB    The index writer buffer size in MB.
      * @param maxMergeMB     NRTCachingDirectory max merge size in MB.
      * @param maxCachedMB    NRTCachingDirectory max cached MB.
@@ -207,8 +208,8 @@ public class LuceneIndex
     }
 
     /**
-     * Finds the top {@code count} hits for {@code query}, applying {@code clusteringKeyFilter} if non-null, and sorting the hits by
-     * the criteria in {@code sortFields}.
+     * Finds the top {@code count} hits for {@code query}, applying {@code clusteringKeyFilter} if non-null, and sorting
+     * the hits by the criteria in {@code sortFields}.
      *
      * @param query        The {@link Query} to search for.
      * @param sort         The {@link Sort} to be applied.
@@ -218,10 +219,11 @@ public class LuceneIndex
      * @return The found documents, sorted according to the supplied {@link Sort} instance.
      */
     public List<SearchResult> search(Query query,
-                                       Sort sort,
-                                       SearchResult after,
-                                       Integer count,
-                                       Set<String> fieldsToLoad, boolean usesRelevance) throws IOException
+                                     Sort sort,
+                                     SearchResult after,
+                                     Integer count,
+                                     Set<String> fieldsToLoad,
+                                     boolean usesRelevance) throws IOException
     {
         Log.debug("Searching by query %s", query);
 
@@ -250,8 +252,12 @@ public class LuceneIndex
         }
     }
 
-    private TopDocs topDocs(IndexSearcher searcher, Query query, Sort sort, ScoreDoc after, int count, boolean usesRelevance)
-            throws IOException
+    private TopDocs topDocs(IndexSearcher searcher,
+                            Query query,
+                            Sort sort,
+                            ScoreDoc after,
+                            int count,
+                            boolean usesRelevance) throws IOException
     {
 //        if (sortFields == null) sortFields = this.sortFields;
         // Use default sortFields if the query doesn't use relevance

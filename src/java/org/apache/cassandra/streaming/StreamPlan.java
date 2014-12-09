@@ -38,6 +38,8 @@ public class StreamPlan
     private final long repairedAt;
     private final StreamCoordinator coordinator;
 
+    private StreamConnectionFactory connectionFactory = new DefaultConnectionFactory();
+
     private boolean flushBeforeTransfer = true;
 
     /**
@@ -54,63 +56,77 @@ public class StreamPlan
     {
         this.description = description;
         this.repairedAt = repairedAt;
-        this.coordinator = new StreamCoordinator(connectionsPerHost);
+        this.coordinator = new StreamCoordinator(connectionsPerHost, connectionFactory);
     }
 
     /**
      * Request data in {@code keyspace} and {@code ranges} from specific node.
      *
      * @param from endpoint address to fetch data from.
+     * @param connecting Actual connecting address for the endpoint
      * @param keyspace name of keyspace
      * @param ranges ranges to fetch
      * @return this object for chaining
      */
-    public StreamPlan requestRanges(InetAddress from, String keyspace, Collection<Range<Token>> ranges)
+    public StreamPlan requestRanges(InetAddress from, InetAddress connecting, String keyspace, Collection<Range<Token>> ranges)
     {
-        return requestRanges(from, keyspace, ranges, new String[0]);
+        return requestRanges(from, connecting, keyspace, ranges, new String[0]);
     }
 
     /**
      * Request data in {@code columnFamilies} under {@code keyspace} and {@code ranges} from specific node.
      *
      * @param from endpoint address to fetch data from.
+     * @param connecting Actual connecting address for the endpoint
      * @param keyspace name of keyspace
      * @param ranges ranges to fetch
      * @param columnFamilies specific column families
      * @return this object for chaining
      */
-    public StreamPlan requestRanges(InetAddress from, String keyspace, Collection<Range<Token>> ranges, String... columnFamilies)
+    public StreamPlan requestRanges(InetAddress from, InetAddress connecting, String keyspace, Collection<Range<Token>> ranges, String... columnFamilies)
     {
-        StreamSession session = coordinator.getOrCreateNextSession(from);
+        StreamSession session = coordinator.getOrCreateNextSession(from, connecting);
         session.addStreamRequest(keyspace, ranges, Arrays.asList(columnFamilies), repairedAt);
         return this;
+    }
+
+    /**
+     * Add transfer task to send data of specific {@code columnFamilies} under {@code keyspace} and {@code ranges}.
+     *
+     * @see #transferRanges(java.net.InetAddress, java.net.InetAddress, String, java.util.Collection, String...)
+     */
+    public StreamPlan transferRanges(InetAddress to, String keyspace, Collection<Range<Token>> ranges, String... columnFamilies)
+    {
+        return transferRanges(to, to, keyspace, ranges, columnFamilies);
     }
 
     /**
      * Add transfer task to send data of specific keyspace and ranges.
      *
      * @param to endpoint address of receiver
+     * @param connecting Actual connecting address of the endpoint
      * @param keyspace name of keyspace
      * @param ranges ranges to send
      * @return this object for chaining
      */
-    public StreamPlan transferRanges(InetAddress to, String keyspace, Collection<Range<Token>> ranges)
+    public StreamPlan transferRanges(InetAddress to, InetAddress connecting, String keyspace, Collection<Range<Token>> ranges)
     {
-        return transferRanges(to, keyspace, ranges, new String[0]);
+        return transferRanges(to, connecting, keyspace, ranges, new String[0]);
     }
 
     /**
      * Add transfer task to send data of specific {@code columnFamilies} under {@code keyspace} and {@code ranges}.
      *
      * @param to endpoint address of receiver
+     * @param connecting Actual connecting address of the endpoint
      * @param keyspace name of keyspace
      * @param ranges ranges to send
      * @param columnFamilies specific column families
      * @return this object for chaining
      */
-    public StreamPlan transferRanges(InetAddress to, String keyspace, Collection<Range<Token>> ranges, String... columnFamilies)
+    public StreamPlan transferRanges(InetAddress to, InetAddress connecting, String keyspace, Collection<Range<Token>> ranges, String... columnFamilies)
     {
-        StreamSession session = coordinator.getOrCreateNextSession(to);
+        StreamSession session = coordinator.getOrCreateNextSession(to, connecting);
         session.addTransferRanges(keyspace, ranges, Arrays.asList(columnFamilies), flushBeforeTransfer, repairedAt);
         return this;
     }
@@ -135,6 +151,18 @@ public class StreamPlan
         this.handlers.add(handler);
         if (handlers != null)
             Collections.addAll(this.handlers, handlers);
+        return this;
+    }
+
+    /**
+     * Set custom StreamConnectionFactory to be used for establishing connection
+     *
+     * @param factory StreamConnectionFactory to use
+     * @return self
+     */
+    public StreamPlan connectionFactory(StreamConnectionFactory factory)
+    {
+        this.coordinator.setConnectionFactory(factory);
         return this;
     }
 

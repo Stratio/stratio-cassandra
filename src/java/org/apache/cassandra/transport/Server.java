@@ -29,6 +29,9 @@ import javax.net.ssl.SSLEngine;
 
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.channel.epoll.Epoll;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.epoll.EpollServerSocketChannel;
 import io.netty.util.Version;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,6 +64,7 @@ public class Server implements CassandraDaemon.Server
     }
 
     private static final Logger logger = LoggerFactory.getLogger(Server.class);
+    private static final boolean enableEpoll = Boolean.valueOf(System.getProperty("cassandra.native.epoll.enabled", "true"));
 
     public static final int VERSION_3 = 3;
     public static final int CURRENT_VERSION = VERSION_3;
@@ -107,10 +111,10 @@ public class Server implements CassandraDaemon.Server
 
     public void start()
     {
-        if(!isRunning())
-        {
+	    if(!isRunning())
+	    {
             run();
-        }
+	    }
     }
 
     public void stop()
@@ -138,16 +142,29 @@ public class Server implements CassandraDaemon.Server
 
         // Configure the server.
         eventExecutorGroup = new RequestThreadPoolExecutor();
-        workerGroup = new NioEventLoopGroup();
+
+
+        boolean hasEpoll = enableEpoll ? Epoll.isAvailable() : false;
+        if (hasEpoll)
+        {
+            workerGroup = new EpollEventLoopGroup();
+            logger.info("Netty using native Epoll event loop");
+        }
+        else
+        {
+            workerGroup = new NioEventLoopGroup();
+            logger.info("Netty using Java NIO event loop");
+        }
 
         ServerBootstrap bootstrap = new ServerBootstrap()
-                .group(workerGroup)
-                .channel(NioServerSocketChannel.class)
-                .childOption(ChannelOption.TCP_NODELAY, true)
-                .childOption(ChannelOption.SO_KEEPALIVE, DatabaseDescriptor.getRpcKeepAlive())
-                .childOption(ChannelOption.ALLOCATOR, CBUtil.allocator)
-                .childOption(ChannelOption.WRITE_BUFFER_HIGH_WATER_MARK, 32 * 1024)
-                .childOption(ChannelOption.WRITE_BUFFER_LOW_WATER_MARK, 8 * 1024);
+                                    .group(workerGroup)
+                                    .channel(hasEpoll ? EpollServerSocketChannel.class : NioServerSocketChannel.class)
+                                    .childOption(ChannelOption.TCP_NODELAY, true)
+                                    .childOption(ChannelOption.SO_LINGER, 0)
+                                    .childOption(ChannelOption.SO_KEEPALIVE, DatabaseDescriptor.getRpcKeepAlive())
+                                    .childOption(ChannelOption.ALLOCATOR, CBUtil.allocator)
+                                    .childOption(ChannelOption.WRITE_BUFFER_HIGH_WATER_MARK, 32 * 1024)
+                                    .childOption(ChannelOption.WRITE_BUFFER_LOW_WATER_MARK, 8 * 1024);
 
         final EncryptionOptions.ClientEncryptionOptions clientEnc = DatabaseDescriptor.getClientEncryptionOptions();
         if (clientEnc.enabled)
@@ -163,8 +180,12 @@ public class Server implements CassandraDaemon.Server
         // Bind and start to accept incoming connections.
         logger.info("Using Netty Version: {}", Version.identify().entrySet());
         logger.info("Starting listening for CQL clients on {}...", socket);
-        Channel channel = bootstrap.bind(socket).channel();
-        connectionTracker.allChannels.add(channel);
+
+        ChannelFuture bindFuture = bootstrap.bind(socket);
+        if (!bindFuture.awaitUninterruptibly().isSuccess())
+            throw new IllegalStateException(String.format("Failed to bind port %d on %s.", socket.getPort(), socket.getAddress().getHostAddress()));
+
+        connectionTracker.allChannels.add(bindFuture.channel());
         isRunning.set(true);
     }
 

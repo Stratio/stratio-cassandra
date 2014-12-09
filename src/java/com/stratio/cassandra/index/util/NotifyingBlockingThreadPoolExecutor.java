@@ -11,7 +11,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * <p/>
  * Two functionalities had been added to this subclass. 1) The execute method of the ThreadPoolExecutor will block in
  * case the queue is full and only unblock when the queue is dequeued - that is a task that is currently in the queue is
- * removed and handled by the ThreadPoolExecutor. 2) Client code can await for the event of all tasks beeing run to
+ * removed and handled by the ThreadPoolExecutor. 2) Client code can await for the event of all tasks being run to
  * conclusion. Client code which actively chose to wait for this occurrence should call await on the instance of his
  * ThreadPoolExecutor. This differs from awaitTermination as it does not require any call to shutdown.
  * <p/>
@@ -58,16 +58,18 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
      * timeout for the wait on new task insertion and to react upon such a timeout if occurs.
      *
      * @param poolSize             is the amount of threads that this pool may have alive at any given time
-     * @param queueSize            is the size of the queue. This number should be at least as the pool size to make sense (otherwise
-     *                             there are unused threads), thus if the number sent is smaller, the poolSize is used for the size of
-     *                             the queue. Recommended value is twice the poolSize.
+     * @param queueSize            is the size of the queue. This number should be at least as the pool size to make
+     *                             sense (otherwise there are unused threads), thus if the number sent is smaller, the
+     *                             poolSize is used for the size of the queue. Recommended value is twice the poolSize.
      * @param keepAliveTime        is the amount of time after which an inactive thread is terminated
      * @param keepAliveTimeUnit    is the unit of time to use with the previous parameter
-     * @param maxBlockingTime      is the maximum time to wait on the queue of tasks before calling the BlockingTimeout callback
+     * @param maxBlockingTime      is the maximum time to wait on the queue of tasks before calling the BlockingTimeout
+     *                             callback
      * @param maxBlockingTimeUnit  is the unit of time to use with the previous parameter
-     * @param blockingTimeCallback is the callback method to call when a timeout occurs while blocking on getting a new task, the return
-     *                             value of this Callable is Boolean, indicating whether to keep blocking (true) or stop (false). In case
-     *                             false is returned from the blockingTimeCallback, this executer will throw a RejectedExecutionException
+     * @param blockingTimeCallback is the callback method to call when a timeout occurs while blocking on getting a new
+     *                             task, the return value of this Callable is Boolean, indicating whether to keep
+     *                             blocking (true) or stop (false). In case false is returned from the
+     *                             blockingTimeCallback, this executer will throw a RejectedExecutionException
      */
     public NotifyingBlockingThreadPoolExecutor(int poolSize,
                                                int queueSize,
@@ -79,13 +81,12 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
     {
 
         super(poolSize, // Core size
-                poolSize, // Max size
-                keepAliveTime,
-                keepAliveTimeUnit,
-                // not smaller than the poolSize (to avoid redundant threads)
-                new ArrayBlockingQueue<Runnable>(Math.max(poolSize, queueSize), true),
-                // When super invokes the reject method this class will ensure a blocking try
-                new BlockThenRunPolicy(maxBlockingTime, maxBlockingTimeUnit, blockingTimeCallback));
+              poolSize, // Max size
+              keepAliveTime, keepAliveTimeUnit,
+              // not smaller than the poolSize (to avoid redundant threads)
+              new ArrayBlockingQueue<Runnable>(Math.max(poolSize, queueSize), true),
+              // When super invokes the reject method this class will ensure a blocking try
+              new BlockThenRunPolicy(maxBlockingTime, maxBlockingTimeUnit, blockingTimeCallback));
 
         super.allowCoreThreadTimeOut(true); // Time out the core threads
     }
@@ -96,9 +97,9 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
      * on new task insertion is unlimited.
      *
      * @param poolSize      is the amount of threads that this pool may have alive at any given time.
-     * @param queueSize     is the size of the queue. This number should be at least as the pool size to make sense (otherwise
-     *                      there are unused threads), thus if the number sent is smaller, the poolSize is used for the size of
-     *                      the queue. Recommended value is twice the poolSize.
+     * @param queueSize     is the size of the queue. This number should be at least as the pool size to make sense
+     *                      (otherwise there are unused threads), thus if the number sent is smaller, the poolSize is
+     *                      used for the size of the queue. Recommended value is twice the poolSize.
      * @param keepAliveTime is the amount of time after which an inactive thread is terminated.
      * @param unit          is the unit of time to use with the previous parameter.
      */
@@ -106,13 +107,12 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
     {
 
         super(poolSize, // Core size
-                poolSize, // Max size
-                keepAliveTime,
-                unit,
-                // not smaller than the poolSize (to avoid redundant threads)
-                new ArrayBlockingQueue<Runnable>(Math.max(poolSize, queueSize), true),
-                // When super invokes the reject method this class will ensure a blocking try.
-                new BlockThenRunPolicy());
+              poolSize, // Max size
+              keepAliveTime, unit,
+              // not smaller than the poolSize (to avoid redundant threads)
+              new ArrayBlockingQueue<Runnable>(Math.max(poolSize, queueSize), true),
+              // When super invokes the reject method this class will ensure a blocking try.
+              new BlockThenRunPolicy());
 
         super.allowCoreThreadTimeOut(true); // Time out the core threads.
     }

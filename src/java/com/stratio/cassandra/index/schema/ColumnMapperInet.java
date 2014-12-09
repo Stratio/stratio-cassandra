@@ -40,11 +40,11 @@ import java.util.regex.Pattern;
 public class ColumnMapperInet extends ColumnMapper<String>
 {
 
-    private static final Pattern IPV4_PATTERN = Pattern
-            .compile("(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])");
+    private static final Pattern IPV4_PATTERN = Pattern.compile(
+            "(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])");
     private static final Pattern IPV6_PATTERN = Pattern.compile("^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$");
-    private static final Pattern IPV6_COMPRESSED_PATTERN = Pattern
-            .compile("^((?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4})*)?)::((?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4})*)?)$");
+    private static final Pattern IPV6_COMPRESSED_PATTERN = Pattern.compile(
+            "^((?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4})*)?)::((?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4})*)?)$");
 
     @JsonCreator
     public ColumnMapperInet()
@@ -74,8 +74,9 @@ public class ColumnMapperInet extends ColumnMapper<String>
         else if (value instanceof String)
         {
             String svalue = (String) value;
-            if (IPV4_PATTERN.matcher(svalue).matches() || IPV6_PATTERN.matcher(svalue).matches()
-                    || IPV6_COMPRESSED_PATTERN.matcher(svalue).matches())
+            if (IPV4_PATTERN.matcher(svalue).matches() ||
+                    IPV6_PATTERN.matcher(svalue).matches() ||
+                    IPV6_COMPRESSED_PATTERN.matcher(svalue).matches())
             {
                 try
                 {
@@ -105,8 +106,9 @@ public class ColumnMapperInet extends ColumnMapper<String>
         else if (value instanceof String)
         {
             String svalue = (String) value;
-            if (IPV4_PATTERN.matcher(svalue).matches() || IPV6_PATTERN.matcher(svalue).matches()
-                    || IPV6_COMPRESSED_PATTERN.matcher(svalue).matches())
+            if (IPV4_PATTERN.matcher(svalue).matches() ||
+                    IPV6_PATTERN.matcher(svalue).matches() ||
+                    IPV6_COMPRESSED_PATTERN.matcher(svalue).matches())
             {
                 try
                 {

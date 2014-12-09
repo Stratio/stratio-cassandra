@@ -35,7 +35,7 @@ public class ColumnMapperText extends ColumnMapper<String>
 {
 
     /**
-     * The Lucene's {@link org.apache.lucene.analysis.Analyzer}.
+     * The Lucene {@link org.apache.lucene.analysis.Analyzer}.
      */
     private Analyzer analyzer;
 
@@ -55,8 +55,7 @@ public class ColumnMapperText extends ColumnMapper<String>
                 TimeUUIDType.instance,
                 TimestampType.instance,
                 BytesType.instance,
-                InetAddressType.instance},
-              new AbstractType[]{});
+                InetAddressType.instance}, new AbstractType[]{});
         if (analyzerClassName != null)
         {
             this.analyzer = AnalyzerFactory.getAnalyzer(analyzerClassName);

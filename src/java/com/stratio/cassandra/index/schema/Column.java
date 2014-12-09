@@ -93,10 +93,10 @@ public class Column
     public String toString()
     {
         return new ToStringBuilder(this).append("name", name)
-                .append("nameSufix", nameSufix)
-                .append("value", value)
-                .append("type", type)
-                .toString();
+                                        .append("nameSufix", nameSufix)
+                                        .append("value", value)
+                                        .append("type", type)
+                                        .toString();
     }
 
 }

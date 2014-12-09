@@ -18,25 +18,26 @@ package com.stratio.cassandra.index.query.builder;
 import com.stratio.cassandra.index.query.RegexpCondition;
 
 /**
- * {@link ConditionBuilder} for building a new {@link com.stratio.cassandra.index.query.RegexpCondition}.
+ * {@link ConditionBuilder} for building a new {@link RegexpCondition}.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class RegexpConditionBuilder extends ConditionBuilder<RegexpCondition, RegexpConditionBuilder>
 {
-
+    /** The name of the field to be matched. */
     private final String field;
+
+    /** The wildcard expression to be matched. */
     private final String value;
 
     /**
-     * Creates a new {@link RegexpConditionBuilder} for the specified field and value.
+     * Creates a new {@link RegexpConditionBuilder} for the specified field and expression.
      *
-     * @param field the name of the field to be matched.
-     * @param value the value of the field to be matched.
+     * @param field The name of the field to be matched.
+     * @param value The wildcard expression to be matched.
      */
     protected RegexpConditionBuilder(String field, String value)
     {
-
         this.field = field;
         this.value = value;
     }

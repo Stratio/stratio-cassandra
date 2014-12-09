@@ -332,13 +332,13 @@ public abstract class RowService
     }
 
     /**
-     * Returns {@code true} if the specified {@link Columns} satisfies the the specified {@link IndexExpression},
-     * {@code false} otherwise.
+     * Returns {@code true} if the specified {@link Columns} satisfies the the specified {@link IndexExpression}, {@code
+     * false} otherwise.
      *
      * @param columns    A {@link Columns}
      * @param expression A {@link IndexExpression}s to be satisfied by {@code columns}.
-     * @return {@code true} if the specified {@link Columns} satisfies the the specified {@link IndexExpression},
-     * {@code false} otherwise.
+     * @return {@code true} if the specified {@link Columns} satisfies the the specified {@link IndexExpression}, {@code
+     * false} otherwise.
      */
     private boolean accepted(Columns columns, IndexExpression expression)
     {
@@ -388,7 +388,9 @@ public abstract class RowService
      * @param usesRelevance If the search uses relevance.
      * @return The {@link Row} identified by the specified {@link Document}s
      */
-    protected abstract List<Row> rows(List<SearchResult> searchResults, long timestamp, boolean usesRelevance) throws IOException;
+    protected abstract List<Row> rows(List<SearchResult> searchResults,
+                                      long timestamp,
+                                      boolean usesRelevance) throws IOException;
 
     /**
      * Returns a {@link ColumnFamily} composed by the non expired {@link Cell}s of the specified  {@link ColumnFamily}.
@@ -432,13 +434,13 @@ public abstract class RowService
     }
 
     /**
-     * Returns the {@link RowComparator} to be used for ordering the {@link Row}s obtained from the specified
-     * {@link Search}. This {@link Comparator} is useful for merging the partial results obtained from running the
-     * specified {@link Search} against several indexes.
+     * Returns the {@link RowComparator} to be used for ordering the {@link Row}s obtained from the specified {@link
+     * Search}. This {@link Comparator} is useful for merging the partial results obtained from running the specified
+     * {@link Search} against several indexes.
      *
      * @param search A {@link Search}.
-     * @return The {@link RowComparator} to be used for ordering the {@link Row}s obtained from the specified
-     * {@link Search}.
+     * @return The {@link RowComparator} to be used for ordering the {@link Row}s obtained from the specified {@link
+     * Search}.
      */
     public RowComparator comparator(Search search)
     {
@@ -482,7 +484,7 @@ public abstract class RowService
     }
 
     /**
-     * Optimizes the managed Lucene's index. It can be a very heavy operation.
+     * Optimizes the managed Lucene index. It can be a very heavy operation.
      */
     public void optimize() throws IOException
     {
@@ -501,7 +503,8 @@ public abstract class RowService
     }
 
     /**
-     * Groups the specified CQL3 {@link Row} into a list of physical storage {@link Row}s. This grouping is based in row's key.
+     * Groups the specified CQL3 {@link Row} into a list of physical storage {@link Row}s. This grouping is based in
+     * row's key.
      *
      * @param rows A list of CQL3 {@link Row}s.
      * @return The specified CQL3 {@link Row} into a list of physical storage {@link Row}s.

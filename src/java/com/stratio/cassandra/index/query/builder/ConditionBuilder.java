@@ -18,17 +18,19 @@ package com.stratio.cassandra.index.query.builder;
 import com.stratio.cassandra.index.query.Condition;
 
 /**
- * Class for building new {@link com.stratio.cassandra.index.query.Condition}s.
+ * Class for building new {@link Condition}s.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public abstract class ConditionBuilder<T extends Condition, K extends ConditionBuilder<T, K>> implements Builder<T>
 {
+    /** The boost for the {@link Condition} to be built. */
     protected Float boost;
 
     /**
-     * Sets the boost for the {@link Condition} to be built. Documents matching this condition will (in addition to the normal
-     * weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link Condition#DEFAULT_BOOST}
+     * Sets the boost for the {@link Condition} to be built. Documents matching this condition will (in addition to the
+     * normal weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link
+     * Condition#DEFAULT_BOOST}
      *
      * @param boost The boost for the {@link Condition} to be built.
      * @return This builder with the specified boost.
@@ -40,8 +42,9 @@ public abstract class ConditionBuilder<T extends Condition, K extends ConditionB
     }
 
     /**
-     * Sets the boost for the {@link Condition} to be built. Documents matching this condition will (in addition to the normal
-     * weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link Condition#DEFAULT_BOOST}
+     * Sets the boost for the {@link Condition} to be built. Documents matching this condition will (in addition to the
+     * normal weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link
+     * Condition#DEFAULT_BOOST}
      *
      * @param boost The boost for the {@link Condition} to be built.
      * @return This builder with the specified boost.

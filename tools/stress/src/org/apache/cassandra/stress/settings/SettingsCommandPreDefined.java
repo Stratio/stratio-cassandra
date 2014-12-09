@@ -22,11 +22,13 @@ package org.apache.cassandra.stress.settings;
 
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import org.apache.cassandra.stress.generate.DistributionFactory;
 import org.apache.cassandra.stress.generate.PartitionGenerator;
+import org.apache.cassandra.stress.generate.SeedManager;
 import org.apache.cassandra.stress.generate.values.Bytes;
 import org.apache.cassandra.stress.generate.values.Generator;
 import org.apache.cassandra.stress.generate.values.GeneratorConfig;
@@ -35,6 +37,7 @@ import org.apache.cassandra.stress.operations.FixedOpDistribution;
 import org.apache.cassandra.stress.operations.OpDistribution;
 import org.apache.cassandra.stress.operations.OpDistributionFactory;
 import org.apache.cassandra.stress.operations.predefined.PredefinedOperation;
+import org.apache.cassandra.stress.settings.SettingsCommandPreDefinedMixed.Options;
 import org.apache.cassandra.stress.util.Timer;
 
 // Settings unique to the mixed command type
@@ -42,14 +45,16 @@ public class SettingsCommandPreDefined extends SettingsCommand
 {
 
     public final DistributionFactory add;
+    public final int keySize;
 
     public OpDistributionFactory getFactory(final StressSettings settings)
     {
+        final SeedManager seeds = new SeedManager(settings);
         return new OpDistributionFactory()
         {
             public OpDistribution get(Timer timer)
             {
-                return new FixedOpDistribution(PredefinedOperation.operation(type, timer, newGenerator(settings), settings, add));
+                return new FixedOpDistribution(PredefinedOperation.operation(type, timer, newGenerator(settings, seeds), settings, add));
             }
 
             public String desc()
@@ -64,23 +69,24 @@ public class SettingsCommandPreDefined extends SettingsCommand
         };
     }
 
-    PartitionGenerator newGenerator(StressSettings settings)
+    PartitionGenerator newGenerator(StressSettings settings, SeedManager seeds)
     {
         List<String> names = settings.columns.namestrs;
         List<Generator> partitionKey = Collections.<Generator>singletonList(new HexBytes("key",
                                        new GeneratorConfig("randomstrkey", null,
-                                                           OptionDistribution.get("fixed(" + settings.keys.keySize + ")"), null)));
+                                                           OptionDistribution.get("fixed(" + keySize + ")"), null)));
 
         List<Generator> columns = new ArrayList<>();
         for (int i = 0 ; i < settings.columns.maxColumnsPerKey ; i++)
             columns.add(new Bytes(names.get(i), new GeneratorConfig("randomstr" + names.get(i), null, settings.columns.sizeDistribution, null)));
-        return new PartitionGenerator(partitionKey, Collections.<Generator>emptyList(), columns);
+        return new PartitionGenerator(partitionKey, Collections.<Generator>emptyList(), columns, PartitionGenerator.Order.ARBITRARY, seeds);
     }
 
     public SettingsCommandPreDefined(Command type, Options options)
     {
         super(type, options.parent);
         add = options.add.get();
+        keySize = Integer.parseInt(options.keysize.value());
     }
 
     // Option Declarations
@@ -93,14 +99,12 @@ public class SettingsCommandPreDefined extends SettingsCommand
             this.parent = parent;
         }
         final OptionDistribution add = new OptionDistribution("add=", "fixed(1)", "Distribution of value of counter increments");
+        final OptionSimple keysize = new OptionSimple("keysize=", "[0-9]+", "10", "Key size in bytes", false);
 
         @Override
         public List<? extends Option> options()
         {
-            final List<Option> options = new ArrayList<>();
-            options.addAll(parent.options());
-            options.add(add);
-            return options;
+            return merge(parent.options(), Arrays.asList(add, keysize));
         }
 
     }
@@ -111,7 +115,8 @@ public class SettingsCommandPreDefined extends SettingsCommand
     {
         GroupedOptions options = GroupedOptions.select(params,
                 new Options(new Uncertainty()),
-                new Options(new Count()));
+                new Options(new Count()),
+                new Options(new Duration()));
         if (options == null)
         {
             printHelp(type);
@@ -128,7 +133,7 @@ public class SettingsCommandPreDefined extends SettingsCommand
 
     static void printHelp(String type)
     {
-        GroupedOptions.printOptions(System.out, type.toLowerCase(), new Uncertainty(), new Count());
+        GroupedOptions.printOptions(System.out, type.toLowerCase(), new Uncertainty(), new Count(), new Duration());
     }
 
     static Runnable helpPrinter(final Command type)

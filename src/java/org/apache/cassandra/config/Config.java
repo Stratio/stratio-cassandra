@@ -98,11 +98,13 @@ public class Config
     public Integer storage_port = 7000;
     public Integer ssl_storage_port = 7001;
     public String listen_address;
+    public String listen_interface;
     public String broadcast_address;
     public String internode_authenticator;
 
     public Boolean start_rpc = true;
     public String rpc_address;
+    public String rpc_interface;
     public String broadcast_rpc_address;
     public Integer rpc_port = 9160;
     public Integer rpc_listen_backlog = 50;
@@ -297,6 +299,7 @@ public class Config
         stop,
         ignore,
         stop_paranoid,
+        die
     }
 
     public static enum CommitFailurePolicy
@@ -304,6 +307,7 @@ public class Config
         stop,
         stop_commit,
         ignore,
+        die,
     }
 
     public static enum RequestSchedulerId

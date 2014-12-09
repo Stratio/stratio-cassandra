@@ -19,12 +19,11 @@ package org.apache.cassandra.cql3;
 
 import java.nio.ByteBuffer;
 
+import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.ColumnFamily;
 import org.apache.cassandra.db.composites.Composite;
-import org.apache.cassandra.db.marshal.CollectionType;
-import org.apache.cassandra.db.marshal.CounterColumnType;
-import org.apache.cassandra.db.marshal.ListType;
+import org.apache.cassandra.db.marshal.*;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 
 /**
@@ -94,7 +93,7 @@ public abstract class Operation
      * This can be one of:
      *   - Setting a value: c = v
      *   - Setting an element of a collection: c[x] = v
-     *   - An addition/substraction to a variable: c = c +/- v (where v can be a collection literal)
+     *   - An addition/subtraction to a variable: c = c +/- v (where v can be a collection literal)
      *   - An prepend operation: c = v + c
      */
     public interface RawUpdate
@@ -132,7 +131,7 @@ public abstract class Operation
         /**
          * The name of the column affected by this delete operation.
          */
-        public ColumnIdentifier affectedColumn();
+        public ColumnIdentifier.Raw affectedColumn();
 
         /**
          * This method validates the operation (i.e. validate it is well typed)
@@ -291,23 +290,26 @@ public abstract class Operation
 
         public Operation prepare(String keyspace, ColumnDefinition receiver) throws InvalidRequestException
         {
-            Term v = value.prepare(keyspace, receiver);
-
             if (!(receiver.type instanceof CollectionType))
             {
                 if (!(receiver.type instanceof CounterColumnType))
                     throw new InvalidRequestException(String.format("Invalid operation (%s) for non counter column %s", toString(receiver), receiver.name));
-                return new Constants.Substracter(receiver, v);
+                return new Constants.Substracter(receiver, value.prepare(keyspace, receiver));
             }
 
             switch (((CollectionType)receiver.type).kind)
             {
                 case LIST:
-                    return new Lists.Discarder(receiver, v);
+                    return new Lists.Discarder(receiver, value.prepare(keyspace, receiver));
                 case SET:
-                    return new Sets.Discarder(receiver, v);
+                    return new Sets.Discarder(receiver, value.prepare(keyspace, receiver));
                 case MAP:
-                    throw new InvalidRequestException(String.format("Invalid operation (%s) for map column %s", toString(receiver), receiver));
+                    // The value for a map subtraction is actually a set
+                    ColumnSpecification vr = new ColumnSpecification(receiver.ksName,
+                                                                     receiver.cfName,
+                                                                     receiver.name,
+                                                                     SetType.getInstance(((MapType)receiver.type).keys));
+                    return new Sets.Discarder(receiver, value.prepare(keyspace, vr));
             }
             throw new AssertionError();
         }
@@ -355,14 +357,14 @@ public abstract class Operation
 
     public static class ColumnDeletion implements RawDeletion
     {
-        private final ColumnIdentifier id;
+        private final ColumnIdentifier.Raw id;
 
-        public ColumnDeletion(ColumnIdentifier id)
+        public ColumnDeletion(ColumnIdentifier.Raw id)
         {
             this.id = id;
         }
 
-        public ColumnIdentifier affectedColumn()
+        public ColumnIdentifier.Raw affectedColumn()
         {
             return id;
         }
@@ -376,16 +378,16 @@ public abstract class Operation
 
     public static class ElementDeletion implements RawDeletion
     {
-        private final ColumnIdentifier id;
+        private final ColumnIdentifier.Raw id;
         private final Term.Raw element;
 
-        public ElementDeletion(ColumnIdentifier id, Term.Raw element)
+        public ElementDeletion(ColumnIdentifier.Raw id, Term.Raw element)
         {
             this.id = id;
             this.element = element;
         }
 
-        public ColumnIdentifier affectedColumn()
+        public ColumnIdentifier.Raw affectedColumn()
         {
             return id;
         }

@@ -106,5 +106,4 @@ public class ColumnMapperUUID extends ColumnMapper<String>
         return new ToStringBuilder(this).toString();
     }
 
-
 }

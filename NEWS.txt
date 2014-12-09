@@ -13,6 +13,28 @@ restore snapshots created with the previous major version using the
 'sstableloader' tool. You can upgrade the file format of your snapshots
 using the provided 'sstableupgrade' tool.
 
+2.1.2
+=====
+
+Upgrading
+---------
+    - Nothing specific to this release, but please see 2.1 if you are upgrading
+      from a previous version.
+
+2.1.1
+=====
+
+Upgrading
+---------
+    - Nothing specific to this release, but please see 2.1 if you are upgrading
+      from a previous version.
+
+New features
+------------
+   - Netty support for epoll on linux is now enabled.  If for some
+     reason you want to disable it pass, the following system property
+     -Dcassandra.native.epoll.enabled=false
+
 2.1
 ===
 
@@ -80,9 +102,24 @@ Upgrading
      has been deprecated.
    - support for supercolumns has been removed from json2sstable
 
+2.0.11
+======
+
+Upgrading
+---------
+    - Nothing specific to this release, but refer to previous entries if you
+      are upgrading from a previous version.
+
+New features
+------------
+    - DateTieredCompactionStrategy added, optimized for time series data and groups
+      data that is written closely in time (CASSANDRA-6602 for details). Consider
+      this experimental for now.
+
 
 2.0.10
 ======
+
 New features
 ------------
     - CqlPaginRecordReader and CqlPagingInputFormat have both been removed.

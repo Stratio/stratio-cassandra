@@ -37,7 +37,6 @@ import org.apache.cassandra.exceptions.AlreadyExistsException;
 import org.apache.cassandra.io.compress.CompressionParameters;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.MigrationManager;
-import org.apache.cassandra.thrift.CqlResult;
 import org.apache.cassandra.transport.Event;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
@@ -107,16 +106,18 @@ public class CreateTableStatement extends SchemaAlteringStatement
         return columnDefs;
     }
 
-    public void announceMigration(boolean isLocalOnly) throws RequestValidationException
+    public boolean announceMigration(boolean isLocalOnly) throws RequestValidationException
     {
         try
         {
-           MigrationManager.announceNewColumnFamily(getCFMetaData(), isLocalOnly);
+            MigrationManager.announceNewColumnFamily(getCFMetaData(), isLocalOnly);
+            return true;
         }
         catch (AlreadyExistsException e)
         {
-            if (!ifNotExists)
-                throw e;
+            if (ifNotExists)
+                return false;
+            throw e;
         }
     }
 
@@ -418,16 +419,6 @@ public class CreateTableStatement extends SchemaAlteringStatement
         public void setCompactStorage()
         {
             useCompactStorage = true;
-        }
-
-        public void checkAccess(ClientState state)
-        {
-            throw new UnsupportedOperationException();
-        }
-
-        public CqlResult execute(ClientState state, List<ByteBuffer> variables)
-        {
-            throw new UnsupportedOperationException();
         }
     }
 }

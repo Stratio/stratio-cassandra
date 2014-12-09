@@ -50,8 +50,7 @@ public class ColumnMapperBigInteger extends ColumnMapper<String>
                 UTF8Type.instance,
                 Int32Type.instance,
                 LongType.instance,
-                IntegerType.instance},
-              new AbstractType[]{});
+                IntegerType.instance}, new AbstractType[]{});
 
         if (digits != null && digits <= 0)
         {
@@ -143,8 +142,6 @@ public class ColumnMapperBigInteger extends ColumnMapper<String>
     @Override
     public String toString()
     {
-        return new ToStringBuilder(this)
-                .append("digits", digits)
-                .toString();
+        return new ToStringBuilder(this).append("digits", digits).toString();
     }
 }
