@@ -38,18 +38,15 @@ import java.util.Set;
  */
 public class RowServiceSkinny extends RowService
 {
-
-    /**
-     * The Lucene fields to be loaded
-     */
+    /** The names of the Lucene fields to be loaded. */
     private static final Set<String> FIELDS_TO_LOAD;
-
     static
     {
         FIELDS_TO_LOAD = new HashSet<>();
         FIELDS_TO_LOAD.add(PartitionKeyMapper.FIELD_NAME);
     }
 
+    /** The used row mapper. */
     private final RowMapperSkinny rowMapper;
 
     /**
@@ -98,9 +95,7 @@ public class RowServiceSkinny extends RowService
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void deleteInner(DecoratedKey partitionKey) throws IOException
     {
@@ -108,9 +103,7 @@ public class RowServiceSkinny extends RowService
         luceneIndex.delete(term);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     protected List<Row> rows(List<SearchResult> searchResults, long timestamp, boolean usesRelevance)
     {
         List<Row> rows = new ArrayList<>(searchResults.size());

@@ -44,7 +44,10 @@ import static org.apache.lucene.search.BooleanClause.Occur.SHOULD;
  */
 public class RowMapperWide extends RowMapper
 {
+    /** The clustering key mapper. */
     private final ClusteringKeyMapper clusteringKeyMapper;
+
+    /** The full key mapper. */
     private final FullKeyMapper fullKeyMapper;
 
     /**

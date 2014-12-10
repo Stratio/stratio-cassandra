@@ -35,7 +35,7 @@ import org.apache.lucene.search.SortField;
  */
 public abstract class TokenMapper
 {
-
+    /** The column family metadata. */
     protected final CFMetaData metadata;
 
     /**
@@ -58,6 +58,12 @@ public abstract class TokenMapper
         }
     }
 
+    /**
+     * Builds a new {@link TokenMapper} instance for the current partitioner using the specified column family
+     * metadata.
+     *
+     * @param metadata The column family metadata.
+     */
     public TokenMapper(CFMetaData metadata)
     {
         this.metadata = metadata;
@@ -72,12 +78,12 @@ public abstract class TokenMapper
     public abstract void addFields(Document document, DecoratedKey partitionKey);
 
     /**
-     * Returns a Lucene {@link Query} for filtering documents/rows according to the row token range specified in
-     * {@code dataRange}.
+     * Returns a Lucene {@link Query} for filtering documents/rows according to the row token range specified in {@code
+     * dataRange}.
      *
      * @param dataRange The key range containing the row token range to be filtered.
-     * @return A Lucene {@link Query} for filtering documents/rows according to the row token range specified in
-     * {@code dataRage}.
+     * @return A Lucene {@link Query} for filtering documents/rows according to the row token range specified in {@code
+     * dataRage}.
      */
     public Query query(DataRange dataRange)
     {
@@ -90,10 +96,18 @@ public abstract class TokenMapper
         return query(start, stop, includeLower, includeUpper);
     }
 
+    /**
+     * Returns a Lucene {@link Query} for retrieving the documents inside the specified {@link Token} range.
+     *
+     * @param lower        The lower accepted {@link Token}. Maybe null meaning no lower limit.
+     * @param upper        The upper accepted {@link Token}. Maybe null meaning no lower limit.
+     * @param includeLower If the {@code lowerValue} is included in the range.
+     * @param includeUpper If the {@code upperValue} is included in the range.
+     * @return A Lucene {@link Query} for retrieving the documents inside the specified {@link Token} range.
+     */
     @SuppressWarnings("unchecked")
     public Query query(Token lower, Token upper, boolean includeLower, boolean includeUpper)
     {
-        Token minimum = DatabaseDescriptor.getPartitioner().getMinimumToken();
         if (lower != null && upper != null && isMinimum(lower) && isMinimum(upper) && (includeLower || includeUpper))
         {
             return null;
@@ -104,14 +118,37 @@ public abstract class TokenMapper
         }
     }
 
+    /**
+     * Returns {@code true} if the specified {@link Token} is the minimum accepted by the {@link IPartitioner}, {@code
+     * false} otherwise.
+     *
+     * @param token A {@link Token}.
+     * @return {@code true} if the specified {@link Token} is the minimum accepted by the {@link IPartitioner}, {@code
+     * false} otherwise.
+     */
     public boolean isMinimum(Token token)
     {
         Token minimum = DatabaseDescriptor.getPartitioner().getMinimumToken();
         return token.compareTo(minimum) == 0;
     }
 
+    /**
+     * Returns a Lucene {@link Query} for retrieving the documents with the specified {@link Token}.
+     *
+     * @param token A {@link Token}.
+     * @return A Lucene {@link Query} for retrieving the documents with the specified {@link Token}.
+     */
     public abstract Query query(Token token);
 
+    /**
+     * Returns a Lucene {@link Query} for retrieving the documents inside the specified {@link Token} range.
+     *
+     * @param lower        The lower accepted {@link Token}. Maybe null meaning no lower limit.
+     * @param upper        The upper accepted {@link Token}. Maybe null meaning no lower limit.
+     * @param includeLower If the {@code lowerValue} is included in the range.
+     * @param includeUpper If the {@code upperValue} is included in the range.
+     * @return A Lucene {@link Query} for retrieving the documents inside the specified {@link Token} range.
+     */
     protected abstract Query makeQuery(Token lower, Token upper, boolean includeLower, boolean includeUpper);
 
     /**

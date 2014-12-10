@@ -41,28 +41,20 @@ import java.nio.ByteBuffer;
  */
 public class TokenMapperGeneric extends TokenMapper
 {
-    /**
-     * The Lucene field name.
-     */
+    /** The Lucene field name. */
     public static final String FIELD_NAME = "_token_generic";
 
-    /**
-     * The partitioner token factory.
-     */
+    /** The partitioner token factory. */
     private final TokenFactory factory;
 
-    /**
-     * Returns a new {@link TokenMapperGeneric}.
-     */
+    /** Returns a new {@link TokenMapperGeneric}. */
     public TokenMapperGeneric(CFMetaData metadata)
     {
         super(metadata);
         factory = DatabaseDescriptor.getPartitioner().getTokenFactory();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     @SuppressWarnings("unchecked")
     public void addFields(Document document, DecoratedKey partitionKey)
@@ -73,18 +65,14 @@ public class TokenMapperGeneric extends TokenMapper
         document.add(field);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     protected Query makeQuery(Token lower, Token upper, boolean includeLower, boolean includeUpper)
     {
         return new TokenRangeQuery(lower, upper, includeLower, includeUpper, this);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Query query(Token token)
     {
@@ -93,9 +81,7 @@ public class TokenMapperGeneric extends TokenMapper
         return new TermQuery(term);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public SortField[] sortFields()
     {
@@ -117,7 +103,7 @@ public class TokenMapperGeneric extends TokenMapper
      * Returns the Cassandra {@link Token} represented by the specified Lucene {@link BytesRef}.
      *
      * @param bytesRef A Lucene {@link BytesRef} representation of a Cassandra {@link Token}.
-     * @return the Cassandra {@link Token} represented by the specified Lucene {@link BytesRef}.
+     * @return The Cassandra {@link Token} represented by the specified Lucene {@link BytesRef}.
      */
     Token token(BytesRef bytesRef)
     {
@@ -126,6 +112,12 @@ public class TokenMapperGeneric extends TokenMapper
         return factory.fromByteArray(bb);
     }
 
+    /**
+     * Returns the Lucene {@link BytesRef} represented by the specified Cassandra {@link Token}.
+     *
+     * @param token A Cassandra {@link Token}.
+     * @return The Lucene {@link BytesRef} represented by the specified Cassandra {@link Token}.
+     */
     @SuppressWarnings("unchecked")
     public BytesRef bytesRef(Token token)
     {

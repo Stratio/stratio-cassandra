@@ -37,9 +37,8 @@ import java.util.*;
  */
 public class RowServiceWide extends RowService
 {
-
+    /** The names of the Lucene fields to be loaded. */
     private static final Set<String> FIELDS_TO_LOAD;
-
     static
     {
         FIELDS_TO_LOAD = new HashSet<>();
@@ -47,6 +46,7 @@ public class RowServiceWide extends RowService
         FIELDS_TO_LOAD.add(ClusteringKeyMapper.FIELD_NAME);
     }
 
+    /** The used row mapper. */
     private final RowMapperWide rowMapper;
 
     /**
@@ -73,9 +73,7 @@ public class RowServiceWide extends RowService
         return FIELDS_TO_LOAD;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp) throws IOException
     {
@@ -116,9 +114,7 @@ public class RowServiceWide extends RowService
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void deleteInner(DecoratedKey partitionKey) throws IOException
     {

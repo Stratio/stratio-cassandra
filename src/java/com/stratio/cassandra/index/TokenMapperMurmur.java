@@ -48,9 +48,7 @@ public class TokenMapperMurmur extends TokenMapper
         super(metadata);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void addFields(Document document, DecoratedKey partitionKey)
     {
@@ -59,9 +57,7 @@ public class TokenMapperMurmur extends TokenMapper
         document.add(tokenField);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Query query(Token token)
     {
@@ -69,9 +65,7 @@ public class TokenMapperMurmur extends TokenMapper
         return NumericRangeQuery.newLongRange(FIELD_NAME, value, value, true, true);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     protected Query makeQuery(Token lower, Token upper, boolean includeLower, boolean includeUpper)
     {
@@ -92,9 +86,7 @@ public class TokenMapperMurmur extends TokenMapper
         return NumericRangeQuery.newLongRange(FIELD_NAME, start, stop, includeLower, includeUpper);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public SortField[] sortFields()
     {

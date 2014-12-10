@@ -27,16 +27,36 @@ import org.apache.lucene.util.BytesRef;
 import java.io.IOException;
 
 /**
+ * Generic query for retrieving a range of tokens in combination with {@link TokenMapperGeneric}.
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class TokenRangeQuery extends MultiTermQuery
 {
+    /** The token mapper. */
     private final TokenMapperGeneric tokenMapper;
+
+    /** The lower accepted token */
     private final Token lower;
+
+    /** The upper accepted token */
     private final Token upper;
+
+    /** If the lower token must be included if not null. */
     private final boolean includeLower;
+
+    /** If the upper token must be included if not null. */
     private final boolean includeUpper;
 
+    /**
+     * Builds a new {@link TokenRangeQuery}.
+     *
+     * @param lower        The lower accepted {@link Token}. Maybe null meaning no lower limit.
+     * @param upper        The upper accepted {@link Token}. Maybe null meaning no lower limit.
+     * @param includeLower If the {@code lowerValue} is included in the range.
+     * @param includeUpper If the {@code upperValue} is included in the range.
+     * @param tokenMapper  The used {@link TokenMapperGeneric}.
+     */
     public TokenRangeQuery(Token lower,
                            Token upper,
                            boolean includeLower,
@@ -51,13 +71,15 @@ public class TokenRangeQuery extends MultiTermQuery
         this.includeUpper = includeUpper;
     }
 
+    /** {@inheritDoc} */
     @Override
     protected TermsEnum getTermsEnum(Terms terms, AttributeSource atts) throws IOException
     {
-        TermsEnum tenum = terms.iterator(null);
-        return new TokenDataRangeFilteredTermsEnum(tenum);
+        TermsEnum termsEnum = terms.iterator(null);
+        return new TokenDataRangeFilteredTermsEnum(termsEnum);
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString(String field)
     {
@@ -69,15 +91,24 @@ public class TokenRangeQuery extends MultiTermQuery
                                         .toString();
     }
 
+    /**
+     * {@link FilteredTermsEnum} for generic tokens.
+     */
     private class TokenDataRangeFilteredTermsEnum extends FilteredTermsEnum
     {
 
-        public TokenDataRangeFilteredTermsEnum(TermsEnum tenum)
+        /**
+         * Builds a new {@link TokenDataRangeFilteredTermsEnum} for the specified {@link TermsEnum}.
+         *
+         * @param termsEnum The {@link TermsEnum} to be filtered.
+         */
+        public TokenDataRangeFilteredTermsEnum(TermsEnum termsEnum)
         {
-            super(tenum);
+            super(termsEnum);
             setInitialSeekTerm(new BytesRef());
         }
 
+        /** {@inheritDoc} */
         @Override
         @SuppressWarnings("unchecked")
         protected AcceptStatus accept(BytesRef term)
