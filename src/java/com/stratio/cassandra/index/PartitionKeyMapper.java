@@ -32,7 +32,6 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.util.BytesRef;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -46,14 +45,14 @@ public class PartitionKeyMapper
 {
 
     /**
-     * The Lucene's field name.
+     * The Lucene field name.
      */
     public static final String FIELD_NAME = "_partition_key";
 
     /**
      * The active active partition key.
      */
-    private final IPartitioner<?> partitioner;
+    private final IPartitioner partitioner;
 
     private final CFMetaData metadata;
 
@@ -82,7 +81,8 @@ public class PartitionKeyMapper
         return new PartitionKeyMapper(metadata);
     }
 
-    public AbstractType<?> getType() {
+    public AbstractType<?> getType()
+    {
         return type;
     }
 
@@ -100,10 +100,10 @@ public class PartitionKeyMapper
     }
 
     /**
-     * Returns the specified raw partition key as a Lucene's {@link Term}.
+     * Returns the specified raw partition key as a Lucene {@link Term}.
      *
      * @param partitionKey The raw partition key to be converted.
-     * @return The specified raw partition key as a Lucene's {@link Term}.
+     * @return The specified raw partition key as a Lucene {@link Term}.
      */
     public Term term(DecoratedKey partitionKey)
     {
@@ -112,10 +112,10 @@ public class PartitionKeyMapper
     }
 
     /**
-     * Returns the specified raw partition key as a Lucene's {@link Query}.
+     * Returns the specified raw partition key as a Lucene {@link Query}.
      *
      * @param partitionKey The raw partition key to be converted.
-     * @return The specified raw partition key as a Lucene's {@link Query}.
+     * @return The specified raw partition key as a Lucene {@link Query}.
      */
     public Query query(DecoratedKey partitionKey)
     {
@@ -123,10 +123,10 @@ public class PartitionKeyMapper
     }
 
     /**
-     * Returns the {@link DecoratedKey} contained in the specified Lucene's {@link Document}.
+     * Returns the {@link DecoratedKey} contained in the specified Lucene {@link Document}.
      *
      * @param document the {@link Document} containing the partition key to be get.
-     * @return The {@link DecoratedKey} contained in the specified Lucene's {@link Document}.
+     * @return The {@link DecoratedKey} contained in the specified Lucene {@link Document}.
      */
     public DecoratedKey partitionKey(Document document)
     {
@@ -164,12 +164,14 @@ public class PartitionKeyMapper
         return columns;
     }
 
-    public String toString(ByteBuffer key) {
+    public String toString(ByteBuffer key)
+    {
         return ByteBufferUtils.toString(key, type);
     }
 
-    public String toString(DecoratedKey decoratedKey) {
-        return decoratedKey.getToken() + " - "+ByteBufferUtils.toString(decoratedKey.getKey(), type);
+    public String toString(DecoratedKey decoratedKey)
+    {
+        return decoratedKey.getToken() + " - " + ByteBufferUtils.toString(decoratedKey.getKey(), type);
     }
 
 }

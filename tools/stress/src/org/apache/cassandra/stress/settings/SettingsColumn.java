@@ -21,7 +21,10 @@ package org.apache.cassandra.stress.settings;
  */
 
 
+import java.io.IOException;
 import java.io.Serializable;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.util.ArrayList;
@@ -41,9 +44,10 @@ public class SettingsColumn implements Serializable
 {
 
     public final int maxColumnsPerKey;
-    public transient final List<ByteBuffer> names;
+    public transient List<ByteBuffer> names;
     public final List<String> namestrs;
     public final String comparator;
+    public final String timestamp;
     public final boolean variableColumnCount;
     public final boolean slice;
     public final DistributionFactory sizeDistribution;
@@ -61,6 +65,7 @@ public class SettingsColumn implements Serializable
     {
         sizeDistribution = options.size.get();
         {
+            timestamp = options.timestamp.value();
             comparator = options.comparator.value();
             AbstractType parsed = null;
 
@@ -130,7 +135,6 @@ public class SettingsColumn implements Serializable
             {
                 throw new RuntimeException(e);
             }
-
             this.names = Arrays.asList(names);
             this.namestrs = Arrays.asList(namestrs);
         }
@@ -146,6 +150,7 @@ public class SettingsColumn implements Serializable
         final OptionSimple superColumns = new OptionSimple("super=", "[0-9]+", "0", "Number of super columns to use (no super columns used if not specified)", false);
         final OptionSimple comparator = new OptionSimple("comparator=", "TimeUUIDType|AsciiType|UTF8Type", "AsciiType", "Column Comparator to use", false);
         final OptionSimple slice = new OptionSimple("slice", "", null, "If set, range slices will be used for reads, otherwise a names query will be", false);
+        final OptionSimple timestamp = new OptionSimple("timestamp=", "[0-9]+", null, "If set, all columns will be written with the given timestamp", false);
         final OptionDistribution size = new OptionDistribution("size=", "FIXED(34)", "Cell size distribution");
     }
 
@@ -156,7 +161,7 @@ public class SettingsColumn implements Serializable
         @Override
         public List<? extends Option> options()
         {
-            return Arrays.asList(name, slice, superColumns, comparator, size);
+            return Arrays.asList(name, slice, superColumns, comparator, timestamp, size);
         }
     }
 
@@ -167,7 +172,7 @@ public class SettingsColumn implements Serializable
         @Override
         public List<? extends Option> options()
         {
-            return Arrays.asList(count, slice, superColumns, comparator, size);
+            return Arrays.asList(count, slice, superColumns, comparator, timestamp, size);
         }
     }
 
@@ -205,4 +210,29 @@ public class SettingsColumn implements Serializable
             }
         };
     }
+
+    /* Custom serializaiton invoked here to make legacy thrift based table creation work with StressD. This code requires
+     * the names attribute to be populated. Since the names attribute is set as a List[ByteBuffer] we switch it
+     * to an array on the way out and back to a buffer when it's being read in.
+     */
+
+    private void writeObject(ObjectOutputStream oos) throws IOException
+    {
+        oos.defaultWriteObject();
+        ArrayList<byte[]> namesBytes = new ArrayList<>();
+        for (ByteBuffer buffer : this.names)
+            namesBytes.add(ByteBufferUtil.getArray(buffer));
+        oos.writeObject(namesBytes);
+    }
+
+    private void readObject(ObjectInputStream ois) throws ClassNotFoundException, IOException
+    {
+        ois.defaultReadObject();
+        List<ByteBuffer> namesBuffer = new ArrayList<>();
+        List<byte[]> namesBytes = (List<byte[]>) ois.readObject();
+        for (byte[] bytes : namesBytes)
+            namesBuffer.add(ByteBuffer.wrap(bytes));
+        this.names = new ArrayList<>(namesBuffer);
+    }
+
 }

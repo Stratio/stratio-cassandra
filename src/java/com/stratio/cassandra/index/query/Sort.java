@@ -31,11 +31,14 @@ import java.util.List;
 public class Sort implements Iterable<SortField>
 {
 
-    /**
-     * How to sortFields each field
-     */
+    /** How to sortFields each field. */
     private final List<SortField> sortFields;
 
+    /**
+     * Builds a new {@link Sort} for the specified {@link SortField}s.
+     *
+     * @param sortFields The specified {@link SortField}s.
+     */
     @JsonCreator
     public Sort(@JsonProperty("fields") List<SortField> sortFields)
     {
@@ -62,10 +65,10 @@ public class Sort implements Iterable<SortField>
     }
 
     /**
-     * Returns the {@link org.apache.lucene.search.Sort} representing this {@link Sort}.
+     * Returns the {@link Sort} representing this {@link Sort}.
      *
      * @param schema The {@link Schema} to be used.
-     * @return the Lucene's {@link org.apache.lucene.search.Sort} representing this {@link Sort}.
+     * @return the Lucene {@link Sort} representing this {@link Sort}.
      */
     public org.apache.lucene.search.Sort sort(Schema schema)
     {
@@ -80,8 +83,6 @@ public class Sort implements Iterable<SortField>
     @Override
     public String toString()
     {
-        return new ToStringBuilder(this)
-                .append("sortFields", sortFields)
-                .toString();
+        return new ToStringBuilder(this).append("sortFields", sortFields).toString();
     }
 }

@@ -41,9 +41,14 @@ public class ColumnMapperDouble extends ColumnMapper<Double>
     public ColumnMapperDouble(@JsonProperty("boost") Float boost)
     {
         super(new AbstractType<?>[]{
-                AsciiType.instance, UTF8Type.instance, Int32Type.instance, LongType.instance,
-                IntegerType.instance, FloatType.instance, DoubleType.instance, DecimalType.instance},
-              new AbstractType[]{DoubleType.instance});
+                AsciiType.instance,
+                UTF8Type.instance,
+                Int32Type.instance,
+                LongType.instance,
+                IntegerType.instance,
+                FloatType.instance,
+                DoubleType.instance,
+                DecimalType.instance}, new AbstractType[]{DoubleType.instance});
         this.boost = boost == null ? DEFAULT_BOOST : boost;
     }
 

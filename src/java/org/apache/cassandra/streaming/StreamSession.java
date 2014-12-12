@@ -19,6 +19,7 @@ package org.apache.cassandra.streaming;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -42,6 +43,7 @@ import org.apache.cassandra.metrics.StreamingMetrics;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.streaming.messages.*;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.JVMStabilityInspector;
 import org.apache.cassandra.utils.Pair;
 
 /**
@@ -69,7 +71,7 @@ import org.apache.cassandra.utils.Pair;
  *
  *   (a) This phase is started when the initiator onInitializationComplete() method is called. This method sends a
  *       PrepareMessage that includes what files/sections this node will stream to the follower
- *       (stored in a StreamTranferTask, each column family has it's own transfer task) and what
+ *       (stored in a StreamTransferTask, each column family has it's own transfer task) and what
  *       the follower needs to stream back (StreamReceiveTask, same as above). If the initiator has
  *       nothing to receive from the follower, it goes directly to its Streaming phase. Otherwise,
  *       it waits for the follower PrepareMessage.
@@ -111,8 +113,16 @@ import org.apache.cassandra.utils.Pair;
 public class StreamSession implements IEndpointStateChangeSubscriber
 {
     private static final Logger logger = LoggerFactory.getLogger(StreamSession.class);
+
+    /**
+     * Streaming endpoint.
+     *
+     * Each {@code StreamSession} is identified by this InetAddress which is broadcast address of the node streaming.
+     */
     public final InetAddress peer;
     private final int index;
+    /** Actual connecting address. Can be the same as {@linkplain #peer}. */
+    public final InetAddress connecting;
 
     // should not be null when session is started
     private StreamResultFuture streamResult;
@@ -124,6 +134,8 @@ public class StreamSession implements IEndpointStateChangeSubscriber
     // data receivers, filled after receiving prepare message
     private final Map<UUID, StreamReceiveTask> receivers = new ConcurrentHashMap<>();
     private final StreamingMetrics metrics;
+    /* can be null when session is created in remote */
+    private final StreamConnectionFactory factory;
 
     public final ConnectionHandler handler;
 
@@ -148,13 +160,17 @@ public class StreamSession implements IEndpointStateChangeSubscriber
      * Create new streaming session with the peer.
      *
      * @param peer Address of streaming peer
+     * @param connecting Actual connecting address
+     * @param factory is used for establishing connection
      */
-    public StreamSession(InetAddress peer, int index)
+    public StreamSession(InetAddress peer, InetAddress connecting, StreamConnectionFactory factory, int index)
     {
         this.peer = peer;
+        this.connecting = connecting;
         this.index = index;
+        this.factory = factory;
         this.handler = new ConnectionHandler(this);
-        this.metrics = StreamingMetrics.get(peer);
+        this.metrics = StreamingMetrics.get(connecting);
     }
 
     public UUID planId()
@@ -194,14 +210,23 @@ public class StreamSession implements IEndpointStateChangeSubscriber
 
         try
         {
-            logger.info("[Stream #{}, ID#{}] Beginning stream session with {}", planId(), sessionIndex(), peer);
+            logger.info("[Stream #{}] Starting streaming to {}{}", planId(),
+                                                                   peer,
+                                                                   peer.equals(connecting) ? "" : " through " + connecting);
             handler.initiate();
             onInitializationComplete();
         }
         catch (Exception e)
         {
+            JVMStabilityInspector.inspectThrowable(e);
             onError(e);
         }
+    }
+
+    public Socket createConnection() throws IOException
+    {
+        assert factory != null;
+        return factory.createConnection(connecting);
     }
 
     /**
@@ -584,7 +609,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
         List<StreamSummary> transferSummaries = Lists.newArrayList();
         for (StreamTask transfer : transfers.values())
             transferSummaries.add(transfer.getSummary());
-        return new SessionInfo(peer, index, receivingSummaries, transferSummaries, state);
+        return new SessionInfo(peer, index, connecting, receivingSummaries, transferSummaries, state);
     }
 
     public synchronized void taskCompleted(StreamReceiveTask completedTask)

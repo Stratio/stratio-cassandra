@@ -26,7 +26,6 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Query;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.*;
 
@@ -37,9 +36,8 @@ import java.util.*;
  */
 public class RowServiceWide extends RowService
 {
-
+    /** The names of the Lucene fields to be loaded. */
     private static final Set<String> FIELDS_TO_LOAD;
-
     static
     {
         FIELDS_TO_LOAD = new HashSet<>();
@@ -47,6 +45,7 @@ public class RowServiceWide extends RowService
         FIELDS_TO_LOAD.add(ClusteringKeyMapper.FIELD_NAME);
     }
 
+    /** The used row mapper. */
     private final RowMapperWide rowMapper;
 
     /**
@@ -55,7 +54,7 @@ public class RowServiceWide extends RowService
      * @param baseCfs          The base column family store.
      * @param columnDefinition The indexed column definition.
      */
-    public RowServiceWide(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) throws IOException
+    public RowServiceWide(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition)
     {
         super(baseCfs, columnDefinition);
         this.rowMapper = (RowMapperWide) super.rowMapper;
@@ -73,11 +72,9 @@ public class RowServiceWide extends RowService
         return FIELDS_TO_LOAD;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp) throws IOException
+    public void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp)
     {
         DeletionInfo deletionInfo = columnFamily.deletionInfo();
         DecoratedKey partitionKey = rowMapper.partitionKey(key);
@@ -116,11 +113,9 @@ public class RowServiceWide extends RowService
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void deleteInner(DecoratedKey partitionKey) throws IOException
+    public void deleteInner(DecoratedKey partitionKey)
     {
         Term term = rowMapper.term(partitionKey);
         luceneIndex.delete(term);
@@ -202,7 +197,10 @@ public class RowServiceWide extends RowService
             slices = l.toArray(slices);
         }
 
-        SliceQueryFilter dataFilter = new SliceQueryFilter(slices, false, Integer.MAX_VALUE, baseCfs.metadata.clusteringColumns().size());
+        SliceQueryFilter dataFilter = new SliceQueryFilter(slices,
+                                                           false,
+                                                           Integer.MAX_VALUE,
+                                                           baseCfs.metadata.clusteringColumns().size());
         QueryFilter queryFilter = new QueryFilter(partitionKey, baseCfs.name, dataFilter, timestamp);
 
         ColumnFamily queryColumnFamily = baseCfs.getColumnFamily(queryFilter);

@@ -21,22 +21,26 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * {@link ConditionBuilder} for building a new {@link com.stratio.cassandra.index.query.PhraseCondition}.
+ * {@link ConditionBuilder} for building a new {@link PhraseCondition}.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class PhraseConditionBuilder extends ConditionBuilder<PhraseCondition, PhraseConditionBuilder>
 {
-
+    /** The name of the field to be matched. */
     private final String field;
+
+    /** The phrase terms to be matched. */
     private final List<String> values;
+
+    /** The number of other words permitted between words in phrase. */
     private Integer slop;
 
     /**
-     * Returns a new {@link PhraseConditionBuilder} with the specified field name and values to be mathced.
+     * Returns a new {@link PhraseConditionBuilder} with the specified field name and values to be matched.
      *
-     * @param field  the name of the field.
-     * @param values the values to be matched.
+     * @param field  The name of the field to be matched.
+     * @param values The phrase terms to be matched.
      */
     protected PhraseConditionBuilder(String field, List<String> values)
     {
@@ -45,10 +49,10 @@ public class PhraseConditionBuilder extends ConditionBuilder<PhraseCondition, Ph
     }
 
     /**
-     * Returns a new {@link PhraseConditionBuilder} with the specified field name and values to be mathced.
+     * Returns a new {@link PhraseConditionBuilder} with the specified field name and values to be matched.
      *
-     * @param field  the name of the field.
-     * @param values the values to be matched.
+     * @param field  The name of the field.
+     * @param values The phrase terms to be matched.
      */
     public PhraseConditionBuilder(String field, String... values)
     {
@@ -57,9 +61,10 @@ public class PhraseConditionBuilder extends ConditionBuilder<PhraseCondition, Ph
     }
 
     /**
-     * Returns this builder with the specified slop.
+     * Returns this builder with the specified slop. Slop is the number of other words permitted between words in
+     * phrase.
      *
-     * @param slop the slop to be set.
+     * @param slop The number of other words permitted between words in phrase to set.
      * @return this builder with the specified slop.
      */
     public PhraseConditionBuilder slop(Integer slop)

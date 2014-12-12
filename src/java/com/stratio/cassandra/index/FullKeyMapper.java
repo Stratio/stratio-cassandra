@@ -38,7 +38,7 @@ public class FullKeyMapper
 {
 
     /**
-     * The Lucene's field name.
+     * The Lucene field name.
      */
     public static final String FIELD_NAME = "_full_key";
 
@@ -67,7 +67,8 @@ public class FullKeyMapper
      * @param clusteringKeyMapper A {@link ClusteringKeyMapper}.
      * @return A new {@link FullKeyMapper} using the specified column family metadata.
      */
-    public static FullKeyMapper instance(PartitionKeyMapper partitionKeyMapper, ClusteringKeyMapper clusteringKeyMapper)
+    public static FullKeyMapper instance(PartitionKeyMapper partitionKeyMapper,
+                                         ClusteringKeyMapper clusteringKeyMapper)
     {
         return new FullKeyMapper(partitionKeyMapper, clusteringKeyMapper);
     }
@@ -86,12 +87,12 @@ public class FullKeyMapper
     }
 
     /**
-     * Adds to the specified Lucene's {@link Document} the full row key formed by the specified partition key and the
+     * Adds to the specified Lucene {@link Document} the full row key formed by the specified partition key and the
      * clustering key.
      *
-     * @param document     A Lucene's {@link Document}.
-     * @param partitionKey A partition key.
-     * @param clusteringKey     A clustering key.
+     * @param document      A Lucene {@link Document}.
+     * @param partitionKey  A partition key.
+     * @param clusteringKey A clustering key.
      */
     public void addFields(Document document, DecoratedKey partitionKey, CellName clusteringKey)
     {
@@ -101,12 +102,12 @@ public class FullKeyMapper
     }
 
     /**
-     * Returns the Lucene's {@link Term} representing the full row key formed by the specified partition key and the
+     * Returns the Lucene {@link Term} representing the full row key formed by the specified partition key and the
      * clustering key.
      *
-     * @param partitionKey A partition key.
-     * @param clusteringKey     A clustering key.
-     * @return The Lucene's {@link Term} representing the full row key formed by the specified key pair.
+     * @param partitionKey  A partition key.
+     * @param clusteringKey A clustering key.
+     * @return The Lucene {@link Term} representing the full row key formed by the specified key pair.
      */
     public Term term(DecoratedKey partitionKey, CellName clusteringKey)
     {

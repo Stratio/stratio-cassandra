@@ -32,7 +32,6 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.*;
 
@@ -85,7 +84,15 @@ public abstract class RowService
                                            config.getMaxCachedMB(),
                                            schema.analyzer());
 
-        this.indexQueue = new TaskQueue(config.getIndexingThreads(), config.getIndexingQueuesSize());
+        int indexingThreads = config.getIndexingThreads();
+        if (indexingThreads > 0)
+        {
+            this.indexQueue = new TaskQueue(indexingThreads, config.getIndexingQueuesSize());
+        }
+        else
+        {
+            this.indexQueue = null;
+        }
     }
 
     /**
@@ -95,7 +102,7 @@ public abstract class RowService
      * @param columnDefinition The {@link ColumnDefinition} of the indexed column.
      * @return A new {@link RowService} for the specified {@link ColumnFamilyStore} and {@link ColumnDefinition}.
      */
-    public static RowService build(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) throws IOException
+    public static RowService build(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition)
     {
         int clusteringPosition = baseCfs.metadata.clusteringColumns().size();
         if (clusteringPosition > 0)
@@ -137,21 +144,21 @@ public abstract class RowService
      */
     protected void index(final ByteBuffer key, final ColumnFamily columnFamily, final long timestamp)
     {
-        indexQueue.submitAsynchronous(key, new Runnable()
+        if (indexQueue == null)
         {
-            @Override
-            public void run()
+            indexInner(key, columnFamily, timestamp);
+        }
+        else
+        {
+            indexQueue.submitAsynchronous(key, new Runnable()
             {
-                try
+                @Override
+                public void run()
                 {
                     indexInner(key, columnFamily, timestamp);
                 }
-                catch (Exception e)
-                {
-                    Log.error(e, "Error while running indexing task");
-                }
-            }
-        });
+            });
+        }
     }
 
     /**
@@ -162,7 +169,7 @@ public abstract class RowService
      * @param columnFamily The column family containing the clustering keys.
      * @param timestamp    The operation time stamp.
      */
-    protected abstract void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp) throws IOException;
+    protected abstract void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp);
 
     /**
      * Deletes the partition identified by the specified partition key. This operation is performed asynchronously.
@@ -171,21 +178,21 @@ public abstract class RowService
      */
     public void delete(final DecoratedKey partitionKey)
     {
-        indexQueue.submitAsynchronous(partitionKey, new Runnable()
+        if (indexQueue == null)
         {
-            @Override
-            public void run()
+            deleteInner(partitionKey);
+        }
+        else
+        {
+            indexQueue.submitAsynchronous(partitionKey, new Runnable()
             {
-                try
+                @Override
+                public void run()
                 {
                     deleteInner(partitionKey);
                 }
-                catch (Exception e)
-                {
-                    Log.error(e, "Error while running deletion task");
-                }
-            }
-        });
+            });
+        }
     }
 
     /**
@@ -193,12 +200,12 @@ public abstract class RowService
      *
      * @param partitionKey The partition key identifying the partition to be deleted.
      */
-    protected abstract void deleteInner(DecoratedKey partitionKey) throws IOException;
+    protected abstract void deleteInner(DecoratedKey partitionKey);
 
     /**
      * Deletes all the {@link Document}s.
      */
-    public final void truncate() throws IOException
+    public final void truncate()
     {
         luceneIndex.truncate();
     }
@@ -206,7 +213,7 @@ public abstract class RowService
     /**
      * Closes and removes all the index files.
      */
-    public final void delete() throws IOException
+    public final void delete()
     {
         luceneIndex.drop();
     }
@@ -216,21 +223,21 @@ public abstract class RowService
      */
     public final void commit()
     {
-        indexQueue.submitSynchronous(new Runnable()
+        if (indexQueue == null)
         {
-            @Override
-            public void run()
+            luceneIndex.commit();
+        }
+        else
+        {
+            indexQueue.submitSynchronous(new Runnable()
             {
-                try
+                @Override
+                public void run()
                 {
                     luceneIndex.commit();
                 }
-                catch (Exception e)
-                {
-                    Log.error(e, "Error while running commit task");
-                }
-            }
-        });
+            });
+        }
     }
 
     /**
@@ -247,7 +254,7 @@ public abstract class RowService
                                   List<IndexExpression> expressions,
                                   DataRange dataRange,
                                   final int limit,
-                                  long timestamp) throws IOException
+                                  long timestamp)
     {
         // Log.debug("Searching with search %s ", search);
 
@@ -332,13 +339,13 @@ public abstract class RowService
     }
 
     /**
-     * Returns {@code true} if the specified {@link Columns} satisfies the the specified {@link IndexExpression},
-     * {@code false} otherwise.
+     * Returns {@code true} if the specified {@link Columns} satisfies the the specified {@link IndexExpression}, {@code
+     * false} otherwise.
      *
      * @param columns    A {@link Columns}
      * @param expression A {@link IndexExpression}s to be satisfied by {@code columns}.
-     * @return {@code true} if the specified {@link Columns} satisfies the the specified {@link IndexExpression},
-     * {@code false} otherwise.
+     * @return {@code true} if the specified {@link Columns} satisfies the the specified {@link IndexExpression}, {@code
+     * false} otherwise.
      */
     private boolean accepted(Columns columns, IndexExpression expression)
     {
@@ -388,7 +395,9 @@ public abstract class RowService
      * @param usesRelevance If the search uses relevance.
      * @return The {@link Row} identified by the specified {@link Document}s
      */
-    protected abstract List<Row> rows(List<SearchResult> searchResults, long timestamp, boolean usesRelevance) throws IOException;
+    protected abstract List<Row> rows(List<SearchResult> searchResults,
+                                      long timestamp,
+                                      boolean usesRelevance);
 
     /**
      * Returns a {@link ColumnFamily} composed by the non expired {@link Cell}s of the specified  {@link ColumnFamily}.
@@ -432,13 +441,13 @@ public abstract class RowService
     }
 
     /**
-     * Returns the {@link RowComparator} to be used for ordering the {@link Row}s obtained from the specified
-     * {@link Search}. This {@link Comparator} is useful for merging the partial results obtained from running the
-     * specified {@link Search} against several indexes.
+     * Returns the {@link RowComparator} to be used for ordering the {@link Row}s obtained from the specified {@link
+     * Search}. This {@link Comparator} is useful for merging the partial results obtained from running the specified
+     * {@link Search} against several indexes.
      *
      * @param search A {@link Search}.
-     * @return The {@link RowComparator} to be used for ordering the {@link Row}s obtained from the specified
-     * {@link Search}.
+     * @return The {@link RowComparator} to be used for ordering the {@link Row}s obtained from the specified {@link
+     * Search}.
      */
     public RowComparator comparator(Search search)
     {
@@ -482,9 +491,9 @@ public abstract class RowService
     }
 
     /**
-     * Optimizes the managed Lucene's index. It can be a very heavy operation.
+     * Optimizes the managed Lucene index. It can be a very heavy operation.
      */
-    public void optimize() throws IOException
+    public void optimize()
     {
         luceneIndex.optimize();
     }
@@ -493,15 +502,15 @@ public abstract class RowService
      * Returns the total number of {@link Document}s in the index.
      *
      * @return The total number of {@link Document}s in the index.
-     * @throws IOException
      */
-    public long getIndexSize() throws IOException
+    public long getIndexSize()
     {
         return luceneIndex.getNumDocs();
     }
 
     /**
-     * Groups the specified CQL3 {@link Row} into a list of physical storage {@link Row}s. This grouping is based in row's key.
+     * Groups the specified CQL3 {@link Row} into a list of physical storage {@link Row}s. This grouping is based in
+     * row's key.
      *
      * @param rows A list of CQL3 {@link Row}s.
      * @return The specified CQL3 {@link Row} into a list of physical storage {@link Row}s.

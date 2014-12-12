@@ -15,7 +15,6 @@
  */
 package com.stratio.cassandra.index;
 
-import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.ColumnMapper;
 import com.stratio.cassandra.index.schema.Columns;
 import org.apache.cassandra.config.CFMetaData;
@@ -26,8 +25,6 @@ import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CollectionType;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
 
 import java.nio.ByteBuffer;
 import java.util.Iterator;

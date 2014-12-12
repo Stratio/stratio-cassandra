@@ -23,7 +23,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Class for building Lucene's {@link Analyzer}s. It uses an internal cache which associates analyzer class names with
+ * Class for building Lucene {@link Analyzer}s. It uses an internal cache which associates analyzer class names with
  * analyzers.
  *
  * @author Andres de la Pena <adelapena@stratio.com>

@@ -17,12 +17,14 @@
  */
 package org.apache.cassandra.io.sstable;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -34,7 +36,7 @@ import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.utils.CounterId;
 import org.apache.cassandra.utils.Pair;
 
-public abstract class AbstractSSTableSimpleWriter
+public abstract class AbstractSSTableSimpleWriter implements Closeable
 {
     protected final File directory;
     protected final CFMetaData metadata;
@@ -42,6 +44,7 @@ public abstract class AbstractSSTableSimpleWriter
     protected ColumnFamily columnFamily;
     protected ByteBuffer currentSuperColumn;
     protected final CounterId counterid = CounterId.generate();
+    protected static AtomicInteger generation = new AtomicInteger(0);
 
     public AbstractSSTableSimpleWriter(File directory, CFMetaData metadata, IPartitioner partitioner)
     {
@@ -80,9 +83,15 @@ public abstract class AbstractSSTableSimpleWriter
                 return false;
             }
         });
-        int maxGen = 0;
+        int maxGen = generation.getAndIncrement();
         for (Descriptor desc : existing)
-            maxGen = Math.max(maxGen, desc.generation);
+        {
+            while (desc.generation > maxGen)
+            {
+                maxGen = generation.getAndIncrement();
+            }
+        }
+
         return new Descriptor(directory, keyspace, columnFamily, maxGen + 1, Descriptor.Type.TEMP).filenameFor(Component.DATA);
     }
 
@@ -111,7 +120,7 @@ public abstract class AbstractSSTableSimpleWriter
         currentSuperColumn = name;
     }
 
-    private void addColumn(Cell cell)
+    protected void addColumn(Cell cell) throws IOException
     {
         if (columnFamily.metadata().isSuper())
         {
@@ -129,7 +138,7 @@ public abstract class AbstractSSTableSimpleWriter
      * @param value the column value
      * @param timestamp the column timestamp
      */
-    public void addColumn(ByteBuffer name, ByteBuffer value, long timestamp)
+    public void addColumn(ByteBuffer name, ByteBuffer value, long timestamp) throws IOException
     {
         addColumn(new BufferCell(metadata.comparator.cellFromByteBuffer(name), value, timestamp));
     }
@@ -144,7 +153,7 @@ public abstract class AbstractSSTableSimpleWriter
      * expiring the column, and as a consequence should be synchronized with the cassandra servers time. If {@code timestamp} represents
      * the insertion time in microseconds (which is not required), this should be {@code (timestamp / 1000) + (ttl * 1000)}.
      */
-    public void addExpiringColumn(ByteBuffer name, ByteBuffer value, long timestamp, int ttl, long expirationTimestampMS)
+    public void addExpiringColumn(ByteBuffer name, ByteBuffer value, long timestamp, int ttl, long expirationTimestampMS) throws IOException
     {
         addColumn(new BufferExpiringCell(metadata.comparator.cellFromByteBuffer(name), value, timestamp, ttl, (int)(expirationTimestampMS / 1000)));
     }
@@ -154,19 +163,12 @@ public abstract class AbstractSSTableSimpleWriter
      * @param name the column name
      * @param value the value of the counter
      */
-    public void addCounterColumn(ByteBuffer name, long value)
+    public void addCounterColumn(ByteBuffer name, long value) throws IOException
     {
         addColumn(new BufferCounterCell(metadata.comparator.cellFromByteBuffer(name),
                                         CounterContext.instance().createGlobal(counterid, 1L, value),
                                         System.currentTimeMillis()));
     }
-
-    /**
-     * Close this writer.
-     * This method should be called, otherwise the produced sstables are not
-     * guaranteed to be complete (and won't be in practice).
-     */
-    public abstract void close() throws IOException;
 
     /**
      * Package protected for use by AbstractCQLSSTableWriter.
@@ -186,8 +188,7 @@ public abstract class AbstractSSTableSimpleWriter
         return currentKey;
     }
 
-
     protected abstract void writeRow(DecoratedKey key, ColumnFamily columnFamily) throws IOException;
 
-    protected abstract ColumnFamily getColumnFamily();
+    protected abstract ColumnFamily getColumnFamily() throws IOException;
 }

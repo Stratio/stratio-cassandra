@@ -98,7 +98,7 @@ class TestCqlshCompletion(CqlshCompletionCase):
     def test_complete_on_empty_string(self):
         self.trycompletions('', choices=('?', 'ALTER', 'BEGIN', 'CAPTURE', 'CONSISTENCY',
                                          'COPY', 'CREATE', 'DEBUG', 'DELETE', 'DESC', 'DESCRIBE',
-                                         'DROP', 'GRANT', 'HELP', 'INSERT', 'LIST', 'REVOKE',
+                                         'DROP', 'GRANT', 'HELP', 'INSERT', 'LIST', 'PAGING', 'REVOKE',
                                          'SELECT', 'SHOW', 'SOURCE', 'TRACING', 'EXPAND', 'TRUNCATE',
                                          'UPDATE', 'USE', 'exit', 'quit'))
 
@@ -153,10 +153,10 @@ class TestCqlshCompletion(CqlshCompletionCase):
                                "{'class': 'SimpleStrategy', 'repl", "ication_factor'")
         self.trycompletions("create keyspace foo with replication ="
                                "{'class': 'SimpleStrategy', 'replication_factor': ", '',
-                            choices=('<value>',))
+                            choices=('<term>',))
         self.trycompletions("create keyspace foo with replication ="
                                "{'class': 'SimpleStrategy', 'replication_factor': 1", '',
-                            choices=('<value>',))
+                            choices=('<term>',))
         self.trycompletions("create keyspace foo with replication ="
                                "{'class': 'SimpleStrategy', 'replication_factor': 1 ", '}')
         self.trycompletions("create keyspace foo with replication ="

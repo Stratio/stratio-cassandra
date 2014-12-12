@@ -49,15 +49,14 @@ public class ColumnMapperBigDecimal extends ColumnMapper<String>
                                   @JsonProperty("decimal_digits") Integer decimalDigits)
     {
         super(new AbstractType<?>[]{
-                      AsciiType.instance,
-                      UTF8Type.instance,
-                      Int32Type.instance,
-                      LongType.instance,
-                      IntegerType.instance,
-                      FloatType.instance,
-                      DoubleType.instance,
-                      DecimalType.instance},
-              new AbstractType[]{});
+                AsciiType.instance,
+                UTF8Type.instance,
+                Int32Type.instance,
+                LongType.instance,
+                IntegerType.instance,
+                FloatType.instance,
+                DoubleType.instance,
+                DecimalType.instance}, new AbstractType[]{});
 
         // Setup integer part mapping
         if (integerDigits != null && integerDigits <= 0)
@@ -170,9 +169,8 @@ public class ColumnMapperBigDecimal extends ColumnMapper<String>
     @Override
     public String toString()
     {
-        return new ToStringBuilder(this)
-                .append("integerDigits", integerDigits)
-                .append("decimalDigits", decimalDigits)
-                .toString();
+        return new ToStringBuilder(this).append("integerDigits", integerDigits)
+                                        .append("decimalDigits", decimalDigits)
+                                        .toString();
     }
 }

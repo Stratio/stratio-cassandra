@@ -30,7 +30,7 @@ import org.codehaus.jackson.annotate.JsonTypeInfo;
 import java.nio.ByteBuffer;
 
 /**
- * Class for mapping between Cassandra's columns and Lucene's documents.
+ * Class for mapping between Cassandra's columns and Lucene documents.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
@@ -77,20 +77,19 @@ public abstract class ColumnMapper<BASE>
     public abstract Analyzer analyzer();
 
     /**
-     * Returns the Lucene {@link Field} resulting from the mapping of {@code value}, using
-     * {@code name} as field's name.
+     * Returns the Lucene {@link Field} resulting from the mapping of {@code value}, using {@code name} as field's
+     * name.
      *
      * @param name  The name of the Lucene {@link Field}.
      * @param value The value of the Lucene {@link Field}.
-     * @return The Lucene {@link Field} resulting from the mapping of {@code value}, using
-     * {@code name} as field's name.
+     * @return The Lucene {@link Field} resulting from the mapping of {@code value}, using {@code name} as field's name.
      */
     public abstract Field field(String name, Object value);
 
     /**
-     * Returns the Lucene's type for this mapper.
+     * Returns the Lucene type for this mapper.
      *
-     * @return The Lucene's type for this mapper.
+     * @return The Lucene type for this mapper.
      */
     public abstract Class<BASE> baseClass();
 

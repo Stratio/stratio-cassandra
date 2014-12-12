@@ -26,20 +26,17 @@ import java.util.*;
 
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
-import com.google.common.base.Optional;
 import com.google.common.base.Splitter;
 import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import org.apache.cassandra.hadoop.HadoopCompat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.cassandra.db.marshal.AbstractType;
-import org.apache.cassandra.db.marshal.BytesType;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.hadoop.ColumnFamilySplit;
 import org.apache.cassandra.hadoop.ConfigHelper;
@@ -87,7 +84,6 @@ public class CqlRecordReader extends RecordReader<Long, Row>
     private IPartitioner partitioner;
     private String inputColumns;
     private String userDefinedWhereClauses;
-    private int pageRowSize;
 
     private List<String> partitionKeys = new ArrayList<>();
 
@@ -99,6 +95,7 @@ public class CqlRecordReader extends RecordReader<Long, Row>
         super();
     }
 
+    @Override
     public void initialize(InputSplit split, TaskAttemptContext context) throws IOException
     {
         this.split = (ColumnFamilySplit) split;
@@ -111,38 +108,15 @@ public class CqlRecordReader extends RecordReader<Long, Row>
         partitioner = ConfigHelper.getInputPartitioner(conf);
         inputColumns = CqlConfigHelper.getInputcolumns(conf);
         userDefinedWhereClauses = CqlConfigHelper.getInputWhereClauses(conf);
-        Optional<Integer> pageRowSizeOptional = CqlConfigHelper.getInputPageRowSize(conf);
-        try
-        {
-            pageRowSize = pageRowSizeOptional.isPresent() ? pageRowSizeOptional.get() : DEFAULT_CQL_PAGE_LIMIT;
-        }
-        catch(NumberFormatException e)
-        {
-            pageRowSize = DEFAULT_CQL_PAGE_LIMIT;
-        }
+
         try
         {
             if (cluster != null)
                 return;
 
-            // create connection using thrift
+            // create a Cluster instance
             String[] locations = split.getLocations();
-            Exception lastException = null;
-            for (String location : locations)
-            {
-                try
-                {
-                    cluster = CqlConfigHelper.getInputCluster(location, conf);
-                    break;
-                }
-                catch (Exception e)
-                {
-                    lastException = e;
-                    logger.warn("Failed to create authenticated client to {}", location);
-                }
-            }
-            if (cluster == null && lastException != null)
-                throw lastException;
+            cluster = CqlConfigHelper.getInputCluster(locations, conf);
         }
         catch (Exception e)
         {
@@ -159,7 +133,6 @@ public class CqlRecordReader extends RecordReader<Long, Row>
         // otherwise we will fall back to building a query using the:
         //   inputColumns
         //   whereClauses
-        //   pageRowSize
         cqlQuery = CqlConfigHelper.getInputCql(conf);
         // validate that the user hasn't tried to give us a custom query along with input columns
         // and where clauses
@@ -536,8 +509,7 @@ public class CqlRecordReader extends RecordReader<Long, Row>
     /**
      * Build a query for the reader of the form:
      *
-     * SELECT * FROM ks>cf token(pk1,...pkn)>? AND token(pk1,...pkn)<=? [AND user where clauses]
-     * LIMIT pageRowSize [ALLOW FILTERING]
+     * SELECT * FROM ks>cf token(pk1,...pkn)>? AND token(pk1,...pkn)<=? [AND user where clauses] [ALLOW FILTERING]
      */
     private String buildQuery()
     {
@@ -556,7 +528,6 @@ public class CqlRecordReader extends RecordReader<Long, Row>
         String whereClause = "";
         if (StringUtils.isNotEmpty(userDefinedWhereClauses))
             whereClause += " AND " + userDefinedWhereClauses;
-        whereClause += " LIMIT " + pageRowSize;
         if (StringUtils.isNotEmpty(userDefinedWhereClauses))
             whereClause += " ALLOW FILTERING";
         return whereClause;
@@ -595,7 +566,7 @@ public class CqlRecordReader extends RecordReader<Long, Row>
         String query = "SELECT column_name, component_index, type FROM system.schema_columns WHERE keyspace_name='" +
                        keyspace + "' and columnfamily_name='" + cfName + "'";
         List<Row> rows = session.execute(query).all();
-        if (CollectionUtils.isEmpty(rows))
+        if (rows.isEmpty())
         {
             throw new RuntimeException("No table metadata found for " + keyspace + "." + cfName);
         }

@@ -25,27 +25,24 @@ import org.codehaus.jackson.annotate.JsonProperty;
 import org.eclipse.jdt.core.dom.ReturnStatement;
 
 /**
- * Class representing an Lucene's index search. It is formed by an optional querying {@link Condition} and an optional
- * filtering {@link Condition}. It can be translated to a Lucene's {@link Query} using a {@link Schema}.
+ * Class representing an Lucene index search. It is formed by an optional querying {@link Condition} and an optional
+ * filtering {@link Condition}. It can be translated to a Lucene {@link Query} using a {@link Schema}.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class Search
 {
-    /**
-     * The querying condition.
-     */
+    /** he {@link Condition} for querying, maybe {@code null} meaning no querying. */
     @JsonProperty("query")
     private Condition queryCondition;
 
-    /**
-     * The filtering condition.
-     */
+    /** The {@link Condition} for filtering, maybe {@code null} meaning no filtering. */
     @JsonProperty("filter")
     private Condition filterCondition;
 
     /**
-     * The sorting.
+     * The {@link Sort} for the query. Note that is the order in which the data will be read before querying, not the
+     * order of the results after querying.
      */
     @JsonProperty("sort")
     private Sort sort;
@@ -55,8 +52,8 @@ public class Search
      *
      * @param queryCondition  The {@link Condition} for querying, maybe {@code null} meaning no querying.
      * @param filterCondition The {@link Condition} for filtering, maybe {@code null} meaning no filtering.
-     * @param sort         The {@link Sort} for the query. Note that is the order in which the data will be read before
-     *                        querying, not the order of the results after querying.
+     * @param sort            The {@link Sort} for the query. Note that is the order in which the data will be read
+     *                        before querying, not the order of the results after querying.
      */
     @JsonCreator
     public Search(@JsonProperty("query") Condition queryCondition,
@@ -112,7 +109,8 @@ public class Search
      * by the natural Cassandra's order. Results must be ordered by relevance if the querying condition is not {code
      * null}.
      * <p/>
-     * Relevance is used when the query condition is set, and it is not used when only the clusteringKeyFilter condition is set.
+     * Relevance is used when the query condition is set, and it is not used when only the clusteringKeyFilter condition
+     * is set.
      *
      * @return {@code true} if the results must be ordered by relevance. If {@code false}, then the results must be
      * sorted by the natural Cassandra's order.
@@ -138,11 +136,11 @@ public class Search
     }
 
     /**
-     * Returns the Lucene's {@link org.apache.lucene.search.Sort} represented by this {@link Sort} using the specified {@link Schema}. Maybe
-     * {@code null} meaning no sorting.
+     * Returns the Lucene {@link org.apache.lucene.search.Sort} represented by this {@link Sort} using the specified
+     * {@link Schema}. Maybe {@code null} meaning no sorting.
      *
      * @param schema A {@link Schema}.
-     * @return The Lucene's {@link org.apache.lucene.search.Sort} represented by this {@link Sort} using {@code schema}.
+     * @return The Lucene {@link org.apache.lucene.search.Sort} represented by this {@link Sort} using {@code schema}.
      */
     public org.apache.lucene.search.Sort sort(Schema schema)
     {
@@ -150,17 +148,18 @@ public class Search
     }
 
     /**
-     * Returns the Lucene's {@link Query} representation of this search. This {@link Query} include both the querying
+     * Returns the Lucene {@link Query} representation of this search. This {@link Query} include both the querying
      * and filtering {@link Condition}s. If none of them is set, then a {@link MatchAllDocsQuery} is returned, so it
      * never {@link ReturnStatement} {@code null}.
      *
      * @param schema     The {@link Schema} to be used.
      * @param rangeQuery An additional range {@link Query} to be used.
-     * @return The Lucene's {@link Query} representation of this search.
+     * @return The Lucene {@link Query} representation of this search.
      */
     public Query query(Schema schema, Query rangeQuery)
     {
-        if (queryCondition == null && filterCondition == null && rangeQuery == null) {
+        if (queryCondition == null && filterCondition == null && rangeQuery == null)
+        {
             return new MatchAllDocsQuery();
         }
         BooleanQuery booleanQuery = new BooleanQuery();
@@ -201,11 +200,10 @@ public class Search
     @Override
     public String toString()
     {
-        return new ToStringBuilder(this)
-                .append("queryCondition", queryCondition)
-                .append("filterCondition", filterCondition)
-                .append("sorting", sort)
-                .toString();
+        return new ToStringBuilder(this).append("queryCondition", queryCondition)
+                                        .append("filterCondition", filterCondition)
+                                        .append("sorting", sort)
+                                        .toString();
     }
 
 }

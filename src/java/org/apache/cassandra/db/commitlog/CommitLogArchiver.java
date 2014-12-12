@@ -45,6 +45,7 @@ public class CommitLogArchiver
 {
     private static final Logger logger = LoggerFactory.getLogger(CommitLogArchiver.class);
     public static final SimpleDateFormat format = new SimpleDateFormat("yyyy:MM:dd HH:mm:ss");
+    private static final String DELIMITER = ",";
     static
     {
         format.setTimeZone(TimeZone.getTimeZone("GMT"));
@@ -81,6 +82,20 @@ public class CommitLogArchiver
                 archiveCommand = commitlog_commands.getProperty("archive_command");
                 restoreCommand = commitlog_commands.getProperty("restore_command");
                 restoreDirectories = commitlog_commands.getProperty("restore_directories");
+                if (restoreDirectories != null && !restoreDirectories.isEmpty())
+                {
+                    for (String dir : restoreDirectories.split(DELIMITER))
+                    {
+                        File directory = new File(dir);
+                        if (!directory.exists())
+                        {
+                            if (!directory.mkdir())
+                            {
+                                throw new RuntimeException("Unable to create directory: " + dir);
+                            }
+                        }
+                    }
+                }
                 String targetTime = commitlog_commands.getProperty("restore_point_in_time");
                 precision = TimeUnit.valueOf(commitlog_commands.getProperty("precision", "MICROSECONDS"));
                 try
@@ -120,6 +135,28 @@ public class CommitLogArchiver
         }));
     }
 
+    /**
+     * Differs from the above because it can be used on any file, rather than only
+     * managed commit log segments (and thus cannot call waitForFinalSync).
+     *
+     * Used to archive files present in the commit log directory at startup (CASSANDRA-6904)
+     */
+    public void maybeArchive(final String path, final String name)
+    {
+        if (Strings.isNullOrEmpty(archiveCommand))
+            return;
+
+        archivePending.put(name, executor.submit(new WrappedRunnable()
+        {
+            protected void runMayThrow() throws IOException
+            {
+                String command = archiveCommand.replace("%name", name);
+                command = command.replace("%path", path);
+                exec(command);
+            }
+        }));
+    }
+
     public boolean maybeWaitForArchiving(String name)
     {
         Future<?> f = archivePending.remove(name);
@@ -152,12 +189,12 @@ public class CommitLogArchiver
         if (Strings.isNullOrEmpty(restoreDirectories))
             return;
 
-        for (String dir : restoreDirectories.split(","))
+        for (String dir : restoreDirectories.split(DELIMITER))
         {
             File[] files = new File(dir).listFiles();
             if (files == null)
             {
-                throw new RuntimeException("Unable to list director " + dir);
+                throw new RuntimeException("Unable to list directory " + dir);
             }
             for (File fromFile : files)
             {
@@ -179,7 +216,11 @@ public class CommitLogArchiver
 
                 File toFile = new File(DatabaseDescriptor.getCommitLogLocation(), descriptor.fileName());
                 if (toFile.exists())
-                    throw new IllegalStateException("Trying to restore archive " + fromFile.getPath() + ", but the same segment already exists in the restore location: " + toFile.getPath());
+                {
+                    logger.debug("Skipping restore of archive {} as the segment already exists in the restore location {}",
+                                 fromFile.getPath(), toFile.getPath());
+                    continue;
+                }
 
                 String command = restoreCommand.replace("%from", fromFile.getPath());
                 command = command.replace("%to", toFile.getPath());

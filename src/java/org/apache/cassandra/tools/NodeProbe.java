@@ -60,6 +60,7 @@ import org.apache.cassandra.streaming.StreamState;
 import org.apache.cassandra.streaming.StreamManagerMBean;
 import org.apache.cassandra.streaming.management.StreamStateCompositeData;
 import org.apache.cassandra.utils.concurrent.SimpleCondition;
+import org.apache.cassandra.utils.JVMStabilityInspector;
 
 /**
  * JMX client operations for Cassandra.
@@ -79,6 +80,7 @@ public class NodeProbe implements AutoCloseable
     private CompactionManagerMBean compactionProxy;
     private StorageServiceMBean ssProxy;
     private MemoryMXBean memProxy;
+    private GCInspectorMXBean gcProxy;
     private RuntimeMXBean runtimeProxy;
     private StreamManagerMBean streamProxy;
     public MessagingServiceMBean msProxy;
@@ -169,7 +171,10 @@ public class NodeProbe implements AutoCloseable
             spProxy = JMX.newMBeanProxy(mbeanServerConn, name, StorageProxyMBean.class);
             name = new ObjectName(HintedHandOffManager.MBEAN_NAME);
             hhProxy = JMX.newMBeanProxy(mbeanServerConn, name, HintedHandOffManagerMBean.class);
-        } catch (MalformedObjectNameException e)
+            name = new ObjectName(GCInspector.MBEAN_NAME);
+            gcProxy = JMX.newMBeanProxy(mbeanServerConn, name, GCInspectorMXBean.class);
+        }
+        catch (MalformedObjectNameException e)
         {
             throw new RuntimeException(
                     "Invalid ObjectName? Please report this as a bug.", e);
@@ -260,9 +265,10 @@ public class NodeProbe implements AutoCloseable
                 ssProxy.removeNotificationListener(runner);
                 jmxc.removeConnectionNotificationListener(runner);
             }
-            catch (Throwable e) 
+            catch (Throwable t)
             {
-                out.println("Exception occurred during clean-up. " + e);
+                JVMStabilityInspector.inspectThrowable(t);
+                out.println("Exception occurred during clean-up. " + t);
             }
         }
     }
@@ -372,6 +378,11 @@ public class NodeProbe implements AutoCloseable
         {
             throw new RuntimeException(e);
         }
+    }
+
+    public double[] getAndResetGCStats()
+    {
+        return gcProxy.getAndResetStats();
     }
 
     public Iterator<Map.Entry<String, ColumnFamilyStoreMBean>> getColumnFamilyStoreMBeanProxies()
@@ -816,6 +827,11 @@ public class NodeProbe implements AutoCloseable
     public void startGossiping()
     {
         ssProxy.startGossiping();
+    }
+
+    public boolean isGossipRunning()
+    {
+        return ssProxy.isGossipRunning();
     }
 
     public void stopThriftServer()
@@ -1325,8 +1341,6 @@ class RepairRunner implements NotificationListener
                                            format.format(notification.getTimeStamp()),
                                            keyspace);
             out.println(message);
-            success = false;
-            condition.signalAll();
         }
         else if (JMXConnectionNotification.FAILED.equals(notification.getType())
                  || JMXConnectionNotification.CLOSED.equals(notification.getType()))

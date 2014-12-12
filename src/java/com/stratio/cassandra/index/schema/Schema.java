@@ -46,17 +46,17 @@ public class Schema
 {
 
     /**
-     * The default Lucene's analyzer to be used if no other specified.
+     * The default Lucene analyzer to be used if no other specified.
      */
     public static final Analyzer DEFAULT_ANALYZER = new StandardAnalyzer(Version.LUCENE_48);
 
     /**
-     * The Lucene's {@link org.apache.lucene.analysis.Analyzer}.
+     * The Lucene {@link org.apache.lucene.analysis.Analyzer}.
      */
     private final Analyzer defaultAnalyzer;
 
     /**
-     * The per field Lucene's analyzer to be used.
+     * The per field Lucene analyzer to be used.
      */
     private final PerFieldAnalyzerWrapper perFieldAnalyzer;
 
@@ -147,7 +147,8 @@ public class Schema
         return perFieldAnalyzer;
     }
 
-    public void addFields(Document document, Columns columns) {
+    public void addFields(Document document, Columns columns)
+    {
         for (Column column : columns)
         {
             String name = column.getName();

@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -40,10 +41,22 @@ public class Timing
     private final CopyOnWriteArrayList<Timer> timers = new CopyOnWriteArrayList<>();
     private volatile TimingInterval history;
     private final Random rnd = new Random();
+    private boolean done;
 
     // TIMING
 
-    private TimingInterval snapInterval(Random rnd) throws InterruptedException
+    public static class TimingResult<E>
+    {
+        public final E extra;
+        public final TimingInterval timing;
+        public TimingResult(E extra, TimingInterval timing)
+        {
+            this.extra = extra;
+            this.timing = timing;
+        }
+    }
+
+    private <E> TimingResult<E> snap(Random rnd, Callable<E> call) throws InterruptedException
     {
         final Timer[] timers = this.timers.toArray(new Timer[0]);
         final CountDownLatch ready = new CountDownLatch(timers.length);
@@ -53,16 +66,33 @@ public class Timing
             timer.requestReport(ready);
         }
 
+        E extra;
+        try
+        {
+            extra = call.call();
+        }
+        catch (Exception e)
+        {
+            if (e instanceof InterruptedException)
+                throw (InterruptedException) e;
+            throw new RuntimeException(e);
+        }
+
         // TODO fail gracefully after timeout if a thread is stuck
-        if (!ready.await(2L, TimeUnit.MINUTES))
+        if (!ready.await(5L, TimeUnit.MINUTES))
             throw new RuntimeException("Timed out waiting for a timer thread - seems one got stuck");
 
+        boolean done = true;
         // reports have been filled in by timer threadCount, so merge
         List<TimingInterval> intervals = new ArrayList<>();
         for (Timer timer : timers)
+        {
             intervals.add(timer.report);
+            done &= !timer.running();
+        }
 
-        return TimingInterval.merge(rnd, intervals, Integer.MAX_VALUE, history.endNanos());
+        this.done = done;
+        return new TimingResult<>(extra, TimingInterval.merge(rnd, intervals, Integer.MAX_VALUE, history.endNanos()));
     }
 
     // build a new timer and add it to the set of running timers
@@ -78,11 +108,16 @@ public class Timing
         history = new TimingInterval(System.nanoTime());
     }
 
-    public TimingInterval snapInterval() throws InterruptedException
+    public boolean done()
     {
-        final TimingInterval interval = snapInterval(rnd);
-        history = TimingInterval.merge(rnd, Arrays.asList(interval, history), 50000, history.startNanos());
-        return interval;
+        return done;
+    }
+
+    public <E> TimingResult<E> snap(Callable<E> call) throws InterruptedException
+    {
+        final TimingResult<E> result = snap(rnd, call);
+        history = TimingInterval.merge(rnd, Arrays.asList(result.timing, history), 200000, history.startNanos());
+        return result;
     }
 
     public TimingInterval getHistory()

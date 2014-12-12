@@ -59,10 +59,10 @@ public class SortField
     }
 
     /**
-     * Returns the Lucene's {@link org.apache.lucene.search.SortField} representing this {@link SortField}.
+     * Returns the Lucene {@link org.apache.lucene.search.SortField} representing this {@link SortField}.
      *
      * @param schema The {@link Schema} to be used.
-     * @return the Lucene's {@link org.apache.lucene.search.SortField} representing this {@link SortField}.
+     * @return the Lucene {@link org.apache.lucene.search.SortField} representing this {@link SortField}.
      */
     public org.apache.lucene.search.SortField sortField(Schema schema)
     {
@@ -120,9 +120,6 @@ public class SortField
     @Override
     public String toString()
     {
-        return new ToStringBuilder(this)
-                .append("field", field)
-                .append("reverse", reverse)
-                .toString();
+        return new ToStringBuilder(this).append("field", field).append("reverse", reverse).toString();
     }
 }

@@ -48,7 +48,8 @@ public abstract class RowMapper
     protected final RegularCellsMapper regularCellsMapper;
 
     /**
-     * Builds a new {@link RowMapper} for the specified column family metadata, indexed column definition and {@link Schema}.
+     * Builds a new {@link RowMapper} for the specified column family metadata, indexed column definition and {@link
+     * Schema}.
      *
      * @param metadata         The indexed column family metadata.
      * @param columnDefinition The indexed column definition.
@@ -65,12 +66,14 @@ public abstract class RowMapper
     }
 
     /**
-     * Returns a new {@link RowMapper} for the specified column family metadata, indexed column definition and {@link Schema}.
+     * Returns a new {@link RowMapper} for the specified column family metadata, indexed column definition and {@link
+     * Schema}.
      *
      * @param metadata         The indexed column family metadata.
      * @param columnDefinition The indexed column definition.
      * @param schema           The mapping {@link Schema}.
-     * @return A new {@link RowMapper} for the specified column family metadata, indexed column definition and {@link Schema}.
+     * @return A new {@link RowMapper} for the specified column family metadata, indexed column definition and {@link
+     * Schema}.
      */
     public static RowMapper build(CFMetaData metadata, ColumnDefinition columnDefinition, Schema schema)
     {

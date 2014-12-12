@@ -68,6 +68,9 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
             int n = readCollectionSize(input, version);
             for (int i = 0; i < n; i++)
                 elements.validate(readValue(input, version));
+
+            if (input.hasRemaining())
+                throw new MarshalException("Unexpected extraneous bytes after list value");
         }
         catch (BufferUnderflowException e)
         {
@@ -84,10 +87,22 @@ public class ListSerializer<T> extends CollectionSerializer<List<T>>
             List<T> l = new ArrayList<T>(n);
             for (int i = 0; i < n; i++)
             {
+                // We can have nulls in lists that are used for IN values
                 ByteBuffer databb = readValue(input, version);
-                elements.validate(databb);
-                l.add(elements.deserialize(databb));
+                if (databb != null)
+                {
+                    elements.validate(databb);
+                    l.add(elements.deserialize(databb));
+                }
+                else
+                {
+                    l.add(null);
+                }
             }
+
+            if (input.hasRemaining())
+                throw new MarshalException("Unexpected extraneous bytes after list value");
+
             return l;
         }
         catch (BufferUnderflowException e)

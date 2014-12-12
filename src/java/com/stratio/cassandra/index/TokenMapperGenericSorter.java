@@ -32,12 +32,9 @@ import java.io.IOException;
  */
 public class TokenMapperGenericSorter extends FieldComparator<BytesRef>
 {
-
     private static final byte[] MISSING_BYTES = new byte[0];
 
-    /**
-     * The PartitionKeyComparator to be used.
-     */
+    /** The PartitionKeyComparator to be used. */
     private final TokenMapperGeneric tokenMapperGeneric;
 
     private BytesRef[] values;
@@ -62,9 +59,7 @@ public class TokenMapperGenericSorter extends FieldComparator<BytesRef>
         this.field = field;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public int compare(int slot1, int slot2)
     {
@@ -85,9 +80,7 @@ public class TokenMapperGenericSorter extends FieldComparator<BytesRef>
         return compare(val1, val2);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public int compareBottom(int doc)
     {
@@ -111,9 +104,7 @@ public class TokenMapperGenericSorter extends FieldComparator<BytesRef>
         return compare(bottom, tempBR);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void copy(int slot, int doc)
     {
@@ -128,9 +119,7 @@ public class TokenMapperGenericSorter extends FieldComparator<BytesRef>
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public FieldComparator<BytesRef> setNextReader(AtomicReaderContext context) throws IOException
     {
@@ -139,27 +128,21 @@ public class TokenMapperGenericSorter extends FieldComparator<BytesRef>
         return this;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void setBottom(final int bottom)
     {
         this.bottom = values[bottom];
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public BytesRef value(int slot)
     {
         return values[slot];
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public int compareValues(BytesRef val1, BytesRef val2)
     {
@@ -178,9 +161,7 @@ public class TokenMapperGenericSorter extends FieldComparator<BytesRef>
         return compare(val1, val2);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public int compareTop(int doc)
     {
@@ -192,9 +173,7 @@ public class TokenMapperGenericSorter extends FieldComparator<BytesRef>
         return compare(tempBR, topValue);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void setTopValue(BytesRef value)
     {

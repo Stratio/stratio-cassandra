@@ -18,17 +18,25 @@ package com.stratio.cassandra.index.query.builder;
 import com.stratio.cassandra.index.query.RangeCondition;
 
 /**
- * {@link ConditionBuilder} for building a new {@link com.stratio.cassandra.index.query.RangeCondition}.
+ * {@link ConditionBuilder} for building a new {@link RangeCondition}.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class RangeConditionBuilder extends ConditionBuilder<RangeCondition, RangeConditionBuilder>
 {
-
+    /** The name of the field to be matched. */
     private final String field;
+
+    /** The lower accepted value. Maybe null meaning no lower limit. */
     private Object lower;
+
+    /** The upper accepted value. Maybe null meaning no upper limit. */
     private Object upper;
+
+    /** If the lower value must be included if not null. */
     private Boolean includeLower;
+
+    /** If the upper value must be included if not null. */
     private Boolean includeUpper;
 
     /**

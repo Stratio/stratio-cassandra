@@ -23,6 +23,7 @@ import java.util.List;
 
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
+import org.apache.cassandra.cql3.Operator;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.CBuilder;
 import org.apache.cassandra.db.composites.CellName;
@@ -74,7 +75,7 @@ public class CompositesIndexOnCollectionKey extends CompositesIndex
         int count = 1 + baseCfs.metadata.clusteringColumns().size();
         CBuilder builder = getIndexComparator().builder();
         builder.add(rowKey);
-        for (int i = 0; i < count - 1; i++)
+        for (int i = 0; i < Math.min(cellName.size(), count - 1); i++)
             builder.add(cellName.get(i));
         return builder.build();
     }
@@ -86,6 +87,13 @@ public class CompositesIndexOnCollectionKey extends CompositesIndex
         for (int i = 0; i < count - 1; i++)
             builder.add(indexEntry.name().get(i + 1));
         return new IndexedEntry(indexedValue, indexEntry.name(), indexEntry.timestamp(), indexEntry.name().get(0), builder.build());
+    }
+
+    @Override
+    public boolean supportsOperator(Operator operator)
+    {
+        return operator == Operator.CONTAINS_KEY ||
+                operator == Operator.CONTAINS && columnDef.type instanceof SetType;
     }
 
     @Override

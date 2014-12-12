@@ -27,9 +27,8 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import org.apache.cassandra.config.TriggerDefinition;
-import org.apache.cassandra.cql.QueryProcessor;
+import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.*;
-import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.utils.FBUtilities;
@@ -54,10 +53,10 @@ public class TriggerExecutor
      */
     public void reloadClasses()
     {
-        File tiggerDirectory = FBUtilities.cassandraTriggerDir();
-        if (tiggerDirectory == null)
+        File triggerDirectory = FBUtilities.cassandraTriggerDir();
+        if (triggerDirectory == null)
             return;
-        customClassLoader = new CustomClassLoader(parent, tiggerDirectory);
+        customClassLoader = new CustomClassLoader(parent, triggerDirectory);
         cachedTriggers.clear();
     }
 
@@ -163,8 +162,8 @@ public class TriggerExecutor
         {
             QueryProcessor.validateKey(mutation.key());
             for (ColumnFamily tcf : mutation.getColumnFamilies())
-                for (CellName tName : tcf.getColumnNames())
-                    QueryProcessor.validateColumn(tcf.metadata(), tName, tcf.getColumn(tName).value());
+                for (Cell cell : tcf)
+                    cell.validateFields(tcf.metadata());
         }
     }
 

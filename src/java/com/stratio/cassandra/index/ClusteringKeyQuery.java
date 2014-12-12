@@ -56,11 +56,10 @@ class ClusteringKeyQuery extends MultiTermQuery
     @Override
     public String toString(String field)
     {
-        return new ToStringBuilder(this)
-                .append("field", field)
-                .append("start", start == null ? null : clusteringKeyMapper.toString(start))
-                .append("stop", stop == null ? null : clusteringKeyMapper.toString(stop))
-                .toString();
+        return new ToStringBuilder(this).append("field", field)
+                                        .append("start", start == null ? null : clusteringKeyMapper.toString(start))
+                                        .append("stop", stop == null ? null : clusteringKeyMapper.toString(stop))
+                                        .toString();
     }
 
     private class FullKeyDataRangeFilteredTermsEnum extends FilteredTermsEnum

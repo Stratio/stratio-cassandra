@@ -19,7 +19,10 @@ import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.ColumnFamily;
+import org.apache.cassandra.db.DataRange;
+import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.search.Query;
@@ -34,9 +37,9 @@ import org.apache.lucene.search.Sort;
 public class RowMapperSkinny extends RowMapper
 {
 
-
     /**
-     * Builds a new {@link RowMapperSkinny} for the specified column family metadata, indexed column definition and {@link Schema}.
+     * Builds a new {@link RowMapperSkinny} for the specified column family metadata, indexed column definition and
+     * {@link Schema}.
      *
      * @param metadata         The indexed column family metadata.
      * @param columnDefinition The indexed column definition.
@@ -111,7 +114,8 @@ public class RowMapperSkinny extends RowMapper
     }
 
     @Override
-    public SearchResult searchResult(Document document, ScoreDoc scoreDoc) {
+    public SearchResult searchResult(Document document, ScoreDoc scoreDoc)
+    {
         DecoratedKey partitionKey = partitionKeyMapper.partitionKey(document);
         return new SearchResult(partitionKey, null, scoreDoc);
     }

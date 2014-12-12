@@ -24,15 +24,17 @@ import com.stratio.cassandra.index.query.MatchCondition;
  */
 public class MatchConditionBuilder extends ConditionBuilder<MatchCondition, MatchConditionBuilder>
 {
-
+    /** The name of the field to be matched. */
     private final String field;
+
+    /** The value of the field to be matched. */
     private Object value;
 
     /**
      * Creates a new {@link MatchConditionBuilder} for the specified field and value.
      *
-     * @param field the name of the field to be matched.
-     * @param value the value of the field to be matched.
+     * @param field The name of the field to be matched.
+     * @param value The value of the field to be matched.
      */
     public MatchConditionBuilder(String field, Object value)
     {

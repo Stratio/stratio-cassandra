@@ -18,18 +18,28 @@ package com.stratio.cassandra.index.query.builder;
 import com.stratio.cassandra.index.query.FuzzyCondition;
 
 /**
- * {@link ConditionBuilder} for building a new {@link com.stratio.cassandra.index.query.FuzzyCondition}.
+ * {@link ConditionBuilder} for building a new {@link FuzzyCondition}.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class FuzzyConditionBuilder extends ConditionBuilder<FuzzyCondition, FuzzyConditionBuilder>
 {
-
+    /** The name of the field to be matched. */
     private final String field;
+
+    /** The fuzzy expression to be matched. */
     private final String value;
+
+    /** The Damerau-Levenshtein max distance. */
     private Integer maxEdits;
+
+    /** The length of common (non-fuzzy) prefix. */
     private Integer prefixLength;
+
+    /** The maximum number of terms to match. */
     private Integer maxExpansions;
+
+    /** If transpositions should be treated as a primitive edit operation. */
     private Boolean transpositions;
 
     /**

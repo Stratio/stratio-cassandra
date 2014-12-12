@@ -35,8 +35,9 @@ public class RowComparatorSorting implements RowComparator
     private final ComparatorChain<Columns> comparatorChain;
 
     /**
-     * @param rowMapper  The indexing {@link Schema} of the {@link Row}s to be compared.
-     * @param sort The {@link com.stratio.cassandra.index.query.Sort} inf which the {@link Row} comparison is based.
+     * @param rowMapper The indexing {@link Schema} of the {@link Row}s to be compared.
+     * @param sort      The {@link com.stratio.cassandra.index.query.Sort} inf which the {@link Row} comparison is
+     *                  based.
      */
     public RowComparatorSorting(RowMapper rowMapper, Sort sort)
     {

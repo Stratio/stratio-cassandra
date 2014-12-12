@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Throwables;
+import org.apache.cassandra.utils.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,8 +44,6 @@ import org.apache.cassandra.io.sstable.SSTableWriter;
 import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 import org.apache.cassandra.io.util.DiskAwareRunnable;
 import org.apache.cassandra.service.ActiveRepairService;
-import org.apache.cassandra.utils.ByteBufferUtil;
-import org.apache.cassandra.utils.ObjectSizes;
 import org.apache.cassandra.utils.concurrent.OpOrder;
 import org.apache.cassandra.utils.memory.*;
 
@@ -151,14 +150,12 @@ public class Memtable
      *
      * replayPosition should only be null if this is a secondary index, in which case it is *expected* to be null
      */
-    void put(DecoratedKey key, ColumnFamily cf, SecondaryIndexManager.Updater indexer, OpOrder.Group opGroup, ReplayPosition replayPosition)
+    long put(DecoratedKey key, ColumnFamily cf, SecondaryIndexManager.Updater indexer, OpOrder.Group opGroup, ReplayPosition replayPosition)
     {
         if (replayPosition != null && writeBarrier != null)
         {
             // if the writeBarrier is set, we want to maintain lastReplayPosition; this is an optimisation to avoid
             // casing it for every write, but still ensure it is correct when writeBarrier.await() completes.
-            // we clone the replay position so that the object passed in does not "escape", permitting stack allocation
-            replayPosition = replayPosition.clone();
             while (true)
             {
                 ReplayPosition last = lastReplayPosition.get();
@@ -191,8 +188,10 @@ public class Memtable
             }
         }
 
-        liveDataSize.addAndGet(previous.addAllWithSizeDelta(cf, allocator, opGroup, indexer));
+        final Pair<Long, Long> pair = previous.addAllWithSizeDelta(cf, allocator, opGroup, indexer);
+        liveDataSize.addAndGet(pair.left);
         currentOperations.addAndGet(cf.getColumnCount() + (cf.isMarkedForDelete() ? 1 : 0) + cf.deletionInfo().rangeCount());
+        return pair.right;
     }
 
     // for debugging
@@ -330,11 +329,13 @@ public class Memtable
             SSTableWriter writer = createFlushWriter(cfs.getTempSSTablePath(sstableDirectory));
             try
             {
+                boolean trackContention = logger.isDebugEnabled();
+                int heavilyContendedRowCount = 0;
                 // (we can't clear out the map as-we-go to free up memory,
                 //  since the memtable is being used for queries in the "pending flush" category)
                 for (Map.Entry<RowPosition, AtomicBTreeColumns> entry : rows.entrySet())
                 {
-                    ColumnFamily cf = entry.getValue();
+                    AtomicBTreeColumns cf = entry.getValue();
 
                     if (cf.isMarkedForDelete() && cf.hasColumns())
                     {
@@ -346,6 +347,9 @@ public class Memtable
                         if (cfs.name.equals(SystemKeyspace.BATCHLOG_CF) && cfs.keyspace.getName().equals(Keyspace.SYSTEM_KS))
                             continue;
                     }
+
+                    if (trackContention && cf.usePessimisticLocking())
+                        heavilyContendedRowCount++;
 
                     if (!cf.isEmpty())
                         writer.append((DecoratedKey)entry.getKey(), cf);
@@ -367,6 +371,9 @@ public class Memtable
                     logger.info("Completed flushing; nothing needed to be retained.  Commitlog position was {}",
                                 context);
                 }
+
+                if (heavilyContendedRowCount > 0)
+                    logger.debug(String.format("High update contention in %d/%d partitions of %s ", heavilyContendedRowCount, rows.size(), Memtable.this.toString()));
 
                 return ssTable;
             }

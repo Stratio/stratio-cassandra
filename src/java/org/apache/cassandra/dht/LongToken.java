@@ -17,17 +17,46 @@
  */
 package org.apache.cassandra.dht;
 
-public class LongToken extends Token<Long>
+import com.google.common.primitives.Longs;
+
+public class LongToken extends Token
 {
     static final long serialVersionUID = -5833580143318243006L;
 
-    public LongToken(Long token)
+    final long token;
+
+    public LongToken(long token)
     {
-        super(token);
+        this.token = token;
     }
 
-    public int compareTo(Token<Long> o)
+    public String toString()
     {
-        return token.compareTo(o.token);
+        return Long.toString(token);
+    }
+
+    public boolean equals(Object obj)
+    {
+        if (this == obj)
+            return true;
+        if (obj == null || this.getClass() != obj.getClass())
+            return false;
+
+        return token == (((LongToken)obj).token);
+    }
+
+    public int hashCode()
+    {
+        return Longs.hashCode(token);
+    }
+
+    public int compareTo(Token o)
+    {
+        return Long.compare(token, ((LongToken) o).token);
+    }
+
+    public Long getTokenValue()
+    {
+        return token;
     }
 }

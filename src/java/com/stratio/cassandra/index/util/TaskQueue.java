@@ -48,12 +48,12 @@ public class TaskQueue
         for (int i = 0; i < numThreads; i++)
         {
             pools[i] = new NotifyingBlockingThreadPoolExecutor(1,
-                    queuesSize,
-                    Long.MAX_VALUE,
-                    TimeUnit.DAYS,
-                    0,
-                    TimeUnit.NANOSECONDS,
-                    null);
+                                                               queuesSize,
+                                                               Long.MAX_VALUE,
+                                                               TimeUnit.DAYS,
+                                                               0,
+                                                               TimeUnit.NANOSECONDS,
+                                                               null);
             pools[i].submit(new Runnable()
             {
                 @Override
@@ -138,7 +138,8 @@ public class TaskQueue
     }
 
     /**
-     * Submits a non value-returning task for synchronous execution. It waits for all synchronous tasks to be completed.
+     * Submits a non value-returning task for synchronous execution. It waits for all synchronous tasks to be
+     * completed.
      *
      * @param task A task to be executed synchronously.
      */

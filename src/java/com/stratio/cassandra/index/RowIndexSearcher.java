@@ -21,7 +21,6 @@ import com.stratio.cassandra.index.util.Log;
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.IndexExpression;
 import org.apache.cassandra.db.Row;
-import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.filter.ExtendedFilter;
 import org.apache.cassandra.db.index.SecondaryIndexManager;
 import org.apache.cassandra.db.index.SecondaryIndexSearcher;
@@ -32,7 +31,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.util.*;
 
-import static org.apache.cassandra.db.IndexExpression.Operator.EQ;
+import static org.apache.cassandra.cql3.Operator.EQ;
 
 /**
  * A {@link SecondaryIndexSearcher} for {@link RowIndex}.
@@ -117,7 +116,6 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         }
         return false;
     }
-
 
     /**
      * {@inheritDoc}

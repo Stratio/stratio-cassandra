@@ -20,28 +20,16 @@ import java.io.Serializable;
 import java.util.*;
 
 /**
- * <p>
- * A ComparatorChain is a Comparator that wraps one or more Comparators in sequence. The ComparatorChain calls each
+ * <p> A ComparatorChain is a Comparator that wraps one or more Comparators in sequence. The ComparatorChain calls each
  * Comparator in sequence until either 1) any single Comparator returns a non-zero result (and that result is then
  * returned), or 2) the ComparatorChain is exhausted (and zero is returned). This type of sorting is very similar to
  * multi-column sorting in SQL, and this class allows Java classes to emulate that kind of behaviour when sorting a
- * List.
- * </p>
- * <p/>
- * <p>
- * To further facilitate SQL-like sorting, the order of any single Comparator in the list can be reversed.
- * </p>
- * <p/>
- * <p>
- * Calling a method that adds new Comparators or changes the ascend/descend sortFields <i>after compare(Object, Object) has
- * been called</i> will result in an UnsupportedOperationException. However, <i>take care</i> to not alter the
- * underlying List of Comparators or the BitSet that defines the sortFields order.
- * </p>
- * <p/>
- * <p>
- * Instances of ComparatorChain are not synchronized. The class is not thread-safe at construction time, but it
- * <i>is</i> thread-safe to perform multiple comparisons after all the setup operations are complete.
- * </p>
+ * List. </p> <p/> <p> To further facilitate SQL-like sorting, the order of any single Comparator in the list can be
+ * reversed. </p> <p/> <p> Calling a method that adds new Comparators or changes the ascend/descend sortFields <i>after
+ * compare(Object, Object) has been called</i> will result in an UnsupportedOperationException. However, <i>take
+ * care</i> to not alter the underlying List of Comparators or the BitSet that defines the sortFields order. </p> <p/>
+ * <p> Instances of ComparatorChain are not synchronized. The class is not thread-safe at construction time, but it
+ * <i>is</i> thread-safe to perform multiple comparisons after all the setup operations are complete. </p>
  *
  * @author Morgan Delagrange
  * @version $Revision: 646777 $ $Date: 2008-04-10 13:33:15 +0100 (Thu, 10 Apr 2008) $
@@ -107,8 +95,8 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
     }
 
     /**
-     * Construct a ComparatorChain from the Comparators in the List. All Comparators will default to the forward sortFields
-     * order.
+     * Construct a ComparatorChain from the Comparators in the List. All Comparators will default to the forward
+     * sortFields order.
      *
      * @param list List of Comparators
      * @see #ComparatorChain(List, BitSet)
@@ -119,10 +107,10 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
     }
 
     /**
-     * Construct a ComparatorChain from the Comparators in the given List. The sortFields order of each column will be drawn
-     * from the given BitSet. When determining the sortFields order for Comparator at index <i>i</i> in the List, the
-     * ComparatorChain will call BitSet.get(<i>i</i>). If that method returns <i>false</i>, the forward sortFields order is
-     * used; a return value of <i>true</i> indicates reverse sortFields order.
+     * Construct a ComparatorChain from the Comparators in the given List. The sortFields order of each column will be
+     * drawn from the given BitSet. When determining the sortFields order for Comparator at index <i>i</i> in the List,
+     * the ComparatorChain will call BitSet.get(<i>i</i>). If that method returns <i>false</i>, the forward sortFields
+     * order is used; a return value of <i>true</i> indicates reverse sortFields order.
      *
      * @param list List of Comparators. NOTE: This constructor does not perform a defensive copy of the list
      * @param bits Sort order for each Comparator. Extra bits are ignored, unless extra Comparators are added by another
@@ -170,8 +158,7 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
      * @param comparator Comparator to place at the given index
      * @throws IndexOutOfBoundsException if index &lt; 0 or index &gt;= size()
      */
-    public void setComparator(int index, Comparator<T> comparator)
-            throws IndexOutOfBoundsException
+    public void setComparator(int index, Comparator<T> comparator) throws IndexOutOfBoundsException
     {
         setComparator(index, comparator, false);
     }
@@ -246,7 +233,8 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
     {
         if (isLocked == true)
         {
-            throw new UnsupportedOperationException("Comparator ordering cannot be changed after the first comparison is performed");
+            throw new UnsupportedOperationException(
+                    "Comparator ordering cannot be changed after the first comparison is performed");
         }
     }
 
@@ -354,8 +342,10 @@ public class ComparatorChain<T> implements Comparator<T>, Serializable
         else if (object.getClass().equals(this.getClass()))
         {
             ComparatorChain<?> chain = (ComparatorChain<?>) object;
-            return ((null == orderingBits ? null == chain.orderingBits : orderingBits.equals(chain.orderingBits))
-                    && (null == comparatorChain ? null == chain.comparatorChain : comparatorChain.equals(chain.comparatorChain)));
+            return ((null == orderingBits ? null == chain.orderingBits : orderingBits.equals(chain.orderingBits)) &&
+                    (null == comparatorChain ?
+                            null == chain.comparatorChain :
+                            comparatorChain.equals(chain.comparatorChain)));
         }
         else
         {
