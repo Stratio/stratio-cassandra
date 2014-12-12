@@ -101,7 +101,6 @@ public class RowServiceWide extends RowService
                 {
                     RangeTombstone rangeTombstone = iterator.next();
                     Query query = rowMapper.query(partitionKey, rangeTombstone);
-                    System.out.println("DELETING WITH RANGE TOMBSTONE " + query);
                     luceneIndex.delete(query);
                 }
             }
