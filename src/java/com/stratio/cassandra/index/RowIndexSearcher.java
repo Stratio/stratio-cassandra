@@ -25,6 +25,7 @@ import org.apache.cassandra.db.filter.ExtendedFilter;
 import org.apache.cassandra.db.index.SecondaryIndexManager;
 import org.apache.cassandra.db.index.SecondaryIndexSearcher;
 import org.apache.cassandra.db.marshal.UTF8Type;
+import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -139,10 +140,14 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
      * {@inheritDoc}
      */
     @Override
-    public void validate(IndexExpression indexExpression)
+    public void validate(IndexExpression indexExpression) throws InvalidRequestException
     {
-        String json = UTF8Type.instance.compose(indexExpression.value);
-        Search.fromJson(json).validate(schema);
+        try {
+            String json = UTF8Type.instance.compose(indexExpression.value);
+            Search.fromJson(json).validate(schema);
+        } catch (Exception e) {
+            throw new InvalidRequestException(e.getMessage());
+        }
     }
 
     /**

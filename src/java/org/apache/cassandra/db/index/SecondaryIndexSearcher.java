@@ -65,11 +65,11 @@ public abstract class SecondaryIndexSearcher
     }
     
     /**
-     * Validates the specified {@link IndexExpression}. It will throw an {@link org.apache.cassandra.exceptions.InvalidRequestException}
+     * Validates the specified {@link IndexExpression}. It will throw an {@link InvalidRequestException}
      * if the provided clause is not valid for the index implementation.
      *
      * @param indexExpression An {@link IndexExpression} to be validated
-     * @throws org.apache.cassandra.exceptions.InvalidRequestException in case of validation errors
+     * @throws InvalidRequestException in case of validation errors
      */
     public void validate(IndexExpression indexExpression) throws InvalidRequestException
     {
