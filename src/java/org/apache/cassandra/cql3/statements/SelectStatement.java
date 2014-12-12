@@ -364,7 +364,13 @@ public class SelectStatement implements CQLStatement, MeasurableForPreparedCache
         if (filter == null)
             return null;
 
-        List<IndexExpression> expressions = getValidatedIndexExpressions(options);
+        List<IndexExpression> expressions;
+        try
+        {
+            expressions = getValidatedIndexExpressions(options);
+        } catch (Exception e) {
+            throw new InvalidRequestException(e.getMessage());
+        }
         // The LIMIT provided by the user is the number of CQL row he wants returned.
         // We want to have getRangeSlice to count the number of columns, not the number of keys.
         AbstractBounds<RowPosition> keyBounds = getKeyBounds(options);

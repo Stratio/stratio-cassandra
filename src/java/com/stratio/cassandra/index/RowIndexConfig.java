@@ -30,7 +30,6 @@ import java.util.Map;
  */
 public class RowIndexConfig
 {
-
     private static final String SCHEMA_OPTION = "schema";
 
     private static final String REFRESH_SECONDS_OPTION = "refresh_seconds";
@@ -48,7 +47,7 @@ public class RowIndexConfig
     private static final int DEFAULT_MAX_CACHED_MB = 30;
 
     private static final String INDEXING_THREADS_OPTION = "indexing_threads";
-    private static final int DEFAULT_INDEXING_THREADS = Runtime.getRuntime().availableProcessors();
+    private static final int DEFAULT_INDEXING_THREADS = 0;
 
     private static final String INDEXING_QUEUES_SIZE_OPTION = "indexing_queues_size";
     private static final int DEFAULT_INDEXING_QUEUES_SIZE = 50;
@@ -62,9 +61,15 @@ public class RowIndexConfig
     private final int indexingThreads;
     private final int indexingQueuesSize;
 
+    /**
+     * Builds a new {@link RowIndexConfig} for the column family defined by the specified metadata using the specified
+     * index options.
+     *
+     * @param metadata The metadata of the indexed column family.
+     * @param options  The index options.
+     */
     public RowIndexConfig(CFMetaData metadata, Map<String, String> options)
     {
-
         // Setup refresh seconds
         String refreshOption = options.get(REFRESH_SECONDS_OPTION);
         if (refreshOption != null)
@@ -171,12 +176,7 @@ public class RowIndexConfig
             }
             catch (NumberFormatException e)
             {
-                String msg = String.format("'%s'  must be a strictly positive integer", INDEXING_THREADS_OPTION);
-                throw new RuntimeException(msg);
-            }
-            if (indexingThreads <= 0)
-            {
-                String msg = String.format("'%s'  must be strictly positive", INDEXING_THREADS_OPTION);
+                String msg = String.format("'%s'  must be a positive integer", INDEXING_THREADS_OPTION);
                 throw new RuntimeException(msg);
             }
         }

@@ -24,7 +24,6 @@ import org.apache.cassandra.db.filter.QueryFilter;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -55,7 +54,7 @@ public class RowServiceSkinny extends RowService
      * @param baseCfs          The base column family store.
      * @param columnDefinition The indexed column definition.
      */
-    public RowServiceSkinny(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) throws IOException
+    public RowServiceSkinny(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition)
     {
         super(baseCfs, columnDefinition);
         this.rowMapper = (RowMapperSkinny) super.rowMapper;
@@ -77,7 +76,7 @@ public class RowServiceSkinny extends RowService
      * {@inheritDoc}
      */
     @Override
-    public void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp) throws IOException
+    public void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp)
     {
         DecoratedKey partitionKey = rowMapper.partitionKey(key);
 
@@ -97,7 +96,7 @@ public class RowServiceSkinny extends RowService
 
     /** {@inheritDoc} */
     @Override
-    public void deleteInner(DecoratedKey partitionKey) throws IOException
+    public void deleteInner(DecoratedKey partitionKey)
     {
         Term term = rowMapper.term(partitionKey);
         luceneIndex.delete(term);

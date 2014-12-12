@@ -26,7 +26,6 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Query;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.*;
 
@@ -55,7 +54,7 @@ public class RowServiceWide extends RowService
      * @param baseCfs          The base column family store.
      * @param columnDefinition The indexed column definition.
      */
-    public RowServiceWide(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) throws IOException
+    public RowServiceWide(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition)
     {
         super(baseCfs, columnDefinition);
         this.rowMapper = (RowMapperWide) super.rowMapper;
@@ -75,7 +74,7 @@ public class RowServiceWide extends RowService
 
     /** {@inheritDoc} */
     @Override
-    public void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp) throws IOException
+    public void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp)
     {
         DeletionInfo deletionInfo = columnFamily.deletionInfo();
         DecoratedKey partitionKey = rowMapper.partitionKey(key);
@@ -116,7 +115,7 @@ public class RowServiceWide extends RowService
 
     /** {@inheritDoc} */
     @Override
-    public void deleteInner(DecoratedKey partitionKey) throws IOException
+    public void deleteInner(DecoratedKey partitionKey)
     {
         Term term = rowMapper.term(partitionKey);
         luceneIndex.delete(term);

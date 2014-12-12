@@ -28,7 +28,6 @@ import org.apache.cassandra.db.index.SecondaryIndexSearcher;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.utils.concurrent.OpOrder;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Set;
@@ -108,10 +107,10 @@ public class RowIndex extends PerRowSecondaryIndex
     @Override
     public void validate(CFMetaData metadata, Map<String, String> indexOptions)
     {
-        RowIndexConfig config = new RowIndexConfig(metadata, indexOptions);
+        new RowIndexConfig(metadata, indexOptions);
     }
 
-    private void setup() throws IOException
+    private void setup()
     {
         // Load column family info
         secondaryIndexManager = baseCfs.indexManager;
@@ -311,18 +310,6 @@ public class RowIndex extends PerRowSecondaryIndex
     public void reload()
     {
         Log.info("Reloading index %s", logName);
-        // lock.writeLock().lock();
-        // try {
-        // if (rowService == null && !columnDefs.isEmpty()) {
-        // setup();
-        // }
-        // Log.info("Reloaded index %s", logName);
-        // } catch (Exception e) {
-        // Log.error(e, "Reloading index %s", logName);
-        // throw new RuntimeException(e);
-        // } finally {
-        // lock.writeLock().unlock();
-        // }
     }
 
     @Override
@@ -363,7 +350,7 @@ public class RowIndex extends PerRowSecondaryIndex
         }
         catch (Exception e)
         {
-            Log.error(e, "Compacting index %s", logName);
+            Log.error(e, "Error while ompacting index %s", logName);
             throw new RuntimeException(e);
         }
     }
