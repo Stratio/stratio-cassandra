@@ -38,6 +38,7 @@ public class RowServiceWide extends RowService
 {
     /** The names of the Lucene fields to be loaded. */
     private static final Set<String> FIELDS_TO_LOAD;
+
     static
     {
         FIELDS_TO_LOAD = new HashSet<>();
@@ -101,7 +102,6 @@ public class RowServiceWide extends RowService
                 {
                     RangeTombstone rangeTombstone = iterator.next();
                     Query query = rowMapper.query(partitionKey, rangeTombstone);
-                    System.out.println("DELETING WITH RANGE TOMBSTONE " + query);
                     luceneIndex.delete(query);
                 }
             }

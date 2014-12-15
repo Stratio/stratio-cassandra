@@ -35,10 +35,16 @@ import org.codehaus.jackson.annotate.JsonProperty;
  */
 public class FuzzyCondition extends Condition
 {
-
+    /** The default Damerau-Levenshtein max distance. */
     public final static int DEFAULT_MAX_EDITS = LevenshteinAutomata.MAXIMUM_SUPPORTED_DISTANCE;
+
+    /** The default length of common (non-fuzzy) prefix. */
     public final static int DEFAULT_PREFIX_LENGTH = 0;
+
+    /** The default length of common (non-fuzzy) prefix. */
     public final static int DEFAULT_MAX_EXPANSIONS = 50;
+
+    /** If transpositions should be treated as a primitive edit operation by default. */
     public final static boolean DEFAULT_TRANSPOSITIONS = true;
 
     /** The name of the field to be matched. */
@@ -57,7 +63,7 @@ public class FuzzyCondition extends Condition
     @JsonProperty("prefix_length")
     private final Integer prefixLength;
 
-    /** The maximum number of terms to match. */
+    /** The length of common (non-fuzzy) prefix. */
     @JsonProperty("max_expansions")
     private final Integer maxExpansions;
 
@@ -100,9 +106,7 @@ public class FuzzyCondition extends Condition
         this.transpositions = transpositions == null ? DEFAULT_TRANSPOSITIONS : transpositions;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Query query(Schema schema)
     {
@@ -149,9 +153,7 @@ public class FuzzyCondition extends Condition
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {

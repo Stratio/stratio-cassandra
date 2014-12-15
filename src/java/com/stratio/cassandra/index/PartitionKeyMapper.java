@@ -15,7 +15,7 @@
  */
 package com.stratio.cassandra.index;
 
-import com.stratio.cassandra.index.schema.ColumnMapper;
+import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.util.ByteBufferUtils;
 import org.apache.cassandra.config.CFMetaData;
@@ -159,7 +159,7 @@ public class PartitionKeyMapper
             int position = columnDefinition.position();
             ByteBuffer value = components[position];
             AbstractType<?> valueType = rawKeyType.getComponents().get(position);
-            columns.add(ColumnMapper.column(name, value, valueType));
+            columns.add(new Column(name, value, valueType));
         }
         return columns;
     }

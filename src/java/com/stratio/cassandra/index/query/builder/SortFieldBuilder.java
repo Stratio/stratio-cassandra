@@ -52,9 +52,7 @@ public class SortFieldBuilder implements Builder<SortField>
         return this;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public SortField build()
     {

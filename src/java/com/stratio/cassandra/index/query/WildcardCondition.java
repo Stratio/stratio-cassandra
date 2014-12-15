@@ -63,9 +63,7 @@ public class WildcardCondition extends Condition
         this.value = value;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Query query(Schema schema)
     {
@@ -100,9 +98,7 @@ public class WildcardCondition extends Condition
         return query;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {

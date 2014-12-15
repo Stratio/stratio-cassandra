@@ -74,7 +74,9 @@ public class PhraseConditionBuilder extends ConditionBuilder<PhraseCondition, Ph
     }
 
     /**
-     * {@inheritDoc}
+     * Returns the {@link PhraseCondition} represented by this builder.
+     *
+     * @return The {@link PhraseCondition} represented by this builder.
      */
     @Override
     public PhraseCondition build()

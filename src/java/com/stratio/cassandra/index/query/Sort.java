@@ -30,7 +30,6 @@ import java.util.List;
  */
 public class Sort implements Iterable<SortField>
 {
-
     /** How to sortFields each field. */
     private final List<SortField> sortFields;
 
@@ -45,9 +44,7 @@ public class Sort implements Iterable<SortField>
         this.sortFields = sortFields;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Iterator<SortField> iterator()
     {
@@ -80,6 +77,7 @@ public class Sort implements Iterable<SortField>
         return new org.apache.lucene.search.Sort(sortFields);
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {

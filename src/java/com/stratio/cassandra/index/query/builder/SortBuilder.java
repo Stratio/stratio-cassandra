@@ -56,9 +56,7 @@ public class SortBuilder implements Builder<Sort>
         this(Arrays.asList(sortFieldBuilders));
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Sort build()
     {

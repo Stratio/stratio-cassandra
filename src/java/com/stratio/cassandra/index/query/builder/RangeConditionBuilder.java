@@ -98,7 +98,9 @@ public class RangeConditionBuilder extends ConditionBuilder<RangeCondition, Rang
     }
 
     /**
-     * {@inheritDoc}
+     * Returns the {@link RangeCondition} represented by this builder.
+     *
+     * @return The {@link RangeCondition} represented by this builder.
      */
     @Override
     public RangeCondition build()

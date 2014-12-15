@@ -34,22 +34,29 @@ import org.codehaus.jackson.annotate.JsonCreator;
  */
 public class ColumnMapperBoolean extends ColumnMapper<String>
 {
-
+    /** The {@code String} representation of a true value. */
     private static final String TRUE = "true";
+
+    /** The {@code String} representation of a false value. */
     private static final String FALSE = "false";
 
+    /**
+     * Builds a new {@link ColumnMapperBlob}.
+     */
     @JsonCreator
     public ColumnMapperBoolean()
     {
         super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, BooleanType.instance}, new AbstractType[]{});
     }
 
+    /** {@inheritDoc} */
     @Override
     public Analyzer analyzer()
     {
         return EMPTY_ANALYZER;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String indexValue(String name, Object value)
     {
@@ -76,6 +83,7 @@ public class ColumnMapperBoolean extends ColumnMapper<String>
         throw new IllegalArgumentException();
     }
 
+    /** {@inheritDoc} */
     @Override
     public String queryValue(String name, Object value)
     {
@@ -93,24 +101,28 @@ public class ColumnMapperBoolean extends ColumnMapper<String>
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public Field field(String name, Object value)
     {
         return new StringField(name, indexValue(name, value), STORE);
     }
 
+    /** {@inheritDoc} */
     @Override
     public SortField sortField(String field, boolean reverse)
     {
         return new SortField(field, Type.STRING, reverse);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Class<String> baseClass()
     {
         return String.class;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {

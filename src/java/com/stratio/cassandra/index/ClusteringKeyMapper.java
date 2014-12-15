@@ -15,7 +15,7 @@
  */
 package com.stratio.cassandra.index;
 
-import com.stratio.cassandra.index.schema.ColumnMapper;
+import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.index.util.ByteBufferUtils;
@@ -274,7 +274,7 @@ public abstract class ClusteringKeyMapper
                     ColumnDefinition columnDefinition = metadata.clusteringColumns().get(i);
                     String name = columnDefinition.name.toString();
                     AbstractType<?> valueType = columnDefinition.type;
-                    columns.add(ColumnMapper.column(name, value, valueType));
+                    columns.add(new Column(name, value, valueType));
                 }
             }
         }

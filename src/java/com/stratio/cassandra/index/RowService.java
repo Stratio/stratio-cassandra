@@ -21,6 +21,7 @@ import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.index.util.Log;
 import com.stratio.cassandra.index.util.TaskQueue;
+import com.stratio.cassandra.index.util.TimeCounter;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.cql3.ColumnIdentifier;
@@ -256,7 +257,17 @@ public abstract class RowService
                                   final int limit,
                                   long timestamp)
     {
-        // Log.debug("Searching with search %s ", search);
+        Log.debug("Searching with search %s ", search);
+
+        // Setup stats
+        TimeCounter searchTime = new TimeCounter();
+        TimeCounter luceneTime = new TimeCounter();
+        TimeCounter collectTime = new TimeCounter();
+        TimeCounter sortTime = new TimeCounter();
+        int numDocs = 0;
+        int numPages = 0;
+
+        searchTime.start();
 
         // Setup search arguments
         Query rangeQuery = rowMapper.query(dataRange);
@@ -267,10 +278,6 @@ public abstract class RowService
         // Setup search pagination
         List<Row> rows = new LinkedList<>(); // The row list to be returned
         SearchResult lastDoc = null; // The last search result
-        int collectedDocs = 0;
-        long searchTime = 0;
-        long collectTime = 0;
-        int numPages = 0;
 
         // Paginate search collecting documents
         List<SearchResult> searchResults;
@@ -279,14 +286,14 @@ public abstract class RowService
         do
         {
             // Search rows identifiers in Lucene
-            long searchStartTime = System.currentTimeMillis();
+            luceneTime.start();
             searchResults = luceneIndex.search(query, sort, lastDoc, pageSize, fieldsToLoad(), usesRelevance);
-            collectedDocs += searchResults.size();
+            numDocs += searchResults.size();
             lastDoc = searchResults.isEmpty() ? null : searchResults.get(searchResults.size() - 1);
-            searchTime += System.currentTimeMillis() - searchStartTime;
+            luceneTime.stop();
 
             // Collect rows from Cassandra
-            long collectStartTime = System.currentTimeMillis();
+            collectTime.start();
             for (Row row : rows(searchResults, timestamp, usesRelevance))
             {
                 if (row != null && accepted(row, expressions))
@@ -294,7 +301,7 @@ public abstract class RowService
                     rows.add(row);
                 }
             }
-            collectTime += System.currentTimeMillis() - collectStartTime;
+            collectTime.stop();
 
             // Setup next iteration
             maybeMore = searchResults.size() == pageSize;
@@ -304,11 +311,16 @@ public abstract class RowService
             // Iterate while there are still documents to read and we don't have enough rows
         } while (maybeMore && rows.size() < limit);
 
-        Log.debug("Lucene time: %d ms", searchTime);
-        Log.debug("Cassandra time: %d ms", collectTime);
-        Log.debug("Collected %d docs and %d rows in %d pages", collectedDocs, rows.size(), numPages);
-
+        sortTime.start();
         Collections.sort(rows, comparator());
+        sortTime.stop();
+
+        searchTime.stop();
+
+        Log.debug("Lucene time: %s", luceneTime);
+        Log.debug("Cassandra time: %s", collectTime);
+        Log.debug("Sort time: %s", sortTime);
+        Log.debug("Collected %d docs and %d rows in %d pages in %s", numDocs, rows.size(), numPages, searchTime);
 
         return rows;
     }
@@ -355,7 +367,7 @@ public abstract class RowService
         ColumnDefinition def = metadata.getColumnDefinition(expression.column);
         String name = def.name.toString();
 
-        Column column = columns.getCell(name);
+        Column column = columns.getColumn(name);
         if (column == null)
         {
             return false;
