@@ -34,11 +34,13 @@ import org.codehaus.jackson.annotate.JsonProperty;
 public class ColumnMapperText extends ColumnMapper<String>
 {
 
-    /**
-     * The Lucene's {@link org.apache.lucene.analysis.Analyzer}.
-     */
+    /** The Lucene {@link Analyzer} to be used. */
     private Analyzer analyzer;
 
+    /**
+     * Builds a new {@link ColumnMapperText} using the specified Lucene {@link Analyzer}.
+     * @param analyzerClassName The Lucene {@link Analyzer} to be used.
+     */
     @JsonCreator
     public ColumnMapperText(@JsonProperty("analyzer") String analyzerClassName)
     {
@@ -55,8 +57,7 @@ public class ColumnMapperText extends ColumnMapper<String>
                 TimeUUIDType.instance,
                 TimestampType.instance,
                 BytesType.instance,
-                InetAddressType.instance},
-              new AbstractType[]{});
+                InetAddressType.instance}, new AbstractType[]{});
         if (analyzerClassName != null)
         {
             this.analyzer = AnalyzerFactory.getAnalyzer(analyzerClassName);
@@ -67,12 +68,14 @@ public class ColumnMapperText extends ColumnMapper<String>
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public Analyzer analyzer()
     {
         return analyzer;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String indexValue(String name, Object value)
     {
@@ -86,12 +89,14 @@ public class ColumnMapperText extends ColumnMapper<String>
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public String queryValue(String name, Object value)
     {
         return indexValue(name, value);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Field field(String name, Object value)
     {
@@ -99,18 +104,21 @@ public class ColumnMapperText extends ColumnMapper<String>
         return new TextField(name, text, STORE);
     }
 
+    /** {@inheritDoc} */
     @Override
     public SortField sortField(String field, boolean reverse)
     {
         return new SortField(field, Type.STRING, reverse);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Class<String> baseClass()
     {
         return String.class;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {

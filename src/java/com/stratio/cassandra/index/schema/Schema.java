@@ -44,25 +44,16 @@ import java.util.Map.Entry;
  */
 public class Schema
 {
-
-    /**
-     * The default Lucene's analyzer to be used if no other specified.
-     */
+    /** The default Lucene analyzer to be used if no other specified. */
     public static final Analyzer DEFAULT_ANALYZER = new StandardAnalyzer(Version.LUCENE_48);
 
-    /**
-     * The Lucene's {@link org.apache.lucene.analysis.Analyzer}.
-     */
+    /** The Lucene {@link Analyzer}. */
     private final Analyzer defaultAnalyzer;
 
-    /**
-     * The per field Lucene's analyzer to be used.
-     */
+    /** The per field Lucene analyzer to be used. */
     private final PerFieldAnalyzerWrapper perFieldAnalyzer;
 
-    /**
-     * The column mappers.
-     */
+    /** The column mappers. */
     private Map<String, ColumnMapper<?>> columnMappers;
 
     /**
@@ -75,7 +66,6 @@ public class Schema
     public Schema(@JsonProperty("default_analyzer") String analyzerClassName,
                   @JsonProperty("fields") Map<String, ColumnMapper<?>> columnMappers)
     {
-
         // Copy lower cased mappers
         this.columnMappers = columnMappers;
 
@@ -147,7 +137,14 @@ public class Schema
         return perFieldAnalyzer;
     }
 
-    public void addFields(Document document, Columns columns) {
+    /**
+     * Adds to the specified {@link Document} the Lucene fields representing the specified {@link Columns}.
+     *
+     * @param document The Lucene {@link Document} where the fields are going to be added.
+     * @param columns  The {@link Columns} to be added.
+     */
+    public void addFields(Document document, Columns columns)
+    {
         for (Column column : columns)
         {
             String name = column.getName();
@@ -206,6 +203,7 @@ public class Schema
         return JsonSerializer.fromString(json, Schema.class);
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {

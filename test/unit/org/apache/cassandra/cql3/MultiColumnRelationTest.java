@@ -26,7 +26,7 @@ public class MultiColumnRelationTest extends CQLTester
     {
         createTable("CREATE TABLE %s (a int, b int, c int, PRIMARY KEY (a, b))");
 
-        assertInvalid("SELECT * FROM %s WHERE () = (?, ?)", 1, 2);
+        assertInvalidSyntax("SELECT * FROM %s WHERE () = (?, ?)", 1, 2);
         assertInvalid("SELECT * FROM %s WHERE a = 0 AND (b) = (?) AND (b) > (?)", 0, 0);
         assertInvalid("SELECT * FROM %s WHERE a = 0 AND (b) > (?) AND (b) > (?)", 0, 1);
         assertInvalid("SELECT * FROM %s WHERE (a, b) = (?, ?)", 0, 0);
@@ -37,7 +37,7 @@ public class MultiColumnRelationTest extends CQLTester
     {
         createTable("CREATE TABLE %s (a int, b int, c int, d int, PRIMARY KEY (a, b, c, d))");
 
-        assertInvalid("SELECT * FROM %s WHERE a = 0 AND (b, c) > ()");
+        assertInvalidSyntax("SELECT * FROM %s WHERE a = 0 AND (b, c) > ()");
         assertInvalid("SELECT * FROM %s WHERE a = 0 AND (b, c) > (?, ?, ?)", 1, 2, 3);
         assertInvalid("SELECT * FROM %s WHERE a = 0 AND (b, c) > (?, ?)", 1, null);
 
@@ -69,6 +69,9 @@ public class MultiColumnRelationTest extends CQLTester
 
         assertInvalid("SELECT * FROM %s WHERE (a, b, c, d) IN ((?, ?, ?, ?))", 0, 1, 2, 3);
         assertInvalid("SELECT * FROM %s WHERE (c, d) IN ((?, ?))", 0, 1);
+
+        assertInvalid("SELECT * FROM %s WHERE a = ? AND (b, c) in ((?, ?), (?, ?)) AND d > ?", 0, 0, 0, 0, 0, 0);
+
     }
 
     @Test
@@ -128,6 +131,13 @@ public class MultiColumnRelationTest extends CQLTester
         assertRows(execute("SELECT * FROM %s WHERE a = ? AND (b) > (?) AND (b) < (?)", 0, 0, 2),
             row(0, 1, 0)
         );
+    }
+
+    @Test
+    public void testNonEqualsRelation() throws Throwable
+    {
+        createTable("CREATE TABLE %s (a int PRIMARY KEY, b int)");
+        assertInvalid("SELECT * FROM %s WHERE a = 0 AND (b) != (0)");
     }
 
     @Test

@@ -61,4 +61,105 @@ public class ColumnStats
         this.maxColumnNames = maxColumnNames;
         this.hasLegacyCounterShards = hasLegacyCounterShards;
     }
+
+    // We use explicit classes for ints and longs instead of generics to avoid boxing and unboxing (See CASSANDRA-8109)
+    public static class MinLongTracker
+    {
+        private final long defaultValue;
+        private boolean isSet = false;
+        private long value;
+
+        public MinLongTracker(long defaultValue)
+        {
+            this.defaultValue = defaultValue;
+        }
+
+        public void update(long value)
+        {
+            if (!isSet)
+            {
+                this.value = value;
+                isSet = true;
+            }
+            else
+            {
+                if (value <this.value)
+                    this.value = value;
+            }
+        }
+
+        public long get()
+        {
+            if (isSet)
+                return value;
+            return defaultValue;
+        }
+    }
+
+    public static class MaxLongTracker
+    {
+        private final long defaultValue;
+        private boolean isSet = false;
+        private long value;
+
+        public MaxLongTracker(long defaultValue)
+        {
+            this.defaultValue = defaultValue;
+        }
+
+        public void update(long value)
+        {
+            if (!isSet)
+            {
+                this.value = value;
+                isSet = true;
+            }
+            else
+            {
+                if (value >this.value)
+                    this.value = value;
+            }
+        }
+
+        public long get()
+        {
+            if (isSet)
+                return value;
+            return defaultValue;
+        }
+    }
+
+    public static class MaxIntTracker
+    {
+        private final int defaultValue;
+        private boolean isSet = false;
+        private int value;
+
+        public MaxIntTracker(int defaultValue)
+        {
+            this.defaultValue = defaultValue;
+        }
+
+        public void update(int value)
+        {
+            if (!isSet)
+            {
+                this.value = value;
+                isSet = true;
+            }
+            else
+            {
+                if (value >this.value)
+                    this.value = value;
+            }
+        }
+
+        public int get()
+        {
+            if (isSet)
+                return value;
+            return defaultValue;
+        }
+    }
+
 }

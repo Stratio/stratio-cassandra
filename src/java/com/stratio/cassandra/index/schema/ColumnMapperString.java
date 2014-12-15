@@ -32,6 +32,9 @@ import org.codehaus.jackson.annotate.JsonCreator;
 public class ColumnMapperString extends ColumnMapper<String>
 {
 
+    /**
+     * Builds a new {@link ColumnMapperString}.
+     */
     @JsonCreator
     public ColumnMapperString()
     {
@@ -48,16 +51,17 @@ public class ColumnMapperString extends ColumnMapper<String>
                 TimeUUIDType.instance,
                 TimestampType.instance,
                 BytesType.instance,
-                InetAddressType.instance},
-              new AbstractType[]{UTF8Type.instance});
+                InetAddressType.instance}, new AbstractType[]{UTF8Type.instance});
     }
 
+    /** {@inheritDoc} */
     @Override
     public Analyzer analyzer()
     {
         return EMPTY_ANALYZER;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String indexValue(String name, Object value)
     {
@@ -71,12 +75,14 @@ public class ColumnMapperString extends ColumnMapper<String>
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public String queryValue(String name, Object value)
     {
         return indexValue(name, value);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Field field(String name, Object value)
     {
@@ -84,18 +90,21 @@ public class ColumnMapperString extends ColumnMapper<String>
         return new StringField(name, string, STORE);
     }
 
+    /** {@inheritDoc} */
     @Override
     public SortField sortField(String field, boolean reverse)
     {
         return new SortField(field, Type.STRING, reverse);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Class<String> baseClass()
     {
         return String.class;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {

@@ -72,21 +72,23 @@ where:
 -   &lt;options> is a JSON object:
 
 ```sql
-<options> := { ('refresh_seconds'    : '<int_value>',)?
-               ('num_cached_filters' : '<int_value>',)?
-               ('ram_buffer_mb'      : '<int_value>',)?
-               ('max_merge_mb'       : '<int_value>',)?
-               ('max_cached_mb'      : '<int_value>',)?
-               'schema'              : '<schema_definition>'};
+<options> := { ('refresh_seconds'      : '<int_value>',)?
+               ('ram_buffer_mb'        : '<int_value>',)?
+               ('max_merge_mb'         : '<int_value>',)?
+               ('max_cached_mb'        : '<int_value>',)?
+               ('indexing_threads'     : '<int_value>',)?
+               ('indexing_queues_size' : '<int_value>',)?
+               'schema'                : '<schema_definition>'};
 ```
 
 Options, except “schema”, take a positive integer value enclosed in single quotes:
 
 -   **refresh_seconds**: number of seconds before refreshing the index (between writers and readers). Defaults to ’60′.
--   **num_cached_filters**: should be equal or greater than the number of vnodes plus 1 per node. It uses 1 bit per indexed row. A value of ’0′ means no cache. Defaults to ’0′.
 -   **ram_buffer_mb**: size of the write buffer. Its content will be committed to disk when full. Defaults to ’64′.
 -   **max_merge_mb**: defaults to ’5′.
 -   **max_cached_mb**: defaults to ’30′.
+-   **indexing_threads**: number of asynchronous indexing threads. ’0′ means synchronous indexing. Defaults to ’0′.
+-   **indexing_queues_size**: max number of queued documents per asynchronous indexing thread. Defaults to ’50′.
 -   **schema**: see below
 
 ```sql
@@ -170,11 +172,12 @@ CREATE CUSTOM INDEX IF NOT EXISTS users_index
 ON test.users (stratio_col)
 USING 'org.apache.cassandra.db.index.stratio.RowIndex'
 WITH OPTIONS = {
-    'refresh_seconds'    : '1',
-    'num_cached_filters' : '1',
-    'ram_buffer_mb'      : '64',
-    'max_merge_mb'       : '5',
-    'max_cached_mb'      : '30',
+    'refresh_seconds'      : '1',
+    'ram_buffer_mb'        : '64',
+    'max_merge_mb'         : '5',
+    'max_cached_mb'        : '30',
+    'indexing_threads'     : '4',
+    'indexing_queues_size' : '50',
     'schema' : '{
         default_analyzer : "org.apache.lucene.analysis.standard.StandardAnalyzer",
         fields : {
@@ -665,13 +668,15 @@ WHERE stratio_col = '{query : {
                         value : "tu*" }}';
 ```
 
-Other Interesting Queries
-=========================
+Spark and Hadoop Integration
+============================
 
-Token Function
---------------
+Spark and Hadoop integrations are fully supported because Lucene queries can be combined with token range queries and pagination, which are the basis of MapReduce frameworks support.
 
-The token function allows computing the token for a given partition key. The primary key of the example table “users” is ((name, gender), animal, age) where (name, gender) is the partition key. When combining the token function and a Lucene-based filter in a where clause, the filter on tokens is applied first and then the condition of the filter clause. These kinds of queries are very useful to paginate results.
+Token Range Queries
+-------------------
+
+The token function allows computing the token for a given partition key. The primary key of the example table “users” is ((name, gender), animal, age) where (name, gender) is the partition key. When combining the token function and a Lucene-based filter in a where clause, the filter on tokens is applied first and then the condition of the filter clause.
 
 Example: will retrieve rows which tokens are greater than (‘Alicia’, ‘female’) and then test them against the match condition.
 
@@ -682,18 +687,18 @@ SELECT name,gender
    AND token(name, gender) > token('Alicia', 'female');
 ```
 
-Server Side Filtering
----------------------
+Pagination
+----------
 
-By default, CQL does not allow selecting queries to filter on non-indexed columns. The ALLOW FILTERING option allows explicitly this type of filtering and can be used together with a Lucene-based query. Note that using server side filtering will have an unpredictable performance.
-
-Example: will retrieve rows where name starts with “J” and number is greater than 10. Note that number is not part of any index, custom or secondary.
+Pagination over filtered results is fully supported. You can retrieve the rows starting from a certain key. For example, if the primary key is (userid, createdAt), you can query:
 
 ```sql
-SELECT name, number
-  FROM test.users
- WHERE stratio_col = '{query : {type : "wildcard", field : "name", value: "J*"}}'
-   AND number > 10 ALLOW FILTERING;
+SELECT *
+  FROM tweets
+  WHERE stratio_col = ‘{ filter : {type:”match",  field:”text", value:”cassandra”} }’
+    AND userid = 3543534
+    AND createdAt > 2011-02-03 04:05+0000
+  LIMIT 5000;
 ```
 
 Datatypes Mapping

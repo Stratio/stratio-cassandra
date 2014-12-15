@@ -20,7 +20,6 @@ package org.apache.cassandra.hadoop.cql3;
 *
 */
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
@@ -29,10 +28,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.Set;
+import java.util.Arrays;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
@@ -46,18 +42,14 @@ import org.apache.hadoop.conf.Configuration;
 import com.datastax.driver.core.AuthProvider;
 import com.datastax.driver.core.PlainTextAuthProvider;
 import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.Host;
 import com.datastax.driver.core.HostDistance;
 import com.datastax.driver.core.PoolingOptions;
 import com.datastax.driver.core.ProtocolOptions;
 import com.datastax.driver.core.QueryOptions;
 import com.datastax.driver.core.SSLOptions;
 import com.datastax.driver.core.SocketOptions;
-import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.policies.LoadBalancingPolicy;
 import com.google.common.base.Optional;
-import com.google.common.collect.Iterators;
-import com.google.common.collect.Sets;
 
 public class CqlConfigHelper
 {
@@ -90,7 +82,7 @@ public class CqlConfigHelper
     private static final String INPUT_NATIVE_SSL_CIPHER_SUITES = "cassandra.input.native.ssl.cipher.suites";
 
     private static final String OUTPUT_CQL = "cassandra.output.cql";
-
+    
     /**
      * Set the CQL columns for the input of this job.
      *
@@ -289,16 +281,22 @@ public class CqlConfigHelper
 
     public static Cluster getInputCluster(String host, Configuration conf)
     {
+        // this method has been left for backward compatibility
+        return getInputCluster(new String[] {host}, conf);
+    }
+
+    public static Cluster getInputCluster(String[] hosts, Configuration conf)
+    {
         int port = getInputNativePort(conf);
         Optional<AuthProvider> authProvider = getAuthProvider(conf);
         Optional<SSLOptions> sslOptions = getSSLOptions(conf);
-        LoadBalancingPolicy loadBalancingPolicy = getReadLoadBalancingPolicy(conf, host);
+        LoadBalancingPolicy loadBalancingPolicy = getReadLoadBalancingPolicy(conf, hosts);
         SocketOptions socketOptions = getReadSocketOptions(conf);
         QueryOptions queryOptions = getReadQueryOptions(conf);
         PoolingOptions poolingOptions = getReadPoolingOptions(conf);
         
         Cluster.Builder builder = Cluster.builder()
-                                         .addContactPoint(host)
+                                         .addContactPoints(hosts)
                                          .withPort(port)
                                          .withCompression(ProtocolOptions.Compression.NONE);
 
@@ -419,19 +417,17 @@ public class CqlConfigHelper
         
         PoolingOptions poolingOptions = new PoolingOptions();
 
-        if (coreConnections.isPresent())
-            poolingOptions.setCoreConnectionsPerHost(HostDistance.LOCAL, coreConnections.get());
-        if (maxConnections.isPresent())
-            poolingOptions.setMaxConnectionsPerHost(HostDistance.LOCAL, maxConnections.get());
-        if (minSimultaneousRequests.isPresent())
-            poolingOptions.setMinSimultaneousRequestsPerConnectionThreshold(HostDistance.LOCAL, minSimultaneousRequests.get());
-        if (maxSimultaneousRequests.isPresent())
-            poolingOptions.setMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.LOCAL, maxSimultaneousRequests.get());
-
-        poolingOptions.setCoreConnectionsPerHost(HostDistance.REMOTE, 0)
-                      .setMaxConnectionsPerHost(HostDistance.REMOTE, 0)
-                      .setMinSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE, 0)
-                      .setMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE, 0);
+        for (HostDistance hostDistance : Arrays.asList(HostDistance.LOCAL, HostDistance.REMOTE))
+        {
+            if (coreConnections.isPresent())
+                poolingOptions.setCoreConnectionsPerHost(hostDistance, coreConnections.get());
+            if (maxConnections.isPresent())
+                poolingOptions.setMaxConnectionsPerHost(hostDistance, maxConnections.get());
+            if (minSimultaneousRequests.isPresent())
+                poolingOptions.setMinSimultaneousRequestsPerConnectionThreshold(hostDistance, minSimultaneousRequests.get());
+            if (maxSimultaneousRequests.isPresent())
+                poolingOptions.setMaxSimultaneousRequestsPerConnectionThreshold(hostDistance, maxSimultaneousRequests.get());
+        }
 
         return poolingOptions;
     }  
@@ -481,84 +477,9 @@ public class CqlConfigHelper
         return socketOptions;
     }
 
-    private static LoadBalancingPolicy getReadLoadBalancingPolicy(Configuration conf, final String stickHost)
+    private static LoadBalancingPolicy getReadLoadBalancingPolicy(Configuration conf, final String[] stickHosts)
     {
-        return new LoadBalancingPolicy()
-        {
-            private Host origHost;
-            private Set<Host> liveRemoteHosts = Sets.newHashSet();
-
-            @Override
-            public void onAdd(Host host)
-            {
-                if (host.getAddress().getHostName().equals(stickHost))
-                    origHost = host;
-            }
-
-            @Override
-            public void onDown(Host host)
-            {
-                if (host.getAddress().getHostName().equals(stickHost))
-                    origHost = null;
-                liveRemoteHosts.remove(host);
-            }
-
-            @Override
-            public void onRemove(Host host)
-            {
-                if (host.getAddress().getHostName().equals(stickHost))
-                    origHost = null;
-                liveRemoteHosts.remove(host);
-            }
-
-            @Override
-            public void onUp(Host host)
-            {
-                if (host.getAddress().getHostName().equals(stickHost))
-                    origHost = host;
-                liveRemoteHosts.add(host);
-            }
-
-            @Override
-            public void onSuspected(Host host)
-            {
-            }
-
-            @Override
-            public HostDistance distance(Host host)
-            {
-                if (host.getAddress().getHostName().equals(stickHost))
-                    return HostDistance.LOCAL;
-                else
-                    return HostDistance.REMOTE;
-            }
-
-            @Override
-            public void init(Cluster cluster, Collection<Host> hosts)
-            {
-                for (Host host : hosts)
-                {
-                    if (host.getAddress().getHostName().equals(stickHost))
-                    {
-                        origHost = host;
-                        break;
-                    }
-                }
-            }
-
-            @Override
-            public Iterator<Host> newQueryPlan(String loggedKeyspace, Statement statement)
-            {
-                if (origHost != null)
-                {
-                    return Iterators.concat(Collections.singletonList(origHost).iterator(), liveRemoteHosts.iterator());
-                }
-                else
-                {
-                    return liveRemoteHosts.iterator();
-                }
-            }
-        };
+        return new LimitedLocalNodeFirstLocalBalancingPolicy(stickHosts);
     }
 
     private static Optional<AuthProvider> getAuthProvider(Configuration conf)

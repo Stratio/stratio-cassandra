@@ -26,8 +26,9 @@ import java.io.IOException;
 
 /**
  * {@link ClusteringKeyMapper} that stores a binary representation of the clustering key.
- *
- * It uses custom {@link SortField}s and {@link Query}s, having worst performance than other implementations but being applicable to any schema.
+ * <p/>
+ * It uses custom {@link SortField}s and {@link Query}s, having worst performance than other implementations but being
+ * applicable to any schema.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
@@ -62,8 +63,10 @@ public class ClusteringKeyMapperGeneric extends ClusteringKeyMapper
                 new SortField(FIELD_NAME, new FieldComparatorSource()
                 {
                     @Override
-                    public FieldComparator<?>
-                    newComparator(String field, int hits, int sort, boolean reversed) throws IOException
+                    public FieldComparator<?> newComparator(String field,
+                                                            int hits,
+                                                            int sort,
+                                                            boolean reversed) throws IOException
                     {
                         return new ClusteringKeySorter(ClusteringKeyMapperGeneric.this, hits, field);
                     }

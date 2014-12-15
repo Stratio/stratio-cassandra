@@ -59,10 +59,10 @@ public class SortField
     }
 
     /**
-     * Returns the Lucene's {@link org.apache.lucene.search.SortField} representing this {@link SortField}.
+     * Returns the Lucene {@link org.apache.lucene.search.SortField} representing this {@link SortField}.
      *
      * @param schema The {@link Schema} to be used.
-     * @return the Lucene's {@link org.apache.lucene.search.SortField} representing this {@link SortField}.
+     * @return the Lucene {@link org.apache.lucene.search.SortField} representing this {@link SortField}.
      */
     public org.apache.lucene.search.SortField sortField(Schema schema)
     {
@@ -81,6 +81,11 @@ public class SortField
         }
     }
 
+    /**
+     * Returns a Java {@link Comparator} for {@link Columns} with the same logic as this {@link SortField}.
+     *
+     * @return A Java {@link Comparator} for {@link Columns} with the same logic as this {@link SortField}.
+     */
     public Comparator<Columns> comparator()
     {
         return new Comparator<Columns>()
@@ -97,8 +102,8 @@ public class SortField
                     return -1;
                 }
 
-                Column column1 = o1.getCell(field);
-                Column column2 = o2.getCell(field);
+                Column column1 = o1.getColumn(field);
+                Column column2 = o2.getColumn(field);
 
                 if (column1 == null)
                 {
@@ -117,12 +122,10 @@ public class SortField
         };
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {
-        return new ToStringBuilder(this)
-                .append("field", field)
-                .append("reverse", reverse)
-                .toString();
+        return new ToStringBuilder(this).append("field", field).append("reverse", reverse).toString();
     }
 }

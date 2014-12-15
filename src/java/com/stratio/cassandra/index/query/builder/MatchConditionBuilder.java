@@ -18,21 +18,23 @@ package com.stratio.cassandra.index.query.builder;
 import com.stratio.cassandra.index.query.MatchCondition;
 
 /**
- * {@link ConditionBuilder} for building a new {@link com.stratio.cassandra.index.query.MatchCondition}.
+ * {@link ConditionBuilder} for building a new {@link MatchCondition}.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class MatchConditionBuilder extends ConditionBuilder<MatchCondition, MatchConditionBuilder>
 {
-
+    /** The name of the field to be matched. */
     private final String field;
+
+    /** The value of the field to be matched. */
     private Object value;
 
     /**
      * Creates a new {@link MatchConditionBuilder} for the specified field and value.
      *
-     * @param field the name of the field to be matched.
-     * @param value the value of the field to be matched.
+     * @param field The name of the field to be matched.
+     * @param value The value of the field to be matched.
      */
     public MatchConditionBuilder(String field, Object value)
     {
@@ -41,7 +43,9 @@ public class MatchConditionBuilder extends ConditionBuilder<MatchCondition, Matc
     }
 
     /**
-     * {@inheritDoc}
+     * Returns the {@link MatchCondition} represented by this builder.
+     *
+     * @return The {@link MatchCondition} represented by this builder.
      */
     @Override
     public MatchCondition build()

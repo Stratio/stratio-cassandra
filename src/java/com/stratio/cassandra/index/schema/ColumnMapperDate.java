@@ -37,25 +37,32 @@ import java.util.Date;
  */
 public class ColumnMapperDate extends ColumnMapper<Long>
 {
-
+    /** The default {@link SimpleDateFormat} pattern. */
     public static final String DEFAULT_PATTERN = "yyyy/MM/dd HH:mm:ss.SSS";
 
-    /**
-     * The date and time pattern.
-     */
+    /** The {@link SimpleDateFormat} pattern. */
     private final String pattern;
 
-    /**
-     * The thread safe date format
-     */
+    /** The thread safe date format. */
     private final ThreadLocal<DateFormat> concurrentDateFormat;
 
+    /**
+     * Builds a new {@link ColumnMapperDate} using the specified pattern.
+     *
+     * @param pattern The {@link SimpleDateFormat} pattern to be used.
+     */
     @JsonCreator
     public ColumnMapperDate(@JsonProperty("pattern") String pattern)
     {
         super(new AbstractType<?>[]{
-                      AsciiType.instance, UTF8Type.instance, Int32Type.instance, LongType.instance,
-                      IntegerType.instance, FloatType.instance, DoubleType.instance, DecimalType.instance,
+                      AsciiType.instance,
+                      UTF8Type.instance,
+                      Int32Type.instance,
+                      LongType.instance,
+                      IntegerType.instance,
+                      FloatType.instance,
+                      DoubleType.instance,
+                      DecimalType.instance,
                       TimestampType.instance},
               new AbstractType[]{LongType.instance, TimestampType.instance});
         this.pattern = pattern == null ? DEFAULT_PATTERN : pattern;
@@ -69,12 +76,14 @@ public class ColumnMapperDate extends ColumnMapper<Long>
         };
     }
 
+    /** {@inheritDoc} */
     @Override
     public Analyzer analyzer()
     {
         return EMPTY_ANALYZER;
     }
 
+    /** {@inheritDoc} */
     @Override
     public Long indexValue(String name, Object value)
     {
@@ -107,30 +116,35 @@ public class ColumnMapperDate extends ColumnMapper<Long>
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public Long queryValue(String name, Object value)
     {
         return indexValue(name, value);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Field field(String name, Object value)
     {
         return new LongField(name, indexValue(name, value), STORE);
     }
 
+    /** {@inheritDoc} */
     @Override
     public SortField sortField(String field, boolean reverse)
     {
         return new SortField(field, Type.LONG, reverse);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Class<Long> baseClass()
     {
         return Long.class;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {

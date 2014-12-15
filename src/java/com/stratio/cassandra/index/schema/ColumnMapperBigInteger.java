@@ -29,19 +29,26 @@ import org.codehaus.jackson.annotate.JsonProperty;
 import java.math.BigInteger;
 
 /**
- * A {@link ColumnMapper} to map a string, not tokenized field.
+ * A {@link ColumnMapper} to map {@link BigInteger} values. A max number of digits must be specified.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class ColumnMapperBigInteger extends ColumnMapper<String>
 {
-
+    /** The default max number of digits. */
     public static final int DEFAULT_DIGITS = 32;
 
+    /** The max number of digits. */
     private final int digits;
+
     private final BigInteger complement;
     private final int hexDigits;
 
+    /**
+     * Builds a new {@link ColumnMapperBigDecimal} using the specified max number of digits.
+     *
+     * @param digits The max number of digits. If {@code null}, the {@link #DEFAULT_DIGITS} will be used.
+     */
     @JsonCreator
     public ColumnMapperBigInteger(@JsonProperty("digits") Integer digits)
     {
@@ -50,8 +57,7 @@ public class ColumnMapperBigInteger extends ColumnMapper<String>
                 UTF8Type.instance,
                 Int32Type.instance,
                 LongType.instance,
-                IntegerType.instance},
-              new AbstractType[]{});
+                IntegerType.instance}, new AbstractType[]{});
 
         if (digits != null && digits <= 0)
         {
@@ -64,17 +70,25 @@ public class ColumnMapperBigInteger extends ColumnMapper<String>
         hexDigits = encode(maxValue).length();
     }
 
+    /**
+     * Returns the {@code String} representation of the specified {@link BigInteger}.
+     *
+     * @param bi The {@link BigInteger} to be converted.
+     * @return The {@code String} representation of the specified {@link BigInteger}.
+     */
     private static String encode(BigInteger bi)
     {
         return bi.toString(Character.MAX_RADIX);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Analyzer analyzer()
     {
         return EMPTY_ANALYZER;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String indexValue(String name, Object value)
     {
@@ -110,17 +124,24 @@ public class ColumnMapperBigInteger extends ColumnMapper<String>
         return StringUtils.leftPad(bis, hexDigits + 1, '0');
     }
 
+    /**
+     * Returns the max number of digits.
+     *
+     * @return The max number of digits.
+     */
     public int getDigits()
     {
         return digits;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String queryValue(String name, Object value)
     {
         return indexValue(name, value);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Field field(String name, Object value)
     {
@@ -128,23 +149,24 @@ public class ColumnMapperBigInteger extends ColumnMapper<String>
         return new StringField(name, string, STORE);
     }
 
+    /** {@inheritDoc} */
     @Override
     public SortField sortField(String field, boolean reverse)
     {
         return new SortField(field, Type.STRING, reverse);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Class<String> baseClass()
     {
         return String.class;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {
-        return new ToStringBuilder(this)
-                .append("digits", digits)
-                .toString();
+        return new ToStringBuilder(this).append("digits", digits).toString();
     }
 }

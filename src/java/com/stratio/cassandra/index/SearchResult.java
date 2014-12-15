@@ -20,14 +20,28 @@ import org.apache.cassandra.db.composites.CellName;
 import org.apache.lucene.search.ScoreDoc;
 
 /**
+ * Class representing the a result of a search in Lucene. Its roughly formed by the row identifier and the search hit.
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class SearchResult
 {
+    /** The partition key. */
     private final DecoratedKey partitionKey;
+
+    /** The clustering key. */
     private final CellName clusteringKey;
+
+    /** The search hit info. */
     private final ScoreDoc scoreDoc;
 
+    /**
+     * Builds a new {@link SearchResult} for the specified CQL3 row key and search hit info.
+     *
+     * @param partitionKey  The partition key.
+     * @param clusteringKey The clustering key.
+     * @param scoreDoc      The search hit info.
+     */
     public SearchResult(DecoratedKey partitionKey, CellName clusteringKey, ScoreDoc scoreDoc)
     {
         this.partitionKey = partitionKey;
@@ -35,26 +49,47 @@ public class SearchResult
         this.scoreDoc = scoreDoc;
     }
 
+    /**
+     * Returns the partition key.
+     *
+     * @return The partition key.
+     */
     public DecoratedKey getPartitionKey()
     {
         return partitionKey;
     }
 
+    /**
+     * Returns the clustering key.
+     *
+     * @return The clustering key.
+     */
     public CellName getClusteringKey()
     {
         return clusteringKey;
     }
 
+    /**
+     * Returns the search {@link ScoreDoc}.
+     *
+     * @return The search {@link ScoreDoc}.
+     */
     public ScoreDoc getScoreDoc()
     {
         return scoreDoc;
     }
 
+    /**
+     * Returns the search numeric score.
+     *
+     * @return The search numeric score.
+     */
     public Float getScore()
     {
         return scoreDoc.score;
     }
 
+    /** {@inheritDoc} */
     @Override
     public boolean equals(Object o)
     {
@@ -66,6 +101,7 @@ public class SearchResult
         return scoreDoc.doc == that.scoreDoc.doc;
     }
 
+    /** {@inheritDoc} */
     @Override
     public int hashCode()
     {

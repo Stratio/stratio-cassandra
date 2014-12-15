@@ -23,6 +23,7 @@ import java.net.UnknownHostException;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.*;
+import java.util.concurrent.locks.ReentrantLock;
 
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
@@ -30,6 +31,7 @@ import javax.management.ObjectName;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.Uninterruptibles;
 
+import org.apache.cassandra.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,6 +47,7 @@ import org.apache.cassandra.net.MessageOut;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.JVMStabilityInspector;
 
 import com.google.common.collect.ImmutableList;
 
@@ -72,12 +75,16 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
                                                           VersionedValue.STATUS_LEFT, VersionedValue.HIBERNATE);
 
     private ScheduledFuture<?> scheduledGossipTask;
+    private static final ReentrantLock taskLock = new ReentrantLock();
     public final static int intervalInMillis = 1000;
     public final static int QUARANTINE_DELAY = StorageService.RING_DELAY * 2;
     private static final Logger logger = LoggerFactory.getLogger(Gossiper.class);
     public static final Gossiper instance = new Gossiper();
 
     public static final long aVeryLongTime = 259200 * 1000; // 3 days
+
+    /** Maximimum difference in generation and version values we are willing to accept about a peer */
+    private static final long MAX_GENERATION_DIFFERENCE = 86400 * 365;
     private long FatClientTimeout;
     private final Random random = new Random();
     private final Comparator<InetAddress> inetcomparator = new Comparator<InetAddress>()
@@ -124,6 +131,8 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
                 //wait on messaging service to start listening
                 MessagingService.instance().waitUntilListening();
 
+                taskLock.lock();
+
                 /* Update the local heartbeat counter. */
                 endpointStateMap.get(FBUtilities.getBroadcastAddress()).getHeartBeatState().updateHeartBeat();
                 if (logger.isTraceEnabled())
@@ -169,7 +178,12 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
             }
             catch (Exception e)
             {
+                JVMStabilityInspector.inspectThrowable(e);
                 logger.error("Gossip error", e);
+            }
+            finally
+            {
+                taskLock.unlock();
             }
         }
     }
@@ -298,6 +312,8 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
     public void convict(InetAddress endpoint, double phi)
     {
         EndpointState epState = endpointStateMap.get(endpoint);
+        if (epState == null)
+            return;
         if (epState.isAlive() && !isDeadState(epState))
         {
             markDead(endpoint, epState);
@@ -500,6 +516,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
             }
             catch (Throwable th)
             {
+                JVMStabilityInspector.inspectThrowable(th);
                 // TODO this is broken
                 logger.warn("Unable to calculate tokens for {}.  Will use a random one", address);
                 tokens = Collections.singletonList(StorageService.getPartitioner().getRandomToken());
@@ -971,7 +988,12 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
                 if (logger.isTraceEnabled())
                     logger.trace(ep + "local generation " + localGeneration + ", remote generation " + remoteGeneration);
 
-                if (remoteGeneration > localGeneration)
+                if (localGeneration != 0 && remoteGeneration > localGeneration + MAX_GENERATION_DIFFERENCE)
+                {
+                    // assume some peer has corrupted memory and is broadcasting an unbelievable generation about another peer (or itself)
+                    logger.warn("received an invalid gossip generation for peer {}; local generation = {}, received generation = {}", ep, localGeneration, remoteGeneration);
+                }
+                else if (remoteGeneration > localGeneration)
                 {
                     if (logger.isTraceEnabled())
                         logger.trace("Updating heartbeat state generation to " + remoteGeneration + " from " + localGeneration + " for " + ep);
@@ -1270,6 +1292,23 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         // Add to local application state and fire "on change" notifications:
         epState.addApplicationState(state, value);
         doOnChangeNotifications(epAddr, state, value);
+    }
+
+    public void addLocalApplicationStates(List<Pair<ApplicationState, VersionedValue>> states)
+    {
+        taskLock.lock();
+        try
+        {
+            for (Pair<ApplicationState, VersionedValue> pair : states)
+            {
+               addLocalApplicationState(pair.left, pair.right);
+            }
+        }
+        finally
+        {
+            taskLock.unlock();
+        }
+
     }
 
     public void stop()

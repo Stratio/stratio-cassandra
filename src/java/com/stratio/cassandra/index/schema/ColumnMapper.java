@@ -27,10 +27,8 @@ import org.apache.lucene.search.SortField;
 import org.codehaus.jackson.annotate.JsonSubTypes;
 import org.codehaus.jackson.annotate.JsonTypeInfo;
 
-import java.nio.ByteBuffer;
-
 /**
- * Class for mapping between Cassandra's columns and Lucene's documents.
+ * Class for mapping between Cassandra's columns and Lucene documents.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
@@ -51,65 +49,89 @@ import java.nio.ByteBuffer;
         @JsonSubTypes.Type(value = ColumnMapperBigInteger.class, name = "bigint"),})
 public abstract class ColumnMapper<BASE>
 {
-
+    /** A no-action analyzer for not tokenized {@link ColumnMapper} implementations. */
     protected static final Analyzer EMPTY_ANALYZER = new KeywordAnalyzer();
+
+    /** The store field in Lucene default option. */
     protected static final Store STORE = Store.NO;
 
+    /** The supported Cassandra types for indexing. */
     private final AbstractType<?>[] supportedTypes;
+
+    /** The supported Cassandra types as clustering key. */
     private final AbstractType<?>[] supportedClusteringTypes;
 
+    /**
+     * Builds a new {@link ColumnMapper} supporting the specified types for indexing and clustering.
+     *
+     * @param supportedTypes           The supported Cassandra types for indexing.
+     * @param supportedClusteringTypes The supported Cassandra types as clustering key.
+     */
     ColumnMapper(AbstractType<?>[] supportedTypes, AbstractType<?>[] supportedClusteringTypes)
     {
         this.supportedTypes = supportedTypes;
         this.supportedClusteringTypes = supportedClusteringTypes;
     }
 
-    public static Column column(String name, ByteBuffer value, AbstractType<?> type)
-    {
-        return new Column(name, value, type);
-    }
-
-    public static Column column(String name, String nameSufix, ByteBuffer value, AbstractType<?> type)
-    {
-        return new Column(name, nameSufix, value, type);
-    }
-
+    /**
+     * Returns the used {@link Analyzer}.
+     *
+     * @return The used {@link Analyzer}.
+     */
     public abstract Analyzer analyzer();
 
     /**
-     * Returns the Lucene {@link Field} resulting from the mapping of {@code value}, using
-     * {@code name} as field's name.
+     * Returns the Lucene {@link Field} resulting from the mapping of {@code value}, using {@code name} as field's
+     * name.
      *
      * @param name  The name of the Lucene {@link Field}.
      * @param value The value of the Lucene {@link Field}.
-     * @return The Lucene {@link Field} resulting from the mapping of {@code value}, using
-     * {@code name} as field's name.
+     * @return The Lucene {@link Field} resulting from the mapping of {@code value}, using {@code name} as field's name.
      */
     public abstract Field field(String name, Object value);
 
     /**
-     * Returns the Lucene's type for this mapper.
+     * Returns the Lucene type for this mapper.
      *
-     * @return The Lucene's type for this mapper.
+     * @return The Lucene type for this mapper.
      */
     public abstract Class<BASE> baseClass();
 
     /**
-     * Returns the cell value resulting from the mapping of the specified object.
+     * Returns the {@link Column} index value resulting from the mapping of the specified object.
      *
      * @param field The field name.
      * @param value The object to be mapped.
-     * @return The cell value resulting from the mapping of the specified object.
+     * @return The {@link Column} index value resulting from the mapping of the specified object.
      */
     public abstract BASE indexValue(String field, Object value);
 
+    /**
+     * Returns the {@link Column} query value resulting from the mapping of the specified object.
+     *
+     * @param field The field name.
+     * @param value The object to be mapped.
+     * @return The {@link Column} index value resulting from the mapping of the specified object.
+     */
     public abstract BASE queryValue(String field, Object value);
 
+    /**
+     * Returns the {@link SortField} resulting from the mapping of the specified object.
+     *
+     * @param field   The field name.
+     * @param reverse If the sort must be reversed.
+     * @return The {@link SortField} resulting from the mapping of the specified object.
+     */
     public abstract SortField sortField(String field, boolean reverse);
 
+    /**
+     * Returns {@code true} if the specified Cassandra type/marshaller is supported, {@code false} otherwise.
+     *
+     * @param type A Cassandra type/marshaller.
+     * @return {@code true} if the specified Cassandra type/marshaller is supported, {@code false} otherwise.
+     */
     public boolean supports(final AbstractType<?> type)
     {
-
         AbstractType<?> checkedType = type;
         if (type.isCollection())
         {
@@ -137,6 +159,14 @@ public abstract class ColumnMapper<BASE>
         return false;
     }
 
+    /**
+     * Returns {@code true} if the specified Cassandra type/marshaller can be used as clustering key, {@code false}.
+     * otherwise.
+     *
+     * @param type A Cassandra type/marshaller.
+     * @return {@code true} if the specified Cassandra type/marshaller can be used as clustering key, {@code false}.
+     * otherwise.
+     */
     public boolean supportsClustering(final AbstractType<?> type)
     {
         for (AbstractType<?> supportedClusteringType : supportedClusteringTypes)

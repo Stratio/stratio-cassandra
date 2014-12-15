@@ -35,40 +35,57 @@ import org.codehaus.jackson.annotate.JsonProperty;
  */
 public class FuzzyCondition extends Condition
 {
-
+    /** The default Damerau-Levenshtein max distance. */
     public final static int DEFAULT_MAX_EDITS = LevenshteinAutomata.MAXIMUM_SUPPORTED_DISTANCE;
+
+    /** The default length of common (non-fuzzy) prefix. */
     public final static int DEFAULT_PREFIX_LENGTH = 0;
+
+    /** The default length of common (non-fuzzy) prefix. */
     public final static int DEFAULT_MAX_EXPANSIONS = 50;
+
+    /** If transpositions should be treated as a primitive edit operation by default. */
     public final static boolean DEFAULT_TRANSPOSITIONS = true;
 
+    /** The name of the field to be matched. */
     @JsonProperty("field")
     private final String field;
+
+    /** The fuzzy expression to be matched. */
     @JsonProperty("value")
     private final String value;
+
+    /** The Damerau-Levenshtein max distance. */
     @JsonProperty("max_edits")
     private final Integer maxEdits;
+
+    /** The length of common (non-fuzzy) prefix. */
     @JsonProperty("prefix_length")
     private final Integer prefixLength;
+
+    /** The length of common (non-fuzzy) prefix. */
     @JsonProperty("max_expansions")
     private final Integer maxExpansions;
+
+    /** If transpositions should be treated as a primitive edit operation. */
     @JsonProperty("transpositions")
     private final Boolean transpositions;
 
     /**
      * Returns a new {@link FuzzyCondition}.
      *
-     * @param boost          The boost for this query clause. Documents matching this clause will (in addition to the normal
-     *                       weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link #DEFAULT_BOOST}
-     *                       is used as default.
+     * @param boost          The boost for this query clause. Documents matching this clause will (in addition to the
+     *                       normal weightings) have their score multiplied by {@code boost}. If {@code null}, then
+     *                       {@link #DEFAULT_BOOST} is used as default.
      * @param field          The field name.
      * @param value          The field fuzzy value.
      * @param maxEdits       Must be >= 0 and <= {@link LevenshteinAutomata#MAXIMUM_SUPPORTED_DISTANCE}.
      * @param prefixLength   Length of common (non-fuzzy) prefix
-     * @param maxExpansions  The maximum number of terms to match. If this number is greater than
-     *                       {@link BooleanQuery#getMaxClauseCount} when the query is rewritten, then the maxClauseCount will be
-     *                       used instead.
-     * @param transpositions True if transpositions should be treated as a primitive edit operation. If this is false, comparisons
-     *                       will implement the classic Levenshtein algorithm.
+     * @param maxExpansions  The maximum number of terms to match. If this number is greater than {@link
+     *                       BooleanQuery#getMaxClauseCount} when the query is rewritten, then the maxClauseCount will
+     *                       be used instead.
+     * @param transpositions True if transpositions should be treated as a primitive edit operation. If this is false,
+     *                       comparisons will implement the classic Levenshtein algorithm.
      */
     @JsonCreator
     public FuzzyCondition(@JsonProperty("boost") Float boost,
@@ -89,9 +106,7 @@ public class FuzzyCondition extends Condition
         this.transpositions = transpositions == null ? DEFAULT_TRANSPOSITIONS : transpositions;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Query query(Schema schema)
     {
@@ -138,19 +153,16 @@ public class FuzzyCondition extends Condition
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {
-        return new ToStringBuilder(this)
-                .append("field", field)
-                .append("value", value)
-                .append("maxEdits", maxEdits)
-                .append("prefixLength", prefixLength)
-                .append("maxExpansions", maxExpansions)
-                .append("transpositions", transpositions)
-                .toString();
+        return new ToStringBuilder(this).append("field", field)
+                                        .append("value", value)
+                                        .append("maxEdits", maxEdits)
+                                        .append("prefixLength", prefixLength)
+                                        .append("maxExpansions", maxExpansions)
+                                        .append("transpositions", transpositions)
+                                        .toString();
     }
 }

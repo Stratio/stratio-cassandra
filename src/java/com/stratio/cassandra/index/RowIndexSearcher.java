@@ -21,18 +21,18 @@ import com.stratio.cassandra.index.util.Log;
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.IndexExpression;
 import org.apache.cassandra.db.Row;
-import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.filter.ExtendedFilter;
 import org.apache.cassandra.db.index.SecondaryIndexManager;
 import org.apache.cassandra.db.index.SecondaryIndexSearcher;
 import org.apache.cassandra.db.marshal.UTF8Type;
+import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.*;
 
-import static org.apache.cassandra.db.IndexExpression.Operator.EQ;
+import static org.apache.cassandra.cql3.Operator.EQ;
 
 /**
  * A {@link SecondaryIndexSearcher} for {@link RowIndex}.
@@ -75,29 +75,13 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
     @Override
     public List<Row> search(ExtendedFilter extendedFilter)
     {
-        // Log.debug("Searching %s", extendedFilter);
-        try
-        {
-            long startTime = System.currentTimeMillis();
-
-            long timestamp = extendedFilter.timestamp;
-            int limit = extendedFilter.currentLimit();
-            DataRange dataRange = extendedFilter.dataRange;
-            List<IndexExpression> clause = extendedFilter.getClause();
-            List<IndexExpression> filteredExpressions = filteredExpressions(clause);
-            Search search = search(clause);
-
-            List<Row> rows = rowService.search(search, filteredExpressions, dataRange, limit, timestamp);
-
-            long time = System.currentTimeMillis() - startTime;
-            Log.debug("Search time: %d ms", time);
-            return rows;
-        }
-        catch (Exception e)
-        {
-            Log.error(e, "Error while searching: %s", e.getMessage());
-            return new ArrayList<>(0);
-        }
+        long timestamp = extendedFilter.timestamp;
+        int limit = extendedFilter.currentLimit();
+        DataRange dataRange = extendedFilter.dataRange;
+        List<IndexExpression> clause = extendedFilter.getClause();
+        List<IndexExpression> filteredExpressions = filteredExpressions(clause);
+        Search search = search(clause);
+        return rowService.search(search, filteredExpressions, dataRange, limit, timestamp);
     }
 
     /**
@@ -117,7 +101,6 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
         }
         return false;
     }
-
 
     /**
      * {@inheritDoc}
@@ -141,10 +124,17 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
      * {@inheritDoc}
      */
     @Override
-    public void validate(IndexExpression indexExpression)
+    public void validate(IndexExpression indexExpression) throws InvalidRequestException
     {
-        String json = UTF8Type.instance.compose(indexExpression.value);
-        Search.fromJson(json).validate(schema);
+        try
+        {
+            String json = UTF8Type.instance.compose(indexExpression.value);
+            Search.fromJson(json).validate(schema);
+        }
+        catch (Exception e)
+        {
+            throw new InvalidRequestException(e.getMessage());
+        }
     }
 
     /**

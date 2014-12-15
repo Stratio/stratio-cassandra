@@ -24,7 +24,6 @@ import org.apache.cassandra.db.filter.QueryFilter;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -38,10 +37,7 @@ import java.util.Set;
  */
 public class RowServiceSkinny extends RowService
 {
-
-    /**
-     * The Lucene's fields to be loaded
-     */
+    /** The names of the Lucene fields to be loaded. */
     private static final Set<String> FIELDS_TO_LOAD;
 
     static
@@ -50,6 +46,7 @@ public class RowServiceSkinny extends RowService
         FIELDS_TO_LOAD.add(PartitionKeyMapper.FIELD_NAME);
     }
 
+    /** The used row mapper. */
     private final RowMapperSkinny rowMapper;
 
     /**
@@ -58,7 +55,7 @@ public class RowServiceSkinny extends RowService
      * @param baseCfs          The base column family store.
      * @param columnDefinition The indexed column definition.
      */
-    public RowServiceSkinny(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) throws IOException
+    public RowServiceSkinny(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition)
     {
         super(baseCfs, columnDefinition);
         this.rowMapper = (RowMapperSkinny) super.rowMapper;
@@ -80,7 +77,7 @@ public class RowServiceSkinny extends RowService
      * {@inheritDoc}
      */
     @Override
-    public void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp) throws IOException
+    public void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp)
     {
         DecoratedKey partitionKey = rowMapper.partitionKey(key);
 
@@ -98,19 +95,15 @@ public class RowServiceSkinny extends RowService
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void deleteInner(DecoratedKey partitionKey) throws IOException
+    public void deleteInner(DecoratedKey partitionKey)
     {
         Term term = rowMapper.term(partitionKey);
         luceneIndex.delete(term);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     protected List<Row> rows(List<SearchResult> searchResults, long timestamp, boolean usesRelevance)
     {
         List<Row> rows = new ArrayList<>(searchResults.size());
@@ -160,6 +153,5 @@ public class RowServiceSkinny extends RowService
         }
         return null;
     }
-
 
 }

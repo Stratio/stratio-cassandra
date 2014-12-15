@@ -22,6 +22,7 @@ import java.util.*;
 
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.filter.ExtendedFilter;
+import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
 
@@ -53,14 +54,25 @@ public abstract class SecondaryIndexSearcher
     {
         for (IndexExpression expression : clause)
         {
-            if (!columns.contains(expression.column) || !expression.operator.allowsIndexQuery())
+            if (!columns.contains(expression.column))
                 continue;
 
             SecondaryIndex index = indexManager.getIndexForColumn(expression.column);
-            if (index != null && index.getIndexCfs() != null)
+            if (index != null && index.getIndexCfs() != null && index.supportsOperator(expression.operator))
                 return true;
         }
         return false;
+    }
+    
+    /**
+     * Validates the specified {@link IndexExpression}. It will throw an {@link InvalidRequestException}
+     * if the provided clause is not valid for the index implementation.
+     *
+     * @param indexExpression An {@link IndexExpression} to be validated
+     * @throws InvalidRequestException in case of validation errors
+     */
+    public void validate(IndexExpression indexExpression) throws InvalidRequestException
+    {
     }
 
     protected IndexExpression highestSelectivityPredicate(List<IndexExpression> clause)
@@ -76,8 +88,9 @@ public abstract class SecondaryIndexSearcher
                 continue;
 
             SecondaryIndex index = indexManager.getIndexForColumn(expression.column);
-            if (index == null || index.getIndexCfs() == null || !expression.operator.allowsIndexQuery())
+            if (index == null || index.getIndexCfs() == null || !index.supportsOperator(expression.operator))
                 continue;
+
             int columns = index.getIndexCfs().getMeanColumns();
             candidates.put(index, columns);
             if (columns < bestMeanCount)
@@ -94,17 +107,6 @@ public abstract class SecondaryIndexSearcher
                           FBUtilities.toString(candidates), indexManager.getIndexForColumn(best.column).getIndexName());
 
         return best;
-    }
-
-    /**
-     * Validates the specified {@link IndexExpression}. It will throw a {@link RuntimeException} if the provided
-     * clause is not valid for the index implementation.
-     *
-     * @param indexExpression
-     *            An {@link IndexExpression} to be validated
-     */
-    public void validate(IndexExpression indexExpression)
-    {
     }
 
     /**

@@ -44,11 +44,15 @@ import static org.apache.lucene.search.BooleanClause.Occur.SHOULD;
  */
 public class RowMapperWide extends RowMapper
 {
+    /** The clustering key mapper. */
     private final ClusteringKeyMapper clusteringKeyMapper;
+
+    /** The full key mapper. */
     private final FullKeyMapper fullKeyMapper;
 
     /**
-     * Builds a new {@link RowMapperWide} for the specified column family metadata, indexed column definition and {@link Schema}.
+     * Builds a new {@link RowMapperWide} for the specified column family metadata, indexed column definition and {@link
+     * Schema}.
      *
      * @param metadata         The indexed column family metadata.
      * @param columnDefinition The indexed column definition.
@@ -146,11 +150,13 @@ public class RowMapperWide extends RowMapper
     }
 
     /**
-     * Returns the Lucene {@link Term} to get the {@link Document}s containing the specified decorated partition key and clustering key.
+     * Returns the Lucene {@link Term} to get the {@link Document}s containing the specified decorated partition key and
+     * clustering key.
      *
      * @param partitionKey  A decorated partition key.
      * @param clusteringKey A clustering key.
-     * @return The Lucene {@link Term} to get the {@link Document}s containing the specified decorated partition key and clustering key.
+     * @return The Lucene {@link Term} to get the {@link Document}s containing the specified decorated partition key and
+     * clustering key.
      */
     public Term term(DecoratedKey partitionKey, CellName clusteringKey)
     {
@@ -175,10 +181,12 @@ public class RowMapperWide extends RowMapper
         boolean includeStop = tokenMapper.includeStop(stopPosition);
 
         SliceQueryFilter sqf = null;
-        if (startPosition instanceof  DecoratedKey)
+        if (startPosition instanceof DecoratedKey)
         {
             sqf = (SliceQueryFilter) dataRange.columnFilter(((DecoratedKey) startPosition).getKey());
-        } else {
+        }
+        else
+        {
             sqf = (SliceQueryFilter) dataRange.columnFilter(ByteBufferUtil.EMPTY_BYTE_BUFFER);
         }
         Composite startName = sqf.start();
@@ -191,7 +199,7 @@ public class RowMapperWide extends RowMapper
             BooleanQuery q = new BooleanQuery();
             q.add(tokenMapper.query(startToken), MUST);
             q.add(clusteringKeyMapper.query(startName, null), MUST);
-            query.add(q,  occur);
+            query.add(q, occur);
             includeStart = false;
         }
 
@@ -200,14 +208,17 @@ public class RowMapperWide extends RowMapper
             BooleanQuery q = new BooleanQuery();
             q.add(tokenMapper.query(stopToken), MUST);
             q.add(clusteringKeyMapper.query(null, stopName), MUST);
-            query.add(q,  occur);
+            query.add(q, occur);
             includeStop = false;
         }
 
-        if (!isSameToken) {
+        if (!isSameToken)
+        {
             Query rangeQuery = tokenMapper.query(startToken, stopToken, includeStart, includeStop);
             if (rangeQuery != null) query.add(rangeQuery, SHOULD);
-        } else if (query.getClauses().length == 0) {
+        }
+        else if (query.getClauses().length == 0)
+        {
             return tokenMapper.query(startToken);
         }
 
@@ -215,11 +226,13 @@ public class RowMapperWide extends RowMapper
     }
 
     /**
-     * Returns the Lucene {@link Query} to get the {@link Document}s satisfying the specified partition key and {@link RangeTombstone}.
+     * Returns the Lucene {@link Query} to get the {@link Document}s satisfying the specified partition key and {@link
+     * RangeTombstone}.
      *
      * @param partitionKey   A partition key.
      * @param rangeTombstone A {@link RangeTombstone}.
-     * @return The Lucene {@link Query} to get the {@link Document}s satisfying the specified partition key and {@link RangeTombstone}.
+     * @return The Lucene {@link Query} to get the {@link Document}s satisfying the specified partition key and {@link
+     * RangeTombstone}.
      */
     public Query query(DecoratedKey partitionKey, RangeTombstone rangeTombstone)
     {
@@ -230,10 +243,12 @@ public class RowMapperWide extends RowMapper
     }
 
     /**
-     * Returns the array of {@link ColumnSlice}s for selecting the logic CQL3 row identified by the specified clustering keys.
+     * Returns the array of {@link ColumnSlice}s for selecting the logic CQL3 row identified by the specified clustering
+     * keys.
      *
      * @param clusteringKeys A list of clustering keys.
-     * @return The array of {@link ColumnSlice}s for selecting the logic CQL3 row identified by the specified clustering keys.
+     * @return The array of {@link ColumnSlice}s for selecting the logic CQL3 row identified by the specified clustering
+     * keys.
      */
     public ColumnSlice[] columnSlices(List<CellName> clusteringKeys)
     {

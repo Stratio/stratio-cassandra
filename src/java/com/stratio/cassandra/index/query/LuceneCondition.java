@@ -32,25 +32,23 @@ import org.codehaus.jackson.annotate.JsonProperty;
  */
 public class LuceneCondition extends Condition
 {
-
+    /** The default name of the field where the clauses will be applied by default. */
     public static final String DEFAULT_FIELD = "lucene";
-    /**
-     * The query value
-     */
+
+    /** The Lucene query syntax expression. */
     @JsonProperty("query")
     private final String query;
-    /**
-     * The default field name
-     */
+
+    /** The name of the field where the clauses will be applied by default. */
     @JsonProperty("default_field")
     private String defaultField;
 
     /**
      * Constructor using the field name and the value to be matched.
      *
-     * @param boost        The boost for this query clause. Documents matching this clause will (in addition to the normal
-     *                     weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link #DEFAULT_BOOST}
-     *                     is used as default.
+     * @param boost        The boost for this query clause. Documents matching this clause will (in addition to the
+     *                     normal weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link
+     *                     #DEFAULT_BOOST} is used as default.
      * @param defaultField the default field name.
      * @param query        the Lucene Query Syntax query.
      */
@@ -65,9 +63,7 @@ public class LuceneCondition extends Condition
         this.defaultField = defaultField == null ? DEFAULT_FIELD : defaultField;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Query query(Schema schema)
     {
@@ -93,15 +89,10 @@ public class LuceneCondition extends Condition
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {
-        return new ToStringBuilder(this)
-                .append("query", query)
-                .append("defaultField", defaultField)
-                .toString();
+        return new ToStringBuilder(this).append("query", query).append("defaultField", defaultField).toString();
     }
 }

@@ -54,6 +54,79 @@ Function BuildClassPath
 #-----------------------------------------------------------------------------
 Function CalculateHeapSizes
 {
+    # Check if swapping is enabled on the host and warn if so - reference CASSANDRA-7316
+
+    $osInfo = Get-WmiObject -class "Win32_computersystem"
+    $autoPage = $osInfo.AutomaticManagedPageFile
+
+    if ($autoPage)
+    {
+        echo "*---------------------------------------------------------------------*"
+        echo "*---------------------------------------------------------------------*"
+        echo ""
+        echo "    WARNING!  Automatic page file configuration detected."
+        echo "    It is recommended that you disable swap when running Cassandra"
+        echo "    for performance and stability reasons."
+        echo ""
+        echo "*---------------------------------------------------------------------*"
+        echo "*---------------------------------------------------------------------*"
+    }
+    else
+    {
+        $pageFileInfo = Get-WmiObject -class "Win32_PageFileSetting" -EnableAllPrivileges
+        $pageFileCount = $PageFileInfo.Count
+        if ($pageFileInfo)
+        {
+            $files = @()
+            $sizes = @()
+            $hasSizes = $FALSE
+
+            # PageFileCount isn't populated and obj comes back as single if there's only 1
+            if ([string]::IsNullOrEmpty($PageFileCount))
+            {
+                $PageFileCount = 1
+                $files += $PageFileInfo.Name
+                if ($PageFileInfo.MaximumSize -ne 0)
+                {
+                    $hasSizes = $TRUE
+                    $sizes += $PageFileInfo.MaximumSize
+                }
+            }
+            else
+            {
+                for ($i = 0; $i -le $PageFileCount; $i++)
+                {
+                    $files += $PageFileInfo[$i].Name
+                    if ($PageFileInfo[$i].MaximumSize -ne 0)
+                    {
+                        $hasSizes = $TRUE
+                        $sizes += $PageFileInfo[$i].MaximumSize
+                    }
+                }
+            }
+
+            echo "*---------------------------------------------------------------------*"
+            echo "*---------------------------------------------------------------------*"
+            echo ""
+            echo "    WARNING!  $PageFileCount swap file(s) detected"
+            for ($i = 0; $i -lt $PageFileCount; $i++)
+            {
+                $toPrint = "        Name: " + $files[$i]
+                if ($hasSizes)
+                {
+                    $toPrint = $toPrint + " Size: " + $sizes[$i]
+                    $toPrint = $toPrint -replace [Environment]::NewLine, ""
+                }
+                echo $toPrint
+            }
+            echo "    It is recommended that you disable swap when running Cassandra"
+            echo "    for performance and stability reasons."
+            echo ""
+            echo "*---------------------------------------------------------------------*"
+            echo "*---------------------------------------------------------------------*"
+        }
+    }
+
     # Validate that we need to run this function and that our config is good
     if ($env:MAX_HEAP_SIZE -and $env:HEAP_NEWSIZE)
     {
@@ -196,6 +269,11 @@ Function SetCassandraEnvironment
     SetCassandraHome
     $env:CASSANDRA_CONF = "$env:CASSANDRA_HOME\conf"
     $env:CASSANDRA_PARAMS="-Dcassandra -Dlogback.configurationFile=logback.xml"
+
+    $logdir = "$env:CASSANDRA_HOME\logs"
+    $storagedir = "$env:CASSANDRA_HOME\data"
+    $env:CASSANDRA_PARAMS = $env:CASSANDRA_PARAMS + " -Dcassandra.logdir=""$logdir"" -Dcassandra.storagedir=""$storagedir"""
+
     SetCassandraMain
     BuildClassPath
 
@@ -223,7 +301,7 @@ Function SetCassandraEnvironment
     if (($env:JVM_VENDOR -ne "OpenJDK") -or ($env:JVM_VERSION.CompareTo("1.6.0") -eq 1) -or
         (($env:JVM_VERSION -eq "1.6.0") -and ($env:JVM_PATCH_VERSION.CompareTo("22") -eq 1)))
     {
-        $env:JVM_OPTS = "$env:JVM_OPTS -javaagent:""$env:CASSANDRA_HOME\lib\jamm-0.2.6.jar"""
+        $env:JVM_OPTS = "$env:JVM_OPTS -javaagent:""$env:CASSANDRA_HOME\lib\jamm-0.2.8.jar"""
     }
 
     # enable assertions.  disabling this in production will give a modest
@@ -233,6 +311,9 @@ Function SetCassandraEnvironment
     # Specifies the default port over which Cassandra will be available for
     # JMX connections.
     $JMX_PORT="7199"
+
+    # store in env to check if it's avail in verification
+    $env:JMX_PORT=$JMX_PORT
 
     $env:JVM_OPTS = "$env:JVM_OPTS -Dlog4j.defaultInitOverride=true"
 
@@ -273,6 +354,11 @@ Function SetCassandraEnvironment
     if (($env:JVM_VERSION.CompareTo("1.7") -eq 1) -and ($env:JVM_ARCH -eq "64-Bit"))
     {
         $env:JVM_OPTS="$env:JVM_OPTS -XX:+UseCondCardMark"
+    }
+    if ( (($env:JVM_VERSION.CompareTo("1.7") -ge 0) -and ($env:JVM_PATCH_VERSION.CompareTo("60") -ge 0)) -or
+         ($env:JVM_VERSION.CompareTo("1.8") -ge 0))
+    {
+        $env:JVM_OPTS="$env:JVM_OPTS -XX:+CMSParallelInitialMarkEnabled -XX:+CMSEdenChunksRecordAlways"
     }
 
     # GC logging options -- uncomment to enable
@@ -322,3 +408,5 @@ Function SetCassandraEnvironment
 
     $env:JVM_OPTS = "$env:JVM_OPTS -Dlog4j.configuration=log4j-server.properties"
 }
+
+

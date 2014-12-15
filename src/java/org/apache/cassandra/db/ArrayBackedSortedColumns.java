@@ -27,6 +27,7 @@ import com.google.common.base.Function;
 import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Iterables;
 
+import net.nicoulaj.compilecommand.annotations.Inline;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.Composite;
@@ -70,6 +71,11 @@ public class ArrayBackedSortedColumns extends ColumnFamily
         this.size = size;
         this.sortedSize = sortedSize;
         this.isSorted = size == sortedSize;
+    }
+
+    protected ArrayBackedSortedColumns(CFMetaData metadata, boolean reversed)
+    {
+        this(metadata, reversed, EMPTY_ARRAY, 0, 0);
     }
 
     private ArrayBackedSortedColumns(ArrayBackedSortedColumns original)
@@ -129,7 +135,7 @@ public class ArrayBackedSortedColumns extends ColumnFamily
 
         Comparator<Cell> comparator = reversed
                                     ? getComparator().columnReverseComparator()
-                                    : getComparator().columnComparator();
+                                    : getComparator().columnComparator(false);
 
         // Sort the unsorted segment - will still potentially contain duplicate (non-reconciled) cells
         Arrays.sort(cells, sortedSize, size, comparator);

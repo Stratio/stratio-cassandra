@@ -24,15 +24,19 @@ package org.apache.cassandra.stress;
 import com.datastax.driver.core.*;
 import com.datastax.driver.core.exceptions.AlreadyExistsException;
 
+import com.google.common.base.Function;
 import com.google.common.util.concurrent.Uninterruptibles;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.statements.CreateKeyspaceStatement;
 import org.apache.cassandra.exceptions.RequestValidationException;
 
+import org.apache.cassandra.exceptions.SyntaxException;
+import org.apache.cassandra.stress.generate.Distribution;
 import org.apache.cassandra.stress.generate.DistributionFactory;
 import org.apache.cassandra.stress.generate.PartitionGenerator;
 import org.apache.cassandra.stress.generate.RatioDistributionFactory;
+import org.apache.cassandra.stress.generate.SeedManager;
 import org.apache.cassandra.stress.generate.values.Booleans;
 import org.apache.cassandra.stress.generate.values.Bytes;
 import org.apache.cassandra.stress.generate.values.Generator;
@@ -64,11 +68,9 @@ import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 import org.yaml.snakeyaml.error.YAMLException;
 
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.IOError;
-import java.io.IOException;
-import java.io.Serializable;
+import java.io.*;
+import java.net.URI;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -88,7 +90,7 @@ public class StressProfile implements Serializable
     public String keyspaceName;
     public String tableName;
     private Map<String, GeneratorConfig> columnConfigs;
-    private Map<String, String> queries;
+    private Map<String, StressYaml.QueryDef> queries;
     private Map<String, String> insert;
 
     transient volatile TableMetadata tableMetaData;
@@ -97,11 +99,11 @@ public class StressProfile implements Serializable
 
     transient volatile BatchStatement.Type batchType;
     transient volatile DistributionFactory partitions;
-    transient volatile RatioDistributionFactory pervisit;
-    transient volatile RatioDistributionFactory perbatch;
+    transient volatile RatioDistributionFactory selectchance;
     transient volatile PreparedStatement insertStatement;
     transient volatile Integer thriftInsertId;
 
+    transient volatile Map<String, SchemaQuery.ArgSelect> argSelects;
     transient volatile Map<String, PreparedStatement> queryStatements;
     transient volatile Map<String, Integer> thriftQueryIds;
 
@@ -121,8 +123,15 @@ public class StressProfile implements Serializable
 
         if (keyspaceCql != null && keyspaceCql.length() > 0)
         {
-            String name = ((CreateKeyspaceStatement) QueryProcessor.parseStatement(keyspaceCql)).keyspace();
-            assert name.equalsIgnoreCase(keyspaceName) : "Name in keyspace_definition doesn't match keyspace property: '" + name + "' != '" + keyspaceName + "'";
+            try
+            {
+                String name = ((CreateKeyspaceStatement) QueryProcessor.parseStatement(keyspaceCql)).keyspace();
+                assert name.equalsIgnoreCase(keyspaceName) : "Name in keyspace_definition doesn't match keyspace property: '" + name + "' != '" + keyspaceName + "'";
+            }
+            catch (SyntaxException e)
+            {
+                throw new IllegalArgumentException("There was a problem parsing the keyspace cql: " + e.getMessage());
+            }
         }
         else
         {
@@ -131,8 +140,15 @@ public class StressProfile implements Serializable
 
         if (tableCql != null && tableCql.length() > 0)
         {
-            String name = CFMetaData.compile(tableCql, keyspaceName).cfName;
-            assert name.equalsIgnoreCase(tableName) : "Name in table_definition doesn't match table property: '" + name + "' != '" + tableName + "'";
+            try
+            {
+                String name = CFMetaData.compile(tableCql, keyspaceName).cfName;
+                assert name.equalsIgnoreCase(tableName) : "Name in table_definition doesn't match table property: '" + name + "' != '" + tableName + "'";
+            }
+            catch (RuntimeException e)
+            {
+                throw new IllegalArgumentException("There was a problem parsing the table cql: " + e.getCause().getMessage());
+            }
         }
         else
         {
@@ -214,6 +230,9 @@ public class StressProfile implements Serializable
                                                .getKeyspace(keyspaceName)
                                                .getTable(tableName);
 
+                if (metadata == null)
+                    throw new RuntimeException("Unable to find table " + keyspaceName + "." + tableName);
+
                 //Fill in missing column configs
                 for (ColumnMetadata col : metadata.getColumns())
                 {
@@ -242,13 +261,18 @@ public class StressProfile implements Serializable
                         ThriftClient tclient = settings.getThriftClient();
                         Map<String, PreparedStatement> stmts = new HashMap<>();
                         Map<String, Integer> tids = new HashMap<>();
-                        for (Map.Entry<String, String> e : queries.entrySet())
+                        Map<String, SchemaQuery.ArgSelect> args = new HashMap<>();
+                        for (Map.Entry<String, StressYaml.QueryDef> e : queries.entrySet())
                         {
-                            stmts.put(e.getKey().toLowerCase(), jclient.prepare(e.getValue()));
-                            tids.put(e.getKey().toLowerCase(), tclient.prepare_cql3_query(e.getValue(), Compression.NONE));
+                            stmts.put(e.getKey().toLowerCase(), jclient.prepare(e.getValue().cql));
+                            tids.put(e.getKey().toLowerCase(), tclient.prepare_cql3_query(e.getValue().cql, Compression.NONE));
+                            args.put(e.getKey().toLowerCase(), e.getValue().fields == null
+                                                                     ? SchemaQuery.ArgSelect.MULTIROW
+                                                                     : SchemaQuery.ArgSelect.valueOf(e.getValue().fields.toUpperCase()));
                         }
                         thriftQueryIds = tids;
                         queryStatements = stmts;
+                        argSelects = args;
                     }
                     catch (TException e)
                     {
@@ -260,7 +284,9 @@ public class StressProfile implements Serializable
 
         // TODO validation
         name = name.toLowerCase();
-        return new SchemaQuery(timer, generator, settings, thriftQueryIds.get(name), queryStatements.get(name), ThriftConversion.fromThrift(settings.command.consistencyLevel), ValidationType.NOT_FAIL);
+        if (!queryStatements.containsKey(name))
+            throw new IllegalArgumentException("No query defined with name " + name);
+        return new SchemaQuery(timer, generator, settings, thriftQueryIds.get(name), queryStatements.get(name), ThriftConversion.fromThrift(settings.command.consistencyLevel), ValidationType.NOT_FAIL, argSelects.get(name));
     }
 
     public SchemaInsert getInsert(Timer timer, PartitionGenerator generator, StressSettings settings)
@@ -328,18 +354,37 @@ public class StressProfile implements Serializable
                         insert = new HashMap<>();
                     lowerCase(insert);
 
-                    partitions = OptionDistribution.get(!insert.containsKey("partitions") ? "fixed(1)" : insert.remove("partitions"));
-                    pervisit = OptionRatioDistribution.get(!insert.containsKey("pervisit") ? "fixed(1)/1" : insert.remove("pervisit"));
-                    perbatch = OptionRatioDistribution.get(!insert.containsKey("perbatch") ? "fixed(1)/1" : insert.remove("perbatch"));
-                    batchType = !insert.containsKey("batchtype") ? BatchStatement.Type.LOGGED : BatchStatement.Type.valueOf(insert.remove("batchtype"));
+                    partitions = select(settings.insert.batchsize, "partitions", "fixed(1)", insert, OptionDistribution.BUILDER);
+                    selectchance = select(settings.insert.selectRatio, "select", "fixed(1)/1", insert, OptionRatioDistribution.BUILDER);
+                    batchType = settings.insert.batchType != null
+                                ? settings.insert.batchType
+                                : !insert.containsKey("batchtype")
+                                  ? BatchStatement.Type.LOGGED
+                                  : BatchStatement.Type.valueOf(insert.remove("batchtype"));
                     if (!insert.isEmpty())
                         throw new IllegalArgumentException("Unrecognised insert option(s): " + insert);
 
+                    Distribution visits = settings.insert.visits.get();
+                    // these min/max are not absolutely accurate if selectchance < 1, but they're close enough to
+                    // guarantee the vast majority of actions occur in these bounds
+                    double minBatchSize = selectchance.get().min() * partitions.get().minValue() * generator.minRowCount * (1d / visits.maxValue());
+                    double maxBatchSize = selectchance.get().max() * partitions.get().maxValue() * generator.maxRowCount * (1d / visits.minValue());
+                    System.out.printf("Generating batches with [%d..%d] partitions and [%.0f..%.0f] rows (of [%.0f..%.0f] total rows in the partitions)\n",
+                                      partitions.get().minValue(), partitions.get().maxValue(),
+                                      minBatchSize, maxBatchSize,
+                                      partitions.get().minValue() * generator.minRowCount,
+                                      partitions.get().maxValue() * generator.maxRowCount);
                     if (generator.maxRowCount > 100 * 1000 * 1000)
                         System.err.printf("WARNING: You have defined a schema that permits very large partitions (%.0f max rows (>100M))\n", generator.maxRowCount);
-                    if (perbatch.get().max() * pervisit.get().max() * partitions.get().maxValue() * generator.maxRowCount > 100000)
+                    if (batchType == BatchStatement.Type.LOGGED && maxBatchSize > 65535)
+                    {
+                        System.err.printf("ERROR: You have defined a workload that generates batches with more than 65k rows (%.0f), but have required the use of LOGGED batches. There is a 65k row limit on a single batch.\n",
+                                          selectchance.get().max() * partitions.get().maxValue() * generator.maxRowCount);
+                        System.exit(1);
+                    }
+                    if (maxBatchSize > 100000)
                         System.err.printf("WARNING: You have defined a schema that permits very large batches (%.0f max rows (>100K)). This may OOM this stress client, or the server.\n",
-                                           perbatch.get().max() * pervisit.get().max() * partitions.get().maxValue() * generator.maxRowCount);
+                                          selectchance.get().max() * partitions.get().maxValue() * generator.maxRowCount);
 
                     JavaDriverClient client = settings.getJavaDriverClient();
                     String query = sb.toString();
@@ -356,10 +401,21 @@ public class StressProfile implements Serializable
             }
         }
 
-        return new SchemaInsert(timer, generator, settings, partitions.get(), pervisit.get(), perbatch.get(), thriftInsertId, insertStatement, ThriftConversion.fromThrift(settings.command.consistencyLevel), batchType);
+        return new SchemaInsert(timer, generator, settings, partitions.get(), selectchance.get(), thriftInsertId, insertStatement, ThriftConversion.fromThrift(settings.command.consistencyLevel), batchType);
     }
 
-    public PartitionGenerator newGenerator(StressSettings settings)
+    private static <E> E select(E first, String key, String defValue, Map<String, String> map, Function<String, E> builder)
+    {
+        String val = map.remove(key);
+
+        if (first != null)
+            return first;
+        if (val != null && val.trim().length() > 0)
+            return builder.apply(val);
+        return builder.apply(defValue);
+    }
+
+    public PartitionGenerator newGenerator(StressSettings settings, SeedManager seeds)
     {
         if (generatorFactory == null)
         {
@@ -371,7 +427,7 @@ public class StressProfile implements Serializable
             }
         }
 
-        return generatorFactory.newGenerator();
+        return generatorFactory.newGenerator(settings, seeds);
     }
 
     private class GeneratorFactory
@@ -393,9 +449,9 @@ public class StressProfile implements Serializable
                     valueColumns.add(new ColumnInfo(metadata.getName(), metadata.getType(), columnConfigs.get(metadata.getName())));
         }
 
-        PartitionGenerator newGenerator()
+        PartitionGenerator newGenerator(StressSettings settings, SeedManager seeds)
         {
-            return new PartitionGenerator(get(partitionKeys), get(clusteringColumns), get(valueColumns));
+            return new PartitionGenerator(get(partitionKeys), get(clusteringColumns), get(valueColumns), settings.generate.order, seeds);
         }
 
         List<Generator> get(List<ColumnInfo> columnInfos)
@@ -466,17 +522,20 @@ public class StressProfile implements Serializable
         }
     }
 
-    public static StressProfile load(File file) throws IOError
+    public static StressProfile load(URI file) throws IOError
     {
         try
         {
-            byte[] profileBytes = Files.readAllBytes(Paths.get(file.toURI()));
-
             Constructor constructor = new Constructor(StressYaml.class);
 
             Yaml yaml = new Yaml(constructor);
 
-            StressYaml profileYaml = yaml.loadAs(new ByteArrayInputStream(profileBytes), StressYaml.class);
+            InputStream yamlStream = file.toURL().openStream();
+
+            if (yamlStream.available() == 0)
+                throw new IOException("Unable to load yaml file from: "+file);
+
+            StressYaml profileYaml = yaml.loadAs(yamlStream, StressYaml.class);
 
             StressProfile profile = new StressProfile();
             profile.init(profileYaml);
@@ -496,7 +555,7 @@ public class StressProfile implements Serializable
         while (iter.hasNext())
         {
             Map.Entry<String, V> e = iter.next();
-            if (!e.getKey().toLowerCase().equalsIgnoreCase(e.getKey()))
+            if (!e.getKey().equalsIgnoreCase(e.getKey()))
             {
                 reinsert.add(e);
                 iter.remove();

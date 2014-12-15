@@ -18,6 +18,9 @@
 package org.apache.cassandra.io.sstable;
 
 import java.io.File;
+import java.io.FilenameFilter;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Iterator;
 
 import com.google.common.collect.ImmutableMap;
@@ -118,5 +121,134 @@ public class CQLSSTableWriterTest
         assertEquals(3, row.getInt("k"));
         assertEquals(null, row.getBytes("v1")); // Using getBytes because we know it won't NPE
         assertEquals(12, row.getInt("v2"));
+    }
+
+    @Test
+    public void testSyncWithinPartition() throws Exception
+    {
+        // Check that the write respect the buffer size even if we only insert rows withing the same partition (#7360)
+        // To do that simply, we use a writer with a buffer of 1MB, and write 2 rows in the same partition with a value
+        // > 1MB and validate that this created more than 1 sstable.
+        File tempdir = Files.createTempDir();
+        String schema = "CREATE TABLE ks.test ("
+                      + "  k int PRIMARY KEY,"
+                      + "  v blob"
+                      + ")";
+        String insert = "INSERT INTO ks.test (k, v) VALUES (?, ?)";
+        CQLSSTableWriter writer = CQLSSTableWriter.builder()
+                                                  .inDirectory(tempdir)
+                                                  .forTable(schema)
+                                                  .withPartitioner(StorageService.instance.getPartitioner())
+                                                  .using(insert)
+                                                  .withBufferSizeInMB(1)
+                                                  .build();
+
+        ByteBuffer val = ByteBuffer.allocate(1024 * 1050);
+
+        writer.addRow(0, val);
+        writer.addRow(1, val);
+        writer.close();
+
+        FilenameFilter filterDataFiles = new FilenameFilter()
+        {
+            public boolean accept(File dir, String name)
+            {
+                return name.endsWith("-Data.db");
+            }
+        };
+        assert tempdir.list(filterDataFiles).length > 1 : Arrays.toString(tempdir.list(filterDataFiles));
+    }
+
+
+    private static final int NUMBER_WRITES_IN_RUNNABLE = 10;
+    private class WriterThread extends Thread
+    {
+        private final File dataDir;
+        private final int id;
+        public volatile Exception exception;
+
+        public WriterThread(File dataDir, int id)
+        {
+            this.dataDir = dataDir;
+            this.id = id;
+        }
+
+        @Override
+        public void run()
+        {
+            String schema = "CREATE TABLE cql_keyspace.table2 ("
+                    + "  k int,"
+                    + "  v int,"
+                    + "  PRIMARY KEY (k, v)"
+                    + ")";
+            String insert = "INSERT INTO cql_keyspace.table2 (k, v) VALUES (?, ?)";
+            CQLSSTableWriter writer = CQLSSTableWriter.builder()
+                    .inDirectory(dataDir)
+                    .forTable(schema)
+                    .withPartitioner(StorageService.instance.getPartitioner())
+                    .using(insert).build();
+
+            try
+            {
+                for (int i = 0; i < NUMBER_WRITES_IN_RUNNABLE; i++)
+                {
+                    writer.addRow(id, i);
+                }
+                writer.close();
+            }
+            catch (Exception e)
+            {
+                exception = e;
+            }
+        }
+    }
+
+    @Test
+    public void testConcurrentWriters() throws Exception
+    {
+        String KS = "cql_keyspace";
+        String TABLE = "table2";
+
+        File tempdir = Files.createTempDir();
+        File dataDir = new File(tempdir.getAbsolutePath() + File.separator + KS + File.separator + TABLE);
+        assert dataDir.mkdirs();
+
+        WriterThread[] threads = new WriterThread[5];
+        for (int i = 0; i < threads.length; i++)
+        {
+            WriterThread thread = new WriterThread(dataDir, i);
+            threads[i] = thread;
+            thread.start();
+        }
+
+        for (WriterThread thread : threads)
+        {
+            thread.join();
+            assert !thread.isAlive() : "Thread should be dead by now";
+            if (thread.exception != null)
+            {
+                throw thread.exception;
+            }
+        }
+
+        SSTableLoader loader = new SSTableLoader(dataDir, new SSTableLoader.Client()
+        {
+            public void init(String keyspace)
+            {
+                for (Range<Token> range : StorageService.instance.getLocalRanges("cql_keyspace"))
+                    addRangeForEndpoint(range, FBUtilities.getBroadcastAddress());
+                setPartitioner(StorageService.getPartitioner());
+            }
+
+            public CFMetaData getCFMetaData(String keyspace, String cfName)
+            {
+                return Schema.instance.getCFMetaData(keyspace, cfName);
+            }
+        }, new OutputHandler.SystemOutput(false, false));
+
+        loader.stream().get();
+
+        UntypedResultSet rs = QueryProcessor.executeInternal("SELECT * FROM cql_keyspace.table2;");
+        assertEquals(threads.length * NUMBER_WRITES_IN_RUNNABLE, rs.size());
     }
 }

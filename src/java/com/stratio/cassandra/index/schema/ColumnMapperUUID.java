@@ -33,7 +33,9 @@ import java.util.UUID;
  */
 public class ColumnMapperUUID extends ColumnMapper<String>
 {
-
+    /**
+     * Builds a new {@link ColumnMapperUUID}.
+     */
     @JsonCreator
     public ColumnMapperUUID()
     {
@@ -41,12 +43,14 @@ public class ColumnMapperUUID extends ColumnMapper<String>
               new AbstractType[]{});
     }
 
+    /** {@inheritDoc} */
     @Override
     public Analyzer analyzer()
     {
         return EMPTY_ANALYZER;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String indexValue(String name, Object value)
     {
@@ -68,6 +72,7 @@ public class ColumnMapperUUID extends ColumnMapper<String>
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public String queryValue(String name, Object value)
     {
@@ -81,6 +86,7 @@ public class ColumnMapperUUID extends ColumnMapper<String>
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public Field field(String name, Object value)
     {
@@ -88,23 +94,25 @@ public class ColumnMapperUUID extends ColumnMapper<String>
         return new StringField(name, uuid, STORE);
     }
 
+    /** {@inheritDoc} */
     @Override
     public SortField sortField(String field, boolean reverse)
     {
         return new SortField(field, Type.STRING, reverse);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Class<String> baseClass()
     {
         return String.class;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {
         return new ToStringBuilder(this).toString();
     }
-
 
 }

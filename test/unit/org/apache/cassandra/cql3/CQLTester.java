@@ -43,6 +43,7 @@ import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.marshal.*;
 import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.io.util.FileUtils;
+import org.apache.cassandra.serializers.TypeSerializer;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
@@ -53,7 +54,7 @@ public abstract class CQLTester
 {
     protected static final Logger logger = LoggerFactory.getLogger(CQLTester.class);
 
-    private static final String KEYSPACE = "cql_test_keyspace";
+    public static final String KEYSPACE = "cql_test_keyspace";
     private static final boolean USE_PREPARED_VALUES = Boolean.valueOf(System.getProperty("cassandra.test.use_prepared", "true"));
     private static final AtomicInteger seqNumber = new AtomicInteger();
 
@@ -142,6 +143,11 @@ public abstract class CQLTester
         }
     }
 
+    public boolean usePrepared()
+    {
+        return USE_PREPARED_VALUES;
+    }
+
     private static void removeAllSSTables(String ks, String table)
     {
         // clean up data directory which are stored as data directory/keyspace/data files
@@ -150,6 +156,16 @@ public abstract class CQLTester
             if (d.exists() && d.getName().contains(table))
                 FileUtils.deleteRecursive(d);
         }
+    }
+
+    protected String keyspace()
+    {
+        return KEYSPACE;
+    }
+
+    protected String currentTable()
+    {
+        return currentTable;
     }
 
     protected String createType(String query)
@@ -259,8 +275,8 @@ public abstract class CQLTester
                 ByteBuffer actualValue = actual.getBytes(column.name.toString());
 
                 if (!Objects.equal(expectedByteValue, actualValue))
-                    Assert.fail(String.format("Invalid value for row %d column %d (%s), expected <%s> but got <%s>",
-                                              i, j, column.name, formatValue(expectedByteValue, column.type), formatValue(actualValue, column.type)));
+                    Assert.fail(String.format("Invalid value for row %d column %d (%s of type %s), expected <%s> but got <%s>",
+                                              i, j, column.name, column.type.asCQL3Type(), formatValue(expectedByteValue, column.type), formatValue(actualValue, column.type)));
             }
         }
 
@@ -298,9 +314,28 @@ public abstract class CQLTester
         try
         {
             execute(query, values);
-            Assert.fail("Query should be invalid but no error was thrown. Query is: " + query);
+            String q = USE_PREPARED_VALUES
+                     ? query + " (values: " + formatAllValues(values) + ")"
+                     : replaceValues(query, values);
+            Assert.fail("Query should be invalid but no error was thrown. Query is: " + q);
         }
-        catch (SyntaxException | InvalidRequestException e)
+        catch (InvalidRequestException e)
+        {
+            // This is what we expect
+        }
+    }
+
+    protected void assertInvalidSyntax(String query, Object... values) throws Throwable
+    {
+        try
+        {
+            execute(query, values);
+            String q = USE_PREPARED_VALUES
+                     ? query + " (values: " + formatAllValues(values) + ")"
+                     : replaceValues(query, values);
+            Assert.fail("Query should have invalid syntax but no error was thrown. Query is: " + q);
+        }
+        catch (SyntaxException e)
         {
             // This is what we expect
         }
@@ -352,7 +387,7 @@ public abstract class CQLTester
         // it would complain with ClassCastException if we pass say a string where an int is excepted (since
         // it bases conversion on what the value should be, not what it is). For testing, we sometimes
         // want to pass value of the wrong type and assert that this properly raise an InvalidRequestException
-        // and executeOnceInternal goes into way. So instead, we pre-convert everything to bytes here base
+        // and executeOnceInternal goes into way. So instead, we pre-convert everything to bytes here based
         // on the value.
         // Besides, we need to handle things like TupleValue that executeOnceInternal don't know about.
 
@@ -434,7 +469,7 @@ public abstract class CQLTester
 
         // We need to reach inside collections for TupleValue. Besides, for some reason the format
         // of collection that CollectionType.getString gives us is not at all 'CQL compatible'
-        if (value instanceof Collection)
+        if (value instanceof Collection || value instanceof Map)
         {
             StringBuilder sb = new StringBuilder();
             if (value instanceof List)
@@ -447,7 +482,7 @@ public abstract class CQLTester
                         sb.append(", ");
                     sb.append(formatForCQL(l.get(i)));
                 }
-                sb.append("[");
+                sb.append("]");
             }
             else if (value instanceof Set)
             {
@@ -507,7 +542,19 @@ public abstract class CQLTester
 
     private static String formatValue(ByteBuffer bb, AbstractType<?> type)
     {
-        return bb == null ? "null" : type.getString(bb);
+        if (bb == null)
+            return "null";
+
+        if (type instanceof CollectionType)
+        {
+            // CollectionType override getString() to use hexToBytes. We can't change that
+            // without breaking SSTable2json, but the serializer for collection have the
+            // right getString so using it directly instead.
+            TypeSerializer ser = type.getSerializer();
+            return ser.toString(ser.deserialize(bb));
+        }
+
+        return type.getString(bb);
     }
 
     protected Object tuple(Object...values)
@@ -531,7 +578,7 @@ public abstract class CQLTester
             throw new IllegalArgumentException();
 
         int size = values.length / 2;
-        Map m = new HashMap(size);
+        Map m = new LinkedHashMap(size);
         for (int i = 0; i < size; i++)
             m.put(values[2 * i], values[(2 * i) + 1]);
         return m;

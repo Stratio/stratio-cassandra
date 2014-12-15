@@ -31,53 +31,45 @@ import org.codehaus.jackson.annotate.JsonProperty;
  */
 public class RangeCondition extends Condition
 {
-
+    /** The default include lower option. */
     public static final boolean DEFAULT_INCLUDE_LOWER = false;
+
+    /** The default include upper option. */
     public static final boolean DEFAULT_INCLUDE_UPPER = false;
 
-    /**
-     * The field name.
-     */
+    /** The name of the field to be matched. */
     @JsonProperty("field")
     private final String field;
 
-    /**
-     * The lower field value included in the range.
-     */
+    /** The lower accepted value. Maybe null meaning no lower limit. */
     @JsonProperty("lower")
     private Object lower;
 
-    /**
-     * The upper field value included in the range.
-     */
+    /** The upper accepted value. Maybe null meaning no upper limit. */
     @JsonProperty("upper")
     private Object upper;
 
-    /**
-     * If the lower value is included in the range.
-     */
+    /** If the lower value must be included if not null. */
     @JsonProperty("include_lower")
     private Boolean includeLower;
 
-    /**
-     * If the upper value is included in the range.
-     */
+    /** If the upper value must be included if not null. */
     @JsonProperty("include_upper")
     private Boolean includeUpper;
 
     /**
-     * Constructs a query selecting all fields greater/equal than {@code lowerValue} but less/equal than
-     * {@code upperValue}.
+     * Constructs a query selecting all fields greater/equal than {@code lowerValue} but less/equal than {@code
+     * upperValue}.
      * <p/>
      * If an endpoint is null, it is said to be "open". Either or both endpoints may be open. Open endpoints may not be
      * exclusive (you can't select all but the first or last term without explicitly specifying the term to exclude.)
      *
-     * @param boost        The boost for this query clause. Documents matching this clause will (in addition to the normal
-     *                     weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link #DEFAULT_BOOST}
-     *                     is used as default.
-     * @param field        the field name.
-     * @param lowerValue   the field value at the lower end of the range.
-     * @param upperValue   the field value at the upper end of the range.
+     * @param boost        The boost for this query clause. Documents matching this clause will (in addition to the
+     *                     normal weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link
+     *                     #DEFAULT_BOOST} is used as default.
+     * @param field        The name of the field to be matched.
+     * @param lowerValue   The lower accepted value. Maybe null meaning no lower limit.
+     * @param upperValue   The upper accepted value. Maybe null meaning no upper limit.
      * @param includeLower if {@code true}, the {@code lowerValue} is included in the range.
      * @param includeUpper if {@code true}, the {@code upperValue} is included in the range.
      */
@@ -170,12 +162,11 @@ public class RangeCondition extends Condition
     @Override
     public String toString()
     {
-        return new ToStringBuilder(this)
-                .append("field", field)
-                .append("lower", lower)
-                .append("upper", upper)
-                .append("includeLower", includeLower)
-                .append("includeUpper", includeUpper)
-                .toString();
+        return new ToStringBuilder(this).append("field", field)
+                                        .append("lower", lower)
+                                        .append("upper", upper)
+                                        .append("includeLower", includeLower)
+                                        .append("includeUpper", includeUpper)
+                                        .toString();
     }
 }

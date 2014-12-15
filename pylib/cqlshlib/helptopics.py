@@ -388,7 +388,7 @@ class CQLHelpTopics(object):
 
         Counter columns can be incremented or decremented by an arbitrary
         numeric value though the assignment of an expression that adds or
-        substracts the value.
+        subtracts the value.
         """
 
     def help_update_where(self):
@@ -608,7 +608,7 @@ class CQL3HelpTopics(CQLHelpTopics):
                     ( <colname1>, <colname2> [, <colname3> [, ...]] )
                VALUES ( <colval1>, <colval2> [, <colval3> [, ...]] )
                [USING TIMESTAMP <timestamp>]
-                 [AND TTL <timeToLive]];
+                 [AND TTL <timeToLive>];
 
         An INSERT is used to write one or more columns to a record in a
         CQL table. No results are returned.

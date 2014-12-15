@@ -24,15 +24,17 @@ import com.stratio.cassandra.index.query.WildcardCondition;
  */
 public class WildcardConditionBuilder extends ConditionBuilder<WildcardCondition, WildcardConditionBuilder>
 {
-
+    /** The name of the field to be matched. */
     private final String field;
+
+    /** The wildcard expression to be matched. */
     private final String value;
 
     /**
      * Creates a new {@link WildcardConditionBuilder} for the specified field and value.
      *
-     * @param field the name of the field to be matched.
-     * @param value the value of the field to be matched.
+     * @param field The name of the field to be matched.
+     * @param value The wildcard expression to be matched.
      */
     protected WildcardConditionBuilder(String field, String value)
     {
@@ -41,7 +43,9 @@ public class WildcardConditionBuilder extends ConditionBuilder<WildcardCondition
     }
 
     /**
-     * {@inheritDoc}
+     * Returns the {@link WildcardCondition} represented by this builder.
+     *
+     * @return The {@link WildcardCondition} represented by this builder.
      */
     @Override
     public WildcardCondition build()

@@ -23,13 +23,13 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * {@link Builder} for building a new {@link com.stratio.cassandra.index.query.Sort}.
+ * {@link Builder} for building a new {@link Sort}.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class SortBuilder implements Builder<Sort>
 {
-
+    /** The {@link SortField}s */
     private final List<SortField> sortFields;
 
     /**
@@ -56,9 +56,7 @@ public class SortBuilder implements Builder<Sort>
         this(Arrays.asList(sortFieldBuilders));
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Sort build()
     {

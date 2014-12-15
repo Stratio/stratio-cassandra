@@ -18,7 +18,6 @@ package com.stratio.cassandra.index.query;
 import com.stratio.cassandra.index.schema.ColumnMapper;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
@@ -34,24 +33,18 @@ import java.util.List;
  */
 public class PhraseCondition extends Condition
 {
-
+    /** The default umber of other words permitted between words in phrase. */
     public static final int DEFAULT_SLOP = 0;
 
-    /**
-     * The field name
-     */
+    /** The name of the field to be matched. */
     @JsonProperty("field")
     private final String field;
 
-    /**
-     * The field values
-     */
+    /** The phrase terms to be matched. */
     @JsonProperty("values")
     private final List<String> values;
 
-    /**
-     * The slop
-     */
+    /** The number of other words permitted between words in phrase. */
     @JsonProperty("slop")
     private Integer slop;
 
@@ -59,11 +52,11 @@ public class PhraseCondition extends Condition
      * Constructor using the field name and the value to be matched.
      *
      * @param boost  The boost for this query clause. Documents matching this clause will (in addition to the normal
-     *               weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link #DEFAULT_BOOST} is
-     *               used as default.
-     * @param field  The field name.
-     * @param values The field values.
-     * @param slop   The slop.
+     *               weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link
+     *               #DEFAULT_BOOST} is used as default.
+     * @param field  The name of the field to be matched.
+     * @param values The phrase terms to be matched.
+     * @param slop   The number of other words permitted between words in phrase.
      */
     @JsonCreator
     public PhraseCondition(@JsonProperty("boost") Float boost,
@@ -78,9 +71,7 @@ public class PhraseCondition extends Condition
         this.slop = slop == null ? DEFAULT_SLOP : slop;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Query query(Schema schema)
     {
@@ -136,13 +127,13 @@ public class PhraseCondition extends Condition
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {
-        return new ToStringBuilder(this)
-                .append("field", field)
-                .append("values", values)
-                .append("slop", slop)
-                .toString();
+        return new ToStringBuilder(this).append("field", field)
+                                        .append("values", values)
+                                        .append("slop", slop)
+                                        .toString();
     }
 }

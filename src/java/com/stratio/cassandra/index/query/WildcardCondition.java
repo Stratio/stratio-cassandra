@@ -35,16 +35,11 @@ import org.codehaus.jackson.annotate.JsonProperty;
  */
 public class WildcardCondition extends Condition
 {
-
-    /**
-     * The field name
-     */
+    /** The name of the field to be matched. */
     @JsonProperty("field")
     private final String field;
 
-    /**
-     * The field value
-     */
+    /** The wildcard expression to be matched. */
     @JsonProperty("value")
     private final String value;
 
@@ -52,10 +47,10 @@ public class WildcardCondition extends Condition
      * Constructor using the field name and the value to be matched.
      *
      * @param boost The boost for this query clause. Documents matching this clause will (in addition to the normal
-     *              weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link #DEFAULT_BOOST}
-     *              is used as default.
-     * @param field the field name.
-     * @param value the field value.
+     *              weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link
+     *              #DEFAULT_BOOST} is used as default.
+     * @param field The name of the field to be matched.
+     * @param value The wildcard expression to be matched.
      */
     @JsonCreator
     public WildcardCondition(@JsonProperty("boost") Float boost,
@@ -68,9 +63,7 @@ public class WildcardCondition extends Condition
         this.value = value;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Query query(Schema schema)
     {
@@ -105,15 +98,10 @@ public class WildcardCondition extends Condition
         return query;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {
-        return new ToStringBuilder(this)
-                .append("field", field)
-                .append("value", value)
-                .toString();
+        return new ToStringBuilder(this).append("field", field).append("value", value).toString();
     }
 }

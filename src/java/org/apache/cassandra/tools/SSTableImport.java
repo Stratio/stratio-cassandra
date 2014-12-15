@@ -17,8 +17,6 @@
  */
 package org.apache.cassandra.tools;
 
-import static org.apache.cassandra.utils.ByteBufferUtil.hexToBytes;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -48,6 +46,7 @@ import org.apache.cassandra.io.sstable.SSTableWriter;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.JVMStabilityInspector;
 import org.codehaus.jackson.JsonFactory;
 import org.codehaus.jackson.JsonParser;
 import org.codehaus.jackson.JsonToken;
@@ -283,7 +282,7 @@ public class SSTableImport
     public int importJson(String jsonFile, String keyspace, String cf, String ssTablePath) throws IOException
     {
         ColumnFamily columnFamily = ArrayBackedSortedColumns.factory.create(keyspace, cf);
-        IPartitioner<?> partitioner = DatabaseDescriptor.getPartitioner();
+        IPartitioner partitioner = DatabaseDescriptor.getPartitioner();
 
         int importedKeys = (isSorted) ? importSorted(jsonFile, columnFamily, ssTablePath, partitioner)
                                       : importUnsorted(jsonFile, columnFamily, ssTablePath, partitioner);
@@ -294,7 +293,7 @@ public class SSTableImport
         return importedKeys;
     }
 
-    private int importUnsorted(String jsonFile, ColumnFamily columnFamily, String ssTablePath, IPartitioner<?> partitioner) throws IOException
+    private int importUnsorted(String jsonFile, ColumnFamily columnFamily, String ssTablePath, IPartitioner partitioner) throws IOException
     {
         int importedKeys = 0;
         long start = System.nanoTime();
@@ -314,7 +313,7 @@ public class SSTableImport
         for (Object row : data)
         {
             Map<?,?> rowAsMap = (Map<?, ?>)row;
-            decoratedKeys.put(partitioner.decorateKey(hexToBytes((String)rowAsMap.get("key"))), rowAsMap);
+            decoratedKeys.put(partitioner.decorateKey(getKeyValidator(columnFamily).fromString((String) rowAsMap.get("key"))), rowAsMap);
         }
 
         for (Map.Entry<DecoratedKey, Map<?, ?>> row : decoratedKeys.entrySet())
@@ -351,7 +350,7 @@ public class SSTableImport
     }
 
     private int importSorted(String jsonFile, ColumnFamily columnFamily, String ssTablePath,
-            IPartitioner<?> partitioner) throws IOException
+            IPartitioner partitioner) throws IOException
     {
         int importedKeys = 0; // already imported keys count
         long start = System.nanoTime();
@@ -387,7 +386,7 @@ public class SSTableImport
         {
             String key = parser.getCurrentName();
             Map<?, ?> row = parser.readValueAs(new TypeReference<Map<?, ?>>(){});
-            DecoratedKey currentKey = partitioner.decorateKey(hexToBytes((String) row.get("key")));
+            DecoratedKey currentKey = partitioner.decorateKey(getKeyValidator(columnFamily).fromString((String) row.get("key")));
 
             if (row.containsKey("metadata"))
                 parseMeta((Map<?, ?>) row.get("metadata"), columnFamily, null);
@@ -426,6 +425,21 @@ public class SSTableImport
         writer.closeAndOpenReader();
 
         return importedKeys;
+    }
+
+    /**
+     * Get key validator for column family
+     * @param columnFamily column family instance
+     * @return key validator for given column family
+     */
+    private AbstractType<?> getKeyValidator(ColumnFamily columnFamily) {
+        // this is a fix to support backward compatibility
+        // which allows to skip the current key validator
+        // please, take a look onto CASSANDRA-7498 for more details
+        if ("true".equals(System.getProperty("skip.key.validator", "false"))) {
+            return BytesType.instance;
+        }
+        return columnFamily.metadata().getKeyValidator();
     }
 
     /**
@@ -501,6 +515,7 @@ public class SSTableImport
         }
         catch (Exception e)
         {
+            JVMStabilityInspector.inspectThrowable(e);
             e.printStackTrace();
             System.err.println("ERROR: " + e.getMessage());
             System.exit(-1);
@@ -532,7 +547,7 @@ public class SSTableImport
     {
         try
         {
-            return (type == BytesType.instance) ? hexToBytes(content) : type.fromString(content);
+            return type.fromString(content);
         }
         catch (MarshalException e)
         {

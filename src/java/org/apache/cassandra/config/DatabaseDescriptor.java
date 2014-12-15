@@ -21,12 +21,15 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -35,9 +38,9 @@ import java.util.UUID;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.primitives.Longs;
+import org.apache.cassandra.thrift.ThriftServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.cassandra.auth.AllowAllAuthenticator;
 import org.apache.cassandra.auth.AllowAllAuthorizer;
 import org.apache.cassandra.auth.AllowAllInternodeAuthenticator;
@@ -65,6 +68,7 @@ import org.apache.cassandra.scheduler.NoScheduler;
 import org.apache.cassandra.service.CacheService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.JVMStabilityInspector;
 import org.apache.cassandra.utils.memory.HeapPool;
 import org.apache.cassandra.utils.memory.NativePool;
 import org.apache.cassandra.utils.memory.MemtablePool;
@@ -89,7 +93,7 @@ public class DatabaseDescriptor
     private static IInternodeAuthenticator internodeAuthenticator;
 
     /* Hashing strategy Random or OPHF */
-    private static IPartitioner<?> partitioner;
+    private static IPartitioner partitioner;
     private static String paritionerName;
 
     private static Config.DiskAccessMode indexAccessMode;
@@ -139,6 +143,7 @@ public class DatabaseDescriptor
         {
             logger.error("Fatal error during configuration loading", e);
             System.err.println(e.getMessage() + "\nFatal error during configuration loading; unable to start. See log for stacktrace.");
+            JVMStabilityInspector.inspectThrowable(e);
             System.exit(1);
         }
     }
@@ -289,11 +294,13 @@ public class DatabaseDescriptor
         else
             logger.info("Global memtable off-heap threshold is enabled at {}MB", conf.memtable_offheap_space_in_mb);
 
-        /* Local IP or hostname to bind services to */
-        if (conf.listen_address != null)
+        /* Local IP, hostname or interface to bind services to */
+        if (conf.listen_address != null && conf.listen_interface != null)
         {
-            if (conf.listen_address.equals("0.0.0.0"))
-                throw new ConfigurationException("listen_address cannot be 0.0.0.0!");
+            throw new ConfigurationException("Set listen_address OR listen_interface, not both");
+        }
+        else if (conf.listen_address != null)
+        {
             try
             {
                 listenAddress = InetAddress.getByName(conf.listen_address);
@@ -302,16 +309,29 @@ public class DatabaseDescriptor
             {
                 throw new ConfigurationException("Unknown listen_address '" + conf.listen_address + "'");
             }
+
+            if (listenAddress.isAnyLocalAddress())
+                throw new ConfigurationException("listen_address cannot be a wildcard address (" + conf.listen_address + ")!");
+        }
+        else if (conf.listen_interface != null)
+        {
+            try
+            {
+                Enumeration<InetAddress> addrs = NetworkInterface.getByName(conf.listen_interface).getInetAddresses();
+                listenAddress = addrs.nextElement();
+                if (addrs.hasMoreElements())
+                    throw new ConfigurationException("Interface " + conf.listen_interface +" can't have more than one address");
+            }
+            catch (SocketException e)
+            {
+                throw new ConfigurationException("Unknown network interface in listen_interface " + conf.listen_interface);
+            }
+
         }
 
         /* Gossip Address to broadcast */
         if (conf.broadcast_address != null)
         {
-            if (conf.broadcast_address.equals("0.0.0.0"))
-            {
-                throw new ConfigurationException("broadcast_address cannot be 0.0.0.0!");
-            }
-
             try
             {
                 broadcastAddress = InetAddress.getByName(conf.broadcast_address);
@@ -320,10 +340,17 @@ public class DatabaseDescriptor
             {
                 throw new ConfigurationException("Unknown broadcast_address '" + conf.broadcast_address + "'");
             }
+
+            if (broadcastAddress.isAnyLocalAddress())
+                throw new ConfigurationException("broadcast_address cannot be a wildcard address (" + conf.broadcast_address + ")!");
         }
 
-        /* Local IP or hostname to bind RPC server to */
-        if (conf.rpc_address != null)
+        /* Local IP, hostname or interface to bind RPC server to */
+        if (conf.rpc_address != null && conf.rpc_interface != null)
+        {
+            throw new ConfigurationException("Set rpc_address OR rpc_interface, not both");
+        }
+        else if (conf.rpc_address != null)
         {
             try
             {
@@ -334,6 +361,20 @@ public class DatabaseDescriptor
                 throw new ConfigurationException("Unknown host in rpc_address " + conf.rpc_address);
             }
         }
+        else if (conf.rpc_interface != null)
+        {
+            try
+            {
+                Enumeration<InetAddress> addrs = NetworkInterface.getByName(conf.rpc_interface).getInetAddresses();
+                rpcAddress = addrs.nextElement();
+                if (addrs.hasMoreElements())
+                    throw new ConfigurationException("Interface " + conf.rpc_interface +" can't have more than one address");
+            }
+            catch (SocketException e)
+            {
+                throw new ConfigurationException("Unknown network interface in rpc_interface " + conf.rpc_interface);
+            }
+        }
         else
         {
             rpcAddress = FBUtilities.getLocalAddress();
@@ -342,33 +383,23 @@ public class DatabaseDescriptor
         /* RPC address to broadcast */
         if (conf.broadcast_rpc_address != null)
         {
-            if (conf.broadcast_rpc_address.equals("0.0.0.0"))
-                throw new ConfigurationException("broadcast_rpc_address cannot be 0.0.0.0");
-
             try
             {
                 broadcastRpcAddress = InetAddress.getByName(conf.broadcast_rpc_address);
             }
             catch (UnknownHostException e)
             {
-                throw new ConfigurationException("Unkown broadcast_rpc_address '" + conf.broadcast_rpc_address + "'");
+                throw new ConfigurationException("Unknown broadcast_rpc_address '" + conf.broadcast_rpc_address + "'");
             }
+
+            if (broadcastRpcAddress.isAnyLocalAddress())
+                throw new ConfigurationException("broadcast_rpc_address cannot be a wildcard address (" + conf.broadcast_rpc_address + ")!");
         }
         else
         {
-            InetAddress bindAll;
-            try
-            {
-                bindAll = InetAddress.getByAddress(new byte[4]);
-            }
-            catch (UnknownHostException e)
-            {
-                throw new RuntimeException("Host 0.0.0.0 is somehow unknown");
-            }
-
-            if (rpcAddress.equals(bindAll))
-                throw new ConfigurationException("If rpc_address is set to 0.0.0.0, you must set broadcast_rpc_address " +
-                                                 "to a value other than 0.0.0.0");
+            if (rpcAddress.isAnyLocalAddress())
+                throw new ConfigurationException("If rpc_address is set to a wildcard address (" + conf.rpc_address + "), then " +
+                                                 "you must set broadcast_rpc_address to a value other than " + conf.rpc_address);
             broadcastRpcAddress = rpcAddress;
         }
 
@@ -377,6 +408,12 @@ public class DatabaseDescriptor
 
         if (conf.native_transport_max_frame_size_in_mb <= 0)
             throw new ConfigurationException("native_transport_max_frame_size_in_mb must be positive");
+
+        // fail early instead of OOMing (see CASSANDRA-8116)
+        if (ThriftServer.HSHA.equals(conf.rpc_server_type) && conf.rpc_max_threads == Integer.MAX_VALUE)
+            throw new ConfigurationException("The hsha rpc_server_type is not compatible with an rpc_max_threads " +
+                                             "setting of 'unlimited'.  Please see the comments in cassandra.yaml " +
+                                             "for rpc_server_type and rpc_max_threads.");
 
         /* end point snitch */
         if (conf.endpoint_snitch == null)
@@ -652,6 +689,12 @@ public class DatabaseDescriptor
         return conf.permissions_validity_in_ms;
     }
 
+    public static void setPermissionsValidity(int timeout)
+    {
+        conf.permissions_validity_in_ms = timeout;
+    }
+
+
     public static int getThriftFramedTransportSize()
     {
         return conf.thrift_framed_transport_size_in_mb * 1024 * 1024;
@@ -696,7 +739,7 @@ public class DatabaseDescriptor
         }
     }
 
-    public static IPartitioner<?> getPartitioner()
+    public static IPartitioner getPartitioner()
     {
         return partitioner;
     }
@@ -707,7 +750,7 @@ public class DatabaseDescriptor
     }
 
     /* For tests ONLY, don't use otherwise or all hell will break loose */
-    public static void setPartitioner(IPartitioner<?> newPartitioner)
+    public static void setPartitioner(IPartitioner newPartitioner)
     {
         partitioner = newPartitioner;
     }

@@ -22,15 +22,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * {@link ConditionBuilder} for building a new {@link com.stratio.cassandra.index.query.BooleanCondition}.
+ * {@link ConditionBuilder} for building a new {@link BooleanCondition}.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class BooleanConditionBuilder extends ConditionBuilder<BooleanCondition, BooleanConditionBuilder>
 {
-
+    /** The mandatory conditions */
     private List<Condition> must;
+
+    /** The optional conditions */
     private List<Condition> should;
+
+    /** The mandatory not conditions */
     private List<Condition> not;
 
     /**
@@ -62,7 +66,7 @@ public class BooleanConditionBuilder extends ConditionBuilder<BooleanCondition, 
     /**
      * Returns this builder with the specified optional conditions.
      *
-     * @param conditionBuilders The mandatory conditions to be added.
+     * @param conditionBuilders The optional conditions to be added.
      * @return this builder with the specified optional conditions.
      */
     public BooleanConditionBuilder should(ConditionBuilder... conditionBuilders)
@@ -81,7 +85,7 @@ public class BooleanConditionBuilder extends ConditionBuilder<BooleanCondition, 
     /**
      * Returns this builder with the specified mandatory not conditions.
      *
-     * @param conditionBuilders The mandatory conditions to be added.
+     * @param conditionBuilders The mandatory not conditions to be added.
      * @return this builder with the specified mandatory not conditions.
      */
     public BooleanConditionBuilder not(ConditionBuilder... conditionBuilders)
@@ -98,7 +102,9 @@ public class BooleanConditionBuilder extends ConditionBuilder<BooleanCondition, 
     }
 
     /**
-     * {@inheritDoc}
+     * Returns the {@link BooleanCondition} represented by this builder.
+     *
+     * @return The {@link BooleanCondition} represented by this builder.
      */
     @Override
     public BooleanCondition build()

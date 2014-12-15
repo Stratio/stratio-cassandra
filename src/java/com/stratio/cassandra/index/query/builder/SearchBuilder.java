@@ -20,13 +20,22 @@ import com.stratio.cassandra.index.query.Search;
 import com.stratio.cassandra.index.query.Sort;
 
 /**
+ * {@link Builder} for building a new {@link Search}.
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class SearchBuilder implements Builder<Search>
 {
-
+    /** he {@link Condition} for querying, maybe {@code null} meaning no querying. */
     private Condition queryCondition;
+
+    /** The {@link Condition} for filtering, maybe {@code null} meaning no filtering. */
     private Condition filterCondition;
+
+    /**
+     * The {@link Sort} for the query. Note that is the order in which the data will be read before querying, not the
+     * order of the results after querying.
+     */
     private Sort sort;
 
     /**

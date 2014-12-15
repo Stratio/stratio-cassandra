@@ -35,39 +35,35 @@ import java.io.IOException;
 /**
  * The abstract base class for queries.
  * <p/>
- * Known subclasses are:
- * <ul>
- * <li> {@link BooleanCondition}
- * <li> {@link FuzzyCondition}
- * <li> {@link MatchCondition}
- * <li> {@link PhraseCondition}
- * <li> {@link PrefixCondition}
- * <li> {@link RangeCondition}
- * <li> {@link WildcardCondition}
+ * Known subclasses are: <ul> <li> {@link BooleanCondition} <li> {@link FuzzyCondition} <li> {@link MatchCondition} <li>
+ * {@link PhraseCondition} <li> {@link PrefixCondition} <li> {@link RangeCondition} <li> {@link WildcardCondition}
  * </ul>
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 @JsonSubTypes({
-                      @JsonSubTypes.Type(value = BooleanCondition.class, name = "boolean"),
-                      @JsonSubTypes.Type(value = FuzzyCondition.class, name = "fuzzy"),
-                      @JsonSubTypes.Type(value = LuceneCondition.class, name = "lucene"),
-                      @JsonSubTypes.Type(value = MatchCondition.class, name = "match"),
-                      @JsonSubTypes.Type(value = RangeCondition.class, name = "range"),
-                      @JsonSubTypes.Type(value = PhraseCondition.class, name = "phrase"),
-                      @JsonSubTypes.Type(value = PrefixCondition.class, name = "prefix"),
-                      @JsonSubTypes.Type(value = RegexpCondition.class, name = "regexp"),
-                      @JsonSubTypes.Type(value = WildcardCondition.class, name = "wildcard"),})
+        @JsonSubTypes.Type(value = BooleanCondition.class, name = "boolean"),
+        @JsonSubTypes.Type(value = FuzzyCondition.class, name = "fuzzy"),
+        @JsonSubTypes.Type(value = LuceneCondition.class, name = "lucene"),
+        @JsonSubTypes.Type(value = MatchCondition.class, name = "match"),
+        @JsonSubTypes.Type(value = RangeCondition.class, name = "range"),
+        @JsonSubTypes.Type(value = PhraseCondition.class, name = "phrase"),
+        @JsonSubTypes.Type(value = PrefixCondition.class, name = "prefix"),
+        @JsonSubTypes.Type(value = RegexpCondition.class, name = "regexp"),
+        @JsonSubTypes.Type(value = WildcardCondition.class, name = "wildcard"),})
 public abstract class Condition
 {
-
+    /** The default boost to be used. */
     public static final float DEFAULT_BOOST = 1.0f;
 
+    /** The boost to be used. */
     @JsonProperty("boost")
     protected float boost;
 
     /**
+     * Abstract {@link Condition} builder receiving the boost to be used.
+     *
      * @param boost The boost for this query clause. Documents matching this clause will (in addition to the normal
      *              weightings) have their score multiplied by {@code boost}.
      */
@@ -78,18 +74,18 @@ public abstract class Condition
     }
 
     /**
-     * Returns the Lucene's {@link Query} representation of this condition.
+     * Returns the Lucene {@link Query} representation of this condition.
      *
      * @param schema The schema to be used.
-     * @return The Lucene's {@link Query} representation of this condition.
+     * @return The Lucene {@link Query} representation of this condition.
      */
     public abstract Query query(Schema schema);
 
     /**
-     * Returns the Lucene's {@link Filter} representation of this condition.
+     * Returns the Lucene {@link Filter} representation of this condition.
      *
      * @param schema The schema to be used.
-     * @return The Lucene's {@link Filter} representation of this condition.
+     * @return The Lucene {@link Filter} representation of this condition.
      */
     public Filter filter(Schema schema)
     {

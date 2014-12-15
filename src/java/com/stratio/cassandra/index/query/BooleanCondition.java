@@ -27,20 +27,22 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
- * A {@link Condition} that matches documents matching boolean combinations of other queries, e.g.
- * {@link MatchCondition}s, {@link RangeCondition}s or other {@link BooleanCondition}s.
+ * A {@link Condition} that matches documents matching boolean combinations of other queries, e.g. {@link
+ * MatchCondition}s, {@link RangeCondition}s or other {@link BooleanCondition}s.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class BooleanCondition extends Condition
 {
-
+    /** The mandatory conditions */
     @JsonProperty("must")
     private final List<Condition> must;
 
+    /** The optional conditions */
     @JsonProperty("should")
     private final List<Condition> should;
 
+    /** The mandatory not conditions */
     @JsonProperty("not")
     private final List<Condition> not;
 
@@ -48,8 +50,8 @@ public class BooleanCondition extends Condition
      * Returns a new {@link BooleanCondition} compound by the specified {@link Condition}s.
      *
      * @param boost  The boost for this query clause. Documents matching this clause will (in addition to the normal
-     *               weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link #DEFAULT_BOOST}
-     *               is used as default.
+     *               weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link
+     *               #DEFAULT_BOOST} is used as default.
      * @param must   the mandatory {@link Condition}s.
      * @param should the optional {@link Condition}s.
      * @param not    the mandatory not {@link Condition}s.
@@ -66,9 +68,7 @@ public class BooleanCondition extends Condition
         this.not = not == null ? new LinkedList<Condition>() : not;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Query query(Schema schema)
     {
@@ -89,16 +89,10 @@ public class BooleanCondition extends Condition
         return luceneQuery;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {
-        return new ToStringBuilder(this)
-                .append("must", must)
-                .append("should", should)
-                .append("not", not)
-                .toString();
+        return new ToStringBuilder(this).append("must", must).append("should", should).append("not", not).toString();
     }
 }

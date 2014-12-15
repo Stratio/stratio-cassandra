@@ -18,21 +18,23 @@ package com.stratio.cassandra.index.query.builder;
 import com.stratio.cassandra.index.query.PrefixCondition;
 
 /**
- * {@link ConditionBuilder} for building a new {@link com.stratio.cassandra.index.query.PrefixCondition}.
+ * {@link ConditionBuilder} for building a new {@link PrefixCondition}.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class PrefixConditionBuilder extends ConditionBuilder<PrefixCondition, PrefixConditionBuilder>
 {
-
+    /** The name of the field to be matched. */
     private final String field;
+
+    /** The prefix to be matched. */
     private final String value;
 
     /**
      * Creates a new {@link PrefixConditionBuilder}.
      *
-     * @param field the name of the field to be matched.
-     * @param value the value of the field to be matched.
+     * @param field The name of the field to be matched.
+     * @param value The prefix to be matched.
      */
     protected PrefixConditionBuilder(String field, String value)
     {
@@ -41,7 +43,9 @@ public class PrefixConditionBuilder extends ConditionBuilder<PrefixCondition, Pr
     }
 
     /**
-     * {@inheritDoc}
+     * Returns the {@link PrefixCondition} represented by this builder.
+     *
+     * @return The {@link PrefixCondition} represented by this builder.
      */
     @Override
     public PrefixCondition build()

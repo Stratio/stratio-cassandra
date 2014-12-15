@@ -29,15 +29,10 @@ import java.util.List;
  */
 public class Columns implements Iterable<Column>
 {
-
-    /**
-     * The wrapped columns
-     */
+    /** The wrapped columns. */
     private List<Column> columns;
 
-    /**
-     * Constructs an empty {@link Column} list.
-     */
+    /** Constructs an empty {@link Column} list. */
     public Columns()
     {
         this.columns = new LinkedList<>();
@@ -58,8 +53,8 @@ public class Columns implements Iterable<Column>
     /**
      * Adds the specified {@link Column}s to the existing ones.
      *
-     * @param columns the {@link Column}s to be added.
-     * @return this
+     * @param columns The {@link Column}s to be added.
+     * @return this {@link Columns} with the specified {@link Column}s.
      */
     public Columns addAll(Collection<Column> columns)
     {
@@ -70,8 +65,8 @@ public class Columns implements Iterable<Column>
     /**
      * Adds the specified {@link Column}s to the existing ones.
      *
-     * @param columns the {@link Column}s to be added.
-     * @return this
+     * @param columns The {@link Column}s to be added.
+     * @return this {@link Columns} with the specified {@link Column}s.
      */
     public Columns addAll(Columns columns)
     {
@@ -83,9 +78,9 @@ public class Columns implements Iterable<Column>
     }
 
     /**
-     * Returns an iterator over the {@link Column}s in storage sequence.
+     * Returns an iterator over the {@link Column}s in insert order.
      *
-     * @return an iterator over the {@link Column}s storage sequence
+     * @return An iterator over the {@link Column}s in insert order.
      */
     public Iterator<Column> iterator()
     {
@@ -96,14 +91,20 @@ public class Columns implements Iterable<Column>
      * Returns the number of {@link Column}s in this list. If this list contains more than <tt>Integer.MAX_VALUE</tt>
      * elements, returns <tt>Integer.MAX_VALUE</tt>.
      *
-     * @return the number of {@link Column}s in this list
+     * @return The number of {@link Column}s in this list
      */
     public int size()
     {
         return columns.size();
     }
 
-    public Column getCell(String name)
+    /**
+     * Returns the {@link Column} identified by the specified name, or {@code null} if not found.
+     *
+     * @param name The name of the {@link Column} to be returned.
+     * @return The {@link Column} identified by the specified name, or {@code null} if not found.
+     */
+    public Column getColumn(String name)
     {
         for (Column column : columns)
         {
@@ -115,6 +116,7 @@ public class Columns implements Iterable<Column>
         return null;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {

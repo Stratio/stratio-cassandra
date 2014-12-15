@@ -32,16 +32,11 @@ import org.codehaus.jackson.annotate.JsonProperty;
  */
 public class MatchCondition extends Condition
 {
-
-    /**
-     * The field name
-     */
+    /** The name of the field to be matched. */
     @JsonProperty("field")
     private final String field;
 
-    /**
-     * The field value
-     */
+    /** The value of the field to be matched. */
     @JsonProperty("value")
     private Object value;
 
@@ -49,10 +44,10 @@ public class MatchCondition extends Condition
      * Constructor using the field name and the value to be matched.
      *
      * @param boost The boost for this query clause. Documents matching this clause will (in addition to the normal
-     *              weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link #DEFAULT_BOOST}
-     *              is used as default.
-     * @param field the field name.
-     * @param value the field value.
+     *              weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link
+     *              #DEFAULT_BOOST} is used as default.
+     * @param field The name of the field to be matched.
+     * @param value The value of the field to be matched.
      */
     @JsonCreator
     public MatchCondition(@JsonProperty("boost") Float boost,
@@ -64,13 +59,10 @@ public class MatchCondition extends Condition
         this.value = value;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Query query(Schema schema)
     {
-
         if (field == null || field.trim().isEmpty())
         {
             throw new IllegalArgumentException("Field name required");
@@ -127,15 +119,10 @@ public class MatchCondition extends Condition
         return query;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {
-        return new ToStringBuilder(this)
-                .append("field", field)
-                .append("value", value)
-                .toString();
+        return new ToStringBuilder(this).append("field", field).append("value", value).toString();
     }
 }

@@ -29,35 +29,50 @@ import org.codehaus.jackson.annotate.JsonProperty;
 import java.math.BigDecimal;
 
 /**
- * A {@link ColumnMapper} to map a string, not tokenized field.
+ * A {@link ColumnMapper} to map {@link BigDecimal} values. A max number of digits for the integer a decimal parts must
+ * be specified.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class ColumnMapperBigDecimal extends ColumnMapper<String>
 {
 
+    /** The default max number of digits for the integer part. */
     public static final int DEFAULT_INTEGER_DIGITS = 32;
+
+    /** The default max number of digits for the decimal part. */
     public static final int DEFAULT_DECIMAL_DIGITS = 32;
 
+    /** The max number of digits for the integer part. */
     private final int integerDigits;
+
+    /** The max number of digits for the decimal part. */
     private final int decimalDigits;
 
     private final BigDecimal complement;
 
+    /**
+     * Builds a new {@link ColumnMapperBigDecimal} using the specified max number of digits for the integer and decimal
+     * parts.
+     *
+     * @param integerDigits The max number of digits for the integer part. If {@code null}, the {@link
+     *                      #DEFAULT_INTEGER_DIGITS} will be used.
+     * @param decimalDigits The max number of digits for the decimal part. If {@code null}, the {@link
+     *                      #DEFAULT_DECIMAL_DIGITS} will be used.
+     */
     @JsonCreator
     public ColumnMapperBigDecimal(@JsonProperty("integer_digits") Integer integerDigits,
                                   @JsonProperty("decimal_digits") Integer decimalDigits)
     {
         super(new AbstractType<?>[]{
-                      AsciiType.instance,
-                      UTF8Type.instance,
-                      Int32Type.instance,
-                      LongType.instance,
-                      IntegerType.instance,
-                      FloatType.instance,
-                      DoubleType.instance,
-                      DecimalType.instance},
-              new AbstractType[]{});
+                AsciiType.instance,
+                UTF8Type.instance,
+                Int32Type.instance,
+                LongType.instance,
+                IntegerType.instance,
+                FloatType.instance,
+                DoubleType.instance,
+                DecimalType.instance}, new AbstractType[]{});
 
         // Setup integer part mapping
         if (integerDigits != null && integerDigits <= 0)
@@ -79,22 +94,34 @@ public class ColumnMapperBigDecimal extends ColumnMapper<String>
         complement = dividend.divide(divisor);
     }
 
+    /**
+     * Returns the max number of digits for the integer part.
+     *
+     * @return The max number of digits for the integer part.
+     */
     public int getIntegerDigits()
     {
         return integerDigits;
     }
 
+    /**
+     * Returns the max number of digits for the decimal part.
+     *
+     * @return The max number of digits for the decimal part.
+     */
     public int getDecimalDigits()
     {
         return decimalDigits;
     }
 
+    /** {@inheritDoc} */
     @Override
     public Analyzer analyzer()
     {
         return EMPTY_ANALYZER;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String indexValue(String name, Object value)
     {
@@ -142,12 +169,14 @@ public class ColumnMapperBigDecimal extends ColumnMapper<String>
         return integerPart + "." + decimalPart;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String queryValue(String name, Object value)
     {
         return indexValue(name, value);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Field field(String name, Object value)
     {
@@ -155,24 +184,26 @@ public class ColumnMapperBigDecimal extends ColumnMapper<String>
         return new StringField(name, string, STORE);
     }
 
+    /** {@inheritDoc} */
     @Override
     public SortField sortField(String field, boolean reverse)
     {
         return new SortField(field, Type.STRING, reverse);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Class<String> baseClass()
     {
         return String.class;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {
-        return new ToStringBuilder(this)
-                .append("integerDigits", integerDigits)
-                .append("decimalDigits", decimalDigits)
-                .toString();
+        return new ToStringBuilder(this).append("integerDigits", integerDigits)
+                                        .append("decimalDigits", decimalDigits)
+                                        .toString();
     }
 }
