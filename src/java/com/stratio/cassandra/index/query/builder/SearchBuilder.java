@@ -20,6 +20,8 @@ import com.stratio.cassandra.index.query.Search;
 import com.stratio.cassandra.index.query.Sort;
 
 /**
+ * {@link Builder} for building a new {@link Search}.
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class SearchBuilder implements Builder<Search>

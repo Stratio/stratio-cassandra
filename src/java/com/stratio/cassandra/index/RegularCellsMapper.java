@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index;
 
+import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.ColumnMapper;
 import com.stratio.cassandra.index.schema.Columns;
 import org.apache.cassandra.config.CFMetaData;
@@ -100,13 +101,13 @@ public class RegularCellsMapper
                     {
                         AbstractType<?> type = collectionType.nameComparator();
                         ByteBuffer value = cellName.collectionElement();
-                        columns.add(ColumnMapper.column(name, value, type));
+                        columns.add(new Column(name, value, type));
                         break;
                     }
                     case LIST:
                     {
                         AbstractType<?> type = collectionType.valueComparator();
-                        columns.add(ColumnMapper.column(name, cellValue, type));
+                        columns.add(new Column(name, cellValue, type));
                         break;
                     }
                     case MAP:
@@ -115,14 +116,14 @@ public class RegularCellsMapper
                         ByteBuffer keyValue = cellName.collectionElement();
                         AbstractType<?> keyType = collectionType.nameComparator();
                         String nameSufix = keyType.compose(keyValue).toString();
-                        columns.add(ColumnMapper.column(name, nameSufix, cellValue, type));
+                        columns.add(new Column(name, nameSufix, cellValue, type));
                         break;
                     }
                 }
             }
             else
             {
-                columns.add(ColumnMapper.column(name, cellValue, valueType));
+                columns.add(new Column(name, cellValue, valueType));
             }
         }
 

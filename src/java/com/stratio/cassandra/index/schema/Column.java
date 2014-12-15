@@ -27,18 +27,25 @@ import java.nio.ByteBuffer;
  */
 public class Column
 {
-
-    /**
-     * The column's name
-     */
+    /** The column's name. */
     private String name;
 
+    /** The column's name sufix used for maps. */
     private String nameSufix;
 
+    /** The column's value as {@link ByteBuffer}. */
     private ByteBuffer value;
 
+    /** The column's Cassandra type. */
     private AbstractType<?> type;
 
+    /**
+     * Builds a new {@link Column} with the specified name, value, and type.
+     *
+     * @param name  The name of the column to be created.
+     * @param value The value of the column to be created.
+     * @param type  The type of the column to be created.
+     */
     public Column(String name, ByteBuffer value, AbstractType<?> type)
     {
         this.name = name;
@@ -46,6 +53,14 @@ public class Column
         this.type = type;
     }
 
+    /**
+     * Builds a new {@link Column} with the specified name, name sufix, value, and type.
+     *
+     * @param name      The name of the column to be created.
+     * @param nameSufix The name sufix of the column to be created.
+     * @param value     The value of the column to be created.
+     * @param type      The type of the column to be created.
+     */
     public Column(String name, String nameSufix, ByteBuffer value, AbstractType<?> type)
     {
         this.name = name;
@@ -55,40 +70,56 @@ public class Column
     }
 
     /**
-     * Returns the name.
+     * Returns the column name.
      *
-     * @return the name.
+     * @return the column name.
      */
     public String getName()
     {
         return name;
     }
 
+    /**
+     * Returns the Lucene field name, which is formed by the column name and sufix.
+     *
+     * @return The Lucene field name, which is formed by the column name and sufix.
+     */
     public String getFieldName()
     {
         return nameSufix == null ? name : name + "." + nameSufix;
     }
 
     /**
-     * Returns the value.
+     * Returns the {@link ByteBuffer} serialized value.
      *
-     * @return the value.
+     * @return the {@link ByteBuffer} serialized value.
      */
     public ByteBuffer getRawValue()
     {
         return value;
     }
 
+    /**
+     * Returns the Java column value.
+     *
+     * @return The Java column value.
+     */
     public Object getValue()
     {
         return type.compose(value);
     }
 
+    /**
+     * Returns the Cassandra column type.
+     *
+     * @return The Cassandra column type.
+     */
     public AbstractType<?> getType()
     {
         return type;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {

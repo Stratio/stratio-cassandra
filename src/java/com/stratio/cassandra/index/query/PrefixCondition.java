@@ -31,7 +31,6 @@ import org.codehaus.jackson.annotate.JsonProperty;
  */
 public class PrefixCondition extends Condition
 {
-
     /** The name of the field to be matched. */
     @JsonProperty("field")
     private final String field;
@@ -60,9 +59,7 @@ public class PrefixCondition extends Condition
         this.value = value;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Query query(Schema schema)
     {
@@ -97,9 +94,7 @@ public class PrefixCondition extends Condition
         return query;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {

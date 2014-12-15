@@ -32,16 +32,14 @@ import org.codehaus.jackson.annotate.JsonProperty;
  */
 public class LuceneCondition extends Condition
 {
-
+    /** The default name of the field where the clauses will be applied by default. */
     public static final String DEFAULT_FIELD = "lucene";
-    /**
-     * The query value
-     */
+
+    /** The Lucene query syntax expression. */
     @JsonProperty("query")
     private final String query;
-    /**
-     * The default field name
-     */
+
+    /** The name of the field where the clauses will be applied by default. */
     @JsonProperty("default_field")
     private String defaultField;
 
@@ -65,9 +63,7 @@ public class LuceneCondition extends Condition
         this.defaultField = defaultField == null ? DEFAULT_FIELD : defaultField;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Query query(Schema schema)
     {
@@ -93,9 +89,7 @@ public class LuceneCondition extends Condition
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {

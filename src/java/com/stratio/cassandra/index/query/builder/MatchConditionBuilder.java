@@ -18,7 +18,7 @@ package com.stratio.cassandra.index.query.builder;
 import com.stratio.cassandra.index.query.MatchCondition;
 
 /**
- * {@link ConditionBuilder} for building a new {@link com.stratio.cassandra.index.query.MatchCondition}.
+ * {@link ConditionBuilder} for building a new {@link MatchCondition}.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
@@ -43,7 +43,9 @@ public class MatchConditionBuilder extends ConditionBuilder<MatchCondition, Matc
     }
 
     /**
-     * {@inheritDoc}
+     * Returns the {@link MatchCondition} represented by this builder.
+     *
+     * @return The {@link MatchCondition} represented by this builder.
      */
     @Override
     public MatchCondition build()

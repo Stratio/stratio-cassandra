@@ -18,8 +18,7 @@ package com.stratio.cassandra.index.query.builder;
 import java.util.List;
 
 /**
- * Factory for {@link com.stratio.cassandra.index.query.builder.SearchBuilder} and {@link
- * com.stratio.cassandra.index.query.builder.ConditionBuilder}s.
+ * Factory for {@link SearchBuilder} and {@link ConditionBuilder}s.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */

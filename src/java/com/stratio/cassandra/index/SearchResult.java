@@ -37,9 +37,10 @@ public class SearchResult
 
     /**
      * Builds a new {@link SearchResult} for the specified CQL3 row key and search hit info.
-     * @param partitionKey The partition key.
+     *
+     * @param partitionKey  The partition key.
      * @param clusteringKey The clustering key.
-     * @param scoreDoc The search hit info.
+     * @param scoreDoc      The search hit info.
      */
     public SearchResult(DecoratedKey partitionKey, CellName clusteringKey, ScoreDoc scoreDoc)
     {
@@ -50,6 +51,7 @@ public class SearchResult
 
     /**
      * Returns the partition key.
+     *
      * @return The partition key.
      */
     public DecoratedKey getPartitionKey()
@@ -59,6 +61,7 @@ public class SearchResult
 
     /**
      * Returns the clustering key.
+     *
      * @return The clustering key.
      */
     public CellName getClusteringKey()
@@ -68,6 +71,7 @@ public class SearchResult
 
     /**
      * Returns the search {@link ScoreDoc}.
+     *
      * @return The search {@link ScoreDoc}.
      */
     public ScoreDoc getScoreDoc()
@@ -77,6 +81,7 @@ public class SearchResult
 
     /**
      * Returns the search numeric score.
+     *
      * @return The search numeric score.
      */
     public Float getScore()

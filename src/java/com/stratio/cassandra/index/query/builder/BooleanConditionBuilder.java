@@ -102,7 +102,9 @@ public class BooleanConditionBuilder extends ConditionBuilder<BooleanCondition, 
     }
 
     /**
-     * {@inheritDoc}
+     * Returns the {@link BooleanCondition} represented by this builder.
+     *
+     * @return The {@link BooleanCondition} represented by this builder.
      */
     @Override
     public BooleanCondition build()

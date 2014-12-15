@@ -103,7 +103,9 @@ public class FuzzyConditionBuilder extends ConditionBuilder<FuzzyCondition, Fuzz
     }
 
     /**
-     * {@inheritDoc}
+     * Returns the {@link FuzzyCondition} represented by this builder.
+     *
+     * @return The {@link FuzzyCondition} represented by this builder.
      */
     @Override
     public FuzzyCondition build()

@@ -33,7 +33,7 @@ import java.net.UnknownHostException;
 import java.util.regex.Pattern;
 
 /**
- * A {@link ColumnMapper} to map a string, not tokenized field.
+ * A {@link ColumnMapper} to map inet addresses.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
@@ -46,6 +46,9 @@ public class ColumnMapperInet extends ColumnMapper<String>
     private static final Pattern IPV6_COMPRESSED_PATTERN = Pattern.compile(
             "^((?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4})*)?)::((?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4})*)?)$");
 
+    /**
+     * Builds a new {@link ColumnMapperInet}.
+     */
     @JsonCreator
     public ColumnMapperInet()
     {
@@ -53,12 +56,14 @@ public class ColumnMapperInet extends ColumnMapper<String>
               new AbstractType[]{});
     }
 
+    /** {@inheritDoc} */
     @Override
     public Analyzer analyzer()
     {
         return EMPTY_ANALYZER;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String indexValue(String name, Object value)
     {
@@ -91,6 +96,7 @@ public class ColumnMapperInet extends ColumnMapper<String>
         throw new IllegalArgumentException(String.format("Value '%s' cannot be cast to InetAddress", value));
     }
 
+    /** {@inheritDoc} */
     @Override
     public String queryValue(String name, Object value)
     {
@@ -127,6 +133,7 @@ public class ColumnMapperInet extends ColumnMapper<String>
         throw new IllegalArgumentException(String.format("Value '%s' cannot be cast to InetAddress", value));
     }
 
+    /** {@inheritDoc} */
     @Override
     public Field field(String name, Object value)
     {
@@ -134,18 +141,21 @@ public class ColumnMapperInet extends ColumnMapper<String>
         return new StringField(name, string, STORE);
     }
 
+    /** {@inheritDoc} */
     @Override
     public SortField sortField(String field, boolean reverse)
     {
         return new SortField(field, Type.STRING, reverse);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Class<String> baseClass()
     {
         return String.class;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {

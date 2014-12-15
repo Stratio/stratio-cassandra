@@ -43,7 +43,9 @@ public class WildcardConditionBuilder extends ConditionBuilder<WildcardCondition
     }
 
     /**
-     * {@inheritDoc}
+     * Returns the {@link WildcardCondition} represented by this builder.
+     *
+     * @return The {@link WildcardCondition} represented by this builder.
      */
     @Override
     public WildcardCondition build()

@@ -32,11 +32,16 @@ import org.codehaus.jackson.annotate.JsonProperty;
  */
 public class ColumnMapperInteger extends ColumnMapper<Integer>
 {
-
+    /** The default boost. */
     public static final Float DEFAULT_BOOST = 1.0f;
 
+    /** The boost. */
     private final Float boost;
 
+    /**
+     * Builds a new {@link ColumnMapperInteger} using the specified boost.
+     * @param boost The boost to be used.
+     */
     @JsonCreator
     public ColumnMapperInteger(@JsonProperty("boost") Float boost)
     {
@@ -52,12 +57,14 @@ public class ColumnMapperInteger extends ColumnMapper<Integer>
         this.boost = boost == null ? DEFAULT_BOOST : boost;
     }
 
+    /** {@inheritDoc} */
     @Override
     public Analyzer analyzer()
     {
         return EMPTY_ANALYZER;
     }
 
+    /** {@inheritDoc} */
     @Override
     public Integer indexValue(String name, Object value)
     {
@@ -89,12 +96,14 @@ public class ColumnMapperInteger extends ColumnMapper<Integer>
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public Integer queryValue(String name, Object value)
     {
         return indexValue(name, value);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Field field(String name, Object value)
     {
@@ -104,18 +113,21 @@ public class ColumnMapperInteger extends ColumnMapper<Integer>
         return field;
     }
 
+    /** {@inheritDoc} */
     @Override
     public SortField sortField(String field, boolean reverse)
     {
         return new SortField(field, Type.INT, reverse);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Class<Integer> baseClass()
     {
         return Integer.class;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {

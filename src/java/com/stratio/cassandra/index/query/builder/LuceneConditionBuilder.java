@@ -24,7 +24,7 @@ import com.stratio.cassandra.index.query.LuceneCondition;
  */
 public class LuceneConditionBuilder extends ConditionBuilder<LuceneCondition, LuceneConditionBuilder>
 {
-    /** The Lucene query expression. */
+    /** The Lucene query syntax expression. */
     private final String query;
 
     /** The name of the field where the clauses will be applied by default. */
@@ -33,7 +33,7 @@ public class LuceneConditionBuilder extends ConditionBuilder<LuceneCondition, Lu
     /**
      * Returns a new {@link LuceneConditionBuilder} with the specified query.
      *
-     * @param query the Lucene syntax query.
+     * @param query The Lucene query syntax expression.
      */
     protected LuceneConditionBuilder(String query)
     {
@@ -54,7 +54,9 @@ public class LuceneConditionBuilder extends ConditionBuilder<LuceneCondition, Lu
     }
 
     /**
-     * {@inheritDoc}
+     * Returns the {@link LuceneCondition} represented by this builder.
+     *
+     * @return The {@link LuceneCondition} represented by this builder.
      */
     @Override
     public LuceneCondition build()

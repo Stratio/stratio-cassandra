@@ -71,9 +71,7 @@ public class PhraseCondition extends Condition
         this.slop = slop == null ? DEFAULT_SLOP : slop;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Query query(Schema schema)
     {
@@ -129,6 +127,7 @@ public class PhraseCondition extends Condition
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {

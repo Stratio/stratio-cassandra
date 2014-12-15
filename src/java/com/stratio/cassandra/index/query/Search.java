@@ -22,7 +22,6 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.search.*;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
-import org.eclipse.jdt.core.dom.ReturnStatement;
 
 /**
  * Class representing an Lucene index search. It is formed by an optional querying {@link Condition} and an optional
@@ -120,16 +119,31 @@ public class Search
         return queryCondition != null || sort != null;
     }
 
+    /**
+     * Returns {@code true} if this search uses Lucene relevance formula, {@code false} otherwise.
+     *
+     * @return {@code true} if this search uses Lucene relevance formula, {@code false} otherwise.
+     */
     public boolean usesRelevance()
     {
         return queryCondition != null;
     }
 
+    /**
+     * Returns {@code true} if this search uses field sorting, {@code false} otherwise.
+     *
+     * @return {@code true} if this search uses field sorting, {@code false} otherwise.
+     */
     public boolean usesSorting()
     {
         return sort != null;
     }
 
+    /**
+     * Returns the field sorting to be used, maybe {@code null} meaning no field sorting.
+     *
+     * @return The field sorting to be used, maybe {@code null} meaning no field sorting.
+     */
     public Sort getSort()
     {
         return this.sort;
@@ -148,9 +162,9 @@ public class Search
     }
 
     /**
-     * Returns the Lucene {@link Query} representation of this search. This {@link Query} include both the querying
-     * and filtering {@link Condition}s. If none of them is set, then a {@link MatchAllDocsQuery} is returned, so it
-     * never {@link ReturnStatement} {@code null}.
+     * Returns the Lucene {@link Query} representation of this search. This {@link Query} include both the querying and
+     * filtering {@link Condition}s. If none of them is set, then a {@link MatchAllDocsQuery} is returned, so it never
+     * returns {@code null}.
      *
      * @param schema     The {@link Schema} to be used.
      * @param rangeQuery An additional range {@link Query} to be used.
@@ -197,6 +211,7 @@ public class Search
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {

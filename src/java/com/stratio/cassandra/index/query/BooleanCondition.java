@@ -68,9 +68,7 @@ public class BooleanCondition extends Condition
         this.not = not == null ? new LinkedList<Condition>() : not;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Query query(Schema schema)
     {
@@ -91,9 +89,7 @@ public class BooleanCondition extends Condition
         return luceneQuery;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public String toString()
     {

@@ -367,7 +367,7 @@ public abstract class RowService
         ColumnDefinition def = metadata.getColumnDefinition(expression.column);
         String name = def.name.toString();
 
-        Column column = columns.getCell(name);
+        Column column = columns.getColumn(name);
         if (column == null)
         {
             return false;
