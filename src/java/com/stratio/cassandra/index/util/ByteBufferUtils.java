@@ -157,4 +157,9 @@ public class ByteBufferUtils
         return Hex.bytesToHex(bytes);
     }
 
+    public static String toHex(byte bytes)
+    {
+        return Hex.bytesToHex(bytes);
+    }
+
 }

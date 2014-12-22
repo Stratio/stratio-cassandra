@@ -15,6 +15,8 @@
  */
 package com.stratio.cassandra.index.schema;
 
+import com.google.common.primitives.Longs;
+import com.stratio.cassandra.index.util.ByteBufferUtils;
 import org.apache.cassandra.db.marshal.*;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
@@ -24,6 +26,7 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
 
+import java.nio.ByteBuffer;
 import java.util.UUID;
 
 /**
@@ -31,88 +34,97 @@ import java.util.UUID;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ColumnMapperUUID extends ColumnMapper<String>
-{
+public class ColumnMapperUUID extends ColumnMapper<String> {
     /**
      * Builds a new {@link ColumnMapperUUID}.
      */
     @JsonCreator
-    public ColumnMapperUUID()
-    {
+    public ColumnMapperUUID() {
         super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, UUIDType.instance, TimeUUIDType.instance},
-              new AbstractType[]{});
+              new AbstractType[]{UUIDType.instance, TimeUUIDType.instance});
     }
 
     /** {@inheritDoc} */
     @Override
-    public Analyzer analyzer()
-    {
+    public Analyzer analyzer() {
         return EMPTY_ANALYZER;
     }
 
     /** {@inheritDoc} */
     @Override
-    public String indexValue(String name, Object value)
-    {
-        if (value == null)
-        {
+    public String indexValue(String name, Object value) {
+        if (value == null) {
             return null;
-        }
-        else if (value instanceof UUID)
-        {
-            return value.toString();
-        }
-        else if (value instanceof String)
-        {
-            return java.util.UUID.fromString((String) value).toString();
-        }
-        else
-        {
+        } else if (value instanceof UUID) {
+            UUID uuid = (UUID) value;
+            return serialize(uuid);
+        } else if (value instanceof String) {
+            UUID uuid = UUID.fromString((String) value);
+            return serialize(uuid);
+        } else {
             throw new IllegalArgumentException();
         }
     }
 
     /** {@inheritDoc} */
     @Override
-    public String queryValue(String name, Object value)
-    {
-        if (value == null)
-        {
-            return null;
-        }
-        else
-        {
-            return value.toString();
-        }
+    public String queryValue(String name, Object value) {
+        return indexValue(name, value);
     }
 
     /** {@inheritDoc} */
     @Override
-    public Field field(String name, Object value)
-    {
+    public Field field(String name, Object value) {
         String uuid = indexValue(name, value);
         return new StringField(name, uuid, STORE);
     }
 
     /** {@inheritDoc} */
     @Override
-    public SortField sortField(String field, boolean reverse)
-    {
+    public SortField sortField(String field, boolean reverse) {
         return new SortField(field, Type.STRING, reverse);
     }
 
     /** {@inheritDoc} */
     @Override
-    public Class<String> baseClass()
-    {
+    public Class<String> baseClass() {
         return String.class;
     }
 
     /** {@inheritDoc} */
     @Override
-    public String toString()
-    {
+    public String toString() {
         return new ToStringBuilder(this).toString();
+    }
+
+    /**
+     * Returns the {@link String} representation of the specified {@link UUID}. The returned value has the same
+     * collation as {@link UUIDType}.
+     *
+     * @param uuid The {@link UUID} to be serialized.
+     * @return The {@link String} representation of the specified {@link UUID}.
+     */
+    public static String serialize(UUID uuid) {
+
+        StringBuilder sb = new StringBuilder();
+
+        // Get UUID type version
+        ByteBuffer bb = UUIDType.instance.decompose(uuid);
+        int version = (bb.get(bb.position() + 6) >> 4) & 0x0f;
+
+        // Add version at the beginning
+        sb.append(ByteBufferUtils.toHex((byte) version));
+
+        // If it's a time based UUID, add the UNIX timestamp
+        if (version == 1) {
+            long timestamp = uuid.timestamp();
+            String timestampHex = ByteBufferUtils.toHex(Longs.toByteArray(timestamp));
+            sb.append(timestampHex);
+        }
+
+        // Add the UUID itself
+        sb.append(ByteBufferUtils.toHex(bb));
+        return sb.toString();
     }
 
 }
