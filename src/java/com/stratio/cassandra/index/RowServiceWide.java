@@ -34,13 +34,11 @@ import java.util.*;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class RowServiceWide extends RowService
-{
+public class RowServiceWide extends RowService {
     /** The names of the Lucene fields to be loaded. */
     private static final Set<String> FIELDS_TO_LOAD;
 
-    static
-    {
+    static {
         FIELDS_TO_LOAD = new HashSet<>();
         FIELDS_TO_LOAD.add(PartitionKeyMapper.FIELD_NAME);
         FIELDS_TO_LOAD.add(ClusteringKeyMapper.FIELD_NAME);
@@ -55,8 +53,7 @@ public class RowServiceWide extends RowService
      * @param baseCfs          The base column family store.
      * @param columnDefinition The indexed column definition.
      */
-    public RowServiceWide(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition)
-    {
+    public RowServiceWide(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) {
         super(baseCfs, columnDefinition);
         this.rowMapper = (RowMapperWide) super.rowMapper;
         luceneIndex.init(rowMapper.sort());
@@ -68,45 +65,35 @@ public class RowServiceWide extends RowService
      * These fields are the partition and clustering keys.
      */
     @Override
-    public Set<String> fieldsToLoad()
-    {
+    public Set<String> fieldsToLoad() {
         return FIELDS_TO_LOAD;
     }
 
     /** {@inheritDoc} */
     @Override
-    public void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp)
-    {
+    public void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp) {
         DeletionInfo deletionInfo = columnFamily.deletionInfo();
         DecoratedKey partitionKey = rowMapper.partitionKey(key);
 
-        if (columnFamily.iterator().hasNext())
-        {
+        if (columnFamily.iterator().hasNext()) {
             List<CellName> clusteringKeys = rowMapper.clusteringKeys(columnFamily);
             Map<CellName, Row> rows = rows(partitionKey, clusteringKeys, timestamp);
-            for (Map.Entry<CellName, Row> entry : rows.entrySet())
-            {
+            for (Map.Entry<CellName, Row> entry : rows.entrySet()) {
                 CellName clusteringKey = entry.getKey();
                 Row row = entry.getValue();
                 Document document = rowMapper.document(row);
                 Term term = rowMapper.term(partitionKey, clusteringKey);
                 luceneIndex.upsert(term, document); // Store document
             }
-        }
-        else if (deletionInfo != null)
-        {
+        } else if (deletionInfo != null) {
             Iterator<RangeTombstone> iterator = deletionInfo.rangeIterator();
-            if (iterator.hasNext())
-            {
-                while (iterator.hasNext())
-                {
+            if (iterator.hasNext()) {
+                while (iterator.hasNext()) {
                     RangeTombstone rangeTombstone = iterator.next();
                     Query query = rowMapper.query(partitionKey, rangeTombstone);
                     luceneIndex.delete(query);
                 }
-            }
-            else
-            {
+            } else {
                 Term term = rowMapper.term(partitionKey);
                 luceneIndex.delete(term);
             }
@@ -115,8 +102,7 @@ public class RowServiceWide extends RowService
 
     /** {@inheritDoc} */
     @Override
-    public void deleteInner(DecoratedKey partitionKey)
-    {
+    public void deleteInner(DecoratedKey partitionKey) {
         Term term = rowMapper.term(partitionKey);
         luceneIndex.delete(term);
     }
@@ -127,47 +113,38 @@ public class RowServiceWide extends RowService
      * The {@link Row} is a logical one.
      */
     @Override
-    protected List<Row> rows(List<SearchResult> searchResults, long timestamp, boolean usesRelevance)
-    {
+    protected List<Row> rows(List<SearchResult> searchResults, long timestamp, boolean usesRelevance) {
         // Initialize result
         List<Row> rows = new ArrayList<>(searchResults.size());
 
         // Group key queries by partition keys
         Map<CellName, Float> scoresByClusteringKey = new HashMap<>(searchResults.size());
         Map<DecoratedKey, List<CellName>> keys = new HashMap<>();
-        for (SearchResult searchResult : searchResults)
-        {
+        for (SearchResult searchResult : searchResults) {
             DecoratedKey partitionKey = searchResult.getPartitionKey();
             CellName clusteringKey = searchResult.getClusteringKey();
             Float score = searchResult.getScore();
             scoresByClusteringKey.put(clusteringKey, score);
             List<CellName> clusteringKeys = keys.get(partitionKey);
-            if (clusteringKeys == null)
-            {
+            if (clusteringKeys == null) {
                 clusteringKeys = new ArrayList<>();
                 keys.put(partitionKey, clusteringKeys);
             }
             clusteringKeys.add(clusteringKey);
         }
 
-        for (Map.Entry<DecoratedKey, List<CellName>> entry : keys.entrySet())
-        {
+        for (Map.Entry<DecoratedKey, List<CellName>> entry : keys.entrySet()) {
             DecoratedKey partitionKey = entry.getKey();
-            for (List<CellName> clusteringKeys : Lists.partition(entry.getValue(), 1000))
-            {
+            for (List<CellName> clusteringKeys : Lists.partition(entry.getValue(), 1000)) {
                 Map<CellName, Row> partitionRows = rows(partitionKey, clusteringKeys, timestamp);
-                for (Map.Entry<CellName, Row> entry1 : partitionRows.entrySet())
-                {
+                for (Map.Entry<CellName, Row> entry1 : partitionRows.entrySet()) {
                     Row row = entry1.getValue();
-                    if (usesRelevance)
-                    {
+                    if (usesRelevance) {
                         CellName clusteringKey = entry1.getKey();
                         Float score = scoresByClusteringKey.get(clusteringKey);
                         Row scoredRow = addScoreColumn(row, timestamp, score);
                         rows.add(scoredRow);
-                    }
-                    else
-                    {
+                    } else {
                         rows.add(row);
                     }
                 }
@@ -185,12 +162,10 @@ public class RowServiceWide extends RowService
      * @param timestamp      The time stamp to ignore deleted columns.
      * @return The CQL3 {@link Row} identified by the specified key pair.
      */
-    private Map<CellName, Row> rows(DecoratedKey partitionKey, List<CellName> clusteringKeys, long timestamp)
-    {
+    private Map<CellName, Row> rows(DecoratedKey partitionKey, List<CellName> clusteringKeys, long timestamp) {
         ColumnSlice[] slices = rowMapper.columnSlices(clusteringKeys);
 
-        if (baseCfs.metadata.hasStaticColumns())
-        {
+        if (baseCfs.metadata.hasStaticColumns()) {
             LinkedList<ColumnSlice> l = new LinkedList<>(Arrays.asList(slices));
             l.addFirst(baseCfs.metadata.comparator.staticPrefix().slice());
             slices = new ColumnSlice[l.size()];
@@ -206,8 +181,7 @@ public class RowServiceWide extends RowService
         ColumnFamily queryColumnFamily = baseCfs.getColumnFamily(queryFilter);
 
         // Avoid null
-        if (queryColumnFamily == null)
-        {
+        if (queryColumnFamily == null) {
             return null;
         }
 
@@ -219,8 +193,7 @@ public class RowServiceWide extends RowService
 
         // Build and return rows
         Map<CellName, Row> rows = new HashMap<>(columnFamilies.size());
-        for (Map.Entry<CellName, ColumnFamily> entry : columnFamilies.entrySet())
-        {
+        for (Map.Entry<CellName, ColumnFamily> entry : columnFamilies.entrySet()) {
             Row row = new Row(partitionKey, entry.getValue());
             rows.put(entry.getKey(), row);
         }

@@ -39,7 +39,7 @@ public class MatchConditionTest extends AbstractConditionTest
     public void testString()
     {
 
-        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperString());
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
@@ -56,7 +56,7 @@ public class MatchConditionTest extends AbstractConditionTest
     public void testInteger()
     {
 
-        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInteger(1f));
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
@@ -76,7 +76,7 @@ public class MatchConditionTest extends AbstractConditionTest
     public void testLong()
     {
 
-        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperLong(1f));
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
@@ -96,7 +96,7 @@ public class MatchConditionTest extends AbstractConditionTest
     public void testFloat()
     {
 
-        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperFloat(1f));
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
@@ -116,7 +116,7 @@ public class MatchConditionTest extends AbstractConditionTest
     public void testDouble()
     {
 
-        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperDouble(1f));
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
@@ -136,7 +136,7 @@ public class MatchConditionTest extends AbstractConditionTest
     public void testBlob()
     {
 
-        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperBlob());
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
@@ -153,7 +153,7 @@ public class MatchConditionTest extends AbstractConditionTest
     public void testInetV4()
     {
 
-        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInet());
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
@@ -170,7 +170,7 @@ public class MatchConditionTest extends AbstractConditionTest
     public void testInetV6()
     {
 
-        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInet());
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 

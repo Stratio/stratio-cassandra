@@ -16,7 +16,6 @@
 package com.stratio.cassandra.index;
 
 import com.stratio.cassandra.index.schema.Column;
-import com.stratio.cassandra.index.schema.ColumnMapper;
 import com.stratio.cassandra.index.schema.Columns;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
@@ -33,8 +32,7 @@ import java.util.Iterator;
 /**
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class RegularCellsMapper
-{
+public class RegularCellsMapper {
 
     /**
      * The column family metadata.
@@ -46,8 +44,7 @@ public class RegularCellsMapper
      *
      * @param metadata The column family metadata.
      */
-    private RegularCellsMapper(CFMetaData metadata)
-    {
+    private RegularCellsMapper(CFMetaData metadata) {
         this.metadata = metadata;
     }
 
@@ -57,14 +54,12 @@ public class RegularCellsMapper
      * @param metadata The column family metadata.
      * @return A new {@link RegularCellsMapper} for the specified column family metadata.
      */
-    public static RegularCellsMapper instance(CFMetaData metadata)
-    {
+    public static RegularCellsMapper instance(CFMetaData metadata) {
         return new RegularCellsMapper(metadata);
     }
 
     @SuppressWarnings("rawtypes")
-    public Columns columns(Row row)
-    {
+    public Columns columns(Row row) {
         ColumnFamily columnFamily = row.cf;
         Columns columns = new Columns();
 
@@ -76,13 +71,11 @@ public class RegularCellsMapper
         String name;
         CollectionType collectionType;
 
-        while (cellIterator.hasNext())
-        {
+        while (cellIterator.hasNext()) {
             Cell cell = cellIterator.next();
             CellName cellName = cell.name();
             ColumnDefinition columnDefinition = metadata.getColumnDefinition(cellName);
-            if (columnDefinition == null)
-            {
+            if (columnDefinition == null) {
                 continue;
             }
 
@@ -92,26 +85,21 @@ public class RegularCellsMapper
 
             name = cellName.cql3ColumnName(metadata).toString();
 
-            if (valueType.isCollection())
-            {
+            if (valueType.isCollection()) {
                 collectionType = (CollectionType<?>) valueType;
-                switch (collectionType.kind)
-                {
-                    case SET:
-                    {
+                switch (collectionType.kind) {
+                    case SET: {
                         AbstractType<?> type = collectionType.nameComparator();
                         ByteBuffer value = cellName.collectionElement();
                         columns.add(new Column(name, value, type));
                         break;
                     }
-                    case LIST:
-                    {
+                    case LIST: {
                         AbstractType<?> type = collectionType.valueComparator();
                         columns.add(new Column(name, cellValue, type));
                         break;
                     }
-                    case MAP:
-                    {
+                    case MAP: {
                         AbstractType<?> type = collectionType.valueComparator();
                         ByteBuffer keyValue = cellName.collectionElement();
                         AbstractType<?> keyType = collectionType.nameComparator();
@@ -120,9 +108,7 @@ public class RegularCellsMapper
                         break;
                     }
                 }
-            }
-            else
-            {
+            } else {
                 columns.add(new Column(name, cellValue, valueType));
             }
         }

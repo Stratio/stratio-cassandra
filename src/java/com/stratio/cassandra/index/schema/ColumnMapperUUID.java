@@ -34,7 +34,7 @@ import java.util.UUID;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ColumnMapperUUID extends ColumnMapper<String> {
+public class ColumnMapperUUID extends ColumnMapperSingle<String> {
     /**
      * Builds a new {@link ColumnMapperUUID}.
      */

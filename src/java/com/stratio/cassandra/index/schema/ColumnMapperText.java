@@ -31,97 +31,82 @@ import org.codehaus.jackson.annotate.JsonProperty;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ColumnMapperText extends ColumnMapper<String>
-{
+public class ColumnMapperText extends ColumnMapperSingle<String> {
 
     /** The Lucene {@link Analyzer} to be used. */
     private Analyzer analyzer;
 
     /**
      * Builds a new {@link ColumnMapperText} using the specified Lucene {@link Analyzer}.
+     *
      * @param analyzerClassName The Lucene {@link Analyzer} to be used.
      */
     @JsonCreator
-    public ColumnMapperText(@JsonProperty("analyzer") String analyzerClassName)
-    {
-        super(new AbstractType<?>[]{
-                AsciiType.instance,
-                UTF8Type.instance,
-                Int32Type.instance,
-                LongType.instance,
-                IntegerType.instance,
-                FloatType.instance,
-                DoubleType.instance,
-                BooleanType.instance,
-                UUIDType.instance,
-                TimeUUIDType.instance,
-                TimestampType.instance,
-                BytesType.instance,
-                InetAddressType.instance}, new AbstractType[]{});
-        if (analyzerClassName != null)
-        {
+    public ColumnMapperText(@JsonProperty("analyzer") String analyzerClassName) {
+        super(new AbstractType<?>[]{AsciiType.instance,
+                                    UTF8Type.instance,
+                                    Int32Type.instance,
+                                    LongType.instance,
+                                    IntegerType.instance,
+                                    FloatType.instance,
+                                    DoubleType.instance,
+                                    BooleanType.instance,
+                                    UUIDType.instance,
+                                    TimeUUIDType.instance,
+                                    TimestampType.instance,
+                                    BytesType.instance,
+                                    InetAddressType.instance}, new AbstractType[]{});
+        if (analyzerClassName != null) {
             this.analyzer = AnalyzerFactory.getAnalyzer(analyzerClassName);
-        }
-        else
-        {
+        } else {
             this.analyzer = Schema.DEFAULT_ANALYZER;
         }
     }
 
     /** {@inheritDoc} */
     @Override
-    public Analyzer analyzer()
-    {
+    public Analyzer analyzer() {
         return analyzer;
     }
 
     /** {@inheritDoc} */
     @Override
-    public String indexValue(String name, Object value)
-    {
-        if (value == null)
-        {
+    public String indexValue(String name, Object value) {
+        if (value == null) {
             return null;
-        }
-        else
-        {
+        } else {
             return value.toString();
         }
     }
 
     /** {@inheritDoc} */
     @Override
-    public String queryValue(String name, Object value)
-    {
+    public String queryValue(String name, Object value) {
         return indexValue(name, value);
     }
 
     /** {@inheritDoc} */
     @Override
-    public Field field(String name, Object value)
-    {
+    public Field field(String name, Object value) {
         String text = indexValue(name, value);
         return new TextField(name, text, STORE);
     }
 
     /** {@inheritDoc} */
     @Override
-    public SortField sortField(String field, boolean reverse)
-    {
+    public SortField sortField(String field, boolean reverse) {
         return new SortField(field, Type.STRING, reverse);
     }
 
     /** {@inheritDoc} */
     @Override
-    public Class<String> baseClass()
-    {
+    public Class<String> baseClass() {
         return String.class;
     }
 
     /** {@inheritDoc} */
     @Override
-    public String toString()
-    {
+    public String toString() {
         return new ToStringBuilder(this).append("analyzer", analyzer).toString();
     }
 }

@@ -31,15 +31,13 @@ import java.io.IOException;
 /**
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-class ClusteringKeyQuery extends MultiTermQuery
-{
+class ClusteringKeyQuery extends MultiTermQuery {
     private final ClusteringKeyMapper clusteringKeyMapper;
     private final Composite start;
     private final Composite stop;
     private final CellNameType type;
 
-    public ClusteringKeyQuery(Composite start, Composite stop, ClusteringKeyMapper clusteringKeyMapper)
-    {
+    public ClusteringKeyQuery(Composite start, Composite stop, ClusteringKeyMapper clusteringKeyMapper) {
         super(ClusteringKeyMapper.FIELD_NAME);
         this.start = start;
         this.stop = stop;
@@ -48,39 +46,32 @@ class ClusteringKeyQuery extends MultiTermQuery
     }
 
     @Override
-    protected TermsEnum getTermsEnum(Terms terms, AttributeSource atts) throws IOException
-    {
+    protected TermsEnum getTermsEnum(Terms terms, AttributeSource atts) throws IOException {
         return new FullKeyDataRangeFilteredTermsEnum(terms.iterator(null));
     }
 
     @Override
-    public String toString(String field)
-    {
+    public String toString(String field) {
         return new ToStringBuilder(this).append("field", field)
                                         .append("start", start == null ? null : clusteringKeyMapper.toString(start))
                                         .append("stop", stop == null ? null : clusteringKeyMapper.toString(stop))
                                         .toString();
     }
 
-    private class FullKeyDataRangeFilteredTermsEnum extends FilteredTermsEnum
-    {
+    private class FullKeyDataRangeFilteredTermsEnum extends FilteredTermsEnum {
 
-        public FullKeyDataRangeFilteredTermsEnum(TermsEnum tenum)
-        {
+        public FullKeyDataRangeFilteredTermsEnum(TermsEnum tenum) {
             super(tenum);
             setInitialSeekTerm(new BytesRef());
         }
 
         @Override
-        protected AcceptStatus accept(BytesRef term)
-        {
+        protected AcceptStatus accept(BytesRef term) {
             CellName clusteringKey = clusteringKeyMapper.clusteringKey(term);
-            if (start != null && !start.isEmpty() && type.compare(start, clusteringKey) > 0)
-            {
+            if (start != null && !start.isEmpty() && type.compare(start, clusteringKey) > 0) {
                 return AcceptStatus.NO;
             }
-            if (stop != null && !stop.isEmpty() && type.compare(stop, clusteringKey) < 0)
-            {
+            if (stop != null && !stop.isEmpty() && type.compare(stop, clusteringKey) < 0) {
                 return AcceptStatus.NO;
             }
             return AcceptStatus.YES;

@@ -40,8 +40,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class RowIndex extends PerRowSecondaryIndex
-{
+public class RowIndex extends PerRowSecondaryIndex {
 
     private SecondaryIndexManager secondaryIndexManager;
     private ColumnDefinition columnDefinition;
@@ -58,60 +57,47 @@ public class RowIndex extends PerRowSecondaryIndex
     private ReadWriteLock lock = new ReentrantReadWriteLock();
 
     @Override
-    public String getIndexName()
-    {
+    public String getIndexName() {
         return indexName;
     }
 
-    public String getKeyspaceName()
-    {
+    public String getKeyspaceName() {
         return keyspaceName;
     }
 
-    public String getTableName()
-    {
+    public String getTableName() {
         return tableName;
     }
 
-    public String getColumnName()
-    {
+    public String getColumnName() {
         return columnName;
     }
 
-    public ColumnDefinition getColumnDefinition()
-    {
+    public ColumnDefinition getColumnDefinition() {
         return columnDefinition;
     }
 
     @Override
-    public void init()
-    {
+    public void init() {
         Log.info("Initializing index %s", logName);
         lock.writeLock().lock();
-        try
-        {
+        try {
             setup();
             Log.info("Initialized index %s", logName);
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             Log.error(e, "Error while initializing index %s", logName);
             throw new RuntimeException(e);
-        }
-        finally
-        {
+        } finally {
             lock.writeLock().unlock();
         }
     }
 
     @Override
-    public void validate(CFMetaData metadata, Map<String, String> indexOptions)
-    {
+    public void validate(CFMetaData metadata, Map<String, String> indexOptions) {
         new RowIndexConfig(metadata, indexOptions);
     }
 
-    private void setup()
-    {
+    private void setup() {
         // Load column family info
         secondaryIndexManager = baseCfs.indexManager;
         columnDefinition = columnDefs.iterator().next();
@@ -132,25 +118,18 @@ public class RowIndex extends PerRowSecondaryIndex
      * @param columnFamily The column family data to be indexed
      */
     @Override
-    public void index(ByteBuffer key, ColumnFamily columnFamily)
-    {
+    public void index(ByteBuffer key, ColumnFamily columnFamily) {
         // Log.debug("Indexing row %s in index %s ", key, logName);
         lock.readLock().lock();
-        try
-        {
-            if (rowService != null)
-            {
+        try {
+            if (rowService != null) {
                 long timestamp = System.currentTimeMillis();
                 rowService.index(key, columnFamily, timestamp);
             }
-        }
-        catch (RuntimeException e)
-        {
+        } catch (RuntimeException e) {
             // Ignore errors
             Log.error(e, "Ignoring error while indexing row %s", key);
-        }
-        finally
-        {
+        } finally {
             lock.readLock().unlock();
         }
     }
@@ -161,51 +140,37 @@ public class RowIndex extends PerRowSecondaryIndex
      * @param key The partition key of the physical row to be deleted.
      */
     @Override
-    public void delete(DecoratedKey key, OpOrder.Group opGroup)
-    {
+    public void delete(DecoratedKey key, OpOrder.Group opGroup) {
         Log.debug("Removing row %s from index %s", key, logName);
         lock.writeLock().lock();
-        try
-        {
+        try {
             rowService.delete(key);
             rowService = null;
-        }
-        catch (RuntimeException e)
-        {
+        } catch (RuntimeException e) {
             Log.error(e, "Error deleting row %s", key);
             throw e;
-        }
-        finally
-        {
+        } finally {
             lock.writeLock().unlock();
         }
     }
 
     @Override
-    public boolean indexes(CellName cellName)
-    {
+    public boolean indexes(CellName cellName) {
         return true;
     }
 
     @Override
-    public void validateOptions() throws ConfigurationException
-    {
+    public void validateOptions() throws ConfigurationException {
         Log.debug("Validating");
-        try
-        {
+        try {
             ColumnDefinition columnDefinition = columnDefs.iterator().next();
-            if (baseCfs != null)
-            {
+            if (baseCfs != null) {
                 new RowIndexConfig(baseCfs.metadata, columnDefinition.getIndexOptions());
                 Log.debug("Index options are valid");
-            }
-            else
-            {
+            } else {
                 Log.debug("Validation skipped");
             }
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             String message = "Error while validating index options: " + e.getMessage();
             Log.error(e, message);
             throw new ConfigurationException(message, e);
@@ -213,151 +178,112 @@ public class RowIndex extends PerRowSecondaryIndex
     }
 
     @Override
-    public long estimateResultRows()
-    {
-        try
-        {
+    public long estimateResultRows() {
+        try {
             return rowService.getIndexSize();
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             Log.error(e, "Estimating row results for index %s", logName);
             throw new RuntimeException(e);
         }
     }
 
     @Override
-    public ColumnFamilyStore getIndexCfs()
-    {
+    public ColumnFamilyStore getIndexCfs() {
         return null;
     }
 
     @Override
-    public void removeIndex(ByteBuffer columnName)
-    {
+    public void removeIndex(ByteBuffer columnName) {
         Log.info("Removing index %s", logName);
         lock.writeLock().lock();
-        try
-        {
-            if (rowService != null)
-            {
+        try {
+            if (rowService != null) {
                 rowService.delete();
                 rowService = null;
             }
             Log.info("Removed index %s", logName);
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             Log.error(e, "Removing index %s", logName);
             throw new RuntimeException(e);
-        }
-        finally
-        {
+        } finally {
             lock.writeLock().unlock();
         }
     }
 
     @Override
-    public void invalidate()
-    {
+    public void invalidate() {
         Log.info("Invalidating index %s", logName);
         lock.writeLock().lock();
-        try
-        {
-            if (rowService != null)
-            {
+        try {
+            if (rowService != null) {
                 rowService.delete();
                 rowService = null;
             }
             Log.info("Invalidated index %s", logName);
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             Log.error(e, "Invalidating index %s", logName);
             throw new RuntimeException(e);
-        }
-        finally
-        {
+        } finally {
             lock.writeLock().unlock();
         }
     }
 
     @Override
-    public void truncateBlocking(long truncatedAt)
-    {
+    public void truncateBlocking(long truncatedAt) {
         Log.info("Truncating index %s", logName);
         lock.writeLock().lock();
-        try
-        {
-            if (rowService != null)
-            {
+        try {
+            if (rowService != null) {
                 rowService.truncate();
             }
             Log.info("Truncated index %s", logName);
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             Log.error(e, "Truncating index %s", logName);
             throw new RuntimeException(e);
-        }
-        finally
-        {
+        } finally {
             lock.writeLock().unlock();
         }
     }
 
     @Override
-    public void reload()
-    {
+    public void reload() {
         Log.info("Reloading index %s", logName);
     }
 
     @Override
-    public void forceBlockingFlush()
-    {
+    public void forceBlockingFlush() {
         Log.info("Flushing index %s", logName);
         lock.writeLock().lock();
-        try
-        {
+        try {
             rowService.commit();
             Log.info("Flushed index %s", logName);
-        }
-        catch (RuntimeException e)
-        {
+        } catch (RuntimeException e) {
             Log.error(e, "Flushing index %s", logName);
             throw e;
-        }
-        finally
-        {
+        } finally {
             lock.writeLock().unlock();
         }
     }
 
     @Override
-    protected SecondaryIndexSearcher createSecondaryIndexSearcher(Set<ByteBuffer> columns)
-    {
+    protected SecondaryIndexSearcher createSecondaryIndexSearcher(Set<ByteBuffer> columns) {
         // Log.debug("Creating searcher for index %s", logName);
         return new RowIndexSearcher(secondaryIndexManager, this, columns, rowService);
     }
 
     @Override
-    public void optimize()
-    {
+    public void optimize() {
         Log.info("Compacting index %s", logName);
-        try
-        {
+        try {
             rowService.optimize();
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             Log.error(e, "Error while ompacting index %s", logName);
             throw new RuntimeException(e);
         }
     }
 
     @Override
-    public String toString()
-    {
+    public String toString() {
         return String.format("RowIndex [index=%s, keyspace=%s, table=%s, column=%s",
                              indexName,
                              keyspaceName,

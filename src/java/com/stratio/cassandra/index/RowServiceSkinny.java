@@ -35,13 +35,11 @@ import java.util.Set;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class RowServiceSkinny extends RowService
-{
+public class RowServiceSkinny extends RowService {
     /** The names of the Lucene fields to be loaded. */
     private static final Set<String> FIELDS_TO_LOAD;
 
-    static
-    {
+    static {
         FIELDS_TO_LOAD = new HashSet<>();
         FIELDS_TO_LOAD.add(PartitionKeyMapper.FIELD_NAME);
     }
@@ -55,8 +53,7 @@ public class RowServiceSkinny extends RowService
      * @param baseCfs          The base column family store.
      * @param columnDefinition The indexed column definition.
      */
-    public RowServiceSkinny(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition)
-    {
+    public RowServiceSkinny(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) {
         super(baseCfs, columnDefinition);
         this.rowMapper = (RowMapperSkinny) super.rowMapper;
         luceneIndex.init(rowMapper.sort());
@@ -68,8 +65,7 @@ public class RowServiceSkinny extends RowService
      * These fields are just the partition key.
      */
     @Override
-    public Set<String> fieldsToLoad()
-    {
+    public Set<String> fieldsToLoad() {
         return FIELDS_TO_LOAD;
     }
 
@@ -77,8 +73,7 @@ public class RowServiceSkinny extends RowService
      * {@inheritDoc}
      */
     @Override
-    public void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp)
-    {
+    public void indexInner(ByteBuffer key, ColumnFamily columnFamily, long timestamp) {
         DecoratedKey partitionKey = rowMapper.partitionKey(key);
 
         if (columnFamily.iterator().hasNext()) // Create or update row
@@ -87,8 +82,7 @@ public class RowServiceSkinny extends RowService
             Document document = rowMapper.document(row);
             Term term = rowMapper.term(partitionKey);
             luceneIndex.upsert(term, document); // Store document
-        }
-        else if (columnFamily.deletionInfo() != null) // Delete full row
+        } else if (columnFamily.deletionInfo() != null) // Delete full row
         {
             Term term = rowMapper.term(partitionKey);
             luceneIndex.delete(term);
@@ -97,37 +91,30 @@ public class RowServiceSkinny extends RowService
 
     /** {@inheritDoc} */
     @Override
-    public void deleteInner(DecoratedKey partitionKey)
-    {
+    public void deleteInner(DecoratedKey partitionKey) {
         Term term = rowMapper.term(partitionKey);
         luceneIndex.delete(term);
     }
 
     /** {@inheritDoc} */
-    protected List<Row> rows(List<SearchResult> searchResults, long timestamp, boolean usesRelevance)
-    {
+    protected List<Row> rows(List<SearchResult> searchResults, long timestamp, boolean usesRelevance) {
         List<Row> rows = new ArrayList<>(searchResults.size());
-        for (SearchResult searchResult : searchResults)
-        {
+        for (SearchResult searchResult : searchResults) {
 
             // Extract row from document
             DecoratedKey partitionKey = searchResult.getPartitionKey();
             Row row = row(partitionKey, timestamp);
 
-            if (row == null)
-            {
+            if (row == null) {
                 return null;
             }
 
             // Return decorated row
-            if (usesRelevance)
-            {
+            if (usesRelevance) {
                 Float score = searchResult.getScore();
                 Row decoratedRow = addScoreColumn(row, timestamp, score);
                 rows.add(decoratedRow);
-            }
-            else
-            {
+            } else {
                 rows.add(row);
             }
         }
@@ -142,12 +129,10 @@ public class RowServiceSkinny extends RowService
      * @param timestamp    The time stamp to ignore deleted columns.
      * @return The CQL3 {@link Row} identified by the specified key pair.
      */
-    private Row row(DecoratedKey partitionKey, long timestamp)
-    {
+    private Row row(DecoratedKey partitionKey, long timestamp) {
         QueryFilter queryFilter = QueryFilter.getIdentityFilter(partitionKey, metadata.cfName, timestamp);
         ColumnFamily columnFamily = baseCfs.getColumnFamily(queryFilter);
-        if (columnFamily != null)
-        {
+        if (columnFamily != null) {
             ColumnFamily cleanColumnFamily = cleanExpired(columnFamily, timestamp);
             return new Row(partitionKey, cleanColumnFamily);
         }

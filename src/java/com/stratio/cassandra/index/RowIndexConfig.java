@@ -28,8 +28,7 @@ import java.util.Map;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class RowIndexConfig
-{
+public class RowIndexConfig {
     private static final String SCHEMA_OPTION = "schema";
 
     private static final String REFRESH_SECONDS_OPTION = "refresh_seconds";
@@ -68,164 +67,116 @@ public class RowIndexConfig
      * @param metadata The metadata of the indexed column family.
      * @param options  The index options.
      */
-    public RowIndexConfig(CFMetaData metadata, Map<String, String> options)
-    {
+    public RowIndexConfig(CFMetaData metadata, Map<String, String> options) {
         // Setup refresh seconds
         String refreshOption = options.get(REFRESH_SECONDS_OPTION);
-        if (refreshOption != null)
-        {
-            try
-            {
+        if (refreshOption != null) {
+            try {
                 refreshSeconds = Double.parseDouble(refreshOption);
-            }
-            catch (NumberFormatException e)
-            {
+            } catch (NumberFormatException e) {
                 String msg = String.format("'%s' must be a strictly positive double", REFRESH_SECONDS_OPTION);
                 throw new RuntimeException(msg);
             }
-            if (refreshSeconds <= 0)
-            {
+            if (refreshSeconds <= 0) {
                 String msg = String.format("'%s' must be strictly positive", REFRESH_SECONDS_OPTION);
                 throw new RuntimeException(msg);
             }
-        }
-        else
-        {
+        } else {
             refreshSeconds = DEFAULT_REFRESH_SECONDS;
         }
 
         // Setup write buffer size
         String ramBufferSizeOption = options.get(RAM_BUFFER_MB_OPTION);
-        if (ramBufferSizeOption != null)
-        {
-            try
-            {
+        if (ramBufferSizeOption != null) {
+            try {
                 ramBufferMB = Integer.parseInt(ramBufferSizeOption);
-            }
-            catch (NumberFormatException e)
-            {
+            } catch (NumberFormatException e) {
                 String msg = String.format("'%s' must be a strictly positive integer", RAM_BUFFER_MB_OPTION);
                 throw new RuntimeException(msg);
             }
-            if (ramBufferMB <= 0)
-            {
+            if (ramBufferMB <= 0) {
                 String msg = String.format("'%s' must be strictly positive", RAM_BUFFER_MB_OPTION);
                 throw new RuntimeException(msg);
             }
-        }
-        else
-        {
+        } else {
             ramBufferMB = DEFAULT_RAM_BUFFER_MB;
         }
 
         // Setup max merge size
         String maxMergeSizeMBOption = options.get(MAX_MERGE_MB_OPTION);
-        if (maxMergeSizeMBOption != null)
-        {
-            try
-            {
+        if (maxMergeSizeMBOption != null) {
+            try {
                 maxMergeMB = Integer.parseInt(maxMergeSizeMBOption);
-            }
-            catch (NumberFormatException e)
-            {
+            } catch (NumberFormatException e) {
                 String msg = String.format("'%s' must be a strictly positive integer", MAX_MERGE_MB_OPTION);
                 throw new RuntimeException(msg);
             }
-            if (maxMergeMB <= 0)
-            {
+            if (maxMergeMB <= 0) {
                 String msg = String.format("'%s' must be strictly positive", MAX_MERGE_MB_OPTION);
                 throw new RuntimeException(msg);
             }
-        }
-        else
-        {
+        } else {
             maxMergeMB = DEFAULT_MAX_MERGE_MB;
         }
 
         // Setup max cached MB
         String maxCachedMBOption = options.get(MAX_CACHED_MB_OPTION);
-        if (maxCachedMBOption != null)
-        {
-            try
-            {
+        if (maxCachedMBOption != null) {
+            try {
                 maxCachedMB = Integer.parseInt(maxCachedMBOption);
-            }
-            catch (NumberFormatException e)
-            {
+            } catch (NumberFormatException e) {
                 String msg = String.format("'%s'  must be a strictly positive integer", MAX_CACHED_MB_OPTION);
                 throw new RuntimeException(msg);
             }
-            if (maxCachedMB <= 0)
-            {
+            if (maxCachedMB <= 0) {
                 String msg = String.format("'%s'  must be strictly positive", MAX_CACHED_MB_OPTION);
                 throw new RuntimeException(msg);
             }
-        }
-        else
-        {
+        } else {
             maxCachedMB = DEFAULT_MAX_CACHED_MB;
         }
 
         // Setup queues in index pool
         String indexPoolNumQueuesOption = options.get(INDEXING_THREADS_OPTION);
-        if (indexPoolNumQueuesOption != null)
-        {
-            try
-            {
+        if (indexPoolNumQueuesOption != null) {
+            try {
                 indexingThreads = Integer.parseInt(indexPoolNumQueuesOption);
-            }
-            catch (NumberFormatException e)
-            {
+            } catch (NumberFormatException e) {
                 String msg = String.format("'%s'  must be a positive integer", INDEXING_THREADS_OPTION);
                 throw new RuntimeException(msg);
             }
-        }
-        else
-        {
+        } else {
             indexingThreads = DEFAULT_INDEXING_THREADS;
         }
 
         // Setup queues in index pool
         String indexPoolQueuesSizeOption = options.get(INDEXING_QUEUES_SIZE_OPTION);
-        if (indexPoolQueuesSizeOption != null)
-        {
-            try
-            {
+        if (indexPoolQueuesSizeOption != null) {
+            try {
                 indexingQueuesSize = Integer.parseInt(indexPoolQueuesSizeOption);
-            }
-            catch (NumberFormatException e)
-            {
+            } catch (NumberFormatException e) {
                 String msg = String.format("'%s'  must be a strictly positive integer", INDEXING_QUEUES_SIZE_OPTION);
                 throw new RuntimeException(msg);
             }
-            if (indexingQueuesSize <= 0)
-            {
+            if (indexingQueuesSize <= 0) {
                 String msg = String.format("'%s'  must be strictly positive", INDEXING_QUEUES_SIZE_OPTION);
                 throw new RuntimeException(msg);
             }
-        }
-        else
-        {
+        } else {
             indexingQueuesSize = DEFAULT_INDEXING_QUEUES_SIZE;
         }
 
         // Get columns mapping schema
         String schemaOption = options.get(SCHEMA_OPTION);
-        if (schemaOption != null && !schemaOption.trim().isEmpty())
-        {
-            try
-            {
+        if (schemaOption != null && !schemaOption.trim().isEmpty()) {
+            try {
                 schema = Schema.fromJson(schemaOption);
                 schema.validate(metadata);
-            }
-            catch (Exception e)
-            {
+            } catch (Exception e) {
                 String msg = String.format("'%s' is invalid : %s", SCHEMA_OPTION, e.getMessage());
                 throw new RuntimeException(msg);
             }
-        }
-        else
-        {
+        } else {
             String msg = String.format("'%s' required", SCHEMA_OPTION);
             throw new RuntimeException(msg);
         }
@@ -245,43 +196,35 @@ public class RowIndexConfig
         path = directoryPathBuilder.toString();
     }
 
-    public Schema getSchema()
-    {
+    public Schema getSchema() {
         return schema;
     }
 
-    public double getRefreshSeconds()
-    {
+    public double getRefreshSeconds() {
         return refreshSeconds;
     }
 
-    public String getPath()
-    {
+    public String getPath() {
         return path;
     }
 
-    public int getRamBufferMB()
-    {
+    public int getRamBufferMB() {
         return ramBufferMB;
     }
 
-    public int getMaxMergeMB()
-    {
+    public int getMaxMergeMB() {
         return maxMergeMB;
     }
 
-    public int getMaxCachedMB()
-    {
+    public int getMaxCachedMB() {
         return maxCachedMB;
     }
 
-    public int getIndexingThreads()
-    {
+    public int getIndexingThreads() {
         return indexingThreads;
     }
 
-    public int getIndexingQueuesSize()
-    {
+    public int getIndexingQueuesSize() {
         return indexingQueuesSize;
     }
 

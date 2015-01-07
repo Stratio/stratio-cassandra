@@ -35,8 +35,7 @@ import java.util.Date;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ColumnMapperDate extends ColumnMapper<Long>
-{
+public class ColumnMapperDate extends ColumnMapperSingle<Long> {
     /** The default {@link SimpleDateFormat} pattern. */
     public static final String DEFAULT_PATTERN = "yyyy/MM/dd HH:mm:ss.SSS";
 
@@ -52,25 +51,21 @@ public class ColumnMapperDate extends ColumnMapper<Long>
      * @param pattern The {@link SimpleDateFormat} pattern to be used.
      */
     @JsonCreator
-    public ColumnMapperDate(@JsonProperty("pattern") String pattern)
-    {
-        super(new AbstractType<?>[]{
-                      AsciiType.instance,
-                      UTF8Type.instance,
-                      Int32Type.instance,
-                      LongType.instance,
-                      IntegerType.instance,
-                      FloatType.instance,
-                      DoubleType.instance,
-                      DecimalType.instance,
-                      TimestampType.instance},
+    public ColumnMapperDate(@JsonProperty("pattern") String pattern) {
+        super(new AbstractType<?>[]{AsciiType.instance,
+                                    UTF8Type.instance,
+                                    Int32Type.instance,
+                                    LongType.instance,
+                                    IntegerType.instance,
+                                    FloatType.instance,
+                                    DoubleType.instance,
+                                    DecimalType.instance,
+                                    TimestampType.instance},
               new AbstractType[]{LongType.instance, TimestampType.instance});
         this.pattern = pattern == null ? DEFAULT_PATTERN : pattern;
-        concurrentDateFormat = new ThreadLocal<DateFormat>()
-        {
+        concurrentDateFormat = new ThreadLocal<DateFormat>() {
             @Override
-            protected DateFormat initialValue()
-            {
+            protected DateFormat initialValue() {
                 return new SimpleDateFormat(ColumnMapperDate.this.pattern);
             }
         };
@@ -78,76 +73,57 @@ public class ColumnMapperDate extends ColumnMapper<Long>
 
     /** {@inheritDoc} */
     @Override
-    public Analyzer analyzer()
-    {
+    public Analyzer analyzer() {
         return EMPTY_ANALYZER;
     }
 
     /** {@inheritDoc} */
     @Override
-    public Long indexValue(String name, Object value)
-    {
-        if (value == null)
-        {
+    public Long indexValue(String name, Object value) {
+        if (value == null) {
             return null;
-        }
-        else if (value instanceof Date)
-        {
+        } else if (value instanceof Date) {
             return ((Date) value).getTime();
-        }
-        else if (value instanceof Number)
-        {
+        } else if (value instanceof Number) {
             return ((Number) value).longValue();
-        }
-        else if (value instanceof String)
-        {
-            try
-            {
+        } else if (value instanceof String) {
+            try {
                 return concurrentDateFormat.get().parse(value.toString()).getTime();
-            }
-            catch (ParseException e)
-            {
+            } catch (ParseException e) {
                 throw new IllegalArgumentException(e);
             }
-        }
-        else
-        {
+        } else {
             throw new IllegalArgumentException();
         }
     }
 
     /** {@inheritDoc} */
     @Override
-    public Long queryValue(String name, Object value)
-    {
+    public Long queryValue(String name, Object value) {
         return indexValue(name, value);
     }
 
     /** {@inheritDoc} */
     @Override
-    public Field field(String name, Object value)
-    {
+    public Field field(String name, Object value) {
         return new LongField(name, indexValue(name, value), STORE);
     }
 
     /** {@inheritDoc} */
     @Override
-    public SortField sortField(String field, boolean reverse)
-    {
+    public SortField sortField(String field, boolean reverse) {
         return new SortField(field, Type.LONG, reverse);
     }
 
     /** {@inheritDoc} */
     @Override
-    public Class<Long> baseClass()
-    {
+    public Class<Long> baseClass() {
         return Long.class;
     }
 
     /** {@inheritDoc} */
     @Override
-    public String toString()
-    {
+    public String toString() {
         return new ToStringBuilder(this).append("pattern", pattern).toString();
     }
 }

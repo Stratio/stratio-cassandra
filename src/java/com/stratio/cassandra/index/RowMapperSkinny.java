@@ -34,8 +34,7 @@ import org.apache.lucene.search.Sort;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class RowMapperSkinny extends RowMapper
-{
+public class RowMapperSkinny extends RowMapper {
 
     /**
      * Builds a new {@link RowMapperSkinny} for the specified column family metadata, indexed column definition and
@@ -45,8 +44,7 @@ public class RowMapperSkinny extends RowMapper
      * @param columnDefinition The indexed column definition.
      * @param schema           The mapping {@link Schema}.
      */
-    RowMapperSkinny(CFMetaData metadata, ColumnDefinition columnDefinition, Schema schema)
-    {
+    RowMapperSkinny(CFMetaData metadata, ColumnDefinition columnDefinition, Schema schema) {
         super(metadata, columnDefinition, schema);
     }
 
@@ -54,8 +52,7 @@ public class RowMapperSkinny extends RowMapper
      * {@inheritDoc}
      */
     @Override
-    public Columns columns(Row row)
-    {
+    public Columns columns(Row row) {
         Columns columns = new Columns();
         columns.addAll(partitionKeyMapper.columns(row));
         columns.addAll(regularCellsMapper.columns(row));
@@ -66,8 +63,7 @@ public class RowMapperSkinny extends RowMapper
      * {@inheritDoc}
      */
     @Override
-    public Document document(Row row)
-    {
+    public Document document(Row row) {
         DecoratedKey partitionKey = row.key;
         Document document = new Document();
         tokenMapper.addFields(document, partitionKey);
@@ -81,8 +77,7 @@ public class RowMapperSkinny extends RowMapper
      *
      * @return The Lucene {@link Sort} to get {@link Document}s in the same order that is used in Cassandra.
      */
-    public Sort sort()
-    {
+    public Sort sort() {
         return new Sort(tokenMapper.sortFields());
     }
 
@@ -90,8 +85,7 @@ public class RowMapperSkinny extends RowMapper
      * {@inheritDoc}
      */
     @Override
-    public final Query query(DataRange dataRange)
-    {
+    public final Query query(DataRange dataRange) {
         return tokenMapper.query(dataRange);
     }
 
@@ -99,8 +93,7 @@ public class RowMapperSkinny extends RowMapper
      * {@inheritDoc}
      */
     @Override
-    public CellName makeCellName(ColumnFamily columnFamily)
-    {
+    public CellName makeCellName(ColumnFamily columnFamily) {
         return metadata.comparator.makeCellName(columnDefinition.name.bytes);
     }
 
@@ -108,14 +101,12 @@ public class RowMapperSkinny extends RowMapper
      * {@inheritDoc}
      */
     @Override
-    public RowComparator naturalComparator()
-    {
+    public RowComparator naturalComparator() {
         return new RowComparatorNatural();
     }
 
     @Override
-    public SearchResult searchResult(Document document, ScoreDoc scoreDoc)
-    {
+    public SearchResult searchResult(Document document, ScoreDoc scoreDoc) {
         DecoratedKey partitionKey = partitionKeyMapper.partitionKey(document);
         return new SearchResult(partitionKey, null, scoreDoc);
     }

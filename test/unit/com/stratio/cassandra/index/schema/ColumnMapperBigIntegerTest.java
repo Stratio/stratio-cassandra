@@ -458,7 +458,7 @@ public class ColumnMapperBigIntegerTest
     {
         String json = "{fields:{age:{type:\"bigint\"}}}";
         Schema schema = Schema.fromJson(json);
-        ColumnMapper<?> columnMapper = schema.getMapper("age");
+        ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNotNull(columnMapper);
         Assert.assertEquals(ColumnMapperBigInteger.class, columnMapper.getClass());
     }
@@ -468,7 +468,7 @@ public class ColumnMapperBigIntegerTest
     {
         String json = "{fields:{age:{type:\"bigint\", digits:20}}}";
         Schema schema = Schema.fromJson(json);
-        ColumnMapper<?> columnMapper = schema.getMapper("age");
+        ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNotNull(columnMapper);
         Assert.assertEquals(ColumnMapperBigInteger.class, columnMapper.getClass());
         Assert.assertEquals(20, ((ColumnMapperBigInteger) columnMapper).getDigits());
@@ -479,7 +479,7 @@ public class ColumnMapperBigIntegerTest
     {
         String json = "{fields:{}}";
         Schema schema = Schema.fromJson(json);
-        ColumnMapper<?> columnMapper = schema.getMapper("age");
+        ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNull(columnMapper);
     }
 

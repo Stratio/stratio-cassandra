@@ -29,8 +29,7 @@ import java.util.Comparator;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class RowComparatorSorting implements RowComparator
-{
+public class RowComparatorSorting implements RowComparator {
     private final RowMapper rowMapper;
     private final ComparatorChain<Columns> comparatorChain;
 
@@ -39,12 +38,10 @@ public class RowComparatorSorting implements RowComparator
      * @param sort      The {@link com.stratio.cassandra.index.query.Sort} inf which the {@link Row} comparison is
      *                  based.
      */
-    public RowComparatorSorting(RowMapper rowMapper, Sort sort)
-    {
+    public RowComparatorSorting(RowMapper rowMapper, Sort sort) {
         this.rowMapper = rowMapper;
         comparatorChain = new ComparatorChain<>();
-        for (SortField sortField : sort.getSortFields())
-        {
+        for (SortField sortField : sort.getSortFields()) {
             Comparator<Columns> comparator = sortField.comparator();
             comparatorChain.addComparator(comparator);
         }
@@ -59,8 +56,7 @@ public class RowComparatorSorting implements RowComparator
      * than the second according to a {@link com.stratio.cassandra.index.query.Sort}.
      */
     @Override
-    public int compare(Row row1, Row row2)
-    {
+    public int compare(Row row1, Row row2) {
         Columns columns1 = rowMapper.columns(row1);
         Columns columns2 = rowMapper.columns(row2);
         return comparatorChain.compare(columns1, columns2);

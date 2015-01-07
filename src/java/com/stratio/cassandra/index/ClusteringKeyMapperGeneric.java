@@ -32,16 +32,14 @@ import java.io.IOException;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ClusteringKeyMapperGeneric extends ClusteringKeyMapper
-{
+public class ClusteringKeyMapperGeneric extends ClusteringKeyMapper {
 
     /**
      * Returns a new {@code ClusteringKeyMapper} according to the specified column family meta data.
      *
      * @param metadata The column family meta data.
      */
-    private ClusteringKeyMapperGeneric(CFMetaData metadata)
-    {
+    private ClusteringKeyMapperGeneric(CFMetaData metadata) {
         super(metadata);
     }
 
@@ -51,31 +49,25 @@ public class ClusteringKeyMapperGeneric extends ClusteringKeyMapper
      * @param metadata The column family meta data.
      * @return A new {@code ClusteringKeyMapper} according to the specified column family meta data.
      */
-    public static ClusteringKeyMapperGeneric instance(CFMetaData metadata)
-    {
+    public static ClusteringKeyMapperGeneric instance(CFMetaData metadata) {
         return new ClusteringKeyMapperGeneric(metadata);
     }
 
     @Override
-    public SortField[] sortFields()
-    {
-        return new SortField[]{
-                new SortField(FIELD_NAME, new FieldComparatorSource()
-                {
-                    @Override
-                    public FieldComparator<?> newComparator(String field,
-                                                            int hits,
-                                                            int sort,
-                                                            boolean reversed) throws IOException
-                    {
-                        return new ClusteringKeySorter(ClusteringKeyMapperGeneric.this, hits, field);
-                    }
-                })};
+    public SortField[] sortFields() {
+        return new SortField[]{new SortField(FIELD_NAME, new FieldComparatorSource() {
+            @Override
+            public FieldComparator<?> newComparator(String field,
+                                                    int hits,
+                                                    int sort,
+                                                    boolean reversed) throws IOException {
+                return new ClusteringKeySorter(ClusteringKeyMapperGeneric.this, hits, field);
+            }
+        })};
     }
 
     @Override
-    public Query query(Composite start, Composite stop)
-    {
+    public Query query(Composite start, Composite stop) {
         return new ClusteringKeyQuery(start, stop, this);
     }
 

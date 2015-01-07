@@ -15,7 +15,7 @@
  */
 package com.stratio.cassandra.index.query;
 
-import com.stratio.cassandra.index.schema.ColumnMapper;
+import com.stratio.cassandra.index.schema.ColumnMapperSingle;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.index.Term;
@@ -30,8 +30,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class MatchCondition extends Condition
-{
+public class MatchCondition extends SingleFieldCondition {
     /** The name of the field to be matched. */
     @JsonProperty("field")
     private final String field;
@@ -52,8 +51,7 @@ public class MatchCondition extends Condition
     @JsonCreator
     public MatchCondition(@JsonProperty("boost") Float boost,
                           @JsonProperty("field") String field,
-                          @JsonProperty("value") Object value)
-    {
+                          @JsonProperty("value") Object value) {
         super(boost);
         this.field = field;
         this.value = value;
@@ -61,57 +59,38 @@ public class MatchCondition extends Condition
 
     /** {@inheritDoc} */
     @Override
-    public Query query(Schema schema)
-    {
-        if (field == null || field.trim().isEmpty())
-        {
+    public Query query(Schema schema) {
+        if (field == null || field.trim().isEmpty()) {
             throw new IllegalArgumentException("Field name required");
         }
-        if (value == null || value instanceof String && ((String) value).trim().isEmpty())
-        {
+        if (value == null || value instanceof String && ((String) value).trim().isEmpty()) {
             throw new IllegalArgumentException("Field value required");
         }
 
-        ColumnMapper<?> columnMapper = schema.getMapper(field);
-        if (columnMapper == null)
-        {
-            throw new IllegalArgumentException("Not found mapper for field " + field);
-        }
+        ColumnMapperSingle<?> columnMapper = getMapper(schema, field);
         Class<?> clazz = columnMapper.baseClass();
         Query query;
-        if (clazz == String.class)
-        {
+        if (clazz == String.class) {
             String value = (String) columnMapper.queryValue(field, this.value);
             String analyzedValue = analyze(field, value, columnMapper);
-            if (analyzedValue == null)
-            {
+            if (analyzedValue == null) {
                 throw new IllegalArgumentException("Value discarded by analyzer");
             }
             Term term = new Term(field, analyzedValue);
             query = new TermQuery(term);
-        }
-        else if (clazz == Integer.class)
-        {
+        } else if (clazz == Integer.class) {
             Integer value = (Integer) columnMapper.queryValue(field, this.value);
             query = NumericRangeQuery.newIntRange(field, value, value, true, true);
-        }
-        else if (clazz == Long.class)
-        {
+        } else if (clazz == Long.class) {
             Long value = (Long) columnMapper.queryValue(field, this.value);
             query = NumericRangeQuery.newLongRange(field, value, value, true, true);
-        }
-        else if (clazz == Float.class)
-        {
+        } else if (clazz == Float.class) {
             Float value = (Float) columnMapper.queryValue(field, this.value);
             query = NumericRangeQuery.newFloatRange(field, value, value, true, true);
-        }
-        else if (clazz == Double.class)
-        {
+        } else if (clazz == Double.class) {
             Double value = (Double) columnMapper.queryValue(field, this.value);
             query = NumericRangeQuery.newDoubleRange(field, value, value, true, true);
-        }
-        else
-        {
+        } else {
             String message = String.format("Match queries are not supported by %s mapper", clazz.getSimpleName());
             throw new UnsupportedOperationException(message);
         }
@@ -121,8 +100,7 @@ public class MatchCondition extends Condition
 
     /** {@inheritDoc} */
     @Override
-    public String toString()
-    {
+    public String toString() {
         return new ToStringBuilder(this).append("field", field).append("value", value).toString();
     }
 }

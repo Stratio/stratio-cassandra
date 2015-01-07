@@ -26,8 +26,7 @@ import java.util.List;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class BooleanConditionBuilder extends ConditionBuilder<BooleanCondition, BooleanConditionBuilder>
-{
+public class BooleanConditionBuilder extends ConditionBuilder<BooleanCondition, BooleanConditionBuilder> {
     /** The mandatory conditions */
     private List<Condition> must;
 
@@ -40,8 +39,7 @@ public class BooleanConditionBuilder extends ConditionBuilder<BooleanCondition, 
     /**
      * Returns a new {@link BooleanConditionBuilder}.
      */
-    BooleanConditionBuilder()
-    {
+    BooleanConditionBuilder() {
     }
 
     /**
@@ -50,14 +48,11 @@ public class BooleanConditionBuilder extends ConditionBuilder<BooleanCondition, 
      * @param conditionBuilders The mandatory conditions to be added.
      * @return this builder with the specified mandatory conditions.
      */
-    public BooleanConditionBuilder must(ConditionBuilder... conditionBuilders)
-    {
-        if (must == null)
-        {
+    public BooleanConditionBuilder must(ConditionBuilder... conditionBuilders) {
+        if (must == null) {
             must = new ArrayList<>(conditionBuilders.length);
         }
-        for (ConditionBuilder conditionBuilder : conditionBuilders)
-        {
+        for (ConditionBuilder conditionBuilder : conditionBuilders) {
             must.add(conditionBuilder.build());
         }
         return this;
@@ -69,14 +64,11 @@ public class BooleanConditionBuilder extends ConditionBuilder<BooleanCondition, 
      * @param conditionBuilders The optional conditions to be added.
      * @return this builder with the specified optional conditions.
      */
-    public BooleanConditionBuilder should(ConditionBuilder... conditionBuilders)
-    {
-        if (should == null)
-        {
+    public BooleanConditionBuilder should(ConditionBuilder... conditionBuilders) {
+        if (should == null) {
             should = new ArrayList<>(conditionBuilders.length);
         }
-        for (ConditionBuilder conditionBuilder : conditionBuilders)
-        {
+        for (ConditionBuilder conditionBuilder : conditionBuilders) {
             should.add(conditionBuilder.build());
         }
         return this;
@@ -88,14 +80,11 @@ public class BooleanConditionBuilder extends ConditionBuilder<BooleanCondition, 
      * @param conditionBuilders The mandatory not conditions to be added.
      * @return this builder with the specified mandatory not conditions.
      */
-    public BooleanConditionBuilder not(ConditionBuilder... conditionBuilders)
-    {
-        if (not == null)
-        {
+    public BooleanConditionBuilder not(ConditionBuilder... conditionBuilders) {
+        if (not == null) {
             not = new ArrayList<>(conditionBuilders.length);
         }
-        for (ConditionBuilder conditionBuilder : conditionBuilders)
-        {
+        for (ConditionBuilder conditionBuilder : conditionBuilders) {
             not.add(conditionBuilder.build());
         }
         return this;
@@ -107,8 +96,7 @@ public class BooleanConditionBuilder extends ConditionBuilder<BooleanCondition, 
      * @return The {@link BooleanCondition} represented by this builder.
      */
     @Override
-    public BooleanCondition build()
-    {
+    public BooleanCondition build() {
         return new BooleanCondition(boost, must, should, not);
     }
 }

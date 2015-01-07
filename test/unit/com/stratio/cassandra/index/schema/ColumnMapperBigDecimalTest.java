@@ -540,7 +540,7 @@ public class ColumnMapperBigDecimalTest
     {
         String json = "{fields:{age:{type:\"bigdec\"}}}";
         Schema schema = Schema.fromJson(json);
-        ColumnMapper<?> columnMapper = schema.getMapper("age");
+        ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNotNull(columnMapper);
         Assert.assertEquals(ColumnMapperBigDecimal.class, columnMapper.getClass());
     }
@@ -550,7 +550,7 @@ public class ColumnMapperBigDecimalTest
     {
         String json = "{fields:{age:{type:\"bigdec\", integer_digits:20}}}";
         Schema schema = Schema.fromJson(json);
-        ColumnMapper<?> columnMapper = schema.getMapper("age");
+        ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNotNull(columnMapper);
         Assert.assertEquals(ColumnMapperBigDecimal.class, columnMapper.getClass());
         Assert.assertEquals(20, ((ColumnMapperBigDecimal) columnMapper).getIntegerDigits());
@@ -563,7 +563,7 @@ public class ColumnMapperBigDecimalTest
     {
         String json = "{fields:{age:{type:\"bigdec\", decimal_digits:20}}}";
         Schema schema = Schema.fromJson(json);
-        ColumnMapper<?> columnMapper = schema.getMapper("age");
+        ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNotNull(columnMapper);
         Assert.assertEquals(ColumnMapperBigDecimal.class, columnMapper.getClass());
         Assert.assertEquals(ColumnMapperBigDecimal.DEFAULT_INTEGER_DIGITS,
@@ -576,7 +576,7 @@ public class ColumnMapperBigDecimalTest
     {
         String json = "{fields:{age:{type:\"bigdec\", integer_digits:20, decimal_digits:30}}}";
         Schema schema = Schema.fromJson(json);
-        ColumnMapper<?> columnMapper = schema.getMapper("age");
+        ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNotNull(columnMapper);
         Assert.assertEquals(ColumnMapperBigDecimal.class, columnMapper.getClass());
         Assert.assertEquals(20, ((ColumnMapperBigDecimal) columnMapper).getIntegerDigits());
@@ -588,7 +588,7 @@ public class ColumnMapperBigDecimalTest
     {
         String json = "{fields:{}}";
         Schema schema = Schema.fromJson(json);
-        ColumnMapper<?> columnMapper = schema.getMapper("age");
+        ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNull(columnMapper);
     }
 

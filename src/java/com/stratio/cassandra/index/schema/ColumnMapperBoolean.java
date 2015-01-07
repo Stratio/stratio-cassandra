@@ -32,8 +32,7 @@ import org.codehaus.jackson.annotate.JsonCreator;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ColumnMapperBoolean extends ColumnMapper<String>
-{
+public class ColumnMapperBoolean extends ColumnMapperSingle<String> {
     /** The {@code String} representation of a true value. */
     private static final String TRUE = "true";
 
@@ -44,39 +43,28 @@ public class ColumnMapperBoolean extends ColumnMapper<String>
      * Builds a new {@link ColumnMapperBlob}.
      */
     @JsonCreator
-    public ColumnMapperBoolean()
-    {
+    public ColumnMapperBoolean() {
         super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, BooleanType.instance}, new AbstractType[]{});
     }
 
     /** {@inheritDoc} */
     @Override
-    public Analyzer analyzer()
-    {
+    public Analyzer analyzer() {
         return EMPTY_ANALYZER;
     }
 
     /** {@inheritDoc} */
     @Override
-    public String indexValue(String name, Object value)
-    {
-        if (value == null)
-        {
+    public String indexValue(String name, Object value) {
+        if (value == null) {
             return null;
-        }
-        else if (value instanceof Boolean)
-        {
+        } else if (value instanceof Boolean) {
             return (Boolean) value ? TRUE : FALSE;
-        }
-        else if (value instanceof String)
-        {
+        } else if (value instanceof String) {
             String s = (String) value;
-            if (s.equalsIgnoreCase(TRUE))
-            {
+            if (s.equalsIgnoreCase(TRUE)) {
                 return TRUE;
-            }
-            else if (s.equalsIgnoreCase(FALSE))
-            {
+            } else if (s.equalsIgnoreCase(FALSE)) {
                 return FALSE;
             }
         }
@@ -85,47 +73,37 @@ public class ColumnMapperBoolean extends ColumnMapper<String>
 
     /** {@inheritDoc} */
     @Override
-    public String queryValue(String name, Object value)
-    {
-        if (value == null)
-        {
+    public String queryValue(String name, Object value) {
+        if (value == null) {
             return null;
-        }
-        else if (value instanceof Boolean)
-        {
+        } else if (value instanceof Boolean) {
             return (Boolean) value ? TRUE : FALSE;
-        }
-        else
-        {
+        } else {
             return value.toString();
         }
     }
 
     /** {@inheritDoc} */
     @Override
-    public Field field(String name, Object value)
-    {
+    public Field field(String name, Object value) {
         return new StringField(name, indexValue(name, value), STORE);
     }
 
     /** {@inheritDoc} */
     @Override
-    public SortField sortField(String field, boolean reverse)
-    {
+    public SortField sortField(String field, boolean reverse) {
         return new SortField(field, Type.STRING, reverse);
     }
 
     /** {@inheritDoc} */
     @Override
-    public Class<String> baseClass()
-    {
+    public Class<String> baseClass() {
         return String.class;
     }
 
     /** {@inheritDoc} */
     @Override
-    public String toString()
-    {
+    public String toString() {
         return new ToStringBuilder(this).toString();
     }
 

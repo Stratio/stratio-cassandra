@@ -22,8 +22,7 @@ import com.stratio.cassandra.index.query.PrefixCondition;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class PrefixConditionBuilder extends ConditionBuilder<PrefixCondition, PrefixConditionBuilder>
-{
+public class PrefixConditionBuilder extends ConditionBuilder<PrefixCondition, PrefixConditionBuilder> {
     /** The name of the field to be matched. */
     private final String field;
 
@@ -36,8 +35,7 @@ public class PrefixConditionBuilder extends ConditionBuilder<PrefixCondition, Pr
      * @param field The name of the field to be matched.
      * @param value The prefix to be matched.
      */
-    protected PrefixConditionBuilder(String field, String value)
-    {
+    protected PrefixConditionBuilder(String field, String value) {
         this.field = field;
         this.value = value;
     }
@@ -48,8 +46,7 @@ public class PrefixConditionBuilder extends ConditionBuilder<PrefixCondition, Pr
      * @return The {@link PrefixCondition} represented by this builder.
      */
     @Override
-    public PrefixCondition build()
-    {
+    public PrefixCondition build() {
         return new PrefixCondition(boost, field, value);
     }
 }

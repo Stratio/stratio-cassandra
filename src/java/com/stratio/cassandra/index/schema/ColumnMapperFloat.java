@@ -30,8 +30,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ColumnMapperFloat extends ColumnMapper<Float>
-{
+public class ColumnMapperFloat extends ColumnMapperSingle<Float> {
     /** The default boost. */
     public static final Float DEFAULT_BOOST = 1.0f;
 
@@ -40,57 +39,44 @@ public class ColumnMapperFloat extends ColumnMapper<Float>
 
     /**
      * Builds a new {@link ColumnMapperFloat} using the specified boost.
+     *
      * @param boost The boost to be used.
      */
     @JsonCreator
-    public ColumnMapperFloat(@JsonProperty("boost") Float boost)
-    {
-        super(new AbstractType<?>[]{
-                AsciiType.instance,
-                UTF8Type.instance,
-                Int32Type.instance,
-                LongType.instance,
-                IntegerType.instance,
-                FloatType.instance,
-                DoubleType.instance,
-                DecimalType.instance}, new AbstractType[]{FloatType.instance});
+    public ColumnMapperFloat(@JsonProperty("boost") Float boost) {
+        super(new AbstractType<?>[]{AsciiType.instance,
+                                    UTF8Type.instance,
+                                    Int32Type.instance,
+                                    LongType.instance,
+                                    IntegerType.instance,
+                                    FloatType.instance,
+                                    DoubleType.instance,
+                                    DecimalType.instance}, new AbstractType[]{FloatType.instance});
         this.boost = boost == null ? DEFAULT_BOOST : boost;
     }
 
     /** {@inheritDoc} */
     @Override
-    public Analyzer analyzer()
-    {
+    public Analyzer analyzer() {
         return EMPTY_ANALYZER;
     }
 
     /** {@inheritDoc} */
     @Override
-    public Float indexValue(String name, Object value)
-    {
-        if (value == null)
-        {
+    public Float indexValue(String name, Object value) {
+        if (value == null) {
             return null;
-        }
-        else if (value instanceof Number)
-        {
+        } else if (value instanceof Number) {
             return ((Number) value).floatValue();
-        }
-        else if (value instanceof String)
-        {
+        } else if (value instanceof String) {
             String svalue = (String) value;
-            try
-            {
+            try {
                 return Double.valueOf(svalue).floatValue();
-            }
-            catch (NumberFormatException e)
-            {
+            } catch (NumberFormatException e) {
                 String message = String.format("Field %s requires a base 10 float, but found \"%s\"", name, svalue);
                 throw new IllegalArgumentException(message);
             }
-        }
-        else
-        {
+        } else {
             String message = String.format("Field %s requires a base 10 float, but found \"%s\"", name, value);
             throw new IllegalArgumentException(message);
         }
@@ -98,15 +84,13 @@ public class ColumnMapperFloat extends ColumnMapper<Float>
 
     /** {@inheritDoc} */
     @Override
-    public Float queryValue(String name, Object value)
-    {
+    public Float queryValue(String name, Object value) {
         return indexValue(name, value);
     }
 
     /** {@inheritDoc} */
     @Override
-    public Field field(String name, Object value)
-    {
+    public Field field(String name, Object value) {
         Float number = indexValue(name, value);
         Field field = new FloatField(name, number, STORE);
         field.setBoost(boost);
@@ -115,22 +99,19 @@ public class ColumnMapperFloat extends ColumnMapper<Float>
 
     /** {@inheritDoc} */
     @Override
-    public SortField sortField(String field, boolean reverse)
-    {
+    public SortField sortField(String field, boolean reverse) {
         return new SortField(field, Type.FLOAT, reverse);
     }
 
     /** {@inheritDoc} */
     @Override
-    public Class<Float> baseClass()
-    {
+    public Class<Float> baseClass() {
         return Float.class;
     }
 
     /** {@inheritDoc} */
     @Override
-    public String toString()
-    {
+    public String toString() {
         return new ToStringBuilder(this).append("boost", boost).toString();
     }
 

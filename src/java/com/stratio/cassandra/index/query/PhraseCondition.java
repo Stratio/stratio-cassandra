@@ -15,7 +15,7 @@
  */
 package com.stratio.cassandra.index.query;
 
-import com.stratio.cassandra.index.schema.ColumnMapper;
+import com.stratio.cassandra.index.schema.ColumnMapperSingle;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.index.Term;
@@ -31,8 +31,7 @@ import java.util.List;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class PhraseCondition extends Condition
-{
+public class PhraseCondition extends SingleFieldCondition {
     /** The default umber of other words permitted between words in phrase. */
     public static final int DEFAULT_SLOP = 0;
 
@@ -62,8 +61,7 @@ public class PhraseCondition extends Condition
     public PhraseCondition(@JsonProperty("boost") Float boost,
                            @JsonProperty("field") String field,
                            @JsonProperty("values") List<String> values,
-                           @JsonProperty("slop") Integer slop)
-    {
+                           @JsonProperty("slop") Integer slop) {
         super(boost);
 
         this.field = field;
@@ -73,45 +71,32 @@ public class PhraseCondition extends Condition
 
     /** {@inheritDoc} */
     @Override
-    public Query query(Schema schema)
-    {
+    public Query query(Schema schema) {
 
-        if (field == null || field.trim().isEmpty())
-        {
+        if (field == null || field.trim().isEmpty()) {
             throw new IllegalArgumentException("Field name required");
         }
-        if (values == null)
-        {
+        if (values == null) {
             throw new IllegalArgumentException("Field values required");
         }
-        if (slop == null)
-        {
+        if (slop == null) {
             throw new IllegalArgumentException("Slop required");
         }
-        if (slop < 0)
-        {
+        if (slop < 0) {
             throw new IllegalArgumentException("Slop must be positive");
         }
 
-        ColumnMapper<?> columnMapper = schema.getMapper(field);
-        if (columnMapper == null)
-        {
-            throw new IllegalArgumentException("Not found mapper for field " + field);
-        }
+        ColumnMapperSingle<?> columnMapper = getMapper(schema, field);
         Class<?> clazz = columnMapper.baseClass();
-        if (clazz == String.class)
-        {
+        if (clazz == String.class) {
             PhraseQuery query = new PhraseQuery();
             query.setSlop(slop);
             query.setBoost(boost);
             int count = 0;
-            for (String value : values)
-            {
-                if (value != null)
-                {
+            for (String value : values) {
+                if (value != null) {
                     String analyzedValue = analyze(field, value, columnMapper);
-                    if (analyzedValue != null)
-                    {
+                    if (analyzedValue != null) {
                         Term term = new Term(field, analyzedValue);
                         query.add(term, count);
                     }
@@ -119,9 +104,7 @@ public class PhraseCondition extends Condition
                 count++;
             }
             return query;
-        }
-        else
-        {
+        } else {
             String message = String.format("Unsupported query %s for mapper %s", this, columnMapper);
             throw new UnsupportedOperationException(message);
         }
@@ -129,8 +112,7 @@ public class PhraseCondition extends Condition
 
     /** {@inheritDoc} */
     @Override
-    public String toString()
-    {
+    public String toString() {
         return new ToStringBuilder(this).append("field", field)
                                         .append("values", values)
                                         .append("slop", slop)

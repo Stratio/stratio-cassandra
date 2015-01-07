@@ -30,8 +30,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class LuceneCondition extends Condition
-{
+public class LuceneCondition extends Condition {
     /** The default name of the field where the clauses will be applied by default. */
     public static final String DEFAULT_FIELD = "lucene";
 
@@ -55,8 +54,7 @@ public class LuceneCondition extends Condition
     @JsonCreator
     public LuceneCondition(@JsonProperty("boost") Float boost,
                            @JsonProperty("default_field") String defaultField,
-                           @JsonProperty("query") String query)
-    {
+                           @JsonProperty("query") String query) {
         super(boost);
 
         this.query = query;
@@ -65,16 +63,13 @@ public class LuceneCondition extends Condition
 
     /** {@inheritDoc} */
     @Override
-    public Query query(Schema schema)
-    {
+    public Query query(Schema schema) {
 
-        if (query == null)
-        {
+        if (query == null) {
             throw new IllegalArgumentException("Query statement required");
         }
 
-        try
-        {
+        try {
             Analyzer analyzer = schema.analyzer();
             QueryParser queryParser = new QueryParser(Version.LUCENE_48, defaultField, analyzer);
             queryParser.setAllowLeadingWildcard(true);
@@ -82,17 +77,14 @@ public class LuceneCondition extends Condition
             Query luceneQuery = queryParser.parse(query);
             luceneQuery.setBoost(boost);
             return luceneQuery;
-        }
-        catch (ParseException e)
-        {
+        } catch (ParseException e) {
             throw new RuntimeException("Error while parsing lucene syntax query", e);
         }
     }
 
     /** {@inheritDoc} */
     @Override
-    public String toString()
-    {
+    public String toString() {
         return new ToStringBuilder(this).append("query", query).append("defaultField", defaultField).toString();
     }
 }

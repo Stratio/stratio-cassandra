@@ -27,8 +27,7 @@ import java.util.List;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class SortBuilder implements Builder<Sort>
-{
+public class SortBuilder implements Builder<Sort> {
     /** The {@link SortField}s */
     private final List<SortField> sortFields;
 
@@ -37,11 +36,9 @@ public class SortBuilder implements Builder<Sort>
      *
      * @param sortFieldBuilders The {@link SortFieldBuilder}s.
      */
-    public SortBuilder(List<SortFieldBuilder> sortFieldBuilders)
-    {
+    public SortBuilder(List<SortFieldBuilder> sortFieldBuilders) {
         this.sortFields = new ArrayList<>(sortFieldBuilders.size());
-        for (SortFieldBuilder sortFieldBuilder : sortFieldBuilders)
-        {
+        for (SortFieldBuilder sortFieldBuilder : sortFieldBuilders) {
             sortFields.add(sortFieldBuilder.build());
         }
     }
@@ -51,15 +48,13 @@ public class SortBuilder implements Builder<Sort>
      *
      * @param sortFieldBuilders The {@link SortFieldBuilder}s.
      */
-    public SortBuilder(SortFieldBuilder... sortFieldBuilders)
-    {
+    public SortBuilder(SortFieldBuilder... sortFieldBuilders) {
         this(Arrays.asList(sortFieldBuilders));
     }
 
     /** {@inheritDoc} */
     @Override
-    public Sort build()
-    {
+    public Sort build() {
         return new Sort(sortFields);
     }
 }

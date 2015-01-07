@@ -22,8 +22,7 @@ import com.stratio.cassandra.index.query.RegexpCondition;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class RegexpConditionBuilder extends ConditionBuilder<RegexpCondition, RegexpConditionBuilder>
-{
+public class RegexpConditionBuilder extends ConditionBuilder<RegexpCondition, RegexpConditionBuilder> {
     /** The name of the field to be matched. */
     private final String field;
 
@@ -36,8 +35,7 @@ public class RegexpConditionBuilder extends ConditionBuilder<RegexpCondition, Re
      * @param field The name of the field to be matched.
      * @param value The wildcard expression to be matched.
      */
-    protected RegexpConditionBuilder(String field, String value)
-    {
+    protected RegexpConditionBuilder(String field, String value) {
         this.field = field;
         this.value = value;
     }
@@ -46,8 +44,7 @@ public class RegexpConditionBuilder extends ConditionBuilder<RegexpCondition, Re
      * {@inheritDoc}
      */
     @Override
-    public RegexpCondition build()
-    {
+    public RegexpCondition build() {
         return new RegexpCondition(boost, field, value);
     }
 }

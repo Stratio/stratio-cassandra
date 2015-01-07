@@ -20,8 +20,7 @@ package com.stratio.cassandra.index.query.builder;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public interface Builder<T>
-{
+public interface Builder<T> {
     /**
      * Returns the {@link T} represented by this builder.
      *

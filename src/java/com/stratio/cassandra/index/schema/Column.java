@@ -25,8 +25,7 @@ import java.nio.ByteBuffer;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class Column
-{
+public class Column {
     /** The column's name. */
     private String name;
 
@@ -46,8 +45,7 @@ public class Column
      * @param value The value of the column to be created.
      * @param type  The type of the column to be created.
      */
-    public Column(String name, ByteBuffer value, AbstractType<?> type)
-    {
+    public Column(String name, ByteBuffer value, AbstractType<?> type) {
         this.name = name;
         this.value = value;
         this.type = type;
@@ -61,8 +59,7 @@ public class Column
      * @param value     The value of the column to be created.
      * @param type      The type of the column to be created.
      */
-    public Column(String name, String nameSufix, ByteBuffer value, AbstractType<?> type)
-    {
+    public Column(String name, String nameSufix, ByteBuffer value, AbstractType<?> type) {
         this.name = name;
         this.nameSufix = nameSufix;
         this.value = value;
@@ -74,8 +71,7 @@ public class Column
      *
      * @return the column name.
      */
-    public String getName()
-    {
+    public String getName() {
         return name;
     }
 
@@ -84,8 +80,7 @@ public class Column
      *
      * @return The Lucene field name, which is formed by the column name and sufix.
      */
-    public String getFieldName()
-    {
+    public String getFieldName() {
         return nameSufix == null ? name : name + "." + nameSufix;
     }
 
@@ -94,8 +89,7 @@ public class Column
      *
      * @return the {@link ByteBuffer} serialized value.
      */
-    public ByteBuffer getRawValue()
-    {
+    public ByteBuffer getRawValue() {
         return value;
     }
 
@@ -104,8 +98,7 @@ public class Column
      *
      * @return The Java column value.
      */
-    public Object getValue()
-    {
+    public Object getValue() {
         return type.compose(value);
     }
 
@@ -114,15 +107,13 @@ public class Column
      *
      * @return The Cassandra column type.
      */
-    public AbstractType<?> getType()
-    {
+    public AbstractType<?> getType() {
         return type;
     }
 
     /** {@inheritDoc} */
     @Override
-    public String toString()
-    {
+    public String toString() {
         return new ToStringBuilder(this).append("name", name)
                                         .append("nameSufix", nameSufix)
                                         .append("value", value)

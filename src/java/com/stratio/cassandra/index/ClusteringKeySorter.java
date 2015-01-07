@@ -32,8 +32,7 @@ import java.io.IOException;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-class ClusteringKeySorter extends FieldComparator<BytesRef>
-{
+class ClusteringKeySorter extends FieldComparator<BytesRef> {
 
     private static final byte[] MISSING_BYTES = new byte[0];
 
@@ -57,8 +56,7 @@ class ClusteringKeySorter extends FieldComparator<BytesRef>
      * @param numHits             The number of hits.
      * @param field               The field name.
      */
-    public ClusteringKeySorter(ClusteringKeyMapper clusteringKeyMapper, int numHits, String field)
-    {
+    public ClusteringKeySorter(ClusteringKeyMapper clusteringKeyMapper, int numHits, String field) {
         this.clusteringKeyMapper = clusteringKeyMapper;
         values = new BytesRef[numHits];
         this.field = field;
@@ -68,20 +66,15 @@ class ClusteringKeySorter extends FieldComparator<BytesRef>
      * {@inheritDoc}
      */
     @Override
-    public int compare(int slot1, int slot2)
-    {
+    public int compare(int slot1, int slot2) {
         final BytesRef val1 = values[slot1];
         final BytesRef val2 = values[slot2];
-        if (val1 == null)
-        {
-            if (val2 == null)
-            {
+        if (val1 == null) {
+            if (val2 == null) {
                 return 0;
             }
             return -1;
-        }
-        else if (val2 == null)
-        {
+        } else if (val2 == null) {
             return 1;
         }
         return compare(val1, val2);
@@ -91,23 +84,17 @@ class ClusteringKeySorter extends FieldComparator<BytesRef>
      * {@inheritDoc}
      */
     @Override
-    public int compareBottom(int doc)
-    {
+    public int compareBottom(int doc) {
         docTerms.get(doc, tempBR);
-        if (tempBR.length == 0 && !docsWithField.get(doc))
-        {
+        if (tempBR.length == 0 && !docsWithField.get(doc)) {
             tempBR.bytes = MISSING_BYTES;
         }
-        if (bottom.bytes == MISSING_BYTES)
-        {
-            if (tempBR.bytes == MISSING_BYTES)
-            {
+        if (bottom.bytes == MISSING_BYTES) {
+            if (tempBR.bytes == MISSING_BYTES) {
                 return 0;
             }
             return -1;
-        }
-        else if (tempBR.bytes == MISSING_BYTES)
-        {
+        } else if (tempBR.bytes == MISSING_BYTES) {
             return 1;
         }
         return compare(bottom, tempBR);
@@ -117,15 +104,12 @@ class ClusteringKeySorter extends FieldComparator<BytesRef>
      * {@inheritDoc}
      */
     @Override
-    public void copy(int slot, int doc)
-    {
-        if (values[slot] == null)
-        {
+    public void copy(int slot, int doc) {
+        if (values[slot] == null) {
             values[slot] = new BytesRef();
         }
         docTerms.get(doc, values[slot]);
-        if (values[slot].length == 0 && !docsWithField.get(doc))
-        {
+        if (values[slot].length == 0 && !docsWithField.get(doc)) {
             values[slot].bytes = MISSING_BYTES;
         }
     }
@@ -134,8 +118,7 @@ class ClusteringKeySorter extends FieldComparator<BytesRef>
      * {@inheritDoc}
      */
     @Override
-    public FieldComparator<BytesRef> setNextReader(AtomicReaderContext context) throws IOException
-    {
+    public FieldComparator<BytesRef> setNextReader(AtomicReaderContext context) throws IOException {
         docTerms = FieldCache.DEFAULT.getTerms(context.reader(), field, true);
         docsWithField = FieldCache.DEFAULT.getDocsWithField(context.reader(), field);
         return this;
@@ -145,8 +128,7 @@ class ClusteringKeySorter extends FieldComparator<BytesRef>
      * {@inheritDoc}
      */
     @Override
-    public void setBottom(final int bottom)
-    {
+    public void setBottom(final int bottom) {
         this.bottom = values[bottom];
     }
 
@@ -154,8 +136,7 @@ class ClusteringKeySorter extends FieldComparator<BytesRef>
      * {@inheritDoc}
      */
     @Override
-    public BytesRef value(int slot)
-    {
+    public BytesRef value(int slot) {
         return values[slot];
     }
 
@@ -163,37 +144,29 @@ class ClusteringKeySorter extends FieldComparator<BytesRef>
      * {@inheritDoc}
      */
     @Override
-    public int compareValues(BytesRef val1, BytesRef val2)
-    {
-        if (val1 == null)
-        {
-            if (val2 == null)
-            {
+    public int compareValues(BytesRef val1, BytesRef val2) {
+        if (val1 == null) {
+            if (val2 == null) {
                 return 0;
             }
             return -1;
-        }
-        else if (val2 == null)
-        {
+        } else if (val2 == null) {
             return 1;
         }
         return compare(val1, val2);
     }
 
     @Override
-    public int compareTop(int doc)
-    {
+    public int compareTop(int doc) {
         docTerms.get(doc, tempBR);
-        if (tempBR.length == 0 && !docsWithField.get(doc))
-        {
+        if (tempBR.length == 0 && !docsWithField.get(doc)) {
             tempBR.bytes = MISSING_BYTES;
         }
         return compare(tempBR, topValue);
     }
 
     @Override
-    public void setTopValue(BytesRef value)
-    {
+    public void setTopValue(BytesRef value) {
         topValue = value;
     }
 
@@ -206,8 +179,7 @@ class ClusteringKeySorter extends FieldComparator<BytesRef>
      * @return A negative integer, zero, or a positive integer as the first argument is less than, equal to, or greater
      * than the second.
      */
-    private int compare(BytesRef fieldValue1, BytesRef fieldValue2)
-    {
+    private int compare(BytesRef fieldValue1, BytesRef fieldValue2) {
         CellName bb1 = clusteringKeyMapper.clusteringKey(fieldValue1);
         CellName bb2 = clusteringKeyMapper.clusteringKey(fieldValue2);
         CellNameType type = clusteringKeyMapper.getType();

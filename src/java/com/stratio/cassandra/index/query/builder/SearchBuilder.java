@@ -24,8 +24,7 @@ import com.stratio.cassandra.index.query.Sort;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class SearchBuilder implements Builder<Search>
-{
+public class SearchBuilder implements Builder<Search> {
     /** he {@link Condition} for querying, maybe {@code null} meaning no querying. */
     private Condition queryCondition;
 
@@ -44,8 +43,7 @@ public class SearchBuilder implements Builder<Search>
      * @param queryConditionBuilder The querying condition to be set.
      * @return This builder with the specified querying condition.
      */
-    public SearchBuilder query(ConditionBuilder queryConditionBuilder)
-    {
+    public SearchBuilder query(ConditionBuilder queryConditionBuilder) {
         this.queryCondition = queryConditionBuilder.build();
         return this;
     }
@@ -56,8 +54,7 @@ public class SearchBuilder implements Builder<Search>
      * @param filterConditionBuilder The filtering condition to be set.
      * @return This builder with the specified filtering condition.
      */
-    public SearchBuilder filter(ConditionBuilder filterConditionBuilder)
-    {
+    public SearchBuilder filter(ConditionBuilder filterConditionBuilder) {
         this.filterCondition = filterConditionBuilder.build();
         return this;
     }
@@ -68,8 +65,7 @@ public class SearchBuilder implements Builder<Search>
      * @param sortFieldBuilders The sorting fields to be set.
      * @return This builder with the specified sorting.
      */
-    public SearchBuilder sort(SortFieldBuilder... sortFieldBuilders)
-    {
+    public SearchBuilder sort(SortFieldBuilder... sortFieldBuilders) {
         this.sort = new SortBuilder(sortFieldBuilders).build();
         return this;
     }
@@ -80,8 +76,7 @@ public class SearchBuilder implements Builder<Search>
      * @return The {@link Search} represented by this builder.
      */
     @Override
-    public Search build()
-    {
+    public Search build() {
         return new Search(queryCondition, filterCondition, sort);
     }
 
@@ -90,8 +85,7 @@ public class SearchBuilder implements Builder<Search>
      *
      * @return The JSON representation of the {@link Search} represented by this builder.
      */
-    public String toJson()
-    {
+    public String toJson() {
         return build().toJson();
     }
 

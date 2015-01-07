@@ -25,8 +25,7 @@ import java.util.List;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class PhraseConditionBuilder extends ConditionBuilder<PhraseCondition, PhraseConditionBuilder>
-{
+public class PhraseConditionBuilder extends ConditionBuilder<PhraseCondition, PhraseConditionBuilder> {
     /** The name of the field to be matched. */
     private final String field;
 
@@ -42,8 +41,7 @@ public class PhraseConditionBuilder extends ConditionBuilder<PhraseCondition, Ph
      * @param field  The name of the field to be matched.
      * @param values The phrase terms to be matched.
      */
-    protected PhraseConditionBuilder(String field, List<String> values)
-    {
+    protected PhraseConditionBuilder(String field, List<String> values) {
         this.field = field;
         this.values = values;
     }
@@ -54,8 +52,7 @@ public class PhraseConditionBuilder extends ConditionBuilder<PhraseCondition, Ph
      * @param field  The name of the field.
      * @param values The phrase terms to be matched.
      */
-    public PhraseConditionBuilder(String field, String... values)
-    {
+    public PhraseConditionBuilder(String field, String... values) {
         this.field = field;
         this.values = Arrays.asList(values);
     }
@@ -67,8 +64,7 @@ public class PhraseConditionBuilder extends ConditionBuilder<PhraseCondition, Ph
      * @param slop The number of other words permitted between words in phrase to set.
      * @return this builder with the specified slop.
      */
-    public PhraseConditionBuilder slop(Integer slop)
-    {
+    public PhraseConditionBuilder slop(Integer slop) {
         this.slop = slop;
         return this;
     }
@@ -79,8 +75,7 @@ public class PhraseConditionBuilder extends ConditionBuilder<PhraseCondition, Ph
      * @return The {@link PhraseCondition} represented by this builder.
      */
     @Override
-    public PhraseCondition build()
-    {
+    public PhraseCondition build() {
         return new PhraseCondition(boost, field, values, slop);
     }
 }

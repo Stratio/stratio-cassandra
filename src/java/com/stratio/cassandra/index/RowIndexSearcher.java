@@ -39,8 +39,7 @@ import static org.apache.cassandra.cql3.Operator.EQ;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class RowIndexSearcher extends SecondaryIndexSearcher
-{
+public class RowIndexSearcher extends SecondaryIndexSearcher {
 
     protected static final Logger logger = LoggerFactory.getLogger(SecondaryIndexSearcher.class);
 
@@ -60,8 +59,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
     public RowIndexSearcher(SecondaryIndexManager indexManager,
                             RowIndex index,
                             Set<ByteBuffer> columns,
-                            RowService rowService)
-    {
+                            RowService rowService) {
         super(indexManager, columns);
         this.index = index;
         this.rowService = rowService;
@@ -73,8 +71,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
      * {@inheritDoc}
      */
     @Override
-    public List<Row> search(ExtendedFilter extendedFilter)
-    {
+    public List<Row> search(ExtendedFilter extendedFilter) {
         long timestamp = extendedFilter.timestamp;
         int limit = extendedFilter.currentLimit();
         DataRange dataRange = extendedFilter.dataRange;
@@ -88,14 +85,11 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
      * {@inheritDoc}
      */
     @Override
-    public boolean canHandleIndexClause(List<IndexExpression> clause)
-    {
-        for (IndexExpression expression : clause)
-        {
+    public boolean canHandleIndexClause(List<IndexExpression> clause) {
+        for (IndexExpression expression : clause) {
             ByteBuffer columnName = expression.column;
             boolean sameName = indexedColumnName.equals(columnName);
-            if (expression.operator.equals(EQ) && sameName)
-            {
+            if (expression.operator.equals(EQ) && sameName) {
                 return true;
             }
         }
@@ -106,14 +100,11 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
      * {@inheritDoc}
      */
     @Override
-    public IndexExpression highestSelectivityPredicate(List<IndexExpression> clause)
-    {
-        for (IndexExpression expression : clause)
-        {
+    public IndexExpression highestSelectivityPredicate(List<IndexExpression> clause) {
+        for (IndexExpression expression : clause) {
             ByteBuffer columnName = expression.column;
             boolean sameName = indexedColumnName.equals(columnName);
-            if (expression.operator.equals(EQ) && sameName)
-            {
+            if (expression.operator.equals(EQ) && sameName) {
                 return expression;
             }
         }
@@ -124,15 +115,11 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
      * {@inheritDoc}
      */
     @Override
-    public void validate(IndexExpression indexExpression) throws InvalidRequestException
-    {
-        try
-        {
+    public void validate(IndexExpression indexExpression) throws InvalidRequestException {
+        try {
             String json = UTF8Type.instance.compose(indexExpression.value);
             Search.fromJson(json).validate(schema);
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             throw new InvalidRequestException(e.getMessage());
         }
     }
@@ -141,8 +128,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
      * {@inheritDoc}
      */
     @Override
-    public boolean requiresFullScan(List<IndexExpression> clause)
-    {
+    public boolean requiresFullScan(List<IndexExpression> clause) {
         Search search = search(clause);
         return search.usesRelevanceOrSorting();
     }
@@ -153,8 +139,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
      * @param clause A list of {@link IndexExpression}s.
      * @return The {@link Search} contained in the specified list of {@link IndexExpression}s.
      */
-    private Search search(List<IndexExpression> clause)
-    {
+    private Search search(List<IndexExpression> clause) {
         IndexExpression indexedExpression = indexedExpression(clause);
         String json = UTF8Type.instance.compose(indexedExpression.value);
         return Search.fromJson(json);
@@ -166,13 +151,10 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
      * @param clause A list of {@link IndexExpression}s.
      * @return The {@link IndexExpression} relative to this index.
      */
-    private IndexExpression indexedExpression(List<IndexExpression> clause)
-    {
-        for (IndexExpression indexExpression : clause)
-        {
+    private IndexExpression indexedExpression(List<IndexExpression> clause) {
+        for (IndexExpression indexExpression : clause) {
             ByteBuffer columnName = indexExpression.column;
-            if (indexedColumnName.equals(columnName))
-            {
+            if (indexedColumnName.equals(columnName)) {
                 return indexExpression;
             }
         }
@@ -185,14 +167,11 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
      * @param clause A list of {@link IndexExpression}s.
      * @return The {@link IndexExpression} not relative to this index.
      */
-    private List<IndexExpression> filteredExpressions(List<IndexExpression> clause)
-    {
+    private List<IndexExpression> filteredExpressions(List<IndexExpression> clause) {
         List<IndexExpression> filteredExpressions = new ArrayList<>(clause.size());
-        for (IndexExpression ie : clause)
-        {
+        for (IndexExpression ie : clause) {
             ByteBuffer columnName = ie.column;
-            if (!indexedColumnName.equals(columnName))
-            {
+            if (!indexedColumnName.equals(columnName)) {
                 filteredExpressions.add(ie);
             }
         }
@@ -200,8 +179,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
     }
 
     @Override
-    public List<Row> sort(List<IndexExpression> clause, List<Row> rows)
-    {
+    public List<Row> sort(List<IndexExpression> clause, List<Row> rows) {
         int startSize = rows.size();
         long startTime = System.currentTimeMillis();
 
@@ -230,8 +208,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher
      * {@inheritDoc}
      */
     @Override
-    public String toString()
-    {
+    public String toString() {
         return String.format("RowIndexSearcher [index=%s, keyspace=%s, table=%s, column=%s]",
                              index.getIndexName(),
                              index.getKeyspaceName(),

@@ -32,8 +32,7 @@ import java.util.Comparator;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class SortField
-{
+public class SortField {
     /** The default reverse option. */
     public static final boolean DEFAULT_REVERSE = false;
 
@@ -52,8 +51,7 @@ public class SortField
      * @param reverse {@code true} if natural order should be reversed.
      */
     @JsonCreator
-    public SortField(@JsonProperty("field") String field, @JsonProperty("reverse") Boolean reverse)
-    {
+    public SortField(@JsonProperty("field") String field, @JsonProperty("reverse") Boolean reverse) {
         this.field = field;
         this.reverse = reverse == null ? DEFAULT_REVERSE : reverse;
     }
@@ -64,19 +62,14 @@ public class SortField
      * @param schema The {@link Schema} to be used.
      * @return the Lucene {@link org.apache.lucene.search.SortField} representing this {@link SortField}.
      */
-    public org.apache.lucene.search.SortField sortField(Schema schema)
-    {
-        if (field == null || field.trim().isEmpty())
-        {
+    public org.apache.lucene.search.SortField sortField(Schema schema) {
+        if (field == null || field.trim().isEmpty()) {
             throw new IllegalArgumentException("Field name required");
         }
-        ColumnMapper<?> columnMapper = schema.getMapper(field);
-        if (columnMapper == null)
-        {
+        ColumnMapper columnMapper = schema.getMapper(field);
+        if (columnMapper == null) {
             throw new IllegalArgumentException("No mapper found for sortFields field " + field);
-        }
-        else
-        {
+        } else {
             return columnMapper.sortField(field, reverse);
         }
     }
@@ -86,31 +79,24 @@ public class SortField
      *
      * @return A Java {@link Comparator} for {@link Columns} with the same logic as this {@link SortField}.
      */
-    public Comparator<Columns> comparator()
-    {
-        return new Comparator<Columns>()
-        {
-            public int compare(Columns o1, Columns o2)
-            {
+    public Comparator<Columns> comparator() {
+        return new Comparator<Columns>() {
+            public int compare(Columns o1, Columns o2) {
 
-                if (o1 == null)
-                {
+                if (o1 == null) {
                     return o2 == null ? 0 : 1;
                 }
-                if (o2 == null)
-                {
+                if (o2 == null) {
                     return -1;
                 }
 
                 Column column1 = o1.getColumn(field);
                 Column column2 = o2.getColumn(field);
 
-                if (column1 == null)
-                {
+                if (column1 == null) {
                     return column2 == null ? 0 : 1;
                 }
-                if (column2 == null)
-                {
+                if (column2 == null) {
                     return -1;
                 }
 
@@ -124,8 +110,7 @@ public class SortField
 
     /** {@inheritDoc} */
     @Override
-    public String toString()
-    {
+    public String toString() {
         return new ToStringBuilder(this).append("field", field).append("reverse", reverse).toString();
     }
 }

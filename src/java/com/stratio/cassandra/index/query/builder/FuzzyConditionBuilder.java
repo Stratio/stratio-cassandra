@@ -22,8 +22,7 @@ import com.stratio.cassandra.index.query.FuzzyCondition;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class FuzzyConditionBuilder extends ConditionBuilder<FuzzyCondition, FuzzyConditionBuilder>
-{
+public class FuzzyConditionBuilder extends ConditionBuilder<FuzzyCondition, FuzzyConditionBuilder> {
     /** The name of the field to be matched. */
     private final String field;
 
@@ -48,8 +47,7 @@ public class FuzzyConditionBuilder extends ConditionBuilder<FuzzyCondition, Fuzz
      * @param field the name of the field to be matched.
      * @param value the value of the field to be matched.
      */
-    protected FuzzyConditionBuilder(String field, String value)
-    {
+    protected FuzzyConditionBuilder(String field, String value) {
         this.field = field;
         this.value = value;
     }
@@ -60,8 +58,7 @@ public class FuzzyConditionBuilder extends ConditionBuilder<FuzzyCondition, Fuzz
      * @param maxEdits The Damerau-Levenshtein max distance.
      * @return This builder with the specified Damerau-Levenshtein max distance.
      */
-    public FuzzyConditionBuilder maxEdits(Integer maxEdits)
-    {
+    public FuzzyConditionBuilder maxEdits(Integer maxEdits) {
         this.maxEdits = maxEdits;
         return this;
     }
@@ -72,8 +69,7 @@ public class FuzzyConditionBuilder extends ConditionBuilder<FuzzyCondition, Fuzz
      * @param prefixLength The length of common (non-fuzzy) prefix.
      * @return This builder with the length of common (non-fuzzy) prefix.
      */
-    public FuzzyConditionBuilder prefixLength(Integer prefixLength)
-    {
+    public FuzzyConditionBuilder prefixLength(Integer prefixLength) {
         this.prefixLength = prefixLength;
         return this;
     }
@@ -84,8 +80,7 @@ public class FuzzyConditionBuilder extends ConditionBuilder<FuzzyCondition, Fuzz
      * @param maxExpansions The maximum number of terms to match.
      * @return This builder with the specified maximum number of terms to match.
      */
-    public FuzzyConditionBuilder maxExpansions(Integer maxExpansions)
-    {
+    public FuzzyConditionBuilder maxExpansions(Integer maxExpansions) {
         this.maxExpansions = maxExpansions;
         return this;
     }
@@ -96,8 +91,7 @@ public class FuzzyConditionBuilder extends ConditionBuilder<FuzzyCondition, Fuzz
      * @param transpositions If transpositions should be treated as a primitive edit operation.
      * @return This builder with the specified  if transpositions should be treated as a primitive edit operation.
      */
-    public FuzzyConditionBuilder transpositions(Boolean transpositions)
-    {
+    public FuzzyConditionBuilder transpositions(Boolean transpositions) {
         this.transpositions = transpositions;
         return this;
     }
@@ -108,8 +102,7 @@ public class FuzzyConditionBuilder extends ConditionBuilder<FuzzyCondition, Fuzz
      * @return The {@link FuzzyCondition} represented by this builder.
      */
     @Override
-    public FuzzyCondition build()
-    {
+    public FuzzyCondition build() {
         return new FuzzyCondition(boost, field, value, maxEdits, prefixLength, maxExpansions, transpositions);
     }
 }

@@ -42,18 +42,16 @@ import java.io.IOException;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
-@JsonSubTypes({
-        @JsonSubTypes.Type(value = BooleanCondition.class, name = "boolean"),
-        @JsonSubTypes.Type(value = FuzzyCondition.class, name = "fuzzy"),
-        @JsonSubTypes.Type(value = LuceneCondition.class, name = "lucene"),
-        @JsonSubTypes.Type(value = MatchCondition.class, name = "match"),
-        @JsonSubTypes.Type(value = RangeCondition.class, name = "range"),
-        @JsonSubTypes.Type(value = PhraseCondition.class, name = "phrase"),
-        @JsonSubTypes.Type(value = PrefixCondition.class, name = "prefix"),
-        @JsonSubTypes.Type(value = RegexpCondition.class, name = "regexp"),
-        @JsonSubTypes.Type(value = WildcardCondition.class, name = "wildcard"),})
-public abstract class Condition
-{
+@JsonSubTypes({@JsonSubTypes.Type(value = BooleanCondition.class, name = "boolean"),
+               @JsonSubTypes.Type(value = FuzzyCondition.class, name = "fuzzy"),
+               @JsonSubTypes.Type(value = LuceneCondition.class, name = "lucene"),
+               @JsonSubTypes.Type(value = MatchCondition.class, name = "match"),
+               @JsonSubTypes.Type(value = RangeCondition.class, name = "range"),
+               @JsonSubTypes.Type(value = PhraseCondition.class, name = "phrase"),
+               @JsonSubTypes.Type(value = PrefixCondition.class, name = "prefix"),
+               @JsonSubTypes.Type(value = RegexpCondition.class, name = "regexp"),
+               @JsonSubTypes.Type(value = WildcardCondition.class, name = "wildcard"),})
+public abstract class Condition {
     /** The default boost to be used. */
     public static final float DEFAULT_BOOST = 1.0f;
 
@@ -68,8 +66,7 @@ public abstract class Condition
      *              weightings) have their score multiplied by {@code boost}.
      */
     @JsonCreator
-    public Condition(@JsonProperty("boost") Float boost)
-    {
+    public Condition(@JsonProperty("boost") Float boost) {
         this.boost = boost == null ? DEFAULT_BOOST : boost;
     }
 
@@ -87,16 +84,13 @@ public abstract class Condition
      * @param schema The schema to be used.
      * @return The Lucene {@link Filter} representation of this condition.
      */
-    public Filter filter(Schema schema)
-    {
+    public Filter filter(Schema schema) {
         return new QueryWrapperFilter(query(schema));
     }
 
-    protected String analyze(String field, String value, ColumnMapper<?> columnMapper)
-    {
+    protected String analyze(String field, String value, ColumnMapper columnMapper) {
         TokenStream source = null;
-        try
-        {
+        try {
             Analyzer analyzer = columnMapper.analyzer();
             source = analyzer.tokenStream(field, value);
             source.reset();
@@ -104,24 +98,18 @@ public abstract class Condition
             TermToBytesRefAttribute termAtt = source.getAttribute(TermToBytesRefAttribute.class);
             BytesRef bytes = termAtt.getBytesRef();
 
-            if (!source.incrementToken())
-            {
+            if (!source.incrementToken()) {
                 return null;
             }
             termAtt.fillBytesRef();
-            if (source.incrementToken())
-            {
+            if (source.incrementToken()) {
                 throw new IllegalArgumentException("analyzer returned too many terms for multiTerm term: " + value);
             }
             source.end();
             return BytesRef.deepCopyOf(bytes).utf8ToString();
-        }
-        catch (IOException e)
-        {
+        } catch (IOException e) {
             throw new RuntimeException("Error analyzing multiTerm term: " + value, e);
-        }
-        finally
-        {
+        } finally {
             IOUtils.closeWhileHandlingException(source);
         }
     }

@@ -36,8 +36,7 @@ import java.util.concurrent.locks.ReentrantLock;
  *
  * @author Yaneeve Shekel & Amir Kirsh
  */
-public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
-{
+public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor {
 
     /**
      * Counts the number of current tasks in process
@@ -77,8 +76,7 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
                                                TimeUnit keepAliveTimeUnit,
                                                long maxBlockingTime,
                                                TimeUnit maxBlockingTimeUnit,
-                                               Callable<Boolean> blockingTimeCallback)
-    {
+                                               Callable<Boolean> blockingTimeCallback) {
 
         super(poolSize, // Core size
               poolSize, // Max size
@@ -103,8 +101,7 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
      * @param keepAliveTime is the amount of time after which an inactive thread is terminated.
      * @param unit          is the unit of time to use with the previous parameter.
      */
-    public NotifyingBlockingThreadPoolExecutor(int poolSize, int queueSize, long keepAliveTime, TimeUnit unit)
-    {
+    public NotifyingBlockingThreadPoolExecutor(int poolSize, int queueSize, long keepAliveTime, TimeUnit unit) {
 
         super(poolSize, // Core size
               poolSize, // Max size
@@ -124,21 +121,15 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
      * @see java.util.concurrent.ThreadPoolExecutor#execute(Runnable)
      */
     @Override
-    public void execute(Runnable task)
-    {
+    public void execute(Runnable task) {
         // count a new task in process
         tasksInProcess.incrementAndGet();
-        try
-        {
+        try {
             super.execute(task);
-        }
-        catch (RuntimeException e)
-        { // specifically handle RejectedExecutionException
+        } catch (RuntimeException e) { // specifically handle RejectedExecutionException
             tasksInProcess.decrementAndGet();
             throw e;
-        }
-        catch (Error e)
-        {
+        } catch (Error e) {
             tasksInProcess.decrementAndGet();
             throw e;
         }
@@ -152,19 +143,16 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
      * @see java.util.concurrent.ThreadPoolExecutor#afterExecute(Runnable, Throwable)
      */
     @Override
-    protected void afterExecute(Runnable r, Throwable t)
-    {
+    protected void afterExecute(Runnable r, Throwable t) {
 
         super.afterExecute(r, t);
 
         // synchronizing on the pool (and actually all its threads)
         // the synchronization is needed to avoid more than one signal if two or more
         // threads decrement almost together and come to the if with 0 tasks together
-        synchronized (this)
-        {
+        synchronized (this) {
             tasksInProcess.decrementAndGet();
-            if (tasksInProcess.intValue() == 0)
-            {
+            if (tasksInProcess.intValue() == 0) {
                 synchronizer.signalAll();
             }
         }
@@ -176,8 +164,7 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
      * @see java.util.concurrent.ThreadPoolExecutor#setCorePoolSize(int)
      */
     @Override
-    public void setCorePoolSize(int corePoolSize)
-    {
+    public void setCorePoolSize(int corePoolSize) {
         super.setCorePoolSize(corePoolSize);
         super.setMaximumPoolSize(corePoolSize);
     }
@@ -189,8 +176,7 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
      * @see java.util.concurrent.ThreadPoolExecutor#setMaximumPoolSize(int)
      */
     @Override
-    public void setMaximumPoolSize(int maximumPoolSize)
-    {
+    public void setMaximumPoolSize(int maximumPoolSize) {
         throw new UnsupportedOperationException("setMaximumPoolSize is not supported.");
     }
 
@@ -201,8 +187,7 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
      * @see java.util.concurrent.ThreadPoolExecutor#setRejectedExecutionHandler(RejectedExecutionHandler)
      */
     @Override
-    public void setRejectedExecutionHandler(RejectedExecutionHandler handler)
-    {
+    public void setRejectedExecutionHandler(RejectedExecutionHandler handler) {
         throw new UnsupportedOperationException("setRejectedExecutionHandler is not allowed on this class.");
     }
 
@@ -216,8 +201,7 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
      *
      * @throws InterruptedException when the internal condition throws it.
      */
-    public void await() throws InterruptedException
-    {
+    public void await() throws InterruptedException {
         synchronizer.await();
     }
 
@@ -229,8 +213,7 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
      * @throws InterruptedException when the internal condition throws it.
      * @see NotifyingBlockingThreadPoolExecutor#await() for more details.
      */
-    public boolean await(long timeout, TimeUnit timeUnit) throws InterruptedException
-    {
+    public boolean await(long timeout, TimeUnit timeUnit) throws InterruptedException {
         return synchronizer.await(timeout, timeUnit);
     }
 
@@ -242,8 +225,7 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
      * This inner class serves to notify all interested parties that the ThreadPoolExecutor has finished running all the
      * tasks given to its execute method.
      */
-    private class Synchronizer
-    {
+    private class Synchronizer {
 
         private final Lock lock = new ReentrantLock();
         private final Condition done = lock.newCondition();
@@ -253,18 +235,14 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
          * This PRIVATE method allows the ThreadPoolExecutor to notify all interested parties that all tasks given to
          * the execute method have run to conclusion.
          */
-        private void signalAll()
-        {
+        private void signalAll() {
 
             lock.lock(); // MUST lock!
-            try
-            {
+            try {
                 isDone = true; // To help the await method ascertain that it has not waken up
                 // 'spuriously'
                 done.signalAll();
-            }
-            finally
-            {
+            } finally {
                 lock.unlock(); // Make sure to unlock even in case of an exception
             }
         }
@@ -275,19 +253,14 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
          * @throws InterruptedException when the internal condition throws it.
          * @see NotifyingBlockingThreadPoolExecutor#await() for details.
          */
-        public void await() throws InterruptedException
-        {
+        public void await() throws InterruptedException {
 
             lock.lock(); // MUST lock!
-            try
-            {
-                while (!isDone)
-                { // Ascertain that this is not a 'spurious wake-up'
+            try {
+                while (!isDone) { // Ascertain that this is not a 'spurious wake-up'
                     done.await();
                 }
-            }
-            finally
-            {
+            } finally {
                 isDone = false; // for next time
                 lock.unlock(); // Make sure to unlock even in case of an exception
             }
@@ -300,18 +273,14 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
          * @throws InterruptedException when the internal condition throws it.
          * @see NotifyingBlockingThreadPoolExecutor#await(long, TimeUnit) for details.
          */
-        public boolean await(long timeout, TimeUnit timeUnit) throws InterruptedException
-        {
+        public boolean await(long timeout, TimeUnit timeUnit) throws InterruptedException {
 
             boolean await_result = false;
             lock.lock(); // MUST lock!
             boolean localIsDone;
-            try
-            {
+            try {
                 await_result = done.await(timeout, timeUnit);
-            }
-            finally
-            {
+            } finally {
                 localIsDone = isDone;
                 isDone = false; // for next time
                 lock.unlock(); // Make sure to unlock even in case of an exception
@@ -334,8 +303,7 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
      * invoking the BlockingQueue's put method (instead of the offer method that is used by the standard implementation
      * of the ThreadPoolExecutor - see the opened Java 6 source code).
      */
-    private static class BlockThenRunPolicy implements RejectedExecutionHandler
-    {
+    private static class BlockThenRunPolicy implements RejectedExecutionHandler {
 
         private long maxBlockingTime;
         private TimeUnit maxBlockingTimeUnit;
@@ -343,15 +311,13 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
 
         public BlockThenRunPolicy(long maxBlockingTime,
                                   TimeUnit maxBlockingTimeUnit,
-                                  Callable<Boolean> blockingTimeCallback)
-        {
+                                  Callable<Boolean> blockingTimeCallback) {
             this.maxBlockingTime = maxBlockingTime;
             this.maxBlockingTimeUnit = maxBlockingTimeUnit;
             this.blockingTimeCallback = blockingTimeCallback;
         }
 
-        public BlockThenRunPolicy()
-        {
+        public BlockThenRunPolicy() {
             // just keep the maxBlocking gang all null / 0
         }
 
@@ -362,70 +328,53 @@ public class NotifyingBlockingThreadPoolExecutor extends ThreadPoolExecutor
          * @see java.util.concurrent.RejectedExecutionHandler#rejectedExecution(Runnable, ThreadPoolExecutor)
          */
         @Override
-        public void rejectedExecution(Runnable task, ThreadPoolExecutor executor)
-        {
+        public void rejectedExecution(Runnable task, ThreadPoolExecutor executor) {
 
             BlockingQueue<Runnable> workQueue = executor.getQueue();
             boolean taskSent = false;
 
-            while (!taskSent)
-            {
+            while (!taskSent) {
 
-                if (executor.isShutdown())
-                {
+                if (executor.isShutdown()) {
                     throw new RejectedExecutionException(
                             "ThreadPoolExecutor has shutdown while attempting to offer a new task.");
                 }
 
-                try
-                {
+                try {
                     // check whether to offer (blocking) with a timeout or without
-                    if (blockingTimeCallback != null)
-                    {
+                    if (blockingTimeCallback != null) {
                         // put on the queue and block if no room is available, with a timeout
                         // the result of the call to offer says whether the task was accepted or not
-                        if (workQueue.offer(task, maxBlockingTime, maxBlockingTimeUnit))
-                        {
+                        if (workQueue.offer(task, maxBlockingTime, maxBlockingTimeUnit)) {
                             // task accepted
                             taskSent = true;
-                        }
-                        else
-                        {
+                        } else {
                             // task was not accepted - call the Callback
                             Boolean result = null;
-                            try
-                            {
+                            try {
                                 result = blockingTimeCallback.call();
-                            }
-                            catch (Exception e)
-                            {
+                            } catch (Exception e) {
                                 // we got an exception from the Callback, wrap it and throw
                                 throw new RejectedExecutionException(e);
                             }
                             // if result if false we need to throw an exception
                             // otherwise, just continue with the loop
-                            if (result == false)
-                            {
+                            if (result == false) {
                                 throw new RejectedExecutionException("User decided to stop waiting for task insertion");
-                            }
-                            else
-                            {
+                            } else {
                                 continue;
                             }
                         }
 
                     }
                     // no timeout
-                    else
-                    {
+                    else {
                         // just send the task (blocking, if the queue is full)
                         workQueue.put(task);
                         // task accepted
                         taskSent = true;
                     }
-                }
-                catch (InterruptedException e)
-                {
+                } catch (InterruptedException e) {
                     // someone woke us up and we need to go back to the offer/put call...
                 }
             } // end of while for InterruptedException

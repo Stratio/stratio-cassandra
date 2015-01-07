@@ -15,7 +15,7 @@
  */
 package com.stratio.cassandra.index.query;
 
-import com.stratio.cassandra.index.schema.ColumnMapper;
+import com.stratio.cassandra.index.schema.ColumnMapperSingle;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.index.Term;
@@ -33,8 +33,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class WildcardCondition extends Condition
-{
+public class WildcardCondition extends SingleFieldCondition {
     /** The name of the field to be matched. */
     @JsonProperty("field")
     private final String field;
@@ -55,8 +54,7 @@ public class WildcardCondition extends Condition
     @JsonCreator
     public WildcardCondition(@JsonProperty("boost") Float boost,
                              @JsonProperty("field") String field,
-                             @JsonProperty("value") String value)
-    {
+                             @JsonProperty("value") String value) {
         super(boost);
 
         this.field = field;
@@ -65,32 +63,22 @@ public class WildcardCondition extends Condition
 
     /** {@inheritDoc} */
     @Override
-    public Query query(Schema schema)
-    {
+    public Query query(Schema schema) {
 
-        if (field == null || field.trim().isEmpty())
-        {
+        if (field == null || field.trim().isEmpty()) {
             throw new IllegalArgumentException("Field name required");
         }
-        if (value == null || value.trim().isEmpty())
-        {
+        if (value == null || value.trim().isEmpty()) {
             throw new IllegalArgumentException("Field value required");
         }
 
-        ColumnMapper<?> columnMapper = schema.getMapper(field);
-        if (columnMapper == null)
-        {
-            throw new IllegalArgumentException("Not found mapper for field " + field);
-        }
+        ColumnMapperSingle<?> columnMapper = getMapper(schema, field);
         Class<?> clazz = columnMapper.baseClass();
         Query query;
-        if (clazz == String.class)
-        {
+        if (clazz == String.class) {
             Term term = new Term(field, value);
             query = new WildcardQuery(term);
-        }
-        else
-        {
+        } else {
             String message = String.format("Wildcard queries are not supported by %s mapper", clazz.getSimpleName());
             throw new UnsupportedOperationException(message);
         }
@@ -100,8 +88,7 @@ public class WildcardCondition extends Condition
 
     /** {@inheritDoc} */
     @Override
-    public String toString()
-    {
+    public String toString() {
         return new ToStringBuilder(this).append("field", field).append("value", value).toString();
     }
 }

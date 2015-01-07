@@ -24,8 +24,7 @@ import java.nio.ByteBuffer;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-class Base256Serializer
-{
+class Base256Serializer {
 
     /**
      * Returns the {@code char} array representation of the specified {@code byte} array.
@@ -33,11 +32,9 @@ class Base256Serializer
      * @param bytes The {@code byte} array to be converted.
      * @return The {@code char} array representation of the specified {@code byte} array.
      */
-    private static char[] chars(byte[] bytes)
-    {
+    private static char[] chars(byte[] bytes) {
         char[] chars = new char[bytes.length];
-        for (int i = 0; i < bytes.length; i++)
-        {
+        for (int i = 0; i < bytes.length; i++) {
             int pos = bytes[i] & 0xff;
             chars[i] = (char) pos;
         }
@@ -50,11 +47,9 @@ class Base256Serializer
      * @param chars The {@code char} array to be converted.
      * @return The {@code byte} array representation of the specified {@code char} array.
      */
-    private static byte[] bytes(char[] chars)
-    {
+    private static byte[] bytes(char[] chars) {
         byte[] bytes = new byte[chars.length];
-        for (int i = 0; i < bytes.length; i++)
-        {
+        for (int i = 0; i < bytes.length; i++) {
             char c = chars[i];
             bytes[i] = (byte) c;
         }
@@ -67,8 +62,7 @@ class Base256Serializer
      * @param string The {@code String} to be converted.
      * @return The {@code byte} array representation of the specified {@code String}.
      */
-    private static byte[] bytes(String string)
-    {
+    private static byte[] bytes(String string) {
         return bytes(string.toCharArray());
     }
 
@@ -78,8 +72,7 @@ class Base256Serializer
      * @param byteBuffer The {@code ByteBuffer} to be converted.
      * @return The {@code String} representation of the specified {@code ByteBuffer}.
      */
-    public static String string(ByteBuffer byteBuffer)
-    {
+    public static String string(ByteBuffer byteBuffer) {
         ByteBuffer bb = ByteBufferUtil.clone(byteBuffer);
         byte[] bytes = new byte[bb.remaining()];
         bb.get(bytes);
@@ -92,8 +85,7 @@ class Base256Serializer
      * @param string The {@code String} to be converted.
      * @return The {@code ByteBuffer} representation of the specified {@code String}.
      */
-    public static ByteBuffer byteBuffer(String string)
-    {
+    public static ByteBuffer byteBuffer(String string) {
         return ByteBuffer.wrap(bytes(string));
     }
 }

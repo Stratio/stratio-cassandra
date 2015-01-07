@@ -29,7 +29,7 @@ import java.util.*;
 
 public class ColumnMapperUUIDTest {
 
-    @Test()
+    @Test
     public void testValueNull() {
         ColumnMapperUUID mapper = new ColumnMapperUUID();
         String parsed = mapper.indexValue("test", null);
@@ -131,7 +131,7 @@ public class ColumnMapperUUIDTest {
     public void testParseJSON() throws IOException {
         String json = "{fields:{age:{type:\"uuid\"}}}";
         Schema schema = Schema.fromJson(json);
-        ColumnMapper<?> columnMapper = schema.getMapper("age");
+        ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNotNull(columnMapper);
         Assert.assertEquals(ColumnMapperUUID.class, columnMapper.getClass());
     }
@@ -140,7 +140,7 @@ public class ColumnMapperUUIDTest {
     public void testParseJSONEmpty() throws IOException {
         String json = "{fields:{}}";
         Schema schema = Schema.fromJson(json);
-        ColumnMapper<?> columnMapper = schema.getMapper("age");
+        ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNull(columnMapper);
     }
 

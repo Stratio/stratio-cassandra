@@ -24,7 +24,6 @@ import java.util.Comparator;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public interface RowComparator extends Comparator<Row>
-{
+public interface RowComparator extends Comparator<Row> {
 
 }

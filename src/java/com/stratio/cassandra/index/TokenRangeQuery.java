@@ -31,8 +31,7 @@ import java.io.IOException;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class TokenRangeQuery extends MultiTermQuery
-{
+public class TokenRangeQuery extends MultiTermQuery {
     /** The token mapper. */
     private final TokenMapperGeneric tokenMapper;
 
@@ -61,8 +60,7 @@ public class TokenRangeQuery extends MultiTermQuery
                            Token upper,
                            boolean includeLower,
                            boolean includeUpper,
-                           TokenMapperGeneric tokenMapper)
-    {
+                           TokenMapperGeneric tokenMapper) {
         super(TokenMapperGeneric.FIELD_NAME);
         this.tokenMapper = tokenMapper;
         this.lower = lower;
@@ -73,16 +71,14 @@ public class TokenRangeQuery extends MultiTermQuery
 
     /** {@inheritDoc} */
     @Override
-    protected TermsEnum getTermsEnum(Terms terms, AttributeSource atts) throws IOException
-    {
+    protected TermsEnum getTermsEnum(Terms terms, AttributeSource atts) throws IOException {
         TermsEnum termsEnum = terms.iterator(null);
         return new TokenDataRangeFilteredTermsEnum(termsEnum);
     }
 
     /** {@inheritDoc} */
     @Override
-    public String toString(String field)
-    {
+    public String toString(String field) {
         return new ToStringBuilder(this).append("field", field)
                                         .append("lower", lower)
                                         .append("upper", upper)
@@ -94,16 +90,14 @@ public class TokenRangeQuery extends MultiTermQuery
     /**
      * {@link FilteredTermsEnum} for generic tokens.
      */
-    private class TokenDataRangeFilteredTermsEnum extends FilteredTermsEnum
-    {
+    private class TokenDataRangeFilteredTermsEnum extends FilteredTermsEnum {
 
         /**
          * Builds a new {@link TokenDataRangeFilteredTermsEnum} for the specified {@link TermsEnum}.
          *
          * @param termsEnum The {@link TermsEnum} to be filtered.
          */
-        public TokenDataRangeFilteredTermsEnum(TermsEnum termsEnum)
-        {
+        public TokenDataRangeFilteredTermsEnum(TermsEnum termsEnum) {
             super(termsEnum);
             setInitialSeekTerm(new BytesRef());
         }
@@ -111,19 +105,13 @@ public class TokenRangeQuery extends MultiTermQuery
         /** {@inheritDoc} */
         @Override
         @SuppressWarnings("unchecked")
-        protected AcceptStatus accept(BytesRef term)
-        {
+        protected AcceptStatus accept(BytesRef term) {
             Token token = tokenMapper.token(term);
-            if (includeLower ? token.compareTo(lower) < 0 : token.compareTo(lower) <= 0)
-            {
+            if (includeLower ? token.compareTo(lower) < 0 : token.compareTo(lower) <= 0) {
                 return AcceptStatus.NO;
-            }
-            else if (includeUpper ? token.compareTo(upper) > 0 : token.compareTo(upper) >= 0)
-            {
+            } else if (includeUpper ? token.compareTo(upper) > 0 : token.compareTo(upper) >= 0) {
                 return AcceptStatus.NO;
-            }
-            else
-            {
+            } else {
                 return AcceptStatus.YES;
             }
         }

@@ -150,7 +150,7 @@ public class ColumnMapperFloatTest
     {
         String json = "{fields:{age:{type:\"float\"}}}";
         Schema schema = Schema.fromJson(json);
-        ColumnMapper<?> columnMapper = schema.getMapper("age");
+        ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNotNull(columnMapper);
         Assert.assertEquals(ColumnMapperFloat.class, columnMapper.getClass());
     }
@@ -160,7 +160,7 @@ public class ColumnMapperFloatTest
     {
         String json = "{fields:{}}";
         Schema schema = Schema.fromJson(json);
-        ColumnMapper<?> columnMapper = schema.getMapper("age");
+        ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNull(columnMapper);
     }
 
