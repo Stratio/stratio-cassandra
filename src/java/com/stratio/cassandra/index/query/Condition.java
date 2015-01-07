@@ -50,7 +50,8 @@ import java.io.IOException;
                @JsonSubTypes.Type(value = PhraseCondition.class, name = "phrase"),
                @JsonSubTypes.Type(value = PrefixCondition.class, name = "prefix"),
                @JsonSubTypes.Type(value = RegexpCondition.class, name = "regexp"),
-               @JsonSubTypes.Type(value = WildcardCondition.class, name = "wildcard"),})
+               @JsonSubTypes.Type(value = WildcardCondition.class, name = "wildcard"),
+               @JsonSubTypes.Type(value = SpatialCondition.class, name = "spatial"),})
 public abstract class Condition {
     /** The default boost to be used. */
     public static final float DEFAULT_BOOST = 1.0f;

@@ -27,6 +27,7 @@ import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.util.Version;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
@@ -136,7 +137,7 @@ public class Schema {
             String name = column.getName();
             ColumnMapper columnMapper = getMapper(name);
             if (columnMapper != null) {
-                for (Field field : columnMapper.fields(column)) {
+                for (IndexableField field : columnMapper.fields(column)) {
                     document.add(field);
                 }
             }
