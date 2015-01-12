@@ -127,8 +127,8 @@ public class RowIndex extends PerRowSecondaryIndex {
                 rowService.index(key, columnFamily, timestamp);
             }
         } catch (RuntimeException e) {
-            // Ignore errors
-            Log.error(e, "Ignoring error while indexing row %s", key);
+            Log.error("Error while indexing row %s", key);
+            throw e;
         } finally {
             lock.readLock().unlock();
         }

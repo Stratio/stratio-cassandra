@@ -105,6 +105,7 @@
 
     <!-- Apache Lucene-->
     <property name="lucene.version" value="4.8.1"/>
+    <property name="spatial4j.version" value="0.4.1"/>
 
     <condition property="maven-ant-tasks.jar.exists">
       <available file="${build.dir}/maven-ant-tasks-${maven-ant-tasks.version}.jar" />
@@ -531,8 +532,9 @@
         <dependency groupId="org.apache.lucene" artifactId="lucene-codecs" version="${lucene.version}" />
         <dependency groupId="org.apache.lucene" artifactId="lucene-misc" version="${lucene.version}" />
         <dependency groupId="org.apache.lucene" artifactId="lucene-queries" version="${lucene.version}" />
-        <dependency groupId="org.apache.lucene" artifactId="lucene-queryparser" version="${lucene.version}" />
         <dependency groupId="org.apache.lucene" artifactId="lucene-analyzers-common" version="${lucene.version}" />
+        <dependency groupId="org.apache.lucene" artifactId="lucene-spatial" version="${lucene.version}" />
+        <dependency groupId="com.spatial4j" artifactId="spatial4j" version="${spatial4j.version}" />
       </artifact:pom>
       <artifact:pom id="thrift-pom"
                     artifactId="cassandra-thrift"

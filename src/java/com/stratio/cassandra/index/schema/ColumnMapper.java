@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.schema;
 
+import com.stratio.cassandra.index.geospatial.GeoShapeMapper;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.ListType;
 import org.apache.cassandra.db.marshal.MapType;
@@ -23,6 +24,7 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.core.KeywordAnalyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.search.SortField;
 import org.codehaus.jackson.annotate.JsonSubTypes;
 import org.codehaus.jackson.annotate.JsonTypeInfo;
@@ -47,7 +49,8 @@ import java.util.Set;
                @JsonSubTypes.Type(value = ColumnMapperText.class, name = "text"),
                @JsonSubTypes.Type(value = ColumnMapperUUID.class, name = "uuid"),
                @JsonSubTypes.Type(value = ColumnMapperBigDecimal.class, name = "bigdec"),
-               @JsonSubTypes.Type(value = ColumnMapperBigInteger.class, name = "bigint"),})
+               @JsonSubTypes.Type(value = ColumnMapperBigInteger.class, name = "bigint"),
+               @JsonSubTypes.Type(value = GeoShapeMapper.class, name = "geo_shape"),})
 public abstract class ColumnMapper {
 
     /** A no-action analyzer for not tokenized {@link ColumnMapper} implementations. */
@@ -64,7 +67,7 @@ public abstract class ColumnMapper {
      *
      * @param supportedTypes The supported Cassandra types for indexing.
      */
-    ColumnMapper(AbstractType<?>[] supportedTypes) {
+    protected ColumnMapper(AbstractType<?>[] supportedTypes) {
         this.supportedTypes = supportedTypes;
     }
 
@@ -81,7 +84,7 @@ public abstract class ColumnMapper {
      * @param column The name of the {@link Column}.
      * @return The Lucene {@link Field}s resulting from the mapping of the specified {@link Column}.
      */
-    public abstract Set<Field> fields(Column column);
+    public abstract Set<IndexableField> fields(Column column);
 
     /**
      * Returns the {@link SortField} resulting from the mapping of the specified object.

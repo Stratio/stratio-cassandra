@@ -15,8 +15,12 @@
  */
 package com.stratio.cassandra.index.query;
 
+import com.stratio.cassandra.index.geospatial.GeoBBoxCondition;
+import com.stratio.cassandra.index.geospatial.GeoDistanceCondition;
+import com.stratio.cassandra.index.geospatial.GeoDistanceRangeCondition;
 import com.stratio.cassandra.index.schema.ColumnMapper;
 import com.stratio.cassandra.index.schema.Schema;
+import com.stratio.cassandra.index.geospatial.GeoShapeCondition;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
@@ -50,7 +54,11 @@ import java.io.IOException;
                @JsonSubTypes.Type(value = PhraseCondition.class, name = "phrase"),
                @JsonSubTypes.Type(value = PrefixCondition.class, name = "prefix"),
                @JsonSubTypes.Type(value = RegexpCondition.class, name = "regexp"),
-               @JsonSubTypes.Type(value = WildcardCondition.class, name = "wildcard"),})
+               @JsonSubTypes.Type(value = WildcardCondition.class, name = "wildcard"),
+               @JsonSubTypes.Type(value = GeoShapeCondition.class, name = "geo_shape"),
+               @JsonSubTypes.Type(value = GeoDistanceCondition.class, name = "geo_distance"),
+               @JsonSubTypes.Type(value = GeoDistanceRangeCondition.class, name = "geo_distance_range"),
+               @JsonSubTypes.Type(value = GeoBBoxCondition.class, name = "geo_bounding_box"),})
 public abstract class Condition {
     /** The default boost to be used. */
     public static final float DEFAULT_BOOST = 1.0f;

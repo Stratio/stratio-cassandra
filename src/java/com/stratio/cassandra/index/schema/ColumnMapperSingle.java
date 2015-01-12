@@ -17,9 +17,11 @@ package com.stratio.cassandra.index.schema;
 
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.search.SortField;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -61,9 +63,11 @@ public abstract class ColumnMapperSingle<BASE> extends ColumnMapper {
         return false;
     }
 
-    public Set<Field> fields(Column column) {
+    public Set<IndexableField> fields(Column column) {
         Field field = field(column.getFieldName(), column.getValue());
-        return Collections.singleton(field);
+        Set<IndexableField> set = new HashSet<>();
+        set.add(field);
+        return set;
     }
 
     /**
