@@ -1,5 +1,5 @@
 /*
- * Copyright 2014, Stratio.
+ * Copyright 2015, Stratio.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,8 +24,7 @@ import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
 /**
- * A {@link com.stratio.cassandra.index.query.Condition} implementation that matches documents containing a value for a
- * field.
+ * A {@link Condition} that matches documents containing a shape contained between two certain circles.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */

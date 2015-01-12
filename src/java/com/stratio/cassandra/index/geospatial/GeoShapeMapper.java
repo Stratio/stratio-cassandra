@@ -1,5 +1,5 @@
 /*
- * Copyright 2014, Stratio.
+ * Copyright 2015, Stratio.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,9 +28,7 @@ import org.apache.lucene.search.SortField.Type;
 import org.apache.lucene.spatial.SpatialStrategy;
 import org.apache.lucene.spatial.prefix.RecursivePrefixTreeStrategy;
 import org.apache.lucene.spatial.prefix.tree.GeohashPrefixTree;
-import org.apache.lucene.spatial.prefix.tree.QuadPrefixTree;
 import org.apache.lucene.spatial.prefix.tree.SpatialPrefixTree;
-import org.apache.lucene.spatial.prefix.tree.SpatialPrefixTreeFactory;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
@@ -40,7 +38,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * A {@link com.stratio.cassandra.index.schema.ColumnMapper} to map a long field.
+ * A {@link ColumnMapper} to map geographical shapes.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
@@ -75,7 +73,7 @@ public class GeoShapeMapper extends ColumnMapper {
         String fieldName = column.getFieldName();
         SpatialStrategy strategy = getStrategy(fieldName);
         Set<IndexableField> fields = new HashSet<>();
-        GeoShape shape = GeoShape.fromString((String) column.getValue());
+        GeoShape shape = GeoShape.fromJson((String) column.getValue());
         for (IndexableField field : strategy.createIndexableFields(shape.toSpatial4j(spatialContext))) {
             fields.add(field);
         }

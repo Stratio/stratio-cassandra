@@ -1,5 +1,5 @@
 /*
- * Copyright 2014, Stratio.
+ * Copyright 2015, Stratio.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,21 +15,14 @@
  */
 package com.stratio.cassandra.index.geospatial;
 
-import com.spatial4j.core.context.SpatialContext;
-import com.spatial4j.core.distance.DistanceUtils;
 import com.stratio.cassandra.index.query.Condition;
-import com.stratio.cassandra.index.schema.ColumnMapper;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.spatial.SpatialStrategy;
-import org.apache.lucene.spatial.query.SpatialArgs;
-import org.apache.lucene.spatial.query.SpatialOperation;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
 /**
- * A {@link com.stratio.cassandra.index.query.Condition} implementation that matches documents containing a value for a
- * field.
+ * A {@link Condition} that matches documents containing a shape contained in a certain circle.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
