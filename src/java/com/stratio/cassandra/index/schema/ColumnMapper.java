@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.schema;
 
+import com.stratio.cassandra.index.geospatial.GeoShapeMapper;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.ListType;
 import org.apache.cassandra.db.marshal.MapType;
@@ -49,7 +50,7 @@ import java.util.Set;
                @JsonSubTypes.Type(value = ColumnMapperUUID.class, name = "uuid"),
                @JsonSubTypes.Type(value = ColumnMapperBigDecimal.class, name = "bigdec"),
                @JsonSubTypes.Type(value = ColumnMapperBigInteger.class, name = "bigint"),
-               @JsonSubTypes.Type(value = ColumnMapperShape.class, name = "shape"),})
+               @JsonSubTypes.Type(value = GeoShapeMapper.class, name = "geo_shape"),})
 public abstract class ColumnMapper {
 
     /** A no-action analyzer for not tokenized {@link ColumnMapper} implementations. */
@@ -66,7 +67,7 @@ public abstract class ColumnMapper {
      *
      * @param supportedTypes The supported Cassandra types for indexing.
      */
-    ColumnMapper(AbstractType<?>[] supportedTypes) {
+    protected ColumnMapper(AbstractType<?>[] supportedTypes) {
         this.supportedTypes = supportedTypes;
     }
 

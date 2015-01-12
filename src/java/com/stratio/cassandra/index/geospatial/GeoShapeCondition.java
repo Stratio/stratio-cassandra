@@ -13,13 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.stratio.cassandra.index.query;
+package com.stratio.cassandra.index.geospatial;
 
 import com.spatial4j.core.context.SpatialContext;
+import com.stratio.cassandra.index.query.Condition;
 import com.stratio.cassandra.index.schema.ColumnMapper;
-import com.stratio.cassandra.index.schema.ColumnMapperShape;
 import com.stratio.cassandra.index.schema.Schema;
-import com.stratio.cassandra.index.spatial.Shape;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.spatial.SpatialStrategy;
 import org.apache.lucene.spatial.query.SpatialArgs;
@@ -33,19 +32,16 @@ import org.codehaus.jackson.annotate.JsonProperty;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class SpatialCondition extends Condition {
+public class GeoShapeCondition extends Condition {
 
     /** The name of the field to be matched. */
-    @JsonProperty("field")
     private final String field;
 
     /** The name of the field to be matched. */
-    @JsonProperty("operation")
-    private final String operation;
+    private final GeoOperator operator;
 
     /** The value of the field to be matched. */
-    @JsonProperty("shape")
-    private Shape shape;
+    private GeoShape shape;
 
     /**
      * Constructor using the field name and the value to be matched.
@@ -57,14 +53,14 @@ public class SpatialCondition extends Condition {
      * @param shape The shape to be matched.
      */
     @JsonCreator
-    public SpatialCondition(@JsonProperty("boost") Float boost,
-                            @JsonProperty("field") String field,
-                            @JsonProperty("operation") String operation,
-                            @JsonProperty("shape") Shape shape) {
+    public GeoShapeCondition(@JsonProperty("boost") Float boost,
+                             @JsonProperty("field") String field,
+                             @JsonProperty("operator") GeoOperator operator,
+                             @JsonProperty("shape") GeoShape shape) {
         super(boost);
         this.field = field;
         this.shape = shape;
-        this.operation = operation;
+        this.operator = operator;
     }
 
     /** {@inheritDoc} */
@@ -75,57 +71,32 @@ public class SpatialCondition extends Condition {
             throw new IllegalArgumentException("Field name required");
         }
         if (shape == null) {
-            throw new IllegalArgumentException("Field value required");
+            throw new IllegalArgumentException("Geo shape required");
         }
-        if (operation == null) {
-            throw new IllegalArgumentException("Operation required");
-        }
-
-        SpatialOperation spatialOperation = spatialOperation();
-        if (spatialOperation == null) {
-            throw new IllegalArgumentException("Operation is invalid");
+        if (operator == null) {
+            throw new IllegalArgumentException("Geo operator required");
         }
 
         ColumnMapper columnMapper = schema.getMapper(field);
-        if (columnMapper == null || !(columnMapper instanceof ColumnMapperShape)) {
+        if (columnMapper == null || !(columnMapper instanceof GeoShapeMapper)) {
             throw new IllegalArgumentException("Not mapper found");
         }
-        ColumnMapperShape mapper = (ColumnMapperShape) columnMapper;
+        GeoShapeMapper mapper = (GeoShapeMapper) columnMapper;
+
         SpatialContext spatialContext = mapper.getSpatialContext();
         SpatialStrategy spatialStrategy = mapper.getStrategy(field);
-        SpatialArgs args = new SpatialArgs(spatialOperation, shape.toSpatial4j(spatialContext));
+        SpatialArgs args = new SpatialArgs(operator.getSpatialOperation(), shape.toSpatial4j(spatialContext));
         Query query = spatialStrategy.makeQuery(args);
         query.setBoost(boost);
         return query;
     }
 
-    private SpatialOperation spatialOperation() {
-        switch (operation.toLowerCase()) {
-            case "bboxwithin":
-                return SpatialOperation.BBoxWithin;
-            case "contains":
-                return SpatialOperation.Contains;
-            case "intersects":
-                return SpatialOperation.Intersects;
-            case "isequalto":
-                return SpatialOperation.IsEqualTo;
-            case "isdisjointto":
-                return SpatialOperation.IsDisjointTo;
-            case "iswithin":
-                return SpatialOperation.IsWithin;
-            case "overlaps":
-                return SpatialOperation.Overlaps;
-            default:
-                return null;
-        }
-    }
-
     /** {@inheritDoc} */
     @Override
     public String toString() {
-        final StringBuilder sb = new StringBuilder("SpatialCondition{");
+        final StringBuilder sb = new StringBuilder("GeoShapeCondition{");
         sb.append("field='").append(field).append('\'');
-        sb.append(", operation='").append(operation).append('\'');
+        sb.append(", operation='").append(operator).append('\'');
         sb.append(", shape=").append(shape);
         sb.append('}');
         return sb.toString();

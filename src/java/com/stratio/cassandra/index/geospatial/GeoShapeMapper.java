@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.stratio.cassandra.index.schema;
+package com.stratio.cassandra.index.geospatial;
 
 import com.spatial4j.core.context.SpatialContext;
-import com.stratio.cassandra.index.spatial.Shape;
+import com.stratio.cassandra.index.schema.Column;
+import com.stratio.cassandra.index.schema.ColumnMapper;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.UTF8Type;
-import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.search.SortField;
@@ -28,9 +28,11 @@ import org.apache.lucene.search.SortField.Type;
 import org.apache.lucene.spatial.SpatialStrategy;
 import org.apache.lucene.spatial.prefix.RecursivePrefixTreeStrategy;
 import org.apache.lucene.spatial.prefix.tree.GeohashPrefixTree;
+import org.apache.lucene.spatial.prefix.tree.QuadPrefixTree;
 import org.apache.lucene.spatial.prefix.tree.SpatialPrefixTree;
-import org.apache.lucene.spatial.query.SpatialOperation;
+import org.apache.lucene.spatial.prefix.tree.SpatialPrefixTreeFactory;
 import org.codehaus.jackson.annotate.JsonCreator;
+import org.codehaus.jackson.annotate.JsonProperty;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -42,19 +44,24 @@ import java.util.Set;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ColumnMapperShape extends ColumnMapper {
+public class GeoShapeMapper extends ColumnMapper {
 
-    private SpatialContext ctx = SpatialContext.GEO;
-    private int maxLevels = 11;
-    private SpatialPrefixTree grid = new GeohashPrefixTree(ctx, maxLevels);
-    private Map<String, SpatialStrategy> strategies = new HashMap<>();
+    public static final SpatialContext spatialContext = SpatialContext.GEO;
+    public static final int DEFAULT_MAX_LEVELS = 11;
+
+    private final int maxLevels;
+    private final SpatialPrefixTree grid;
+
+    private final Map<String, SpatialStrategy> strategies = new HashMap<>();
 
     /**
-     * Builds a new {@link ColumnMapperShape}.
+     * Builds a new {@link GeoShapeMapper}.
      */
     @JsonCreator
-    public ColumnMapperShape() {
+    public GeoShapeMapper(@JsonProperty("max_levels") Integer maxLevels) {
         super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance});
+        this.maxLevels = maxLevels == null ? DEFAULT_MAX_LEVELS : maxLevels;
+        this.grid = new GeohashPrefixTree(spatialContext, this.maxLevels);
     }
 
     /** {@inheritDoc} */
@@ -68,8 +75,8 @@ public class ColumnMapperShape extends ColumnMapper {
         String fieldName = column.getFieldName();
         SpatialStrategy strategy = getStrategy(fieldName);
         Set<IndexableField> fields = new HashSet<>();
-        Shape shape = Shape.fromString((String) column.getValue());
-        for (IndexableField field : strategy.createIndexableFields(shape.toSpatial4j(ctx))) {
+        GeoShape shape = GeoShape.fromString((String) column.getValue());
+        for (IndexableField field : strategy.createIndexableFields(shape.toSpatial4j(spatialContext))) {
             fields.add(field);
         }
         return fields;
@@ -84,7 +91,7 @@ public class ColumnMapperShape extends ColumnMapper {
     }
 
     public SpatialContext getSpatialContext() {
-        return ctx;
+        return spatialContext;
     }
 
     /** {@inheritDoc} */
@@ -96,6 +103,9 @@ public class ColumnMapperShape extends ColumnMapper {
     /** {@inheritDoc} */
     @Override
     public String toString() {
-        return new ToStringBuilder(this).toString();
+        final StringBuilder sb = new StringBuilder("ColumnMapperShape{");
+        sb.append("maxLevels=").append(maxLevels);
+        sb.append('}');
+        return sb.toString();
     }
 }
