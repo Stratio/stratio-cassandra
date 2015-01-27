@@ -56,6 +56,10 @@ public class LuceneIndex {
 
     private Sort sort;
 
+    static {
+        BooleanQuery.setMaxClauseCount(Integer.MAX_VALUE);
+    }
+
     /**
      * Builds a new {@code RowDirectory} using the specified directory path and analyzer.
      *
