@@ -18,9 +18,9 @@ package com.stratio.cassandra.index.query;
 import com.stratio.cassandra.index.geospatial.GeoBBoxCondition;
 import com.stratio.cassandra.index.geospatial.GeoDistanceCondition;
 import com.stratio.cassandra.index.geospatial.GeoDistanceRangeCondition;
+import com.stratio.cassandra.index.geospatial.GeoShapeCondition;
 import com.stratio.cassandra.index.schema.ColumnMapper;
 import com.stratio.cassandra.index.schema.Schema;
-import com.stratio.cassandra.index.geospatial.GeoShapeCondition;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
@@ -39,14 +39,16 @@ import java.io.IOException;
 /**
  * The abstract base class for queries.
  * <p/>
- * Known subclasses are: <ul> <li> {@link BooleanCondition} <li> {@link FuzzyCondition} <li> {@link MatchCondition} <li>
- * {@link PhraseCondition} <li> {@link PrefixCondition} <li> {@link RangeCondition} <li> {@link WildcardCondition}
- * </ul>
+ * Known subclasses are: <ul> <li> {@link BooleanCondition} <li> {@link ContainsCondition} <li> {@link FuzzyCondition}
+ * <li> {@link MatchCondition} <li> {@link PhraseCondition} <li> {@link PrefixCondition} <li> {@link RangeCondition}
+ * <li> {@link WildcardCondition} <li> {@link GeoShapeCondition} <li> {@link GeoDistanceCondition} <li> {@link
+ * GeoDistanceRangeCondition} <li> {@link GeoBBoxCondition} </ul>
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 @JsonSubTypes({@JsonSubTypes.Type(value = BooleanCondition.class, name = "boolean"),
+               @JsonSubTypes.Type(value = ContainsCondition.class, name = "contains"),
                @JsonSubTypes.Type(value = FuzzyCondition.class, name = "fuzzy"),
                @JsonSubTypes.Type(value = LuceneCondition.class, name = "lucene"),
                @JsonSubTypes.Type(value = MatchCondition.class, name = "match"),
