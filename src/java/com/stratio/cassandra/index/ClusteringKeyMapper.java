@@ -100,13 +100,8 @@ public abstract class ClusteringKeyMapper {
     }
 
     public final CellName clusteringKey(ColumnFamily columnFamily) {
-        for (Cell cell : columnFamily) {
-            CellName cellName = cell.name();
-            if (isClusteringKey(cellName)) {
-                return cellName;
-            }
-        }
-        return null;
+        Iterator<Cell> iterator = columnFamily.iterator();
+        return iterator.hasNext() ? clusteringKey(iterator.next().name()) : null;
     }
 
     /**
@@ -153,23 +148,6 @@ public abstract class ClusteringKeyMapper {
     }
 
     /**
-     * Returns {@code true} if the specified {@link CellName} is a valid clustering key, {@code false} otherwise.
-     *
-     * @param cellName A {@link CellName}.
-     * @return {@code true} if the specified {@link CellName} is a valid clustering key, {@code false} otherwise.
-     */
-    protected final boolean isClusteringKey(CellName cellName) {
-        int numClusteringColumns = metadata.clusteringColumns().size();
-        for (int i = 0; i < numClusteringColumns; i++) {
-            if (ByteBufferUtils.isEmpty(cellName.get(i))) // Ignore static columns
-            {
-                return false;
-            }
-        }
-        return ByteBufferUtils.isEmpty(cellName.get(numClusteringColumns));
-    }
-
-    /**
      * Returns the storage engine column name for the specified column identifier using the specified clustering key.
      *
      * @param cellName         The clustering key.
@@ -206,6 +184,16 @@ public abstract class ClusteringKeyMapper {
         String string = bytesRef.utf8ToString();
         ByteBuffer bb = ByteBufferUtils.fromString(string);
         return cellNameType.cellFromByteBuffer(bb);
+    }
+
+    public final CellName clusteringKey(CellName cellName) {
+        CBuilder builder = cellNameType.builder();
+        for (int i = 0; i < metadata.clusteringColumns().size(); i++) {
+            ByteBuffer component = cellName.get(i);
+            builder.add(component);
+        }
+        Composite prefix = builder.build();
+        return cellNameType.rowMarker(prefix);
     }
 
     /**
@@ -254,21 +242,16 @@ public abstract class ClusteringKeyMapper {
 
     public final Map<CellName, ColumnFamily> splitRows(ColumnFamily columnFamily) {
         Map<CellName, ColumnFamily> columnFamilies = new LinkedHashMap<>();
-        ColumnFamily rowColumnFamily = null;
-        CellName clusteringKey = null;
         for (Cell cell : columnFamily) {
             CellName cellName = cell.name();
-            if (isClusteringKey(cellName)) {
-                if (rowColumnFamily != null) {
-                    columnFamilies.put(clusteringKey, rowColumnFamily);
-                }
-                clusteringKey = cellName;
+            CellName clusteringKey = clusteringKey(cellName);
+            ColumnFamily rowColumnFamily = columnFamilies.get(clusteringKey);
+            if (rowColumnFamily == null) {
                 rowColumnFamily = ArrayBackedSortedColumns.factory.create(metadata);
+                columnFamilies.put(clusteringKey, rowColumnFamily);
             }
             rowColumnFamily.addColumn(cell);
-        }
-        if (rowColumnFamily != null) {
-            columnFamilies.put(clusteringKey, rowColumnFamily);
+
         }
         return columnFamilies;
     }
