@@ -173,7 +173,7 @@ public class ColumnMapperBooleanTest
     {
         String json = "{fields:{age:{type:\"boolean\"}}}";
         Schema schema = Schema.fromJson(json);
-        ColumnMapper<?> columnMapper = schema.getMapper("age");
+        ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNotNull(columnMapper);
         Assert.assertEquals(ColumnMapperBoolean.class, columnMapper.getClass());
     }
@@ -183,7 +183,7 @@ public class ColumnMapperBooleanTest
     {
         String json = "{fields:{}}";
         Schema schema = Schema.fromJson(json);
-        ColumnMapper<?> columnMapper = schema.getMapper("age");
+        ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNull(columnMapper);
     }
 

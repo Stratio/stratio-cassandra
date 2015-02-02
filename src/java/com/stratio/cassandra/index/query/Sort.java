@@ -28,8 +28,8 @@ import java.util.List;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class Sort implements Iterable<SortField>
-{
+public class Sort implements Iterable<SortField> {
+
     /** How to sortFields each field. */
     private final List<SortField> sortFields;
 
@@ -39,15 +39,13 @@ public class Sort implements Iterable<SortField>
      * @param sortFields The specified {@link SortField}s.
      */
     @JsonCreator
-    public Sort(@JsonProperty("fields") List<SortField> sortFields)
-    {
+    public Sort(@JsonProperty("fields") List<SortField> sortFields) {
         this.sortFields = sortFields;
     }
 
     /** {@inheritDoc} */
     @Override
-    public Iterator<SortField> iterator()
-    {
+    public Iterator<SortField> iterator() {
         return sortFields.iterator();
     }
 
@@ -56,8 +54,7 @@ public class Sort implements Iterable<SortField>
      *
      * @return The {@link SortField}s to be used.
      */
-    public List<SortField> getSortFields()
-    {
+    public List<SortField> getSortFields() {
         return sortFields;
     }
 
@@ -67,11 +64,9 @@ public class Sort implements Iterable<SortField>
      * @param schema The {@link Schema} to be used.
      * @return the Lucene {@link Sort} representing this {@link Sort}.
      */
-    public org.apache.lucene.search.Sort sort(Schema schema)
-    {
+    public org.apache.lucene.search.Sort sort(Schema schema) {
         org.apache.lucene.search.SortField[] sortFields = new org.apache.lucene.search.SortField[this.sortFields.size()];
-        for (int i = 0; i < this.sortFields.size(); i++)
-        {
+        for (int i = 0; i < this.sortFields.size(); i++) {
             sortFields[i] = this.sortFields.get(i).sortField(schema);
         }
         return new org.apache.lucene.search.Sort(sortFields);
@@ -79,8 +74,7 @@ public class Sort implements Iterable<SortField>
 
     /** {@inheritDoc} */
     @Override
-    public String toString()
-    {
+    public String toString() {
         return new ToStringBuilder(this).append("sortFields", sortFields).toString();
     }
 }

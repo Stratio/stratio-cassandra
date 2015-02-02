@@ -151,7 +151,7 @@ public class ColumnMapperIntegerTest
     {
         String json = "{fields:{age:{type:\"integer\"}}}";
         Schema schema = Schema.fromJson(json);
-        ColumnMapper<?> columnMapper = schema.getMapper("age");
+        ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNotNull(columnMapper);
         Assert.assertEquals(ColumnMapperInteger.class, columnMapper.getClass());
     }
@@ -161,7 +161,7 @@ public class ColumnMapperIntegerTest
     {
         String json = "{fields:{}}";
         Schema schema = Schema.fromJson(json);
-        ColumnMapper<?> columnMapper = schema.getMapper("age");
+        ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNull(columnMapper);
     }
 

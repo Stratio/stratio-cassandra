@@ -177,7 +177,7 @@ public class ColumnMapperBlobTest
     {
         String json = "{fields:{age:{type:\"bytes\"}}}";
         Schema schema = Schema.fromJson(json);
-        ColumnMapper<?> columnMapper = schema.getMapper("age");
+        ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNotNull(columnMapper);
         Assert.assertEquals(ColumnMapperBlob.class, columnMapper.getClass());
     }
@@ -187,7 +187,7 @@ public class ColumnMapperBlobTest
     {
         String json = "{fields:{}}";
         Schema schema = Schema.fromJson(json);
-        ColumnMapper<?> columnMapper = schema.getMapper("age");
+        ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNull(columnMapper);
     }
 

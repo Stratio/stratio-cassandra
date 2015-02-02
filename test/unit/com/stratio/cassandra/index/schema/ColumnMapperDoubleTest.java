@@ -149,7 +149,7 @@ public class ColumnMapperDoubleTest
     {
         String json = "{fields:{age:{type:\"double\"}}}";
         Schema schema = Schema.fromJson(json);
-        ColumnMapper<?> columnMapper = schema.getMapper("age");
+        ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNotNull(columnMapper);
         Assert.assertEquals(ColumnMapperDouble.class, columnMapper.getClass());
     }
@@ -159,7 +159,7 @@ public class ColumnMapperDoubleTest
     {
         String json = "{fields:{}}";
         Schema schema = Schema.fromJson(json);
-        ColumnMapper<?> columnMapper = schema.getMapper("age");
+        ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNull(columnMapper);
     }
 

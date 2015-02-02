@@ -160,7 +160,7 @@ public class ColumnMapperInetTest
     {
         String json = "{fields:{age:{type:\"inet\"}}}";
         Schema schema = Schema.fromJson(json);
-        ColumnMapper<?> columnMapper = schema.getMapper("age");
+        ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNotNull(columnMapper);
         Assert.assertEquals(ColumnMapperInet.class, columnMapper.getClass());
     }
@@ -170,7 +170,7 @@ public class ColumnMapperInetTest
     {
         String json = "{fields:{}}";
         Schema schema = Schema.fromJson(json);
-        ColumnMapper<?> columnMapper = schema.getMapper("age");
+        ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNull(columnMapper);
     }
 

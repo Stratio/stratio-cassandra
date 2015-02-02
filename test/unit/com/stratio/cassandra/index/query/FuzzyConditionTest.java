@@ -39,7 +39,7 @@ public class FuzzyConditionTest extends AbstractConditionTest
     public void testFuzzyQuery()
     {
 
-        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperBoolean());
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 

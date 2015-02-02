@@ -22,8 +22,8 @@ import com.stratio.cassandra.index.query.SortField;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class SortFieldBuilder implements Builder<SortField>
-{
+public class SortFieldBuilder implements Builder<SortField> {
+
     /** The name of the field to be used for sort. */
     private final String field;
 
@@ -35,8 +35,7 @@ public class SortFieldBuilder implements Builder<SortField>
      *
      * @param field The name of the field to be used for sort.
      */
-    public SortFieldBuilder(String field)
-    {
+    public SortFieldBuilder(String field) {
         this.field = field;
         this.reverse = SortField.DEFAULT_REVERSE;
     }
@@ -46,16 +45,14 @@ public class SortFieldBuilder implements Builder<SortField>
      *
      * @param reverse {@code true} if natural order should be reversed.
      */
-    public SortFieldBuilder reverse(boolean reverse)
-    {
+    public SortFieldBuilder reverse(boolean reverse) {
         this.reverse = reverse;
         return this;
     }
 
     /** {@inheritDoc} */
     @Override
-    public SortField build()
-    {
+    public SortField build() {
         return new SortField(field, reverse);
     }
 }

@@ -30,8 +30,8 @@ import org.codehaus.jackson.annotate.JsonProperty;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ColumnMapperDouble extends ColumnMapper<Double>
-{
+public class ColumnMapperDouble extends ColumnMapperSingle<Double> {
+
     /** The default boost. */
     public static final Float DEFAULT_BOOST = 1.0f;
 
@@ -40,57 +40,44 @@ public class ColumnMapperDouble extends ColumnMapper<Double>
 
     /**
      * Builds a new {@link ColumnMapperDouble} using the specified boost.
+     *
      * @param boost The boost to be used.
      */
     @JsonCreator
-    public ColumnMapperDouble(@JsonProperty("boost") Float boost)
-    {
-        super(new AbstractType<?>[]{
-                AsciiType.instance,
-                UTF8Type.instance,
-                Int32Type.instance,
-                LongType.instance,
-                IntegerType.instance,
-                FloatType.instance,
-                DoubleType.instance,
-                DecimalType.instance}, new AbstractType[]{DoubleType.instance});
+    public ColumnMapperDouble(@JsonProperty("boost") Float boost) {
+        super(new AbstractType<?>[]{AsciiType.instance,
+                                    UTF8Type.instance,
+                                    Int32Type.instance,
+                                    LongType.instance,
+                                    IntegerType.instance,
+                                    FloatType.instance,
+                                    DoubleType.instance,
+                                    DecimalType.instance}, new AbstractType[]{DoubleType.instance});
         this.boost = boost == null ? DEFAULT_BOOST : boost;
     }
 
     /** {@inheritDoc} */
     @Override
-    public Analyzer analyzer()
-    {
+    public Analyzer analyzer() {
         return EMPTY_ANALYZER;
     }
 
     /** {@inheritDoc} */
     @Override
-    public Double indexValue(String name, Object value)
-    {
-        if (value == null)
-        {
+    public Double indexValue(String name, Object value) {
+        if (value == null) {
             return null;
-        }
-        else if (value instanceof Number)
-        {
+        } else if (value instanceof Number) {
             return ((Number) value).doubleValue();
-        }
-        else if (value instanceof String)
-        {
+        } else if (value instanceof String) {
             String svalue = (String) value;
-            try
-            {
+            try {
                 return Double.valueOf(svalue);
-            }
-            catch (NumberFormatException e)
-            {
+            } catch (NumberFormatException e) {
                 String message = String.format("Field %s requires a base 10 double, but found \"%s\"", name, svalue);
                 throw new IllegalArgumentException(message);
             }
-        }
-        else
-        {
+        } else {
             String message = String.format("Field %s requires a base 10 double, but found \"%s\"", name, value);
             throw new IllegalArgumentException(message);
         }
@@ -98,15 +85,13 @@ public class ColumnMapperDouble extends ColumnMapper<Double>
 
     /** {@inheritDoc} */
     @Override
-    public Double queryValue(String name, Object value)
-    {
+    public Double queryValue(String name, Object value) {
         return indexValue(name, value);
     }
 
     /** {@inheritDoc} */
     @Override
-    public Field field(String name, Object value)
-    {
+    public Field field(String name, Object value) {
         Double number = indexValue(name, value);
         Field field = new DoubleField(name, number, STORE);
         field.setBoost(boost);
@@ -115,22 +100,19 @@ public class ColumnMapperDouble extends ColumnMapper<Double>
 
     /** {@inheritDoc} */
     @Override
-    public SortField sortField(String field, boolean reverse)
-    {
+    public SortField sortField(String field, boolean reverse) {
         return new SortField(field, Type.DOUBLE, reverse);
     }
 
     /** {@inheritDoc} */
     @Override
-    public Class<Double> baseClass()
-    {
+    public Class<Double> baseClass() {
         return Double.class;
     }
 
     /** {@inheritDoc} */
     @Override
-    public String toString()
-    {
+    public String toString() {
         return new ToStringBuilder(this).append("boost", boost).toString();
     }
 }

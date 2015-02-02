@@ -42,8 +42,8 @@ import static org.apache.lucene.search.BooleanClause.Occur.SHOULD;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class RowMapperWide extends RowMapper
-{
+public class RowMapperWide extends RowMapper {
+
     /** The clustering key mapper. */
     private final ClusteringKeyMapper clusteringKeyMapper;
 
@@ -58,8 +58,7 @@ public class RowMapperWide extends RowMapper
      * @param columnDefinition The indexed column definition.
      * @param schema           The mapping {@link Schema}.
      */
-    RowMapperWide(CFMetaData metadata, ColumnDefinition columnDefinition, Schema schema)
-    {
+    RowMapperWide(CFMetaData metadata, ColumnDefinition columnDefinition, Schema schema) {
         super(metadata, columnDefinition, schema);
         this.clusteringKeyMapper = ClusteringKeyMapper.instance(metadata, schema);
         this.fullKeyMapper = FullKeyMapper.instance(partitionKeyMapper, clusteringKeyMapper);
@@ -69,8 +68,7 @@ public class RowMapperWide extends RowMapper
      * {@inheritDoc}
      */
     @Override
-    public Columns columns(Row row)
-    {
+    public Columns columns(Row row) {
         Columns columns = new Columns();
         columns.addAll(partitionKeyMapper.columns(row));
         columns.addAll(clusteringKeyMapper.columns(row));
@@ -82,8 +80,7 @@ public class RowMapperWide extends RowMapper
      * {@inheritDoc}
      */
     @Override
-    public Document document(Row row)
-    {
+    public Document document(Row row) {
         DecoratedKey partitionKey = row.key;
         CellName clusteringKey = clusteringKeyMapper.clusteringKey(row);
 
@@ -101,8 +98,7 @@ public class RowMapperWide extends RowMapper
      *
      * @return The Lucene {@link Sort} to get {@link Document}s in the same order that is used in Cassandra.
      */
-    public Sort sort()
-    {
+    public Sort sort() {
         SortField[] partitionKeySort = tokenMapper.sortFields();
         SortField[] clusteringKeySort = clusteringKeyMapper.sortFields();
         return new Sort(ArrayUtils.addAll(partitionKeySort, clusteringKeySort));
@@ -112,8 +108,7 @@ public class RowMapperWide extends RowMapper
      * {@inheritDoc}
      */
     @Override
-    public CellName makeCellName(ColumnFamily columnFamily)
-    {
+    public CellName makeCellName(ColumnFamily columnFamily) {
         CellName clusteringKey = clusteringKey(columnFamily);
         return clusteringKeyMapper.makeCellName(clusteringKey, columnDefinition);
     }
@@ -122,8 +117,7 @@ public class RowMapperWide extends RowMapper
      * {@inheritDoc}
      */
     @Override
-    public RowComparator naturalComparator()
-    {
+    public RowComparator naturalComparator() {
         return new RowComparatorNatural(clusteringKeyMapper);
     }
 
@@ -133,8 +127,7 @@ public class RowMapperWide extends RowMapper
      * @param columnFamily A {@link ColumnFamily}.
      * @return The first clustering key contained in the specified {@link ColumnFamily}.
      */
-    public CellName clusteringKey(ColumnFamily columnFamily)
-    {
+    public CellName clusteringKey(ColumnFamily columnFamily) {
         return clusteringKeyMapper.clusteringKey(columnFamily);
     }
 
@@ -144,8 +137,7 @@ public class RowMapperWide extends RowMapper
      * @param columnFamily A {@link ColumnFamily}.
      * @return All the clustering keys contained in the specified {@link ColumnFamily}.
      */
-    public List<CellName> clusteringKeys(ColumnFamily columnFamily)
-    {
+    public List<CellName> clusteringKeys(ColumnFamily columnFamily) {
         return clusteringKeyMapper.clusteringKeys(columnFamily);
     }
 
@@ -158,8 +150,7 @@ public class RowMapperWide extends RowMapper
      * @return The Lucene {@link Term} to get the {@link Document}s containing the specified decorated partition key and
      * clustering key.
      */
-    public Term term(DecoratedKey partitionKey, CellName clusteringKey)
-    {
+    public Term term(DecoratedKey partitionKey, CellName clusteringKey) {
         return fullKeyMapper.term(partitionKey, clusteringKey);
     }
 
@@ -169,8 +160,7 @@ public class RowMapperWide extends RowMapper
      * @param dataRange A {@link DataRange}.
      * @return The Lucene {@link Filter} to get the {@link Document}s satisfying the specified {@link DataRange}.
      */
-    public Query query(DataRange dataRange)
-    {
+    public Query query(DataRange dataRange) {
         RowPosition startPosition = dataRange.startKey();
         RowPosition stopPosition = dataRange.stopKey();
         Token startToken = startPosition.getToken();
@@ -180,13 +170,10 @@ public class RowMapperWide extends RowMapper
         boolean includeStart = tokenMapper.includeStart(startPosition);
         boolean includeStop = tokenMapper.includeStop(stopPosition);
 
-        SliceQueryFilter sqf = null;
-        if (startPosition instanceof DecoratedKey)
-        {
+        SliceQueryFilter sqf;
+        if (startPosition instanceof DecoratedKey) {
             sqf = (SliceQueryFilter) dataRange.columnFilter(((DecoratedKey) startPosition).getKey());
-        }
-        else
-        {
+        } else {
             sqf = (SliceQueryFilter) dataRange.columnFilter(ByteBufferUtil.EMPTY_BYTE_BUFFER);
         }
         Composite startName = sqf.start();
@@ -194,8 +181,7 @@ public class RowMapperWide extends RowMapper
 
         BooleanQuery query = new BooleanQuery();
 
-        if (!startName.isEmpty())
-        {
+        if (!startName.isEmpty()) {
             BooleanQuery q = new BooleanQuery();
             q.add(tokenMapper.query(startToken), MUST);
             q.add(clusteringKeyMapper.query(startName, null), MUST);
@@ -203,8 +189,7 @@ public class RowMapperWide extends RowMapper
             includeStart = false;
         }
 
-        if (!stopName.isEmpty())
-        {
+        if (!stopName.isEmpty()) {
             BooleanQuery q = new BooleanQuery();
             q.add(tokenMapper.query(stopToken), MUST);
             q.add(clusteringKeyMapper.query(null, stopName), MUST);
@@ -212,13 +197,10 @@ public class RowMapperWide extends RowMapper
             includeStop = false;
         }
 
-        if (!isSameToken)
-        {
+        if (!isSameToken) {
             Query rangeQuery = tokenMapper.query(startToken, stopToken, includeStart, includeStop);
             if (rangeQuery != null) query.add(rangeQuery, SHOULD);
-        }
-        else if (query.getClauses().length == 0)
-        {
+        } else if (query.getClauses().length == 0) {
             return tokenMapper.query(startToken);
         }
 
@@ -234,8 +216,7 @@ public class RowMapperWide extends RowMapper
      * @return The Lucene {@link Query} to get the {@link Document}s satisfying the specified partition key and {@link
      * RangeTombstone}.
      */
-    public Query query(DecoratedKey partitionKey, RangeTombstone rangeTombstone)
-    {
+    public Query query(DecoratedKey partitionKey, RangeTombstone rangeTombstone) {
         BooleanQuery query = new BooleanQuery();
         query.add(partitionKeyMapper.query(partitionKey), MUST);
         query.add(clusteringKeyMapper.query(rangeTombstone.min, rangeTombstone.max), MUST);
@@ -250,8 +231,7 @@ public class RowMapperWide extends RowMapper
      * @return The array of {@link ColumnSlice}s for selecting the logic CQL3 row identified by the specified clustering
      * keys.
      */
-    public ColumnSlice[] columnSlices(List<CellName> clusteringKeys)
-    {
+    public ColumnSlice[] columnSlices(List<CellName> clusteringKeys) {
         return clusteringKeyMapper.columnSlices(clusteringKeys);
     }
 
@@ -261,19 +241,25 @@ public class RowMapperWide extends RowMapper
      * @param columnFamily A physical {@link ColumnFamily}.
      * @return The logical CQL3 column families contained in the specified physical {@link ColumnFamily}.
      */
-    public Map<CellName, ColumnFamily> splitRows(ColumnFamily columnFamily)
-    {
+    public Map<CellName, ColumnFamily> splitRows(ColumnFamily columnFamily) {
         return clusteringKeyMapper.splitRows(columnFamily);
     }
 
-    public String toString(CellName cellName)
-    {
+    /**
+     * Returns the {@code String} human-readable representation of the specified cell name.
+     *
+     * @param cellName A cell name.
+     * @return The {@code String} human-readable representation of the specified cell name.
+     */
+    public String toString(CellName cellName) {
         return clusteringKeyMapper.toString(cellName);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public SearchResult searchResult(Document document, ScoreDoc scoreDoc)
-    {
+    public SearchResult searchResult(Document document, ScoreDoc scoreDoc) {
         DecoratedKey partitionKey = partitionKeyMapper.partitionKey(document);
         CellName clusteringKey = clusteringKeyMapper.clusteringKey(document);
         return new SearchResult(partitionKey, clusteringKey, scoreDoc);

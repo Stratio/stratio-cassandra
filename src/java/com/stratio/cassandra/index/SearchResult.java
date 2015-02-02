@@ -24,16 +24,11 @@ import org.apache.lucene.search.ScoreDoc;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class SearchResult
-{
-    /** The partition key. */
-    private final DecoratedKey partitionKey;
+public class SearchResult {
 
-    /** The clustering key. */
-    private final CellName clusteringKey;
-
-    /** The search hit info. */
-    private final ScoreDoc scoreDoc;
+    private final DecoratedKey partitionKey; // The partition key
+    private final CellName clusteringKey; // The clustering key
+    private final ScoreDoc scoreDoc; // The search hit info
 
     /**
      * Builds a new {@link SearchResult} for the specified CQL3 row key and search hit info.
@@ -42,8 +37,7 @@ public class SearchResult
      * @param clusteringKey The clustering key.
      * @param scoreDoc      The search hit info.
      */
-    public SearchResult(DecoratedKey partitionKey, CellName clusteringKey, ScoreDoc scoreDoc)
-    {
+    public SearchResult(DecoratedKey partitionKey, CellName clusteringKey, ScoreDoc scoreDoc) {
         this.partitionKey = partitionKey;
         this.clusteringKey = clusteringKey;
         this.scoreDoc = scoreDoc;
@@ -54,8 +48,7 @@ public class SearchResult
      *
      * @return The partition key.
      */
-    public DecoratedKey getPartitionKey()
-    {
+    public DecoratedKey getPartitionKey() {
         return partitionKey;
     }
 
@@ -64,8 +57,7 @@ public class SearchResult
      *
      * @return The clustering key.
      */
-    public CellName getClusteringKey()
-    {
+    public CellName getClusteringKey() {
         return clusteringKey;
     }
 
@@ -74,8 +66,7 @@ public class SearchResult
      *
      * @return The search {@link ScoreDoc}.
      */
-    public ScoreDoc getScoreDoc()
-    {
+    public ScoreDoc getScoreDoc() {
         return scoreDoc;
     }
 
@@ -84,15 +75,13 @@ public class SearchResult
      *
      * @return The search numeric score.
      */
-    public Float getScore()
-    {
+    public Float getScore() {
         return scoreDoc.score;
     }
 
     /** {@inheritDoc} */
     @Override
-    public boolean equals(Object o)
-    {
+    public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
@@ -103,8 +92,7 @@ public class SearchResult
 
     /** {@inheritDoc} */
     @Override
-    public int hashCode()
-    {
+    public int hashCode() {
         return scoreDoc.doc;
     }
 }

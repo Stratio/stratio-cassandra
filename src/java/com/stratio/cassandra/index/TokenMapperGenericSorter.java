@@ -30,8 +30,8 @@ import java.io.IOException;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class TokenMapperGenericSorter extends FieldComparator<BytesRef>
-{
+public class TokenMapperGenericSorter extends FieldComparator<BytesRef> {
+
     private static final byte[] MISSING_BYTES = new byte[0];
 
     /** The PartitionKeyComparator to be used. */
@@ -52,8 +52,7 @@ public class TokenMapperGenericSorter extends FieldComparator<BytesRef>
      * @param numHits            The number of hits.
      * @param field              The field name.
      */
-    public TokenMapperGenericSorter(TokenMapperGeneric tokenMapperGeneric, int numHits, String field)
-    {
+    public TokenMapperGenericSorter(TokenMapperGeneric tokenMapperGeneric, int numHits, String field) {
         this.tokenMapperGeneric = tokenMapperGeneric;
         values = new BytesRef[numHits];
         this.field = field;
@@ -61,20 +60,15 @@ public class TokenMapperGenericSorter extends FieldComparator<BytesRef>
 
     /** {@inheritDoc} */
     @Override
-    public int compare(int slot1, int slot2)
-    {
+    public int compare(int slot1, int slot2) {
         final BytesRef val1 = values[slot1];
         final BytesRef val2 = values[slot2];
-        if (val1 == null)
-        {
-            if (val2 == null)
-            {
+        if (val1 == null) {
+            if (val2 == null) {
                 return 0;
             }
             return -1;
-        }
-        else if (val2 == null)
-        {
+        } else if (val2 == null) {
             return 1;
         }
         return compare(val1, val2);
@@ -82,23 +76,17 @@ public class TokenMapperGenericSorter extends FieldComparator<BytesRef>
 
     /** {@inheritDoc} */
     @Override
-    public int compareBottom(int doc)
-    {
+    public int compareBottom(int doc) {
         docTerms.get(doc, tempBR);
-        if (tempBR.length == 0 && !docsWithField.get(doc))
-        {
+        if (tempBR.length == 0 && !docsWithField.get(doc)) {
             tempBR.bytes = MISSING_BYTES;
         }
-        if (bottom.bytes == MISSING_BYTES)
-        {
-            if (tempBR.bytes == MISSING_BYTES)
-            {
+        if (bottom.bytes == MISSING_BYTES) {
+            if (tempBR.bytes == MISSING_BYTES) {
                 return 0;
             }
             return -1;
-        }
-        else if (tempBR.bytes == MISSING_BYTES)
-        {
+        } else if (tempBR.bytes == MISSING_BYTES) {
             return 1;
         }
         return compare(bottom, tempBR);
@@ -106,23 +94,19 @@ public class TokenMapperGenericSorter extends FieldComparator<BytesRef>
 
     /** {@inheritDoc} */
     @Override
-    public void copy(int slot, int doc)
-    {
-        if (values[slot] == null)
-        {
+    public void copy(int slot, int doc) {
+        if (values[slot] == null) {
             values[slot] = new BytesRef();
         }
         docTerms.get(doc, values[slot]);
-        if (values[slot].length == 0 && !docsWithField.get(doc))
-        {
+        if (values[slot].length == 0 && !docsWithField.get(doc)) {
             values[slot].bytes = MISSING_BYTES;
         }
     }
 
     /** {@inheritDoc} */
     @Override
-    public FieldComparator<BytesRef> setNextReader(AtomicReaderContext context) throws IOException
-    {
+    public FieldComparator<BytesRef> setNextReader(AtomicReaderContext context) throws IOException {
         docTerms = FieldCache.DEFAULT.getTerms(context.reader(), field, true);
         docsWithField = FieldCache.DEFAULT.getDocsWithField(context.reader(), field);
         return this;
@@ -130,32 +114,25 @@ public class TokenMapperGenericSorter extends FieldComparator<BytesRef>
 
     /** {@inheritDoc} */
     @Override
-    public void setBottom(final int bottom)
-    {
+    public void setBottom(final int bottom) {
         this.bottom = values[bottom];
     }
 
     /** {@inheritDoc} */
     @Override
-    public BytesRef value(int slot)
-    {
+    public BytesRef value(int slot) {
         return values[slot];
     }
 
     /** {@inheritDoc} */
     @Override
-    public int compareValues(BytesRef val1, BytesRef val2)
-    {
-        if (val1 == null)
-        {
-            if (val2 == null)
-            {
+    public int compareValues(BytesRef val1, BytesRef val2) {
+        if (val1 == null) {
+            if (val2 == null) {
                 return 0;
             }
             return -1;
-        }
-        else if (val2 == null)
-        {
+        } else if (val2 == null) {
             return 1;
         }
         return compare(val1, val2);
@@ -163,11 +140,9 @@ public class TokenMapperGenericSorter extends FieldComparator<BytesRef>
 
     /** {@inheritDoc} */
     @Override
-    public int compareTop(int doc)
-    {
+    public int compareTop(int doc) {
         docTerms.get(doc, tempBR);
-        if (tempBR.length == 0 && !docsWithField.get(doc))
-        {
+        if (tempBR.length == 0 && !docsWithField.get(doc)) {
             tempBR.bytes = MISSING_BYTES;
         }
         return compare(tempBR, topValue);
@@ -175,8 +150,7 @@ public class TokenMapperGenericSorter extends FieldComparator<BytesRef>
 
     /** {@inheritDoc} */
     @Override
-    public void setTopValue(BytesRef value)
-    {
+    public void setTopValue(BytesRef value) {
         topValue = value;
     }
 
@@ -190,8 +164,7 @@ public class TokenMapperGenericSorter extends FieldComparator<BytesRef>
      * than the second.
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private int compare(BytesRef value1, BytesRef value2)
-    {
+    private int compare(BytesRef value1, BytesRef value2) {
         Token t1 = tokenMapperGeneric.token(value1);
         Token t2 = tokenMapperGeneric.token(value2);
         return t1.compareTo(t2);

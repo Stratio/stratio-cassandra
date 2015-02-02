@@ -28,12 +28,9 @@ import java.util.Map;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public final class AnalyzerFactory
-{
+public final class AnalyzerFactory {
 
-    /**
-     * Analyzers cache, actually mocked without any eviction.
-     */
+    /** Analyzers cache, actually mocked without any eviction. */
     private static Map<String, Analyzer> analyzers = new LinkedHashMap<>();
 
     /**
@@ -43,23 +40,18 @@ public final class AnalyzerFactory
      * @param analyzerClassName The analyzer class name.
      * @return The {@link Analyzer} identified by the specified class name.
      */
-    public static Analyzer getAnalyzer(String analyzerClassName)
-    {
+    public static Analyzer getAnalyzer(String analyzerClassName) {
         Analyzer analyzer = analyzers.get(analyzerClassName);
-        if (analyzer != null)
-        {
+        if (analyzer != null) {
             return analyzer;
         }
-        try
-        {
+        try {
             Class<?> analyzerClass = Class.forName(analyzerClassName);
             Constructor<?> constructor = analyzerClass.getConstructor(Version.class);
             analyzer = (Analyzer) constructor.newInstance(Version.LUCENE_48);
             analyzers.put(analyzerClassName, analyzer);
             return analyzer;
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             throw new IllegalArgumentException("Analyzer not found: " + analyzerClassName, e);
         }
     }
@@ -67,10 +59,8 @@ public final class AnalyzerFactory
     /**
      * Closes all the cached analyzers.
      */
-    public static void closeAll()
-    {
-        for (Analyzer analyzer : analyzers.values())
-        {
+    public static void closeAll() {
+        for (Analyzer analyzer : analyzers.values()) {
             analyzer.close();
         }
         analyzers.clear();

@@ -19,9 +19,9 @@ import com.stratio.cassandra.index.query.Search;
 import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.schema.Schema;
-import com.stratio.cassandra.index.util.Log;
-import com.stratio.cassandra.index.util.TaskQueue;
-import com.stratio.cassandra.index.util.TimeCounter;
+import com.stratio.cassandra.util.Log;
+import com.stratio.cassandra.util.TaskQueue;
+import com.stratio.cassandra.util.TimeCounter;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.cql3.ColumnIdentifier;
@@ -41,8 +41,7 @@ import java.util.*;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public abstract class RowService
-{
+public abstract class RowService {
 
     protected final ColumnFamilyStore baseCfs;
     protected final RowMapper rowMapper;
@@ -65,8 +64,7 @@ public abstract class RowService
      * @param baseCfs          The base column family store.
      * @param columnDefinition The indexed column definition.
      */
-    protected RowService(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition)
-    {
+    protected RowService(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) {
 
         this.baseCfs = baseCfs;
         this.metadata = baseCfs.metadata;
@@ -86,12 +84,9 @@ public abstract class RowService
                                            schema.analyzer());
 
         int indexingThreads = config.getIndexingThreads();
-        if (indexingThreads > 0)
-        {
+        if (indexingThreads > 0) {
             this.indexQueue = new TaskQueue(indexingThreads, config.getIndexingQueuesSize());
-        }
-        else
-        {
+        } else {
             this.indexQueue = null;
         }
     }
@@ -103,15 +98,11 @@ public abstract class RowService
      * @param columnDefinition The {@link ColumnDefinition} of the indexed column.
      * @return A new {@link RowService} for the specified {@link ColumnFamilyStore} and {@link ColumnDefinition}.
      */
-    public static RowService build(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition)
-    {
+    public static RowService build(ColumnFamilyStore baseCfs, ColumnDefinition columnDefinition) {
         int clusteringPosition = baseCfs.metadata.clusteringColumns().size();
-        if (clusteringPosition > 0)
-        {
+        if (clusteringPosition > 0) {
             return new RowServiceWide(baseCfs, columnDefinition);
-        }
-        else
-        {
+        } else {
             return new RowServiceSkinny(baseCfs, columnDefinition);
         }
     }
@@ -121,8 +112,7 @@ public abstract class RowService
      *
      * @return The used {@link Schema}.
      */
-    protected final Schema getSchema()
-    {
+    protected final Schema getSchema() {
         return schema;
     }
 
@@ -143,19 +133,13 @@ public abstract class RowService
      * @param columnFamily A {@link ColumnFamily} with a single common cluster key.
      * @param timestamp    The insertion time.
      */
-    protected void index(final ByteBuffer key, final ColumnFamily columnFamily, final long timestamp)
-    {
-        if (indexQueue == null)
-        {
+    protected void index(final ByteBuffer key, final ColumnFamily columnFamily, final long timestamp) {
+        if (indexQueue == null) {
             indexInner(key, columnFamily, timestamp);
-        }
-        else
-        {
-            indexQueue.submitAsynchronous(key, new Runnable()
-            {
+        } else {
+            indexQueue.submitAsynchronous(key, new Runnable() {
                 @Override
-                public void run()
-                {
+                public void run() {
                     indexInner(key, columnFamily, timestamp);
                 }
             });
@@ -177,19 +161,13 @@ public abstract class RowService
      *
      * @param partitionKey The partition key identifying the partition to be deleted.
      */
-    public void delete(final DecoratedKey partitionKey)
-    {
-        if (indexQueue == null)
-        {
+    public void delete(final DecoratedKey partitionKey) {
+        if (indexQueue == null) {
             deleteInner(partitionKey);
-        }
-        else
-        {
-            indexQueue.submitAsynchronous(partitionKey, new Runnable()
-            {
+        } else {
+            indexQueue.submitAsynchronous(partitionKey, new Runnable() {
                 @Override
-                public void run()
-                {
+                public void run() {
                     deleteInner(partitionKey);
                 }
             });
@@ -206,35 +184,27 @@ public abstract class RowService
     /**
      * Deletes all the {@link Document}s.
      */
-    public final void truncate()
-    {
+    public final void truncate() {
         luceneIndex.truncate();
     }
 
     /**
      * Closes and removes all the index files.
      */
-    public final void delete()
-    {
+    public final void delete() {
         luceneIndex.drop();
     }
 
     /**
      * Commits the pending changes. This operation is performed asynchronously.
      */
-    public final void commit()
-    {
-        if (indexQueue == null)
-        {
+    public final void commit() {
+        if (indexQueue == null) {
             luceneIndex.commit();
-        }
-        else
-        {
-            indexQueue.submitSynchronous(new Runnable()
-            {
+        } else {
+            indexQueue.submitSynchronous(new Runnable() {
                 @Override
-                public void run()
-                {
+                public void run() {
                     luceneIndex.commit();
                 }
             });
@@ -255,8 +225,7 @@ public abstract class RowService
                                   List<IndexExpression> expressions,
                                   DataRange dataRange,
                                   final int limit,
-                                  long timestamp)
-    {
+                                  long timestamp) {
         Log.debug("Searching with search %s ", search);
 
         // Setup stats
@@ -283,8 +252,7 @@ public abstract class RowService
         List<SearchResult> searchResults;
         int pageSize = Math.min(limit, MAX_PAGE_SIZE);
         boolean maybeMore;
-        do
-        {
+        do {
             // Search rows identifiers in Lucene
             luceneTime.start();
             searchResults = luceneIndex.search(query, sort, lastDoc, pageSize, fieldsToLoad(), usesRelevance);
@@ -294,10 +262,8 @@ public abstract class RowService
 
             // Collect rows from Cassandra
             collectTime.start();
-            for (Row row : rows(searchResults, timestamp, usesRelevance))
-            {
-                if (row != null && accepted(row, expressions))
-                {
+            for (Row row : rows(searchResults, timestamp, usesRelevance)) {
+                if (row != null && accepted(row, expressions)) {
                     rows.add(row);
                 }
             }
@@ -334,15 +300,11 @@ public abstract class RowService
      * @return {@code true} if the specified {@link Row} satisfies the all the specified {@link IndexExpression}s,
      * {@code false} otherwise.
      */
-    private boolean accepted(Row row, List<IndexExpression> expressions)
-    {
-        if (!expressions.isEmpty())
-        {
+    private boolean accepted(Row row, List<IndexExpression> expressions) {
+        if (!expressions.isEmpty()) {
             Columns columns = rowMapper.columns(row);
-            for (IndexExpression expression : expressions)
-            {
-                if (!accepted(columns, expression))
-                {
+            for (IndexExpression expression : expressions) {
+                if (!accepted(columns, expression)) {
                     return false;
                 }
             }
@@ -359,8 +321,7 @@ public abstract class RowService
      * @return {@code true} if the specified {@link Columns} satisfies the the specified {@link IndexExpression}, {@code
      * false} otherwise.
      */
-    private boolean accepted(Columns columns, IndexExpression expression)
-    {
+    private boolean accepted(Columns columns, IndexExpression expression) {
 
         ByteBuffer expectedValue = expression.value;
 
@@ -368,21 +329,18 @@ public abstract class RowService
         String name = def.name.toString();
 
         Column column = columns.getColumn(name);
-        if (column == null)
-        {
+        if (column == null) {
             return false;
         }
 
         ByteBuffer actualValue = column.getRawValue();
-        if (actualValue == null)
-        {
+        if (actualValue == null) {
             return false;
         }
 
         AbstractType<?> validator = def.type;
         int comparison = validator.compare(actualValue, expectedValue);
-        switch (expression.operator)
-        {
+        switch (expression.operator) {
             case EQ:
                 return comparison == 0;
             case GTE:
@@ -407,9 +365,7 @@ public abstract class RowService
      * @param usesRelevance If the search uses relevance.
      * @return The {@link Row} identified by the specified {@link Document}s
      */
-    protected abstract List<Row> rows(List<SearchResult> searchResults,
-                                      long timestamp,
-                                      boolean usesRelevance);
+    protected abstract List<Row> rows(List<SearchResult> searchResults, long timestamp, boolean usesRelevance);
 
     /**
      * Returns a {@link ColumnFamily} composed by the non expired {@link Cell}s of the specified  {@link ColumnFamily}.
@@ -418,13 +374,10 @@ public abstract class RowService
      * @param timestamp    The max allowed timestamp for the {@link Cell}s.
      * @return A {@link ColumnFamily} composed by the non expired {@link Cell}s of the specified  {@link ColumnFamily}.
      */
-    protected ColumnFamily cleanExpired(ColumnFamily columnFamily, long timestamp)
-    {
+    protected ColumnFamily cleanExpired(ColumnFamily columnFamily, long timestamp) {
         ColumnFamily cleanColumnFamily = ArrayBackedSortedColumns.factory.create(baseCfs.metadata);
-        for (Cell cell : columnFamily)
-        {
-            if (cell.isLive(timestamp))
-            {
+        for (Cell cell : columnFamily) {
+            if (cell.isLive(timestamp)) {
                 cleanColumnFamily.addColumn(cell);
             }
         }
@@ -439,8 +392,7 @@ public abstract class RowService
      * @param score     The score column value.
      * @return The {@link Row} with the score.
      */
-    protected Row addScoreColumn(Row row, long timestamp, Float score)
-    {
+    protected Row addScoreColumn(Row row, long timestamp, Float score) {
         ColumnFamily cf = row.cf;
         CellName cellName = rowMapper.makeCellName(cf);
         ByteBuffer cellValue = UTF8Type.instance.decompose(score.toString());
@@ -461,15 +413,12 @@ public abstract class RowService
      * @return The {@link RowComparator} to be used for ordering the {@link Row}s obtained from the specified {@link
      * Search}.
      */
-    public RowComparator comparator(Search search)
-    {
-        if (search != null)
-        {
+    public RowComparator comparator(Search search) {
+        if (search != null) {
             if (search.usesSorting()) // Sort with search itself
             {
                 return new RowComparatorSorting(rowMapper, search.getSort());
-            }
-            else if (search.usesRelevance()) // Sort with row's score
+            } else if (search.usesRelevance()) // Sort with row's score
             {
                 return new RowComparatorScoring(this);
             }
@@ -482,8 +431,7 @@ public abstract class RowService
      *
      * @return The default {@link Row} comparator.
      */
-    public RowComparator comparator()
-    {
+    public RowComparator comparator() {
         return rowMapper.naturalComparator();
     }
 
@@ -493,8 +441,7 @@ public abstract class RowService
      * @param row A {@link Row}.
      * @return The score of the specified {@link Row}.
      */
-    protected Float score(Row row)
-    {
+    protected Float score(Row row) {
         ColumnFamily cf = row.cf;
         CellName cellName = rowMapper.makeCellName(cf);
         Cell cell = cf.getColumn(cellName);
@@ -505,8 +452,7 @@ public abstract class RowService
     /**
      * Optimizes the managed Lucene index. It can be a very heavy operation.
      */
-    public void optimize()
-    {
+    public void optimize() {
         luceneIndex.optimize();
     }
 
@@ -515,35 +461,8 @@ public abstract class RowService
      *
      * @return The total number of {@link Document}s in the index.
      */
-    public long getIndexSize()
-    {
+    public long getIndexSize() {
         return luceneIndex.getNumDocs();
-    }
-
-    /**
-     * Groups the specified CQL3 {@link Row} into a list of physical storage {@link Row}s. This grouping is based in
-     * row's key.
-     *
-     * @param rows A list of CQL3 {@link Row}s.
-     * @return The specified CQL3 {@link Row} into a list of physical storage {@link Row}s.
-     */
-    public List<Row> group(List<Row> rows)
-    {
-        LinkedList<Row> result = new LinkedList<>();
-        Row lastRow = null;
-        for (Row row : rows)
-        {
-            if (lastRow != null && row.key.equals(lastRow.key))
-            {
-                lastRow.cf.addAll(row.cf);
-            }
-            else
-            {
-                lastRow = row;
-                result.add(row);
-            }
-        }
-        return result;
     }
 
 }

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.stratio.cassandra.index.util;
+package com.stratio.cassandra.util;
 
 import org.apache.commons.lang3.time.StopWatch;
 
@@ -22,11 +22,10 @@ import org.apache.commons.lang3.time.StopWatch;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class TimeCounter
-{
-    private enum State
-    {
-        UNSTARTED, RUNNING, STOPPED;
+public class TimeCounter {
+
+    private enum State {
+        UNSTARTED, RUNNING, STOPPED
     }
 
     private final StopWatch watch;
@@ -35,8 +34,7 @@ public class TimeCounter
     /**
      * Builds a new stopped {@link TimeCounter}.
      */
-    public TimeCounter()
-    {
+    public TimeCounter() {
         this.watch = new StopWatch();
         this.state = State.UNSTARTED;
     }
@@ -46,8 +44,7 @@ public class TimeCounter
      *
      * @return A new stopped {@link TimeCounter}.
      */
-    public static TimeCounter build()
-    {
+    public static TimeCounter build() {
         return new TimeCounter();
     }
 
@@ -56,10 +53,8 @@ public class TimeCounter
      *
      * @return This {@link TimeCounter}.
      */
-    public TimeCounter start()
-    {
-        switch (state)
-        {
+    public TimeCounter start() {
+        switch (state) {
             case UNSTARTED:
                 watch.start();
                 break;
@@ -77,10 +72,8 @@ public class TimeCounter
      *
      * @return This {@link TimeCounter}.
      */
-    public TimeCounter stop()
-    {
-        switch (state)
-        {
+    public TimeCounter stop() {
+        switch (state) {
             case UNSTARTED:
                 throw new IllegalStateException("Not started. ");
             case STOPPED:
@@ -97,8 +90,7 @@ public class TimeCounter
      *
      * @return A summary of the time that the stopwatch recorded as a string.
      */
-    public String toString()
-    {
+    public String toString() {
         return watch.toString();
     }
 
@@ -107,8 +99,7 @@ public class TimeCounter
      *
      * @return The counted time in milliseconds.
      */
-    public long getTime()
-    {
+    public long getTime() {
         return watch.getTime();
     }
 
@@ -117,8 +108,7 @@ public class TimeCounter
      *
      * @return The counted time in nanoseconds.
      */
-    public long getNanoTime()
-    {
+    public long getNanoTime() {
         return watch.getNanoTime();
     }
 }

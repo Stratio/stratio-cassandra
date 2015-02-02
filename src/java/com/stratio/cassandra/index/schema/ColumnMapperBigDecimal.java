@@ -34,8 +34,7 @@ import java.math.BigDecimal;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ColumnMapperBigDecimal extends ColumnMapper<String>
-{
+public class ColumnMapperBigDecimal extends ColumnMapperSingle<String> {
 
     /** The default max number of digits for the integer part. */
     public static final int DEFAULT_INTEGER_DIGITS = 32;
@@ -62,28 +61,24 @@ public class ColumnMapperBigDecimal extends ColumnMapper<String>
      */
     @JsonCreator
     public ColumnMapperBigDecimal(@JsonProperty("integer_digits") Integer integerDigits,
-                                  @JsonProperty("decimal_digits") Integer decimalDigits)
-    {
-        super(new AbstractType<?>[]{
-                AsciiType.instance,
-                UTF8Type.instance,
-                Int32Type.instance,
-                LongType.instance,
-                IntegerType.instance,
-                FloatType.instance,
-                DoubleType.instance,
-                DecimalType.instance}, new AbstractType[]{});
+                                  @JsonProperty("decimal_digits") Integer decimalDigits) {
+        super(new AbstractType<?>[]{AsciiType.instance,
+                                    UTF8Type.instance,
+                                    Int32Type.instance,
+                                    LongType.instance,
+                                    IntegerType.instance,
+                                    FloatType.instance,
+                                    DoubleType.instance,
+                                    DecimalType.instance}, new AbstractType[]{});
 
         // Setup integer part mapping
-        if (integerDigits != null && integerDigits <= 0)
-        {
+        if (integerDigits != null && integerDigits <= 0) {
             throw new IllegalArgumentException("Positive integer part digits required");
         }
         this.integerDigits = integerDigits == null ? DEFAULT_INTEGER_DIGITS : integerDigits;
 
         // Setup decimal part mapping
-        if (decimalDigits != null && decimalDigits <= 0)
-        {
+        if (decimalDigits != null && decimalDigits <= 0) {
             throw new IllegalArgumentException("Positive decimal part digits required");
         }
         this.decimalDigits = decimalDigits == null ? DEFAULT_DECIMAL_DIGITS : decimalDigits;
@@ -99,8 +94,7 @@ public class ColumnMapperBigDecimal extends ColumnMapper<String>
      *
      * @return The max number of digits for the integer part.
      */
-    public int getIntegerDigits()
-    {
+    public int getIntegerDigits() {
         return integerDigits;
     }
 
@@ -109,38 +103,31 @@ public class ColumnMapperBigDecimal extends ColumnMapper<String>
      *
      * @return The max number of digits for the decimal part.
      */
-    public int getDecimalDigits()
-    {
+    public int getDecimalDigits() {
         return decimalDigits;
     }
 
     /** {@inheritDoc} */
     @Override
-    public Analyzer analyzer()
-    {
+    public Analyzer analyzer() {
         return EMPTY_ANALYZER;
     }
 
     /** {@inheritDoc} */
     @Override
-    public String indexValue(String name, Object value)
-    {
+    public String indexValue(String name, Object value) {
 
         // Check not null
-        if (value == null)
-        {
+        if (value == null) {
             return null;
         }
 
         // Parse big decimal
         String svalue = value.toString();
         BigDecimal bd;
-        try
-        {
+        try {
             bd = new BigDecimal(value.toString());
-        }
-        catch (NumberFormatException e)
-        {
+        } catch (NumberFormatException e) {
             String message = String.format("Field %s requires a base 10 decimal, but found \"%s\"", name, svalue);
             throw new IllegalArgumentException(message);
         }
@@ -151,12 +138,10 @@ public class ColumnMapperBigDecimal extends ColumnMapper<String>
         String integerPart = parts[0];
         String decimalPart = parts.length == 1 ? "0" : parts[1];
 
-        if (integerPart.replaceFirst("-", "").length() > integerDigits)
-        {
+        if (integerPart.replaceFirst("-", "").length() > integerDigits) {
             throw new IllegalArgumentException("Too much digits in integer part");
         }
-        if (decimalPart.length() > decimalDigits)
-        {
+        if (decimalPart.length() > decimalDigits) {
             throw new IllegalArgumentException("Too much digits in decimal part");
         }
 
@@ -171,37 +156,32 @@ public class ColumnMapperBigDecimal extends ColumnMapper<String>
 
     /** {@inheritDoc} */
     @Override
-    public String queryValue(String name, Object value)
-    {
+    public String queryValue(String name, Object value) {
         return indexValue(name, value);
     }
 
     /** {@inheritDoc} */
     @Override
-    public Field field(String name, Object value)
-    {
+    public Field field(String name, Object value) {
         String string = indexValue(name, value);
         return new StringField(name, string, STORE);
     }
 
     /** {@inheritDoc} */
     @Override
-    public SortField sortField(String field, boolean reverse)
-    {
+    public SortField sortField(String field, boolean reverse) {
         return new SortField(field, Type.STRING, reverse);
     }
 
     /** {@inheritDoc} */
     @Override
-    public Class<String> baseClass()
-    {
+    public Class<String> baseClass() {
         return String.class;
     }
 
     /** {@inheritDoc} */
     @Override
-    public String toString()
-    {
+    public String toString() {
         return new ToStringBuilder(this).append("integerDigits", integerDigits)
                                         .append("decimalDigits", decimalDigits)
                                         .toString();

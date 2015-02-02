@@ -22,8 +22,8 @@ import com.stratio.cassandra.index.query.Condition;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public abstract class ConditionBuilder<T extends Condition, K extends ConditionBuilder<T, K>> implements Builder<T>
-{
+public abstract class ConditionBuilder<T extends Condition, K extends ConditionBuilder<T, K>> implements Builder<T> {
+
     /** The boost for the {@link Condition} to be built. */
     protected Float boost;
 
@@ -35,8 +35,8 @@ public abstract class ConditionBuilder<T extends Condition, K extends ConditionB
      * @param boost The boost for the {@link Condition} to be built.
      * @return This builder with the specified boost.
      */
-    public K boost(float boost)
-    {
+    @SuppressWarnings("unchecked")
+    public K boost(float boost) {
         this.boost = boost;
         return (K) this;
     }
@@ -49,8 +49,8 @@ public abstract class ConditionBuilder<T extends Condition, K extends ConditionB
      * @param boost The boost for the {@link Condition} to be built.
      * @return This builder with the specified boost.
      */
-    public K boost(Number boost)
-    {
+    @SuppressWarnings("unchecked")
+    public K boost(Number boost) {
         this.boost = boost == null ? null : boost.floatValue();
         return (K) this;
     }

@@ -16,8 +16,8 @@
 package com.stratio.cassandra.index.query;
 
 import com.stratio.cassandra.index.schema.Schema;
-import com.stratio.cassandra.index.util.JsonSerializer;
-import com.stratio.cassandra.index.util.Log;
+import com.stratio.cassandra.util.JsonSerializer;
+import com.stratio.cassandra.util.Log;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.search.*;
 import org.codehaus.jackson.annotate.JsonCreator;
@@ -29,8 +29,8 @@ import org.codehaus.jackson.annotate.JsonProperty;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class Search
-{
+public class Search {
+
     /** he {@link Condition} for querying, maybe {@code null} meaning no querying. */
     @JsonProperty("query")
     private Condition queryCondition;
@@ -57,8 +57,7 @@ public class Search
     @JsonCreator
     public Search(@JsonProperty("query") Condition queryCondition,
                   @JsonProperty("filter") Condition filterCondition,
-                  @JsonProperty("sort") Sort sort)
-    {
+                  @JsonProperty("sort") Sort sort) {
         this.queryCondition = queryCondition;
         this.filterCondition = filterCondition;
         this.sort = sort;
@@ -70,14 +69,10 @@ public class Search
      * @param json A JSON {@code String} representing a {@link Search}.
      * @return The {@link Search} represented by the specified JSON {@code String}.
      */
-    public static Search fromJson(String json)
-    {
-        try
-        {
+    public static Search fromJson(String json) {
+        try {
             return JsonSerializer.fromString(json, Search.class);
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             String message = String.format("Unparseable JSON search: %s", e.getMessage());
             Log.error(e, message);
             throw new IllegalArgumentException(message, e);
@@ -89,14 +84,10 @@ public class Search
      *
      * @return the JSON representation of this object.
      */
-    public String toJson()
-    {
-        try
-        {
+    public String toJson() {
+        try {
             return JsonSerializer.toString(this);
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             String message = String.format("Unformateable JSON search: %s", e.getMessage());
             Log.error(e, message);
             throw new IllegalArgumentException(message, e);
@@ -114,8 +105,7 @@ public class Search
      * @return {@code true} if the results must be ordered by relevance. If {@code false}, then the results must be
      * sorted by the natural Cassandra's order.
      */
-    public boolean usesRelevanceOrSorting()
-    {
+    public boolean usesRelevanceOrSorting() {
         return queryCondition != null || sort != null;
     }
 
@@ -124,8 +114,7 @@ public class Search
      *
      * @return {@code true} if this search uses Lucene relevance formula, {@code false} otherwise.
      */
-    public boolean usesRelevance()
-    {
+    public boolean usesRelevance() {
         return queryCondition != null;
     }
 
@@ -134,8 +123,7 @@ public class Search
      *
      * @return {@code true} if this search uses field sorting, {@code false} otherwise.
      */
-    public boolean usesSorting()
-    {
+    public boolean usesSorting() {
         return sort != null;
     }
 
@@ -144,8 +132,7 @@ public class Search
      *
      * @return The field sorting to be used, maybe {@code null} meaning no field sorting.
      */
-    public Sort getSort()
-    {
+    public Sort getSort() {
         return this.sort;
     }
 
@@ -156,8 +143,7 @@ public class Search
      * @param schema A {@link Schema}.
      * @return The Lucene {@link org.apache.lucene.search.Sort} represented by this {@link Sort} using {@code schema}.
      */
-    public org.apache.lucene.search.Sort sort(Schema schema)
-    {
+    public org.apache.lucene.search.Sort sort(Schema schema) {
         return sort == null ? null : sort.sort(schema);
     }
 
@@ -170,25 +156,20 @@ public class Search
      * @param rangeQuery An additional range {@link Query} to be used.
      * @return The Lucene {@link Query} representation of this search.
      */
-    public Query query(Schema schema, Query rangeQuery)
-    {
-        if (queryCondition == null && filterCondition == null && rangeQuery == null)
-        {
+    public Query query(Schema schema, Query rangeQuery) {
+        if (queryCondition == null && filterCondition == null && rangeQuery == null) {
             return new MatchAllDocsQuery();
         }
         BooleanQuery booleanQuery = new BooleanQuery();
-        if (queryCondition != null)
-        {
+        if (queryCondition != null) {
             Query query = queryCondition.query(schema);
             booleanQuery.add(query, BooleanClause.Occur.MUST);
         }
-        if (filterCondition != null)
-        {
+        if (filterCondition != null) {
             Query query = new ConstantScoreQuery(filterCondition.query(schema));
             booleanQuery.add(query, BooleanClause.Occur.MUST);
         }
-        if (rangeQuery != null)
-        {
+        if (rangeQuery != null) {
             booleanQuery.add(rangeQuery, BooleanClause.Occur.MUST);
         }
         return booleanQuery;
@@ -199,22 +180,18 @@ public class Search
      *
      * @param schema A {@link Schema}.
      */
-    public void validate(Schema schema)
-    {
-        if (queryCondition != null || filterCondition != null)
-        {
+    public void validate(Schema schema) {
+        if (queryCondition != null || filterCondition != null) {
             query(schema, null);
         }
-        if (sort != null)
-        {
+        if (sort != null) {
             sort.sort(schema);
         }
     }
 
     /** {@inheritDoc} */
     @Override
-    public String toString()
-    {
+    public String toString() {
         return new ToStringBuilder(this).append("queryCondition", queryCondition)
                                         .append("filterCondition", filterCondition)
                                         .append("sorting", sort)

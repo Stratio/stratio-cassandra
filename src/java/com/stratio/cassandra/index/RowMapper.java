@@ -36,16 +36,15 @@ import java.nio.ByteBuffer;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public abstract class RowMapper
-{
+public abstract class RowMapper {
 
-    protected final CFMetaData metadata;
-    protected final ColumnDefinition columnDefinition;
-    protected final Schema schema;
+    protected final CFMetaData metadata; // The indexed table metadata
+    protected final ColumnDefinition columnDefinition; // The indexed column definition
+    protected final Schema schema; // The indexing schema
 
-    protected final TokenMapper tokenMapper;
-    protected final PartitionKeyMapper partitionKeyMapper;
-    protected final RegularCellsMapper regularCellsMapper;
+    protected final TokenMapper tokenMapper; // A token mapper for the indexed table
+    protected final PartitionKeyMapper partitionKeyMapper; // A partition key mapper for the indexed table
+    protected final RegularCellsMapper regularCellsMapper; // A regular cell mapper for the indexed table
 
     /**
      * Builds a new {@link RowMapper} for the specified column family metadata, indexed column definition and {@link
@@ -55,8 +54,7 @@ public abstract class RowMapper
      * @param columnDefinition The indexed column definition.
      * @param schema           The mapping {@link Schema}.
      */
-    RowMapper(CFMetaData metadata, ColumnDefinition columnDefinition, Schema schema)
-    {
+    RowMapper(CFMetaData metadata, ColumnDefinition columnDefinition, Schema schema) {
         this.metadata = metadata;
         this.columnDefinition = columnDefinition;
         this.schema = schema;
@@ -75,14 +73,10 @@ public abstract class RowMapper
      * @return A new {@link RowMapper} for the specified column family metadata, indexed column definition and {@link
      * Schema}.
      */
-    public static RowMapper build(CFMetaData metadata, ColumnDefinition columnDefinition, Schema schema)
-    {
-        if (metadata.clusteringColumns().size() > 0)
-        {
+    public static RowMapper build(CFMetaData metadata, ColumnDefinition columnDefinition, Schema schema) {
+        if (metadata.clusteringColumns().size() > 0) {
             return new RowMapperWide(metadata, columnDefinition, schema);
-        }
-        else
-        {
+        } else {
             return new RowMapperSkinny(metadata, columnDefinition, schema);
         }
     }
@@ -109,8 +103,7 @@ public abstract class RowMapper
      * @param key A partition key.
      * @return The decorated partition key representing the specified raw partition key.
      */
-    public final DecoratedKey partitionKey(ByteBuffer key)
-    {
+    public final DecoratedKey partitionKey(ByteBuffer key) {
         return partitionKeyMapper.partitionKey(key);
     }
 
@@ -120,8 +113,7 @@ public abstract class RowMapper
      * @param document A {@link Document}.
      * @return The decorated partition key contained in the specified {@link Document}.
      */
-    public final DecoratedKey partitionKey(Document document)
-    {
+    public final DecoratedKey partitionKey(Document document) {
         return partitionKeyMapper.partitionKey(document);
     }
 
@@ -131,8 +123,7 @@ public abstract class RowMapper
      * @param partitionKey A decorated partition key.
      * @return The Lucene {@link Term} to get the {@link Document}s containing the specified decorated partition key.
      */
-    public Term term(DecoratedKey partitionKey)
-    {
+    public Term term(DecoratedKey partitionKey) {
         return partitionKeyMapper.term(partitionKey);
     }
 
@@ -159,6 +150,13 @@ public abstract class RowMapper
      */
     public abstract RowComparator naturalComparator();
 
+    /**
+     * Returns the {@link SearchResult} defined by the specified {@link Document} and {@link ScoreDoc}.
+     *
+     * @param document A {@link Document}.
+     * @param scoreDoc A {@link ScoreDoc}.
+     * @return The {@link SearchResult} defined by the specified {@link Document} and {@link ScoreDoc}.
+     */
     public abstract SearchResult searchResult(Document document, ScoreDoc scoreDoc);
 
 }

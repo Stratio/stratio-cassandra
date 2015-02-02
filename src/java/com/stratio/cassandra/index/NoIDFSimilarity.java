@@ -23,15 +23,13 @@ import org.apache.lucene.search.similarities.DefaultSimilarity;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class NoIDFSimilarity extends DefaultSimilarity
-{
+public class NoIDFSimilarity extends DefaultSimilarity {
 
     /**
      * Returns always an constant neutral value of {@code 1.0}.
      */
     @Override
-    public float idf(long docFreq, long numDocs)
-    {
+    public float idf(long docFreq, long numDocs) {
         return 1.0f;
     }
 }

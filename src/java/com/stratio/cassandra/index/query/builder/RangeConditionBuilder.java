@@ -22,8 +22,8 @@ import com.stratio.cassandra.index.query.RangeCondition;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class RangeConditionBuilder extends ConditionBuilder<RangeCondition, RangeConditionBuilder>
-{
+public class RangeConditionBuilder extends ConditionBuilder<RangeCondition, RangeConditionBuilder> {
+
     /** The name of the field to be matched. */
     private final String field;
 
@@ -44,8 +44,7 @@ public class RangeConditionBuilder extends ConditionBuilder<RangeCondition, Rang
      *
      * @param field the name of the field to be matched.
      */
-    public RangeConditionBuilder(String field)
-    {
+    public RangeConditionBuilder(String field) {
         this.field = field;
     }
 
@@ -55,8 +54,7 @@ public class RangeConditionBuilder extends ConditionBuilder<RangeCondition, Rang
      * @param lower The lower value to be matched.
      * @return This builder with the specified lower value to be matched.
      */
-    public RangeConditionBuilder lower(Object lower)
-    {
+    public RangeConditionBuilder lower(Object lower) {
         this.lower = lower;
         return this;
     }
@@ -67,8 +65,7 @@ public class RangeConditionBuilder extends ConditionBuilder<RangeCondition, Rang
      * @param upper The lower value to be matched.
      * @return This builder with the specified upper value to be matched.
      */
-    public RangeConditionBuilder upper(Object upper)
-    {
+    public RangeConditionBuilder upper(Object upper) {
         this.upper = upper;
         return this;
     }
@@ -79,8 +76,7 @@ public class RangeConditionBuilder extends ConditionBuilder<RangeCondition, Rang
      * @param includeLower If the lower value must be included.
      * @return This builder with the specified lower interval option.
      */
-    public RangeConditionBuilder includeLower(Boolean includeLower)
-    {
+    public RangeConditionBuilder includeLower(Boolean includeLower) {
         this.includeLower = includeLower;
         return this;
     }
@@ -91,8 +87,7 @@ public class RangeConditionBuilder extends ConditionBuilder<RangeCondition, Rang
      * @param includeUpper If the upper value must be included.
      * @return This builder with the specified upper interval option.
      */
-    public RangeConditionBuilder includeUpper(Boolean includeUpper)
-    {
+    public RangeConditionBuilder includeUpper(Boolean includeUpper) {
         this.includeUpper = includeUpper;
         return this;
     }
@@ -103,8 +98,7 @@ public class RangeConditionBuilder extends ConditionBuilder<RangeCondition, Rang
      * @return The {@link RangeCondition} represented by this builder.
      */
     @Override
-    public RangeCondition build()
-    {
+    public RangeCondition build() {
         return new RangeCondition(boost, field, lower, upper, includeLower, includeUpper);
     }
 }

@@ -3,8 +3,9 @@ package com.stratio.cassandra.index;
 import com.stratio.cassandra.index.query.builder.MatchConditionBuilder;
 import com.stratio.cassandra.index.query.builder.RangeConditionBuilder;
 import com.stratio.cassandra.index.schema.ColumnMapper;
+import com.stratio.cassandra.index.schema.ColumnMapperSingle;
 import com.stratio.cassandra.index.schema.Schema;
-import com.stratio.cassandra.index.util.ByteBufferUtils;
+import com.stratio.cassandra.util.ByteBufferUtils;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.composites.Composite;
@@ -26,20 +27,19 @@ import static org.apache.lucene.search.BooleanClause.Occur.SHOULD;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ClusteringKeyMapperColumns extends ClusteringKeyMapper
-{
+public class ClusteringKeyMapperColumns extends ClusteringKeyMapper {
+
     private final Schema schema;
     private final String[] names;
-    private final ColumnMapper[] columnMappers;
+    private final ColumnMapperSingle[] columnMappers;
     private final AbstractType[] types;
     private final int numClusteringColumns;
 
     private ClusteringKeyMapperColumns(Schema schema,
                                        CFMetaData metadata,
                                        String[] names,
-                                       ColumnMapper[] columnMappers,
-                                       AbstractType[] types)
-    {
+                                       ColumnMapperSingle[] columnMappers,
+                                       AbstractType[] types) {
         super(metadata);
         this.schema = schema;
         this.names = names;
@@ -58,38 +58,29 @@ public class ClusteringKeyMapperColumns extends ClusteringKeyMapper
      * {@code null} if this implementation is not able to manage the specified parameters.
      */
     @SuppressWarnings("unchecked")
-    public static ClusteringKeyMapperColumns instance(CFMetaData metadata, Schema schema)
-    {
+    public static ClusteringKeyMapperColumns instance(CFMetaData metadata, Schema schema) {
         List<ColumnDefinition> clusteringColumns = metadata.clusteringColumns();
         int numClusteringColumns = clusteringColumns.size();
-        if (numClusteringColumns == 0)
-        {
+        if (numClusteringColumns == 0) {
             return null;
         }
         String[] names = new String[numClusteringColumns];
-        ColumnMapper[] columnMappers = new ColumnMapper[numClusteringColumns];
+        ColumnMapperSingle[] columnMappers = new ColumnMapperSingle[numClusteringColumns];
         AbstractType[] types = new AbstractType[numClusteringColumns];
-        for (int i = 0; i < numClusteringColumns; i++)
-        {
+        for (int i = 0; i < numClusteringColumns; i++) {
             ColumnDefinition columnDefinition = clusteringColumns.get(i);
             String name = columnDefinition.name.toString();
-            ColumnMapper columnMapper = schema.getMapper(name);
-            if (columnMapper != null)
-            {
+            ColumnMapperSingle columnMapper = schema.getMapperSingle(name);
+            if (columnMapper != null) {
                 AbstractType type = columnDefinition.type;
-                if (columnMapper.supportsClustering(type))
-                {
+                if (columnMapper.supportsClustering(type)) {
                     names[i] = name;
                     types[i] = type;
                     columnMappers[i] = columnMapper;
-                }
-                else
-                {
+                } else {
                     return null;
                 }
-            }
-            else
-            {
+            } else {
                 return null;
             }
         }
@@ -97,11 +88,9 @@ public class ClusteringKeyMapperColumns extends ClusteringKeyMapper
     }
 
     @Override
-    public SortField[] sortFields()
-    {
+    public SortField[] sortFields() {
         SortField[] sortFields = new SortField[numClusteringColumns];
-        for (int i = 0; i < numClusteringColumns; i++)
-        {
+        for (int i = 0; i < numClusteringColumns; i++) {
             String name = names[i];
             ColumnMapper columnMapper = columnMappers[i];
             sortFields[i] = columnMapper.sortField(name, false);
@@ -109,55 +98,34 @@ public class ClusteringKeyMapperColumns extends ClusteringKeyMapper
         return sortFields;
     }
 
-    private Object queryValue(Composite composite, int i)
-    {
+    private Object queryValue(Composite composite, int i) {
         ByteBuffer component = composite.get(i);
         String name = names[i];
-        ColumnMapper columnMapper = columnMappers[i];
+        ColumnMapperSingle columnMapper = columnMappers[i];
         AbstractType<?> type = types[i];
         Object value = type.compose(component);
         return columnMapper.queryValue(name, value);
     }
 
-    private boolean includeStart(Composite composite)
-    {
+    private boolean includeStart(Composite composite) {
         ByteBuffer[] components = ByteBufferUtils.split(composite.toByteBuffer(), compositeType);
-        if (components.length > numClusteringColumns)
-        {
-            return false;
-        }
-        else
-        {
-            return composite.eoc() == Composite.EOC.NONE;
-        }
+        return components.length <= numClusteringColumns && composite.eoc() == Composite.EOC.NONE;
     }
 
-    private boolean includeStop(Composite composite)
-    {
+    private boolean includeStop(Composite composite) {
         ByteBuffer[] components = ByteBufferUtils.split(composite.toByteBuffer(), compositeType);
-        if (components.length > numClusteringColumns)
-        {
-            return true;
-        }
-        else
-        {
-            return composite.eoc() == Composite.EOC.END;
-        }
+        return components.length > numClusteringColumns || composite.eoc() == Composite.EOC.END;
     }
 
     @Override
-    public Query query(Composite start, Composite stop)
-    {
+    public Query query(Composite start, Composite stop) {
         BooleanQuery booleanQuery = new BooleanQuery();
 
-        if (start != null && !start.isEmpty())
-        {
+        if (start != null && !start.isEmpty()) {
             BooleanQuery startQuery = new BooleanQuery();
-            for (int i = 0; i < numClusteringColumns; i++)
-            {
+            for (int i = 0; i < numClusteringColumns; i++) {
                 BooleanQuery q = new BooleanQuery();
-                for (int j = 0; j < i; j++)
-                {
+                for (int j = 0; j < i; j++) {
                     String name = names[j];
                     Object value = queryValue(start, j);
                     q.add(new MatchConditionBuilder(name, value).build().query(schema), MUST);
@@ -171,14 +139,11 @@ public class ClusteringKeyMapperColumns extends ClusteringKeyMapper
             booleanQuery.add(startQuery, MUST);
         }
 
-        if (stop != null && !stop.isEmpty())
-        {
+        if (stop != null && !stop.isEmpty()) {
             BooleanQuery stopQuery = new BooleanQuery();
-            for (int i = 0; i < numClusteringColumns; i++)
-            {
+            for (int i = 0; i < numClusteringColumns; i++) {
                 BooleanQuery q = new BooleanQuery();
-                for (int j = 0; j < i; j++)
-                {
+                for (int j = 0; j < i; j++) {
                     String name = names[j];
                     Object value = queryValue(stop, j);
                     q.add(new MatchConditionBuilder(name, value).build().query(schema), MUST);

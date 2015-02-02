@@ -33,25 +33,22 @@ import org.apache.lucene.search.SortField;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class TokenMapperMurmur extends TokenMapper
-{
-    /** The Lucene field name. */
-    private static final String FIELD_NAME = "_token_murmur";
+public class TokenMapperMurmur extends TokenMapper {
+
+    private static final String FIELD_NAME = "_token_murmur"; // The Lucene field name
 
     /**
      * Builds a new {@link TokenMapperMurmur} using the specified {@link CFMetaData}.
      *
      * @param metadata A column family metadata.
      */
-    public TokenMapperMurmur(CFMetaData metadata)
-    {
+    public TokenMapperMurmur(CFMetaData metadata) {
         super(metadata);
     }
 
     /** {@inheritDoc} */
     @Override
-    public void addFields(Document document, DecoratedKey partitionKey)
-    {
+    public void addFields(Document document, DecoratedKey partitionKey) {
         Long value = (Long) partitionKey.getToken().getTokenValue();
         Field tokenField = new LongField(FIELD_NAME, value, Store.NO);
         document.add(tokenField);
@@ -59,28 +56,23 @@ public class TokenMapperMurmur extends TokenMapper
 
     /** {@inheritDoc} */
     @Override
-    public Query query(Token token)
-    {
+    public Query query(Token token) {
         Long value = (Long) token.getTokenValue();
         return NumericRangeQuery.newLongRange(FIELD_NAME, value, value, true, true);
     }
 
     /** {@inheritDoc} */
     @Override
-    protected Query makeQuery(Token lower, Token upper, boolean includeLower, boolean includeUpper)
-    {
+    protected Query makeQuery(Token lower, Token upper, boolean includeLower, boolean includeUpper) {
         Long start = lower == null ? null : (Long) lower.getTokenValue();
         Long stop = upper == null ? null : (Long) upper.getTokenValue();
-        if (lower != null && lower.isMinimum())
-        {
+        if (lower != null && lower.isMinimum()) {
             start = null;
         }
-        if (upper != null && upper.isMinimum())
-        {
+        if (upper != null && upper.isMinimum()) {
             stop = null;
         }
-        if (start == null && stop == null)
-        {
+        if (start == null && stop == null) {
             return null;
         }
         return NumericRangeQuery.newLongRange(FIELD_NAME, start, stop, includeLower, includeUpper);
@@ -88,8 +80,7 @@ public class TokenMapperMurmur extends TokenMapper
 
     /** {@inheritDoc} */
     @Override
-    public SortField[] sortFields()
-    {
+    public SortField[] sortFields() {
         return new SortField[]{new SortField(FIELD_NAME, SortField.Type.LONG)};
     }
 

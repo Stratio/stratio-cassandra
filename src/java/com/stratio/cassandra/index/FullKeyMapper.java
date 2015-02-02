@@ -15,7 +15,7 @@
  */
 package com.stratio.cassandra.index;
 
-import com.stratio.cassandra.index.util.ByteBufferUtils;
+import com.stratio.cassandra.util.ByteBufferUtils;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.marshal.AbstractType;
@@ -34,17 +34,12 @@ import java.nio.ByteBuffer;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class FullKeyMapper
-{
+public class FullKeyMapper {
 
-    /**
-     * The Lucene field name.
-     */
-    public static final String FIELD_NAME = "_full_key";
+    /** The Lucene field name. */
+    public static final String FIELD_NAME = "_full_key"; //  The Lucene field name
 
-    /**
-     * The type of the full row key, which is composed by the partition and clustering key types.
-     */
+    /** The type of the full row key, which is composed by the partition and clustering key types. */
     public CompositeType type;
 
     /**
@@ -53,8 +48,7 @@ public class FullKeyMapper
      * @param partitionKeyMapper  A {@link PartitionKeyMapper}.
      * @param clusteringKeyMapper A {@link ClusteringKeyMapper}.
      */
-    private FullKeyMapper(PartitionKeyMapper partitionKeyMapper, ClusteringKeyMapper clusteringKeyMapper)
-    {
+    private FullKeyMapper(PartitionKeyMapper partitionKeyMapper, ClusteringKeyMapper clusteringKeyMapper) {
         AbstractType<?> partitionKeyType = partitionKeyMapper.getType();
         AbstractType<?> clusteringKeyType = clusteringKeyMapper.getType().asAbstractType();
         type = CompositeType.getInstance(partitionKeyType, clusteringKeyType);
@@ -68,8 +62,7 @@ public class FullKeyMapper
      * @return A new {@link FullKeyMapper} using the specified column family metadata.
      */
     public static FullKeyMapper instance(PartitionKeyMapper partitionKeyMapper,
-                                         ClusteringKeyMapper clusteringKeyMapper)
-    {
+                                         ClusteringKeyMapper clusteringKeyMapper) {
         return new FullKeyMapper(partitionKeyMapper, clusteringKeyMapper);
     }
 
@@ -81,8 +74,7 @@ public class FullKeyMapper
      * @param cellName     A clustering key.
      * @return The {@link ByteBuffer} representation of the full row key formed by the specified key pair.
      */
-    public ByteBuffer byteBuffer(DecoratedKey partitionKey, CellName cellName)
-    {
+    public ByteBuffer byteBuffer(DecoratedKey partitionKey, CellName cellName) {
         return type.builder().add(partitionKey.getKey()).add(cellName.toByteBuffer()).build();
     }
 
@@ -94,8 +86,7 @@ public class FullKeyMapper
      * @param partitionKey  A partition key.
      * @param clusteringKey A clustering key.
      */
-    public void addFields(Document document, DecoratedKey partitionKey, CellName clusteringKey)
-    {
+    public void addFields(Document document, DecoratedKey partitionKey, CellName clusteringKey) {
         ByteBuffer fullKey = byteBuffer(partitionKey, clusteringKey);
         Field field = new StringField(FIELD_NAME, ByteBufferUtils.toString(fullKey), Store.NO);
         document.add(field);
@@ -109,8 +100,7 @@ public class FullKeyMapper
      * @param clusteringKey A clustering key.
      * @return The Lucene {@link Term} representing the full row key formed by the specified key pair.
      */
-    public Term term(DecoratedKey partitionKey, CellName clusteringKey)
-    {
+    public Term term(DecoratedKey partitionKey, CellName clusteringKey) {
         ByteBuffer fullKey = byteBuffer(partitionKey, clusteringKey);
         return new Term(FIELD_NAME, ByteBufferUtils.toString(fullKey));
     }

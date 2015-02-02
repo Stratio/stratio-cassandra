@@ -15,7 +15,7 @@
  */
 package com.stratio.cassandra.index.schema;
 
-import com.stratio.cassandra.index.util.ByteBufferUtils;
+import com.stratio.cassandra.util.ByteBufferUtils;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.BytesType;
@@ -36,95 +36,75 @@ import java.nio.ByteBuffer;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ColumnMapperBlob extends ColumnMapper<String>
-{
+public class ColumnMapperBlob extends ColumnMapperSingle<String> {
+
     /**
      * Builds a new {@link ColumnMapperBlob}.
      */
     @JsonCreator
-    public ColumnMapperBlob()
-    {
+    public ColumnMapperBlob() {
         super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, BytesType.instance}, new AbstractType[]{});
     }
 
     /** {@inheritDoc} */
     @Override
-    public Analyzer analyzer()
-    {
+    public Analyzer analyzer() {
         return EMPTY_ANALYZER;
     }
 
     /** {@inheritDoc} */
     @Override
-    public String indexValue(String name, Object value)
-    {
-        if (value == null)
-        {
+    public String indexValue(String name, Object value) {
+        if (value == null) {
             return null;
-        }
-        else if (value instanceof ByteBuffer)
-        {
+        } else if (value instanceof ByteBuffer) {
             ByteBuffer bb = (ByteBuffer) value;
             return ByteBufferUtils.toHex(bb);
-        }
-        else if (value instanceof byte[])
-        {
+        } else if (value instanceof byte[]) {
             byte[] bytes = (byte[]) value;
             return ByteBufferUtils.toHex(bytes);
-        }
-        else if (value instanceof String)
-        {
+        } else if (value instanceof String) {
             String string = (String) value;
             string = string.replaceFirst("0x", "");
             byte[] bytes = Hex.hexToBytes(string);
             return Hex.bytesToHex(bytes);
-        }
-        else
-        {
+        } else {
             throw new IllegalArgumentException(String.format("Value '%s' cannot be cast to byte array", value));
         }
     }
 
     /** {@inheritDoc} */
     @Override
-    public String queryValue(String name, Object value)
-    {
-        if (value == null)
-        {
+    public String queryValue(String name, Object value) {
+        if (value == null) {
             return null;
-        }
-        else
-        {
+        } else {
             return value.toString().toLowerCase().replaceFirst("0x", "");
         }
     }
 
     /** {@inheritDoc} */
     @Override
-    public Field field(String name, Object value)
-    {
+    public Field field(String name, Object value) {
         String string = indexValue(name, value);
         return new StringField(name, string, STORE);
     }
 
     /** {@inheritDoc} */
     @Override
-    public SortField sortField(String field, boolean reverse)
-    {
+    public SortField sortField(String field, boolean reverse) {
         return new SortField(field, Type.STRING, reverse);
     }
 
     /** {@inheritDoc} */
     @Override
-    public Class<String> baseClass()
-    {
+    public Class<String> baseClass() {
         return String.class;
     }
 
     /** {@inheritDoc} */
     @Override
-    public String toString()
-    {
+    public String toString() {
         return new ToStringBuilder(this).toString();
     }
 

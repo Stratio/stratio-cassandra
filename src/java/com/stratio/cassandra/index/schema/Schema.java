@@ -16,7 +16,7 @@
 package com.stratio.cassandra.index.schema;
 
 import com.stratio.cassandra.index.AnalyzerFactory;
-import com.stratio.cassandra.index.util.JsonSerializer;
+import com.stratio.cassandra.util.JsonSerializer;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.marshal.AbstractType;
@@ -26,7 +26,7 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
+import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.util.Version;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
@@ -42,8 +42,8 @@ import java.util.Map.Entry;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class Schema
-{
+public class Schema {
+
     /** The default Lucene analyzer to be used if no other specified. */
     public static final Analyzer DEFAULT_ANALYZER = new StandardAnalyzer(Version.LUCENE_48);
 
@@ -54,7 +54,7 @@ public class Schema
     private final PerFieldAnalyzerWrapper perFieldAnalyzer;
 
     /** The column mappers. */
-    private Map<String, ColumnMapper<?>> columnMappers;
+    private Map<String, ColumnMapper> columnMappers;
 
     /**
      * Builds a new {@code ColumnsMapper} for the specified analyzer and cell mappers.
@@ -64,30 +64,24 @@ public class Schema
      */
     @JsonCreator
     public Schema(@JsonProperty("default_analyzer") String analyzerClassName,
-                  @JsonProperty("fields") Map<String, ColumnMapper<?>> columnMappers)
-    {
+                  @JsonProperty("fields") Map<String, ColumnMapper> columnMappers) {
         // Copy lower cased mappers
         this.columnMappers = columnMappers;
 
         // Setup default analyzer
-        if (analyzerClassName == null)
-        {
+        if (analyzerClassName == null) {
             this.defaultAnalyzer = DEFAULT_ANALYZER;
-        }
-        else
-        {
+        } else {
             this.defaultAnalyzer = AnalyzerFactory.getAnalyzer(analyzerClassName);
         }
 
         // Setup per field analyzer
         Map<String, Analyzer> analyzers = new HashMap<>();
-        for (Entry<String, ColumnMapper<?>> entry : columnMappers.entrySet())
-        {
+        for (Entry<String, ColumnMapper> entry : columnMappers.entrySet()) {
             String name = entry.getKey();
-            ColumnMapper<?> mapper = entry.getValue();
+            ColumnMapper mapper = entry.getValue();
             Analyzer fieldAnalyzer = mapper.analyzer();
-            if (fieldAnalyzer != null)
-            {
+            if (fieldAnalyzer != null) {
                 analyzers.put(name, fieldAnalyzer);
             }
         }
@@ -99,29 +93,24 @@ public class Schema
      *
      * @param metadata A column family metadata.
      */
-    public void validate(CFMetaData metadata)
-    {
-        for (Entry<String, ColumnMapper<?>> entry : columnMappers.entrySet())
-        {
+    public void validate(CFMetaData metadata) {
+        for (Entry<String, ColumnMapper> entry : columnMappers.entrySet()) {
 
             String name = entry.getKey();
-            ColumnMapper<?> columnMapper = entry.getValue();
+            ColumnMapper columnMapper = entry.getValue();
             ByteBuffer columnName = UTF8Type.instance.decompose(name);
 
             ColumnDefinition columnDefinition = metadata.getColumnDefinition(columnName);
-            if (columnDefinition == null)
-            {
+            if (columnDefinition == null) {
                 throw new RuntimeException("No column definition for mapper " + name);
             }
 
-            if (columnDefinition.isStatic())
-            {
+            if (columnDefinition.isStatic()) {
                 throw new RuntimeException("Lucene indexes are not allowed on static columns as " + name);
             }
 
             AbstractType<?> type = columnDefinition.type;
-            if (!columnMapper.supports(type))
-            {
+            if (!columnMapper.supports(type)) {
                 throw new RuntimeException("Not supported type for mapper " + name);
             }
         }
@@ -132,8 +121,7 @@ public class Schema
      *
      * @return The used {@link PerFieldAnalyzerWrapper}.
      */
-    public PerFieldAnalyzerWrapper analyzer()
-    {
+    public PerFieldAnalyzerWrapper analyzer() {
         return perFieldAnalyzer;
     }
 
@@ -143,52 +131,50 @@ public class Schema
      * @param document The Lucene {@link Document} where the fields are going to be added.
      * @param columns  The {@link Columns} to be added.
      */
-    public void addFields(Document document, Columns columns)
-    {
-        for (Column column : columns)
-        {
+    public void addFields(Document document, Columns columns) {
+        for (Column column : columns) {
             String name = column.getName();
-            String fieldName = column.getFieldName();
-            Object value = column.getValue();
-            ColumnMapper<?> columnMapper = getMapper(name);
-            if (columnMapper != null)
-            {
-                Field field = columnMapper.field(fieldName, value);
-                document.add(field);
+            ColumnMapper columnMapper = getMapper(name);
+            if (columnMapper != null) {
+                for (IndexableField field : columnMapper.fields(column)) {
+                    document.add(field);
+                }
             }
         }
     }
 
     /**
-     * Returns the {@link ColumnMapper} identified by the specified field name.
+     * Returns the {@link ColumnMapper} identified by the specified field name, or {@code null} if not found.
      *
      * @param field A field name.
-     * @return The {@link ColumnMapper} identified by the specified field name.
+     * @return The {@link ColumnMapper} identified by the specified field name, or {@code null} if not found.
      */
-    public ColumnMapper<?> getMapper(String field)
-    {
-        ColumnMapper<?> columnMapper = columnMappers.get(field);
-        if (columnMapper == null)
-        {
-            String[] components = field.split("\\.");
-            if (components.length < 2)
-            {
-                return null;
-            }
+    public ColumnMapper getMapper(String field) {
+        String[] components = field.split("\\.");
+        for (int i = components.length - 1; i >= 0; i--) {
             StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < components.length - 1; i++)
-            {
-                sb.append(components[i]);
-                if (i < components.length - 2)
-                {
-                    sb.append(".");
-                }
+            for (int j = 0; j <= i; j++) {
+                sb.append(components[j]);
+                if (j < i) sb.append('.');
             }
-            return getMapper(sb.toString());
+            ColumnMapper columnMapper = columnMappers.get(sb.toString());
+            if (columnMapper != null) return columnMapper;
         }
-        else
-        {
-            return columnMapper;
+        return null;
+    }
+
+    /**
+     * Returns the {@link ColumnMapperSingle} identified by the specified field name, or {@code null} if not found.
+     *
+     * @param field A field name.
+     * @return The {@link ColumnMapperSingle} identified by the specified field name, or {@code null} if not found.
+     */
+    public ColumnMapperSingle<?> getMapperSingle(String field) {
+        ColumnMapper columnMapper = getMapper(field);
+        if (columnMapper != null && columnMapper instanceof ColumnMapperSingle<?>) {
+            return (ColumnMapperSingle<?>) columnMapper;
+        } else {
+            return null;
         }
     }
 
@@ -198,15 +184,13 @@ public class Schema
      * @param json A {@code String} containing the JSON representation of the {@link Schema} to be parsed.
      * @return The {@link Schema} contained in the specified JSON {@code String}.
      */
-    public static Schema fromJson(String json) throws IOException
-    {
+    public static Schema fromJson(String json) throws IOException {
         return JsonSerializer.fromString(json, Schema.class);
     }
 
     /** {@inheritDoc} */
     @Override
-    public String toString()
-    {
+    public String toString() {
         return new ToStringBuilder(this).append("defaultAnalyzer", defaultAnalyzer)
                                         .append("perFieldAnalyzer", perFieldAnalyzer)
                                         .append("columnMappers", columnMappers)

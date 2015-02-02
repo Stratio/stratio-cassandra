@@ -30,8 +30,8 @@ import org.codehaus.jackson.annotate.JsonProperty;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ColumnMapperLong extends ColumnMapper<Long>
-{
+public class ColumnMapperLong extends ColumnMapperSingle<Long> {
+
     /** The default boost. */
     public static final Float DEFAULT_BOOST = 1.0f;
 
@@ -40,57 +40,44 @@ public class ColumnMapperLong extends ColumnMapper<Long>
 
     /**
      * Builds a new {@link ColumnMapperLong} using the specified boost.
+     *
      * @param boost The boost to be used.
      */
     @JsonCreator
-    public ColumnMapperLong(@JsonProperty("boost") Float boost)
-    {
-        super(new AbstractType<?>[]{
-                AsciiType.instance,
-                UTF8Type.instance,
-                Int32Type.instance,
-                LongType.instance,
-                IntegerType.instance,
-                FloatType.instance,
-                DoubleType.instance,
-                DecimalType.instance}, new AbstractType[]{LongType.instance});
+    public ColumnMapperLong(@JsonProperty("boost") Float boost) {
+        super(new AbstractType<?>[]{AsciiType.instance,
+                                    UTF8Type.instance,
+                                    Int32Type.instance,
+                                    LongType.instance,
+                                    IntegerType.instance,
+                                    FloatType.instance,
+                                    DoubleType.instance,
+                                    DecimalType.instance}, new AbstractType[]{LongType.instance});
         this.boost = boost == null ? DEFAULT_BOOST : boost;
     }
 
     /** {@inheritDoc} */
     @Override
-    public Analyzer analyzer()
-    {
+    public Analyzer analyzer() {
         return EMPTY_ANALYZER;
     }
 
     /** {@inheritDoc} */
     @Override
-    public Long indexValue(String name, Object value)
-    {
-        if (value == null)
-        {
+    public Long indexValue(String name, Object value) {
+        if (value == null) {
             return null;
-        }
-        else if (value instanceof Number)
-        {
+        } else if (value instanceof Number) {
             return ((Number) value).longValue();
-        }
-        else if (value instanceof String)
-        {
+        } else if (value instanceof String) {
             String svalue = (String) value;
-            try
-            {
+            try {
                 return Double.valueOf(svalue).longValue();
-            }
-            catch (NumberFormatException e)
-            {
+            } catch (NumberFormatException e) {
                 String message = String.format("Field %s requires a base 10 long, but found \"%s\"", name, svalue);
                 throw new IllegalArgumentException(message);
             }
-        }
-        else
-        {
+        } else {
             String message = String.format("Field %s requires a base 10 long, but found \"%s\"", name, value);
             throw new IllegalArgumentException(message);
         }
@@ -98,15 +85,13 @@ public class ColumnMapperLong extends ColumnMapper<Long>
 
     /** {@inheritDoc} */
     @Override
-    public Long queryValue(String name, Object value)
-    {
+    public Long queryValue(String name, Object value) {
         return indexValue(name, value);
     }
 
     /** {@inheritDoc} */
     @Override
-    public Field field(String name, Object value)
-    {
+    public Field field(String name, Object value) {
         Long number = indexValue(name, value);
         Field field = new LongField(name, number, STORE);
         field.setBoost(boost);
@@ -115,22 +100,19 @@ public class ColumnMapperLong extends ColumnMapper<Long>
 
     /** {@inheritDoc} */
     @Override
-    public SortField sortField(String field, boolean reverse)
-    {
+    public SortField sortField(String field, boolean reverse) {
         return new SortField(field, Type.LONG, reverse);
     }
 
     /** {@inheritDoc} */
     @Override
-    public Class<Long> baseClass()
-    {
+    public Class<Long> baseClass() {
         return Long.class;
     }
 
     /** {@inheritDoc} */
     @Override
-    public String toString()
-    {
+    public String toString() {
         return new ToStringBuilder(this).append("boost", boost).toString();
     }
 }

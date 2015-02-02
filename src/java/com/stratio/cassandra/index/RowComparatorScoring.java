@@ -24,8 +24,7 @@ import java.util.Comparator;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class RowComparatorScoring implements RowComparator
-{
+public class RowComparatorScoring implements RowComparator {
 
     /**
      * The used {@link com.stratio.cassandra.index.RowService}.
@@ -37,8 +36,7 @@ public class RowComparatorScoring implements RowComparator
      *
      * @param rowService The used {@link com.stratio.cassandra.index.RowService}.
      */
-    public RowComparatorScoring(RowService rowService)
-    {
+    public RowComparatorScoring(RowService rowService) {
         this.rowService = rowService;
     }
 
@@ -46,8 +44,7 @@ public class RowComparatorScoring implements RowComparator
      * {@inheritDoc}
      */
     @Override
-    public int compare(Row row1, Row row2)
-    {
+    public int compare(Row row1, Row row2) {
         Float score1 = rowService.score(row1);
         Float score2 = rowService.score(row2);
         return score2.compareTo(score1);

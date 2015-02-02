@@ -30,8 +30,8 @@ import org.codehaus.jackson.annotate.JsonProperty;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ColumnMapperInteger extends ColumnMapper<Integer>
-{
+public class ColumnMapperInteger extends ColumnMapperSingle<Integer> {
+
     /** The default boost. */
     public static final Float DEFAULT_BOOST = 1.0f;
 
@@ -40,57 +40,44 @@ public class ColumnMapperInteger extends ColumnMapper<Integer>
 
     /**
      * Builds a new {@link ColumnMapperInteger} using the specified boost.
+     *
      * @param boost The boost to be used.
      */
     @JsonCreator
-    public ColumnMapperInteger(@JsonProperty("boost") Float boost)
-    {
-        super(new AbstractType<?>[]{
-                AsciiType.instance,
-                UTF8Type.instance,
-                Int32Type.instance,
-                LongType.instance,
-                IntegerType.instance,
-                FloatType.instance,
-                DoubleType.instance,
-                DecimalType.instance}, new AbstractType[]{Int32Type.instance});
+    public ColumnMapperInteger(@JsonProperty("boost") Float boost) {
+        super(new AbstractType<?>[]{AsciiType.instance,
+                                    UTF8Type.instance,
+                                    Int32Type.instance,
+                                    LongType.instance,
+                                    IntegerType.instance,
+                                    FloatType.instance,
+                                    DoubleType.instance,
+                                    DecimalType.instance}, new AbstractType[]{Int32Type.instance});
         this.boost = boost == null ? DEFAULT_BOOST : boost;
     }
 
     /** {@inheritDoc} */
     @Override
-    public Analyzer analyzer()
-    {
+    public Analyzer analyzer() {
         return EMPTY_ANALYZER;
     }
 
     /** {@inheritDoc} */
     @Override
-    public Integer indexValue(String name, Object value)
-    {
-        if (value == null)
-        {
+    public Integer indexValue(String name, Object value) {
+        if (value == null) {
             return null;
-        }
-        else if (value instanceof Number)
-        {
+        } else if (value instanceof Number) {
             return ((Number) value).intValue();
-        }
-        else if (value instanceof String)
-        {
+        } else if (value instanceof String) {
             String svalue = (String) value;
-            try
-            {
+            try {
                 return Double.valueOf(svalue).intValue();
-            }
-            catch (NumberFormatException e)
-            {
+            } catch (NumberFormatException e) {
                 String message = String.format("Field %s requires a base 10 integer, but found \"%s\"", name, svalue);
                 throw new IllegalArgumentException(message);
             }
-        }
-        else
-        {
+        } else {
             String message = String.format("Field %s requires a base 10 integer, but found \"%s\"", name, value);
             throw new IllegalArgumentException(message);
         }
@@ -98,15 +85,13 @@ public class ColumnMapperInteger extends ColumnMapper<Integer>
 
     /** {@inheritDoc} */
     @Override
-    public Integer queryValue(String name, Object value)
-    {
+    public Integer queryValue(String name, Object value) {
         return indexValue(name, value);
     }
 
     /** {@inheritDoc} */
     @Override
-    public Field field(String name, Object value)
-    {
+    public Field field(String name, Object value) {
         Integer number = indexValue(name, value);
         Field field = new IntField(name, number, STORE);
         field.setBoost(boost);
@@ -115,22 +100,19 @@ public class ColumnMapperInteger extends ColumnMapper<Integer>
 
     /** {@inheritDoc} */
     @Override
-    public SortField sortField(String field, boolean reverse)
-    {
+    public SortField sortField(String field, boolean reverse) {
         return new SortField(field, Type.INT, reverse);
     }
 
     /** {@inheritDoc} */
     @Override
-    public Class<Integer> baseClass()
-    {
+    public Class<Integer> baseClass() {
         return Integer.class;
     }
 
     /** {@inheritDoc} */
     @Override
-    public String toString()
-    {
+    public String toString() {
         return new ToStringBuilder(this).append("boost", boost).toString();
     }
 

@@ -22,8 +22,8 @@ import com.stratio.cassandra.index.query.MatchCondition;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class MatchConditionBuilder extends ConditionBuilder<MatchCondition, MatchConditionBuilder>
-{
+public class MatchConditionBuilder extends ConditionBuilder<MatchCondition, MatchConditionBuilder> {
+
     /** The name of the field to be matched. */
     private final String field;
 
@@ -36,8 +36,7 @@ public class MatchConditionBuilder extends ConditionBuilder<MatchCondition, Matc
      * @param field The name of the field to be matched.
      * @param value The value of the field to be matched.
      */
-    public MatchConditionBuilder(String field, Object value)
-    {
+    public MatchConditionBuilder(String field, Object value) {
         this.field = field;
         this.value = value;
     }
@@ -48,8 +47,7 @@ public class MatchConditionBuilder extends ConditionBuilder<MatchCondition, Matc
      * @return The {@link MatchCondition} represented by this builder.
      */
     @Override
-    public MatchCondition build()
-    {
+    public MatchCondition build() {
         return new MatchCondition(boost, field, value);
     }
 }

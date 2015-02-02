@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.stratio.cassandra.index.util;
+package com.stratio.cassandra.util;
 
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.CompositeType;
@@ -29,8 +29,7 @@ import java.util.List;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ByteBufferUtils
-{
+public class ByteBufferUtils {
 
     /**
      * Returns the specified {@link java.nio.ByteBuffer} as a byte array.
@@ -38,16 +37,14 @@ public class ByteBufferUtils
      * @param byteBuffer a {@link java.nio.ByteBuffer} to be converted to a byte array.
      * @return the byte array representation of the {@code byteBuffer}.
      */
-    public static byte[] asArray(ByteBuffer byteBuffer)
-    {
+    public static byte[] asArray(ByteBuffer byteBuffer) {
         ByteBuffer bb = ByteBufferUtil.clone(byteBuffer);
         byte[] bytes = new byte[bb.remaining()];
         bb.get(bytes);
         return bytes;
     }
 
-    public static boolean isEmpty(ByteBuffer byteBuffer)
-    {
+    public static boolean isEmpty(ByteBuffer byteBuffer) {
         return byteBuffer.remaining() == 0;
     }
 
@@ -57,14 +54,10 @@ public class ByteBufferUtils
      * @param type the {@link AbstractType} to be split.
      * @return the {@link AbstractType}s contained in {@code type}.
      */
-    public static List<AbstractType<?>> split(AbstractType<?> type)
-    {
-        if (type instanceof CompositeType)
-        {
+    public static List<AbstractType<?>> split(AbstractType<?> type) {
+        if (type instanceof CompositeType) {
             return type.getComponents();
-        }
-        else
-        {
+        } else {
             List<AbstractType<?>> result = new ArrayList<>(1);
             result.add(type);
             return result;
@@ -78,14 +71,10 @@ public class ByteBufferUtils
      * @param type       the {@link AbstractType} of {@code byteBuffer}.
      * @return the {@link java.nio.ByteBuffer}s contained in {@code byteBuffer} according to {@code type}.
      */
-    public static ByteBuffer[] split(ByteBuffer byteBuffer, AbstractType<?> type)
-    {
-        if (type instanceof CompositeType)
-        {
+    public static ByteBuffer[] split(ByteBuffer byteBuffer, AbstractType<?> type) {
+        if (type instanceof CompositeType) {
             return ((CompositeType) type).split(byteBuffer);
-        }
-        else
-        {
+        } else {
             return new ByteBuffer[]{byteBuffer};
         }
     }
@@ -97,28 +86,22 @@ public class ByteBufferUtils
      * @param type       {@link AbstractType} of {@code byteBuffer}.
      * @return a {@code String} representation of {@code byteBuffer} validated by {@code type}.
      */
-    public static String toString(ByteBuffer byteBuffer, AbstractType<?> type)
-    {
-        if (type instanceof CompositeType)
-        {
+    public static String toString(ByteBuffer byteBuffer, AbstractType<?> type) {
+        if (type instanceof CompositeType) {
             CompositeType composite = (CompositeType) type;
             List<AbstractType<?>> types = composite.types;
             ByteBuffer[] components = composite.split(byteBuffer);
             StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < components.length; i++)
-            {
+            for (int i = 0; i < components.length; i++) {
                 AbstractType<?> componentType = types.get(i);
                 ByteBuffer component = components[i];
                 sb.append(componentType.compose(component));
-                if (i < types.size() - 1)
-                {
+                if (i < types.size() - 1) {
                     sb.append(':');
                 }
             }
             return sb.toString();
-        }
-        else
-        {
+        } else {
             return type.compose(byteBuffer).toString();
         }
     }
@@ -129,8 +112,7 @@ public class ByteBufferUtils
      * @param byteBuffer the {@link java.nio.ByteBuffer} to be converted to {@link String}.
      * @return a {@code String} representation of {@code byteBuffer}.
      */
-    public static String toString(ByteBuffer byteBuffer)
-    {
+    public static String toString(ByteBuffer byteBuffer) {
         return Base256Serializer.string(byteBuffer);
     }
 
@@ -142,18 +124,19 @@ public class ByteBufferUtils
      *               #toString(ByteBuffer)}.
      * @return the {@link java.nio.ByteBuffer} represented by {@code string}.
      */
-    public static ByteBuffer fromString(String string)
-    {
+    public static ByteBuffer fromString(String string) {
         return Base256Serializer.byteBuffer(string);
     }
 
-    public static String toHex(ByteBuffer byteBuffer)
-    {
+    public static String toHex(ByteBuffer byteBuffer) {
         return ByteBufferUtil.bytesToHex(byteBuffer);
     }
 
-    public static String toHex(byte[] bytes)
-    {
+    public static String toHex(byte[] bytes) {
+        return Hex.bytesToHex(bytes);
+    }
+
+    public static String toHex(byte bytes) {
         return Hex.bytesToHex(bytes);
     }
 

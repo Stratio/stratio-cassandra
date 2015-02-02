@@ -32,8 +32,8 @@ import java.util.List;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class BooleanCondition extends Condition
-{
+public class BooleanCondition extends Condition {
+
     /** The mandatory conditions */
     @JsonProperty("must")
     private final List<Condition> must;
@@ -60,8 +60,7 @@ public class BooleanCondition extends Condition
     public BooleanCondition(@JsonProperty("boost") Float boost,
                             @JsonProperty("must") List<Condition> must,
                             @JsonProperty("should") List<Condition> should,
-                            @JsonProperty("not") List<Condition> not)
-    {
+                            @JsonProperty("not") List<Condition> not) {
         super(boost);
         this.must = must == null ? new LinkedList<Condition>() : must;
         this.should = should == null ? new LinkedList<Condition>() : should;
@@ -70,20 +69,16 @@ public class BooleanCondition extends Condition
 
     /** {@inheritDoc} */
     @Override
-    public Query query(Schema schema)
-    {
+    public Query query(Schema schema) {
         BooleanQuery luceneQuery = new BooleanQuery();
         luceneQuery.setBoost(boost);
-        for (Condition query : must)
-        {
+        for (Condition query : must) {
             luceneQuery.add(query.query(schema), Occur.MUST);
         }
-        for (Condition query : should)
-        {
+        for (Condition query : should) {
             luceneQuery.add(query.query(schema), Occur.SHOULD);
         }
-        for (Condition query : not)
-        {
+        for (Condition query : not) {
             luceneQuery.add(query.query(schema), Occur.MUST_NOT);
         }
         return luceneQuery;
@@ -91,8 +86,7 @@ public class BooleanCondition extends Condition
 
     /** {@inheritDoc} */
     @Override
-    public String toString()
-    {
+    public String toString() {
         return new ToStringBuilder(this).append("must", must).append("should", should).append("not", not).toString();
     }
 }

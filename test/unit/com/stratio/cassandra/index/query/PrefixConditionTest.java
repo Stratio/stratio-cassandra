@@ -38,7 +38,7 @@ public class PrefixConditionTest extends AbstractConditionTest
     public void testString()
     {
 
-        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperString());
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
@@ -57,7 +57,7 @@ public class PrefixConditionTest extends AbstractConditionTest
     public void testInteger()
     {
 
-        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInteger(1f));
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
@@ -69,7 +69,7 @@ public class PrefixConditionTest extends AbstractConditionTest
     public void testInetV4()
     {
 
-        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInet());
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 
@@ -88,7 +88,7 @@ public class PrefixConditionTest extends AbstractConditionTest
     public void testInetV6()
     {
 
-        Map<String, ColumnMapper<?>> map = new HashMap<>();
+        Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInet());
         Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
 

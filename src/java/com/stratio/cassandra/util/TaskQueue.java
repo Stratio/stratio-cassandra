@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.stratio.cassandra.index.util;
+package com.stratio.cassandra.util;
+
+import com.stratio.cassandra.contrib.NotifyingBlockingThreadPoolExecutor;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -28,8 +30,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class TaskQueue
-{
+public class TaskQueue {
 
     private NotifyingBlockingThreadPoolExecutor[] pools;
 
@@ -41,12 +42,10 @@ public class TaskQueue
      * @param numThreads The number of executor threads.
      * @param queuesSize The max number of tasks in each thread queue before blocking.
      */
-    public TaskQueue(int numThreads, int queuesSize)
-    {
+    public TaskQueue(int numThreads, int queuesSize) {
 
         pools = new NotifyingBlockingThreadPoolExecutor[numThreads];
-        for (int i = 0; i < numThreads; i++)
-        {
+        for (int i = 0; i < numThreads; i++) {
             pools[i] = new NotifyingBlockingThreadPoolExecutor(1,
                                                                queuesSize,
                                                                Long.MAX_VALUE,
@@ -54,11 +53,9 @@ public class TaskQueue
                                                                0,
                                                                TimeUnit.NANOSECONDS,
                                                                null);
-            pools[i].submit(new Runnable()
-            {
+            pools[i].submit(new Runnable() {
                 @Override
-                public void run()
-                {
+                public void run() {
                     Log.debug("Task queue starts");
                 }
             });
@@ -75,64 +72,45 @@ public class TaskQueue
      *             asynchronous execution.
      * @param task A task to be queued for asynchronous execution.
      */
-    public Future<?> submitAsynchronous(Object id, Runnable task)
-    {
+    public Future<?> submitAsynchronous(Object id, Runnable task) {
         lock.readLock().lock();
-        try
-        {
-            int i = Math.abs((int) (id.hashCode() % pools.length));
+        try {
+            int i = Math.abs(id.hashCode() % pools.length);
             return pools[i].submit(task);
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             Log.error(e, "Task queue submission failed");
             throw new RuntimeException(e);
-        }
-        finally
-        {
+        } finally {
             lock.readLock().unlock();
         }
     }
 
-    private void awaitInner() throws ExecutionException, InterruptedException
-    {
+    private void awaitInner() throws ExecutionException, InterruptedException {
         Future<?>[] futures = new Future<?>[pools.length];
-        for (int i = 0; i < pools.length; i++)
-        {
-            Future<?> future = pools[i].submit(new Runnable()
-            {
+        for (int i = 0; i < pools.length; i++) {
+            Future<?> future = pools[i].submit(new Runnable() {
                 @Override
-                public void run()
-                {
+                public void run() {
                 }
             });
             futures[i] = future;
         }
-        for (Future<?> future : futures)
-        {
+        for (Future<?> future : futures) {
             future.get();
         }
     }
 
-    public void await()
-    {
+    public void await() {
         lock.writeLock().lock();
-        try
-        {
+        try {
             awaitInner();
-        }
-        catch (InterruptedException e)
-        {
+        } catch (InterruptedException e) {
             Log.error(e, "Await interrupted");
             throw new RuntimeException(e);
-        }
-        catch (ExecutionException e)
-        {
+        } catch (ExecutionException e) {
             Log.error(e, "Await failed");
             throw new RuntimeException(e);
-        }
-        finally
-        {
+        } finally {
             lock.writeLock().unlock();
         }
     }
@@ -143,26 +121,18 @@ public class TaskQueue
      *
      * @param task A task to be executed synchronously.
      */
-    public void submitSynchronous(Runnable task)
-    {
+    public void submitSynchronous(Runnable task) {
         lock.writeLock().lock();
-        try
-        {
+        try {
             awaitInner();
             task.run();
-        }
-        catch (InterruptedException e)
-        {
+        } catch (InterruptedException e) {
             Log.error(e, "Task queue isolated submission interrupted");
             throw new RuntimeException(e);
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             Log.error(e, "Task queue isolated submission failed");
             throw new RuntimeException(e);
-        }
-        finally
-        {
+        } finally {
             lock.writeLock().unlock();
         }
     }

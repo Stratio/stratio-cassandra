@@ -15,7 +15,7 @@
  */
 package com.stratio.cassandra.index.query;
 
-import com.stratio.cassandra.index.schema.ColumnMapper;
+import com.stratio.cassandra.index.schema.ColumnMapperSingle;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.index.Term;
@@ -33,8 +33,8 @@ import org.codehaus.jackson.annotate.JsonProperty;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class FuzzyCondition extends Condition
-{
+public class FuzzyCondition extends SingleFieldCondition {
+
     /** The default Damerau-Levenshtein max distance. */
     public final static int DEFAULT_MAX_EDITS = LevenshteinAutomata.MAXIMUM_SUPPORTED_DISTANCE;
 
@@ -94,8 +94,7 @@ public class FuzzyCondition extends Condition
                           @JsonProperty("max_edits") Integer maxEdits,
                           @JsonProperty("prefix_length") Integer prefixLength,
                           @JsonProperty("max_expansions") Integer maxExpansions,
-                          @JsonProperty("transpositions") Boolean transpositions)
-    {
+                          @JsonProperty("transpositions") Boolean transpositions) {
         super(boost);
 
         this.field = field;
@@ -108,46 +107,33 @@ public class FuzzyCondition extends Condition
 
     /** {@inheritDoc} */
     @Override
-    public Query query(Schema schema)
-    {
+    public Query query(Schema schema) {
 
-        if (field == null || field.trim().isEmpty())
-        {
+        if (field == null || field.trim().isEmpty()) {
             throw new IllegalArgumentException("Field name required");
         }
-        if (value == null || value.trim().isEmpty())
-        {
+        if (value == null || value.trim().isEmpty()) {
             throw new IllegalArgumentException("Field value required");
         }
-        if (maxEdits < 0 || maxEdits > 2)
-        {
+        if (maxEdits < 0 || maxEdits > 2) {
             throw new IllegalArgumentException("max_edits must be between 0 and 2");
         }
-        if (prefixLength < 0)
-        {
+        if (prefixLength < 0) {
             throw new IllegalArgumentException("prefix_length must be positive.");
         }
-        if (maxExpansions < 0)
-        {
+        if (maxExpansions < 0) {
             throw new IllegalArgumentException("max_expansions must be positive.");
         }
 
-        ColumnMapper<?> columnMapper = schema.getMapper(field);
-        if (columnMapper == null)
-        {
-            throw new IllegalArgumentException("Not found mapper for field " + field);
-        }
+        ColumnMapperSingle<?> columnMapper = getMapper(schema, field);
         Class<?> clazz = columnMapper.baseClass();
-        if (clazz == String.class)
-        {
+        if (clazz == String.class) {
             String analyzedValue = analyze(field, value, columnMapper);
             Term term = new Term(field, analyzedValue);
             Query query = new FuzzyQuery(term, maxEdits, prefixLength, maxExpansions, transpositions);
             query.setBoost(boost);
             return query;
-        }
-        else
-        {
+        } else {
             String message = String.format("Fuzzy queries are not supported by %s mapper", clazz.getSimpleName());
             throw new UnsupportedOperationException(message);
         }
@@ -155,8 +141,7 @@ public class FuzzyCondition extends Condition
 
     /** {@inheritDoc} */
     @Override
-    public String toString()
-    {
+    public String toString() {
         return new ToStringBuilder(this).append("field", field)
                                         .append("value", value)
                                         .append("maxEdits", maxEdits)

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.stratio.cassandra.index.util;
+package com.stratio.cassandra.util;
 
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonParser;
@@ -29,15 +29,13 @@ import java.io.IOException;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class JsonSerializer
-{
+public class JsonSerializer {
 
     /** The embedded JSON serializer. */
     private static final ObjectMapper jsonMapper = new ObjectMapper();
 
     // Setup serialization options
-    static
-    {
+    static {
         jsonMapper.configure(JsonGenerator.Feature.QUOTE_FIELD_NAMES, false);
         jsonMapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
         // jsonMapper.setPropertyNamingStrategy(new LowerCaseWithUnderscoresStrategy());
@@ -55,8 +53,7 @@ public class JsonSerializer
      * @return The JSON {@code String} representation of the specified object.
      * @throws IOException If there are serialization problems.
      */
-    public static String toString(Object value) throws IOException
-    {
+    public static String toString(Object value) throws IOException {
         return jsonMapper.writeValueAsString(value);
     }
 
@@ -69,8 +66,7 @@ public class JsonSerializer
      * @return The object of the specified class represented by the specified JSON {@code String}.
      * @throws IOException If there are parsing problems.
      */
-    public static <T> T fromString(String value, Class<T> valueType) throws IOException
-    {
+    public static <T> T fromString(String value, Class<T> valueType) throws IOException {
         return jsonMapper.readValue(value, valueType);
     }
 }

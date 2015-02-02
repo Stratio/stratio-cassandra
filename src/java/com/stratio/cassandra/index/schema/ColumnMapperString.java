@@ -29,85 +29,72 @@ import org.codehaus.jackson.annotate.JsonCreator;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ColumnMapperString extends ColumnMapper<String>
-{
+public class ColumnMapperString extends ColumnMapperSingle<String> {
 
     /**
      * Builds a new {@link ColumnMapperString}.
      */
     @JsonCreator
-    public ColumnMapperString()
-    {
-        super(new AbstractType<?>[]{
-                AsciiType.instance,
-                UTF8Type.instance,
-                Int32Type.instance,
-                LongType.instance,
-                IntegerType.instance,
-                FloatType.instance,
-                DoubleType.instance,
-                BooleanType.instance,
-                UUIDType.instance,
-                TimeUUIDType.instance,
-                TimestampType.instance,
-                BytesType.instance,
-                InetAddressType.instance}, new AbstractType[]{UTF8Type.instance});
+    public ColumnMapperString() {
+        super(new AbstractType<?>[]{AsciiType.instance,
+                                    UTF8Type.instance,
+                                    Int32Type.instance,
+                                    LongType.instance,
+                                    IntegerType.instance,
+                                    FloatType.instance,
+                                    DoubleType.instance,
+                                    BooleanType.instance,
+                                    UUIDType.instance,
+                                    TimeUUIDType.instance,
+                                    TimestampType.instance,
+                                    BytesType.instance,
+                                    InetAddressType.instance}, new AbstractType[]{UTF8Type.instance});
     }
 
     /** {@inheritDoc} */
     @Override
-    public Analyzer analyzer()
-    {
+    public Analyzer analyzer() {
         return EMPTY_ANALYZER;
     }
 
     /** {@inheritDoc} */
     @Override
-    public String indexValue(String name, Object value)
-    {
-        if (value == null)
-        {
+    public String indexValue(String name, Object value) {
+        if (value == null) {
             return null;
-        }
-        else
-        {
+        } else {
             return value.toString();
         }
     }
 
     /** {@inheritDoc} */
     @Override
-    public String queryValue(String name, Object value)
-    {
+    public String queryValue(String name, Object value) {
         return indexValue(name, value);
     }
 
     /** {@inheritDoc} */
     @Override
-    public Field field(String name, Object value)
-    {
+    public Field field(String name, Object value) {
         String string = indexValue(name, value);
         return new StringField(name, string, STORE);
     }
 
     /** {@inheritDoc} */
     @Override
-    public SortField sortField(String field, boolean reverse)
-    {
+    public SortField sortField(String field, boolean reverse) {
         return new SortField(field, Type.STRING, reverse);
     }
 
     /** {@inheritDoc} */
     @Override
-    public Class<String> baseClass()
-    {
+    public Class<String> baseClass() {
         return String.class;
     }
 
     /** {@inheritDoc} */
     @Override
-    public String toString()
-    {
+    public String toString() {
         return new ToStringBuilder(this).toString();
     }
 

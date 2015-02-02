@@ -15,7 +15,7 @@
  */
 package com.stratio.cassandra.index;
 
-import com.stratio.cassandra.index.util.ComparatorChain;
+import com.stratio.cassandra.contrib.ComparatorChain;
 import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.CellNameType;
@@ -28,21 +28,20 @@ import java.util.Comparator;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class RowComparatorNatural implements RowComparator
-{
+public class RowComparatorNatural implements RowComparator {
 
     private final ComparatorChain<Row> comparatorChain;
 
-    public RowComparatorNatural()
-    {
+    /**
+     * Builds a new {@link RowComparatorNatural} to be used with skinny rows tables.
+     */
+    public RowComparatorNatural() {
         super();
         comparatorChain = new ComparatorChain<>();
-        comparatorChain.addComparator(new Comparator<Row>()
-        {
+        comparatorChain.addComparator(new Comparator<Row>() {
             @Override
             @SuppressWarnings({"unchecked", "rawtypes"})
-            public int compare(Row row1, Row row2)
-            {
+            public int compare(Row row1, Row row2) {
                 Token t1 = row1.key.getToken();
                 Token t2 = row2.key.getToken();
                 return t1.compareTo(t2);
@@ -50,26 +49,25 @@ public class RowComparatorNatural implements RowComparator
         });
     }
 
-    public RowComparatorNatural(final ClusteringKeyMapper clusteringKeyMapper)
-    {
+    /**
+     * Builds a new {@link RowComparatorNatural} to be used with wide rows tables.
+     * @param clusteringKeyMapper The used {@link ClusteringKeyMapper}.
+     */
+    public RowComparatorNatural(final ClusteringKeyMapper clusteringKeyMapper) {
         super();
         comparatorChain = new ComparatorChain<>();
-        comparatorChain.addComparator(new Comparator<Row>()
-        {
+        comparatorChain.addComparator(new Comparator<Row>() {
             @Override
             @SuppressWarnings({"unchecked", "rawtypes"})
-            public int compare(Row row1, Row row2)
-            {
+            public int compare(Row row1, Row row2) {
                 Token t1 = row1.key.getToken();
                 Token t2 = row2.key.getToken();
                 return t1.compareTo(t2);
             }
         });
-        comparatorChain.addComparator(new Comparator<Row>()
-        {
+        comparatorChain.addComparator(new Comparator<Row>() {
             @Override
-            public int compare(Row row1, Row row2)
-            {
+            public int compare(Row row1, Row row2) {
                 CellNameType nameType = clusteringKeyMapper.getType();
                 CellName name1 = clusteringKeyMapper.clusteringKey(row1);
                 CellName name2 = clusteringKeyMapper.clusteringKey(row2);
@@ -79,8 +77,7 @@ public class RowComparatorNatural implements RowComparator
     }
 
     @Override
-    public int compare(Row row1, Row row2)
-    {
+    public int compare(Row row1, Row row2) {
         return comparatorChain.compare(row1, row2);
     }
 
