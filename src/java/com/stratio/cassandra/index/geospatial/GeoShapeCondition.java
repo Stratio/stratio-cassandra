@@ -19,6 +19,7 @@ import com.spatial4j.core.context.SpatialContext;
 import com.stratio.cassandra.index.query.Condition;
 import com.stratio.cassandra.index.schema.ColumnMapper;
 import com.stratio.cassandra.index.schema.Schema;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.spatial.SpatialStrategy;
 import org.apache.lucene.spatial.query.SpatialArgs;
@@ -92,11 +93,9 @@ public class GeoShapeCondition extends Condition {
     /** {@inheritDoc} */
     @Override
     public String toString() {
-        final StringBuilder sb = new StringBuilder("GeoShapeCondition{");
-        sb.append("field='").append(field).append('\'');
-        sb.append(", operation='").append(operator).append('\'');
-        sb.append(", shape=").append(shape);
-        sb.append('}');
-        return sb.toString();
+        return new ToStringBuilder(this).append("field", field)
+                                        .append("operator", operator)
+                                        .append("shape", shape)
+                                        .toString();
     }
 }

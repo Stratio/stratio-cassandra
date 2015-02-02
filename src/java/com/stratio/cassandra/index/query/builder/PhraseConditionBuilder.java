@@ -26,6 +26,7 @@ import java.util.List;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class PhraseConditionBuilder extends ConditionBuilder<PhraseCondition, PhraseConditionBuilder> {
+
     /** The name of the field to be matched. */
     private final String field;
 

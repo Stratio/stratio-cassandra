@@ -29,6 +29,7 @@ import java.util.Map;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class RowIndexConfig {
+
     private static final String SCHEMA_OPTION = "schema";
 
     private static final String REFRESH_SECONDS_OPTION = "refresh_seconds";
@@ -68,6 +69,7 @@ public class RowIndexConfig {
      * @param options  The index options.
      */
     public RowIndexConfig(CFMetaData metadata, Map<String, String> options) {
+
         // Setup refresh seconds
         String refreshOption = options.get(REFRESH_SECONDS_OPTION);
         if (refreshOption != null) {

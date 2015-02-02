@@ -23,6 +23,7 @@ import com.stratio.cassandra.index.query.FuzzyCondition;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class FuzzyConditionBuilder extends ConditionBuilder<FuzzyCondition, FuzzyConditionBuilder> {
+
     /** The name of the field to be matched. */
     private final String field;
 

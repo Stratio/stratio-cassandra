@@ -36,6 +36,7 @@ import java.util.Date;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class ColumnMapperDate extends ColumnMapperSingle<Long> {
+
     /** The default {@link SimpleDateFormat} pattern. */
     public static final String DEFAULT_PATTERN = "yyyy/MM/dd HH:mm:ss.SSS";
 

@@ -14,7 +14,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.stratio.cassandra.index.util;
+package com.stratio.cassandra.contrib;
 
 import java.io.Serializable;
 import java.util.*;

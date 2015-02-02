@@ -15,7 +15,7 @@
  */
 package com.stratio.cassandra.index;
 
-import com.stratio.cassandra.index.util.Log;
+import com.stratio.cassandra.util.Log;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.ColumnFamily;
@@ -61,18 +61,38 @@ public class RowIndex extends PerRowSecondaryIndex {
         return indexName;
     }
 
+    /**
+     * Returns the indexed keyspace name.
+     *
+     * @return The indexed keyspace name.
+     */
     public String getKeyspaceName() {
         return keyspaceName;
     }
 
+    /**
+     * Returns the indexed table name.
+     *
+     * @return The indexed table name.
+     */
     public String getTableName() {
         return tableName;
     }
 
+    /**
+     * Returns the indexed column name.
+     *
+     * @return The indexed column name.
+     */
     public String getColumnName() {
         return columnName;
     }
 
+    /**
+     * Returns the indexed column definition.
+     *
+     * @return The indexed column definition.
+     */
     public ColumnDefinition getColumnDefinition() {
         return columnDefinition;
     }
@@ -98,6 +118,7 @@ public class RowIndex extends PerRowSecondaryIndex {
     }
 
     private void setup() {
+
         // Load column family info
         secondaryIndexManager = baseCfs.indexManager;
         columnDefinition = columnDefs.iterator().next();
@@ -119,7 +140,7 @@ public class RowIndex extends PerRowSecondaryIndex {
      */
     @Override
     public void index(ByteBuffer key, ColumnFamily columnFamily) {
-        // Log.debug("Indexing row %s in index %s ", key, logName);
+        Log.debug("Indexing row %s in index %s ", key, logName);
         lock.readLock().lock();
         try {
             if (rowService != null) {
@@ -267,7 +288,7 @@ public class RowIndex extends PerRowSecondaryIndex {
 
     @Override
     protected SecondaryIndexSearcher createSecondaryIndexSearcher(Set<ByteBuffer> columns) {
-        // Log.debug("Creating searcher for index %s", logName);
+        Log.debug("Creating searcher for index %s", logName);
         return new RowIndexSearcher(secondaryIndexManager, this, columns, rowService);
     }
 
@@ -277,7 +298,7 @@ public class RowIndex extends PerRowSecondaryIndex {
         try {
             rowService.optimize();
         } catch (Exception e) {
-            Log.error(e, "Error while ompacting index %s", logName);
+            Log.error(e, "Error while compacting index %s", logName);
             throw new RuntimeException(e);
         }
     }

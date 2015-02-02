@@ -32,6 +32,7 @@ import java.io.IOException;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 class ClusteringKeyQuery extends MultiTermQuery {
+
     private final ClusteringKeyMapper clusteringKeyMapper;
     private final Composite start;
     private final Composite stop;

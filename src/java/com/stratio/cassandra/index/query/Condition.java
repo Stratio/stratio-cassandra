@@ -62,6 +62,7 @@ import java.io.IOException;
                @JsonSubTypes.Type(value = GeoDistanceRangeCondition.class, name = "geo_distance_range"),
                @JsonSubTypes.Type(value = GeoBBoxCondition.class, name = "geo_bounding_box"),})
 public abstract class Condition {
+
     /** The default boost to be used. */
     public static final float DEFAULT_BOOST = 1.0f;
 

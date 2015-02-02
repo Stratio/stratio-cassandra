@@ -26,6 +26,7 @@ import java.nio.ByteBuffer;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class Column {
+
     /** The column's name. */
     private String name;
 

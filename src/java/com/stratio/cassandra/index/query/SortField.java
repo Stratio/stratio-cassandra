@@ -33,6 +33,7 @@ import java.util.Comparator;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class SortField {
+
     /** The default reverse option. */
     public static final boolean DEFAULT_REVERSE = false;
 

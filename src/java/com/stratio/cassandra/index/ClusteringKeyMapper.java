@@ -18,7 +18,7 @@ package com.stratio.cassandra.index;
 import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.schema.Schema;
-import com.stratio.cassandra.index.util.ByteBufferUtils;
+import com.stratio.cassandra.util.ByteBufferUtils;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.ArrayBackedSortedColumns;
@@ -50,6 +50,7 @@ import java.util.*;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public abstract class ClusteringKeyMapper {
+
     /** The Lucene field name */
     public static final String FIELD_NAME = "_clustering_key";
 
@@ -93,12 +94,25 @@ public abstract class ClusteringKeyMapper {
         return cellNameType;
     }
 
+    /**
+     * Adds to the specified document the clustering key contained in the specified cell name.
+     *
+     * @param document The document where the clustering key is going to be added.
+     * @param cellName A cell name containing the clustering key to be added.
+     */
     public final void addFields(Document document, CellName cellName) {
         String serializedKey = ByteBufferUtils.toString(cellName.toByteBuffer());
         Field field = new StringField(FIELD_NAME, serializedKey, Field.Store.YES);
         document.add(field);
     }
 
+    /**
+     * Returns the first clustering key contained in the specified {@link ColumnFamily}. Note that there could be more
+     * clustering keys in the column family.
+     *
+     * @param columnFamily A column family.
+     * @return The first clustering key contained in the specified {@link ColumnFamily}.
+     */
     public final CellName clusteringKey(ColumnFamily columnFamily) {
         Iterator<Cell> iterator = columnFamily.iterator();
         return iterator.hasNext() ? clusteringKey(iterator.next().name()) : null;
@@ -107,7 +121,7 @@ public abstract class ClusteringKeyMapper {
     /**
      * Returns the common clustering keys of the specified column family.
      *
-     * @param columnFamily A storage engine {@link org.apache.cassandra.db.ColumnFamily}.
+     * @param columnFamily A storage engine {@link ColumnFamily}.
      * @return The common clustering keys of the specified column family.
      */
     public final List<CellName> clusteringKeys(ColumnFamily columnFamily) {
@@ -139,8 +153,7 @@ public abstract class ClusteringKeyMapper {
     protected final boolean isStatic(CellName cellName) {
         int numClusteringColumns = metadata.clusteringColumns().size();
         for (int i = 0; i < numClusteringColumns; i++) {
-            if (ByteBufferUtils.isEmpty(cellName.get(i))) // Ignore static columns
-            {
+            if (ByteBufferUtils.isEmpty(cellName.get(i))) {
                 return true;
             }
         }
@@ -168,6 +181,12 @@ public abstract class ClusteringKeyMapper {
         return clusteringKey(row.cf);
     }
 
+    /**
+     * Returns the clustering key contained in the specified {@link CellName}.
+     *
+     * @param document A {@link Document}.
+     * @return The clustering key contained in the specified {@link CellName}.
+     */
     public final CellName clusteringKey(Document document) {
         String string = document.get(FIELD_NAME);
         ByteBuffer bb = ByteBufferUtils.fromString(string);
@@ -175,10 +194,10 @@ public abstract class ClusteringKeyMapper {
     }
 
     /**
-     * Returns the raw clustering key contained in the specified Lucene field value.
+     * Returns the clustering key contained in the specified Lucene field value.
      *
      * @param bytesRef The {@link BytesRef} containing the raw clustering key to be get.
-     * @return The raw clustering key contained in the specified Lucene field value.
+     * @return The clustering key contained in the specified Lucene field value.
      */
     public final CellName clusteringKey(BytesRef bytesRef) {
         String string = bytesRef.utf8ToString();
@@ -186,6 +205,12 @@ public abstract class ClusteringKeyMapper {
         return cellNameType.cellFromByteBuffer(bb);
     }
 
+    /**
+     * Returns the clustering key contained in the specified {@link CellName}.
+     *
+     * @param cellName A {@link CellName}.
+     * @return The clustering key contained in the specified {@link CellName}.
+     */
     public final CellName clusteringKey(CellName cellName) {
         CBuilder builder = cellNameType.builder();
         for (int i = 0; i < metadata.clusteringColumns().size(); i++) {
@@ -269,6 +294,12 @@ public abstract class ClusteringKeyMapper {
         return columnSlices;
     }
 
+    /**
+     * Returns the specified list of clustering keys sorted according to the table cell name comparator.
+     *
+     * @param clusteringKeys The list of clustering keys to be sorted.
+     * @return The specified list of clustering keys sorted according to the table cell name comparator.
+     */
     public final List<CellName> sort(List<CellName> clusteringKeys) {
         List<CellName> result = new ArrayList<>(clusteringKeys);
         Collections.sort(result, new Comparator<CellName>() {
@@ -287,8 +318,21 @@ public abstract class ClusteringKeyMapper {
      */
     public abstract SortField[] sortFields();
 
+    /**
+     * Returns a Lucene {@link Query} array to retrieving documents/rows whose clustering key is between the two
+     * specified column name prefixes.
+     *
+     * @return A Lucene {@link Query} array to retrieving documents/rows whose clustering key is between the two
+     * specified column name prefixes.
+     */
     public abstract Query query(Composite start, Composite stop);
 
+    /**
+     * Returns the {@code String} human-readable representation of the specified cell name.
+     *
+     * @param cellName A cell name.
+     * @return The {@code String} human-readable representation of the specified cell name.
+     */
     public final String toString(Composite cellName) {
         return ByteBufferUtils.toString(cellName.toByteBuffer(), cellNameType.asAbstractType());
     }

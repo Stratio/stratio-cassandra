@@ -34,6 +34,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class FuzzyCondition extends SingleFieldCondition {
+
     /** The default Damerau-Levenshtein max distance. */
     public final static int DEFAULT_MAX_EDITS = LevenshteinAutomata.MAXIMUM_SUPPORTED_DISTANCE;
 

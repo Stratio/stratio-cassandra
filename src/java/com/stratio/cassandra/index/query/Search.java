@@ -16,8 +16,8 @@
 package com.stratio.cassandra.index.query;
 
 import com.stratio.cassandra.index.schema.Schema;
-import com.stratio.cassandra.index.util.JsonSerializer;
-import com.stratio.cassandra.index.util.Log;
+import com.stratio.cassandra.util.JsonSerializer;
+import com.stratio.cassandra.util.Log;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.search.*;
 import org.codehaus.jackson.annotate.JsonCreator;
@@ -30,6 +30,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class Search {
+
     /** he {@link Condition} for querying, maybe {@code null} meaning no querying. */
     @JsonProperty("query")
     private Condition queryCondition;

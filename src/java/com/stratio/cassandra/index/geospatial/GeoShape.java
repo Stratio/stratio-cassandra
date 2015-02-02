@@ -16,7 +16,7 @@
 package com.stratio.cassandra.index.geospatial;
 
 import com.spatial4j.core.context.SpatialContext;
-import com.stratio.cassandra.index.util.JsonSerializer;
+import com.stratio.cassandra.util.JsonSerializer;
 import org.codehaus.jackson.annotate.JsonSubTypes;
 import org.codehaus.jackson.annotate.JsonTypeInfo;
 

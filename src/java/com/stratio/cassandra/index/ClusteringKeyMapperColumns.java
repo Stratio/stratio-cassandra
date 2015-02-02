@@ -5,7 +5,7 @@ import com.stratio.cassandra.index.query.builder.RangeConditionBuilder;
 import com.stratio.cassandra.index.schema.ColumnMapper;
 import com.stratio.cassandra.index.schema.ColumnMapperSingle;
 import com.stratio.cassandra.index.schema.Schema;
-import com.stratio.cassandra.index.util.ByteBufferUtils;
+import com.stratio.cassandra.util.ByteBufferUtils;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.composites.Composite;
@@ -28,6 +28,7 @@ import static org.apache.lucene.search.BooleanClause.Occur.SHOULD;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class ClusteringKeyMapperColumns extends ClusteringKeyMapper {
+
     private final Schema schema;
     private final String[] names;
     private final ColumnMapperSingle[] columnMappers;
@@ -108,20 +109,12 @@ public class ClusteringKeyMapperColumns extends ClusteringKeyMapper {
 
     private boolean includeStart(Composite composite) {
         ByteBuffer[] components = ByteBufferUtils.split(composite.toByteBuffer(), compositeType);
-        if (components.length > numClusteringColumns) {
-            return false;
-        } else {
-            return composite.eoc() == Composite.EOC.NONE;
-        }
+        return components.length <= numClusteringColumns && composite.eoc() == Composite.EOC.NONE;
     }
 
     private boolean includeStop(Composite composite) {
         ByteBuffer[] components = ByteBufferUtils.split(composite.toByteBuffer(), compositeType);
-        if (components.length > numClusteringColumns) {
-            return true;
-        } else {
-            return composite.eoc() == Composite.EOC.END;
-        }
+        return components.length > numClusteringColumns || composite.eoc() == Composite.EOC.END;
     }
 
     @Override

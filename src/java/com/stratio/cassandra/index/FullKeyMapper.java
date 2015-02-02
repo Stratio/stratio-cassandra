@@ -15,7 +15,7 @@
  */
 package com.stratio.cassandra.index;
 
-import com.stratio.cassandra.index.util.ByteBufferUtils;
+import com.stratio.cassandra.util.ByteBufferUtils;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.marshal.AbstractType;
@@ -36,14 +36,10 @@ import java.nio.ByteBuffer;
  */
 public class FullKeyMapper {
 
-    /**
-     * The Lucene field name.
-     */
-    public static final String FIELD_NAME = "_full_key";
+    /** The Lucene field name. */
+    public static final String FIELD_NAME = "_full_key"; //  The Lucene field name
 
-    /**
-     * The type of the full row key, which is composed by the partition and clustering key types.
-     */
+    /** The type of the full row key, which is composed by the partition and clustering key types. */
     public CompositeType type;
 
     /**

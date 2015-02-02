@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.stratio.cassandra.index.util;
+package com.stratio.cassandra.util;
 
 import org.apache.commons.lang3.time.StopWatch;
 
@@ -23,8 +23,9 @@ import org.apache.commons.lang3.time.StopWatch;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class TimeCounter {
+
     private enum State {
-        UNSTARTED, RUNNING, STOPPED;
+        UNSTARTED, RUNNING, STOPPED
     }
 
     private final StopWatch watch;

@@ -30,6 +30,8 @@ import java.nio.ByteBuffer;
 import java.util.Iterator;
 
 /**
+ * Class for several regular cells mappings between Cassandra and Lucene.
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class RegularCellsMapper {
@@ -58,8 +60,16 @@ public class RegularCellsMapper {
         return new RegularCellsMapper(metadata);
     }
 
+    /**
+     * Returns the columns contained in the regular cells specified {@link Row}. Note that not all the contained columns
+     * are returned, but only the regular cell ones.
+     *
+     * @param row A {@link Row}.
+     * @return The columns contained in the regular cells specified {@link Row}.
+     */
     @SuppressWarnings("rawtypes")
     public Columns columns(Row row) {
+
         ColumnFamily columnFamily = row.cf;
         Columns columns = new Columns();
 

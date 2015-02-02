@@ -38,13 +38,13 @@ import java.nio.ByteBuffer;
  */
 public abstract class RowMapper {
 
-    protected final CFMetaData metadata;
-    protected final ColumnDefinition columnDefinition;
-    protected final Schema schema;
+    protected final CFMetaData metadata; // The indexed table metadata
+    protected final ColumnDefinition columnDefinition; // The indexed column definition
+    protected final Schema schema; // The indexing schema
 
-    protected final TokenMapper tokenMapper;
-    protected final PartitionKeyMapper partitionKeyMapper;
-    protected final RegularCellsMapper regularCellsMapper;
+    protected final TokenMapper tokenMapper; // A token mapper for the indexed table
+    protected final PartitionKeyMapper partitionKeyMapper; // A partition key mapper for the indexed table
+    protected final RegularCellsMapper regularCellsMapper; // A regular cell mapper for the indexed table
 
     /**
      * Builds a new {@link RowMapper} for the specified column family metadata, indexed column definition and {@link
@@ -150,6 +150,13 @@ public abstract class RowMapper {
      */
     public abstract RowComparator naturalComparator();
 
+    /**
+     * Returns the {@link SearchResult} defined by the specified {@link Document} and {@link ScoreDoc}.
+     *
+     * @param document A {@link Document}.
+     * @param scoreDoc A {@link ScoreDoc}.
+     * @return The {@link SearchResult} defined by the specified {@link Document} and {@link ScoreDoc}.
+     */
     public abstract SearchResult searchResult(Document document, ScoreDoc scoreDoc);
 
 }

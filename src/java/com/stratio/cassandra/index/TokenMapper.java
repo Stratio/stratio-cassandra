@@ -34,8 +34,8 @@ import org.apache.lucene.search.SortField;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public abstract class TokenMapper {
-    /** The column family metadata. */
-    protected final CFMetaData metadata;
+
+    protected final CFMetaData metadata; // The column family metadata
 
     /**
      * Returns a new {@link TokenMapper} instance for the current partitioner using the specified column family

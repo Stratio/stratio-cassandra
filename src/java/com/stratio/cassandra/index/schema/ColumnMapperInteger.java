@@ -31,6 +31,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class ColumnMapperInteger extends ColumnMapperSingle<Integer> {
+
     /** The default boost. */
     public static final Float DEFAULT_BOOST = 1.0f;
 

@@ -28,6 +28,7 @@ import java.util.List;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class Columns implements Iterable<Column> {
+
     /** The wrapped columns. */
     private List<Column> columns;
 

@@ -30,9 +30,7 @@ import java.util.Map;
  */
 public final class AnalyzerFactory {
 
-    /**
-     * Analyzers cache, actually mocked without any eviction.
-     */
+    /** Analyzers cache, actually mocked without any eviction. */
     private static Map<String, Analyzer> analyzers = new LinkedHashMap<>();
 
     /**

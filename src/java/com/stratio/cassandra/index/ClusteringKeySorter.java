@@ -36,9 +36,7 @@ class ClusteringKeySorter extends FieldComparator<BytesRef> {
 
     private static final byte[] MISSING_BYTES = new byte[0];
 
-    /**
-     * The ClusteringKeyMapper to be used.
-     */
+    /** The ClusteringKeyMapper to be used. */
     private final ClusteringKeyMapper clusteringKeyMapper;
 
     private BytesRef[] values;

@@ -17,6 +17,7 @@ package com.stratio.cassandra.index.geospatial;
 
 import com.stratio.cassandra.index.query.Condition;
 import com.stratio.cassandra.index.schema.Schema;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.Query;
@@ -78,13 +79,11 @@ public class GeoDistanceRangeCondition extends Condition {
     /** {@inheritDoc} */
     @Override
     public String toString() {
-        final StringBuilder sb = new StringBuilder("GeoDistanceCondition{");
-        sb.append("field='").append(field).append('\'');
-        sb.append(", longitude=").append(longitude);
-        sb.append(", latitude=").append(latitude);
-        sb.append(", minDistance=").append(minDistance);
-        sb.append(", maxDistance=").append(maxDistance);
-        sb.append('}');
-        return sb.toString();
+        return new ToStringBuilder(this).append("field", field)
+                                        .append("longitude", longitude)
+                                        .append("latitude", latitude)
+                                        .append("minDistance", minDistance)
+                                        .append("maxDistance", maxDistance)
+                                        .toString();
     }
 }

@@ -15,7 +15,7 @@
  */
 package com.stratio.cassandra.index;
 
-import com.stratio.cassandra.index.util.Log;
+import com.stratio.cassandra.util.Log;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
@@ -40,6 +40,7 @@ import java.util.Set;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class LuceneIndex {
+
     private final RowMapper rowMapper;
     private final String path;
     private final Double refreshSeconds;

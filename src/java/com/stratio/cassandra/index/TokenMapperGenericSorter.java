@@ -31,6 +31,7 @@ import java.io.IOException;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class TokenMapperGenericSorter extends FieldComparator<BytesRef> {
+
     private static final byte[] MISSING_BYTES = new byte[0];
 
     /** The PartitionKeyComparator to be used. */

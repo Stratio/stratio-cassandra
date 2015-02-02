@@ -17,6 +17,7 @@ package com.stratio.cassandra.index.geospatial;
 
 import com.stratio.cassandra.index.query.Condition;
 import com.stratio.cassandra.index.schema.Schema;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.search.Query;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
@@ -28,11 +29,11 @@ import org.codehaus.jackson.annotate.JsonProperty;
  */
 public class GeoBBoxCondition extends Condition {
 
-    private final String field; // The name of the field to be matched.
-    private final double minLongitude;
-    private final double maxLongitude;
-    private final double minLatitude;
-    private final double maxLatitude;
+    private final String field; // The name of the field to be matched
+    private final double minLongitude; // The minimum accepted longitude
+    private final double maxLongitude; // The maximum accepted longitude
+    private final double minLatitude; // The minimum accepted latitude
+    private final double maxLatitude; // The maximum accepted latitude
 
     /**
      * Constructor using the field name and the value to be matched.
@@ -67,13 +68,11 @@ public class GeoBBoxCondition extends Condition {
     /** {@inheritDoc} */
     @Override
     public String toString() {
-        final StringBuilder sb = new StringBuilder("GeoBBoxCondition{");
-        sb.append("field='").append(field).append('\'');
-        sb.append(", minLongitude=").append(minLongitude);
-        sb.append(", maxLongitude=").append(maxLongitude);
-        sb.append(", minLatitude=").append(minLatitude);
-        sb.append(", maxLatitude=").append(maxLatitude);
-        sb.append('}');
-        return sb.toString();
+        return new ToStringBuilder(this).append("field", field)
+                                        .append("minLongitude", minLongitude)
+                                        .append("maxLongitude", maxLongitude)
+                                        .append("minLatitude", minLatitude)
+                                        .append("maxLatitude", maxLatitude)
+                                        .toString();
     }
 }

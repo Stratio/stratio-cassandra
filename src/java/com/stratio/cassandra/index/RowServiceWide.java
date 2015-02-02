@@ -35,6 +35,7 @@ import java.util.*;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class RowServiceWide extends RowService {
+
     /** The names of the Lucene fields to be loaded. */
     private static final Set<String> FIELDS_TO_LOAD;
 

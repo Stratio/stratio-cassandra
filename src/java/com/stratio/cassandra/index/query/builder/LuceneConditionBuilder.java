@@ -23,6 +23,7 @@ import com.stratio.cassandra.index.query.LuceneCondition;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class LuceneConditionBuilder extends ConditionBuilder<LuceneCondition, LuceneConditionBuilder> {
+
     /** The Lucene query syntax expression. */
     private final String query;
 

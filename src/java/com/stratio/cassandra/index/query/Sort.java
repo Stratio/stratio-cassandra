@@ -29,6 +29,7 @@ import java.util.List;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class Sort implements Iterable<SortField> {
+
     /** How to sortFields each field. */
     private final List<SortField> sortFields;
 

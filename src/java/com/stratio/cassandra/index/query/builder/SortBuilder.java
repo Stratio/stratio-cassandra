@@ -28,6 +28,7 @@ import java.util.List;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class SortBuilder implements Builder<Sort> {
+
     /** The {@link SortField}s */
     private final List<SortField> sortFields;
 

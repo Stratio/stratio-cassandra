@@ -34,6 +34,7 @@ import java.math.BigInteger;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class ColumnMapperBigInteger extends ColumnMapperSingle<String> {
+
     /** The default max number of digits. */
     public static final int DEFAULT_DIGITS = 32;
 

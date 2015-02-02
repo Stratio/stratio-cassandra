@@ -30,6 +30,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class RangeCondition extends SingleFieldCondition {
+
     /** The default include lower option. */
     public static final boolean DEFAULT_INCLUDE_LOWER = false;
 

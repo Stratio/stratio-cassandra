@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.stratio.cassandra.index.util;
+package com.stratio.cassandra.util;
+
+import com.stratio.cassandra.contrib.NotifyingBlockingThreadPoolExecutor;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -73,7 +75,7 @@ public class TaskQueue {
     public Future<?> submitAsynchronous(Object id, Runnable task) {
         lock.readLock().lock();
         try {
-            int i = Math.abs((int) (id.hashCode() % pools.length));
+            int i = Math.abs(id.hashCode() % pools.length);
             return pools[i].submit(task);
         } catch (Exception e) {
             Log.error(e, "Task queue submission failed");

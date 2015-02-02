@@ -16,7 +16,7 @@
 package com.stratio.cassandra.index.schema;
 
 import com.google.common.primitives.Longs;
-import com.stratio.cassandra.index.util.ByteBufferUtils;
+import com.stratio.cassandra.util.ByteBufferUtils;
 import org.apache.cassandra.db.marshal.*;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
@@ -35,6 +35,7 @@ import java.util.UUID;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class ColumnMapperUUID extends ColumnMapperSingle<String> {
+
     /**
      * Builds a new {@link ColumnMapperUUID}.
      */

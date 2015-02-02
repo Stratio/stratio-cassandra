@@ -16,7 +16,7 @@
 package com.stratio.cassandra.index.schema;
 
 import com.stratio.cassandra.index.AnalyzerFactory;
-import com.stratio.cassandra.index.util.JsonSerializer;
+import com.stratio.cassandra.util.JsonSerializer;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.marshal.AbstractType;
@@ -26,7 +26,6 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.util.Version;
 import org.codehaus.jackson.annotate.JsonCreator;

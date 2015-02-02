@@ -15,58 +15,70 @@
  */
 package com.stratio.cassandra.index.geospatial;
 
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.codehaus.jackson.annotate.JsonCreator;
 
 /**
+ * Class representing a geographical distance.
+ *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class GeoDistance {
 
-    private double value;
-    private GeoDistanceUnit unit;
+    private double value; // The quantitative distance value
+    private GeoDistanceUnit unit; // The distance unit
 
+    /**
+     * Builds a new {@link GeoDistance} defined by the specified quantitative value and distance unit.
+     *
+     * @param value The quantitative distance value.
+     * @param unit  The distance unit.
+     */
     public GeoDistance(double value, GeoDistanceUnit unit) {
         this.value = value;
         this.unit = unit;
     }
 
-    public double getMetres() {
-        return unit.getMetres() * value;
-    }
-
-    public double getValue() {
-        return value;
-    }
-
+    /**
+     * Returns the numeric distance value in the specified unit.
+     *
+     * @param unit The distance unit to be used.
+     * @return The numeric distance value in the specified unit.
+     */
     public double getValue(GeoDistanceUnit unit) {
         return this.unit.getMetres() * value / unit.getMetres();
     }
 
+    /**
+     * Returns the {@link GeoDistance} represented by the specified JSON {@code String}.
+     *
+     * @param json A {@code String} containing a JSON encoded {@link GeoDistance}.
+     * @return The {@link GeoDistance} represented by the specified JSON {@code String}.
+     */
     @JsonCreator
-    public static GeoDistance create(String s) {
+    public static GeoDistance create(String json) {
         try {
             for (GeoDistanceUnit geoDistanceUnit : GeoDistanceUnit.values()) {
                 for (String name : geoDistanceUnit.getNames()) {
-                    if (s.endsWith(name)) {
-                        double value = Double.parseDouble(s.substring(0, s.indexOf(name)));
+                    if (json.endsWith(name)) {
+                        double value = Double.parseDouble(json.substring(0, json.indexOf(name)));
                         return new GeoDistance(value, geoDistanceUnit);
                     }
                 }
             }
-            double value = Double.parseDouble(s);
+            double value = Double.parseDouble(json);
             return new GeoDistance(value, GeoDistanceUnit.METRES);
         } catch (Exception e) {
             e.printStackTrace();
-            throw new IllegalArgumentException("Unparseable distance: " + s);
+            throw new IllegalArgumentException("Unparseable distance: " + json);
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String toString() {
-        final StringBuilder sb = new StringBuilder("GeoDistance{");
-        sb.append("value=").append(value);
-        sb.append(", unit=").append(unit);
-        sb.append('}');
-        return sb.toString();
+        return new ToStringBuilder(this).append("value", value).append("unit", unit).toString();
     }
 }

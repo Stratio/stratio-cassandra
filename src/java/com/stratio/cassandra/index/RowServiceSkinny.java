@@ -36,6 +36,7 @@ import java.util.Set;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class RowServiceSkinny extends RowService {
+
     /** The names of the Lucene fields to be loaded. */
     private static final Set<String> FIELDS_TO_LOAD;
 

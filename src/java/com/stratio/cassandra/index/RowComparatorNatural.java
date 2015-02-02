@@ -15,7 +15,7 @@
  */
 package com.stratio.cassandra.index;
 
-import com.stratio.cassandra.index.util.ComparatorChain;
+import com.stratio.cassandra.contrib.ComparatorChain;
 import org.apache.cassandra.db.Row;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.CellNameType;
@@ -32,6 +32,9 @@ public class RowComparatorNatural implements RowComparator {
 
     private final ComparatorChain<Row> comparatorChain;
 
+    /**
+     * Builds a new {@link RowComparatorNatural} to be used with skinny rows tables.
+     */
     public RowComparatorNatural() {
         super();
         comparatorChain = new ComparatorChain<>();
@@ -46,6 +49,10 @@ public class RowComparatorNatural implements RowComparator {
         });
     }
 
+    /**
+     * Builds a new {@link RowComparatorNatural} to be used with wide rows tables.
+     * @param clusteringKeyMapper The used {@link ClusteringKeyMapper}.
+     */
     public RowComparatorNatural(final ClusteringKeyMapper clusteringKeyMapper) {
         super();
         comparatorChain = new ComparatorChain<>();

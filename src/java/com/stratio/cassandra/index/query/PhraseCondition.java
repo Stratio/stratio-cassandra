@@ -32,6 +32,7 @@ import java.util.List;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class PhraseCondition extends SingleFieldCondition {
+
     /** The default umber of other words permitted between words in phrase. */
     public static final int DEFAULT_SLOP = 0;
 

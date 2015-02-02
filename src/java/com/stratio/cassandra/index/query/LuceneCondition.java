@@ -31,6 +31,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class LuceneCondition extends Condition {
+
     /** The default name of the field where the clauses will be applied by default. */
     public static final String DEFAULT_FIELD = "lucene";
 

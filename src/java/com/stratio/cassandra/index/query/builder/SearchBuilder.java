@@ -25,6 +25,7 @@ import com.stratio.cassandra.index.query.Sort;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class SearchBuilder implements Builder<Search> {
+
     /** he {@link Condition} for querying, maybe {@code null} meaning no querying. */
     private Condition queryCondition;
 

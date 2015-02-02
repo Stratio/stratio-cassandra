@@ -27,6 +27,7 @@ import java.util.List;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class BooleanConditionBuilder extends ConditionBuilder<BooleanCondition, BooleanConditionBuilder> {
+
     /** The mandatory conditions */
     private List<Condition> must;
 

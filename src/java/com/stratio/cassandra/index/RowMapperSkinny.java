@@ -105,6 +105,9 @@ public class RowMapperSkinny extends RowMapper {
         return new RowComparatorNatural();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public SearchResult searchResult(Document document, ScoreDoc scoreDoc) {
         DecoratedKey partitionKey = partitionKeyMapper.partitionKey(document);

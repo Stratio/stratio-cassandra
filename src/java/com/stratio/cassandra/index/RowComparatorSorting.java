@@ -15,28 +15,28 @@
  */
 package com.stratio.cassandra.index;
 
+import com.stratio.cassandra.contrib.ComparatorChain;
 import com.stratio.cassandra.index.query.Sort;
 import com.stratio.cassandra.index.query.SortField;
 import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.schema.Schema;
-import com.stratio.cassandra.index.util.ComparatorChain;
 import org.apache.cassandra.db.Row;
 
 import java.util.Comparator;
 
 /**
- * A {@link Comparator} for comparing {@link Row}s according to a certain {@link com.stratio.cassandra.index.query.Sort}.
+ * A {@link Comparator} for comparing {@link Row}s according to a certain Lucene {@link Sort}.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class RowComparatorSorting implements RowComparator {
+
     private final RowMapper rowMapper;
     private final ComparatorChain<Columns> comparatorChain;
 
     /**
      * @param rowMapper The indexing {@link Schema} of the {@link Row}s to be compared.
-     * @param sort      The {@link com.stratio.cassandra.index.query.Sort} inf which the {@link Row} comparison is
-     *                  based.
+     * @param sort      The Lucene {@link Sort} inf which the {@link Row} comparison is based.
      */
     public RowComparatorSorting(RowMapper rowMapper, Sort sort) {
         this.rowMapper = rowMapper;
@@ -53,7 +53,7 @@ public class RowComparatorSorting implements RowComparator {
      * @param row1 A {@link Row}.
      * @param row2 A {@link Row}.
      * @return A negative integer, zero, or a positive integer as the first argument is less than, equal to, or greater
-     * than the second according to a {@link com.stratio.cassandra.index.query.Sort}.
+     * than the second according to a Lucene {@link Sort}.
      */
     @Override
     public int compare(Row row1, Row row2) {

@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.geospatial;
 
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.spatial.query.SpatialOperation;
 import org.codehaus.jackson.annotate.JsonCreator;
 
@@ -88,10 +89,6 @@ enum GeoOperator {
     /** {@inheritDoc} */
     @Override
     public String toString() {
-        final StringBuilder sb = new StringBuilder("HelloEnum{");
-        sb.append("name='").append(name).append('\'');
-        sb.append(", spatialOperation=").append(spatialOperation);
-        sb.append('}');
-        return sb.toString();
+        return new ToStringBuilder(this).append("name", name).append("spatialOperation", spatialOperation).toString();
     }
 }

@@ -15,7 +15,7 @@
  */
 package com.stratio.cassandra.index.schema;
 
-import com.stratio.cassandra.index.util.ByteBufferUtils;
+import com.stratio.cassandra.util.ByteBufferUtils;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.BytesType;
@@ -37,6 +37,7 @@ import java.nio.ByteBuffer;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class ColumnMapperBlob extends ColumnMapperSingle<String> {
+
     /**
      * Builds a new {@link ColumnMapperBlob}.
      */

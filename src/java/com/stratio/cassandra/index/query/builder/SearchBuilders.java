@@ -23,6 +23,7 @@ import java.util.List;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class SearchBuilders {
+
     /**
      * Returns a new {@link SearchBuilder}.
      *

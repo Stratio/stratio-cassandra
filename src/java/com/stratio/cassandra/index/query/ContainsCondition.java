@@ -15,23 +15,24 @@
  */
 package com.stratio.cassandra.index.query;
 
-import com.stratio.cassandra.index.schema.ColumnMapperSingle;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.lucene.index.Term;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.Query;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
 import java.util.List;
 
 /**
- * A {@link com.stratio.cassandra.index.query.Condition} implementation that matches documents containing a value for a field.
+ * A {@link com.stratio.cassandra.index.query.Condition} implementation that matches documents containing a value for a
+ * field.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class ContainsCondition extends SingleFieldCondition {
-    
+
     /** The name of the field to be matched. */
     @JsonProperty("field")
     private final String field;
@@ -43,10 +44,10 @@ public class ContainsCondition extends SingleFieldCondition {
     /**
      * Constructor using the field name and the value to be matched.
      *
-     * @param boost The boost for this query clause. Documents matching this clause will (in addition to the normal
-     *              weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link
-     *              #DEFAULT_BOOST} is used as default.
-     * @param field The name of the field to be matched.
+     * @param boost  The boost for this query clause. Documents matching this clause will (in addition to the normal
+     *               weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link
+     *               #DEFAULT_BOOST} is used as default.
+     * @param field  The name of the field to be matched.
      * @param values The value of the field to be matched.
      */
     @JsonCreator

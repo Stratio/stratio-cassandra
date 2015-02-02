@@ -25,14 +25,10 @@ import org.apache.lucene.search.ScoreDoc;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class SearchResult {
-    /** The partition key. */
-    private final DecoratedKey partitionKey;
 
-    /** The clustering key. */
-    private final CellName clusteringKey;
-
-    /** The search hit info. */
-    private final ScoreDoc scoreDoc;
+    private final DecoratedKey partitionKey; // The partition key
+    private final CellName clusteringKey; // The clustering key
+    private final ScoreDoc scoreDoc; // The search hit info
 
     /**
      * Builds a new {@link SearchResult} for the specified CQL3 row key and search hit info.

@@ -23,6 +23,7 @@ import com.stratio.cassandra.index.query.SortField;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class SortFieldBuilder implements Builder<SortField> {
+
     /** The name of the field to be used for sort. */
     private final String field;
 

@@ -43,6 +43,7 @@ import static org.apache.lucene.search.BooleanClause.Occur.SHOULD;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class RowMapperWide extends RowMapper {
+
     /** The clustering key mapper. */
     private final ClusteringKeyMapper clusteringKeyMapper;
 
@@ -169,7 +170,7 @@ public class RowMapperWide extends RowMapper {
         boolean includeStart = tokenMapper.includeStart(startPosition);
         boolean includeStop = tokenMapper.includeStop(stopPosition);
 
-        SliceQueryFilter sqf = null;
+        SliceQueryFilter sqf;
         if (startPosition instanceof DecoratedKey) {
             sqf = (SliceQueryFilter) dataRange.columnFilter(((DecoratedKey) startPosition).getKey());
         } else {
@@ -244,10 +245,19 @@ public class RowMapperWide extends RowMapper {
         return clusteringKeyMapper.splitRows(columnFamily);
     }
 
+    /**
+     * Returns the {@code String} human-readable representation of the specified cell name.
+     *
+     * @param cellName A cell name.
+     * @return The {@code String} human-readable representation of the specified cell name.
+     */
     public String toString(CellName cellName) {
         return clusteringKeyMapper.toString(cellName);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public SearchResult searchResult(Document document, ScoreDoc scoreDoc) {
         DecoratedKey partitionKey = partitionKeyMapper.partitionKey(document);

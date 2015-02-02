@@ -34,8 +34,8 @@ import org.apache.lucene.search.SortField;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class TokenMapperMurmur extends TokenMapper {
-    /** The Lucene field name. */
-    private static final String FIELD_NAME = "_token_murmur";
+
+    private static final String FIELD_NAME = "_token_murmur"; // The Lucene field name
 
     /**
      * Builds a new {@link TokenMapperMurmur} using the specified {@link CFMetaData}.

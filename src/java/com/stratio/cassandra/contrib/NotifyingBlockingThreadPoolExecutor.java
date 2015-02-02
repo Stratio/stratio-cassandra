@@ -1,4 +1,4 @@
-package com.stratio.cassandra.index.util;
+package com.stratio.cassandra.contrib;
 
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;

@@ -16,11 +16,13 @@
 package com.stratio.cassandra.index.geospatial;
 
 import com.spatial4j.core.context.SpatialContext;
+import com.spatial4j.core.shape.Shape;
 import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.ColumnMapper;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.UTF8Type;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.search.SortField;
@@ -32,10 +34,7 @@ import org.apache.lucene.spatial.prefix.tree.SpatialPrefixTree;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * A {@link ColumnMapper} to map geographical shapes.
@@ -69,14 +68,12 @@ public class GeoShapeMapper extends ColumnMapper {
     }
 
     public Set<IndexableField> fields(Column column) {
-
         String fieldName = column.getFieldName();
         SpatialStrategy strategy = getStrategy(fieldName);
+        GeoShape geoShape = GeoShape.fromJson((String) column.getValue());
+        Shape shape = geoShape.toSpatial4j(spatialContext);
         Set<IndexableField> fields = new HashSet<>();
-        GeoShape shape = GeoShape.fromJson((String) column.getValue());
-        for (IndexableField field : strategy.createIndexableFields(shape.toSpatial4j(spatialContext))) {
-            fields.add(field);
-        }
+        Collections.addAll(fields, strategy.createIndexableFields(shape));
         return fields;
     }
 
@@ -84,6 +81,7 @@ public class GeoShapeMapper extends ColumnMapper {
         SpatialStrategy strategy = strategies.get(fieldName);
         if (strategy == null) {
             strategy = new RecursivePrefixTreeStrategy(grid, fieldName);
+            strategies.put(fieldName, strategy);
         }
         return strategy;
     }
@@ -98,12 +96,11 @@ public class GeoShapeMapper extends ColumnMapper {
         return new SortField(field, Type.LONG, reverse);
     }
 
-    /** {@inheritDoc} */
     @Override
     public String toString() {
-        final StringBuilder sb = new StringBuilder("ColumnMapperShape{");
-        sb.append("maxLevels=").append(maxLevels);
-        sb.append('}');
-        return sb.toString();
+        return new ToStringBuilder(this).append("maxLevels", maxLevels)
+                                        .append("grid", grid)
+                                        .append("strategies", strategies)
+                                        .toString();
     }
 }

@@ -32,20 +32,12 @@ import java.io.IOException;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class TokenRangeQuery extends MultiTermQuery {
-    /** The token mapper. */
-    private final TokenMapperGeneric tokenMapper;
 
-    /** The lower accepted token */
-    private final Token lower;
-
-    /** The upper accepted token */
-    private final Token upper;
-
-    /** If the lower token must be included if not null. */
-    private final boolean includeLower;
-
-    /** If the upper token must be included if not null. */
-    private final boolean includeUpper;
+    private final TokenMapperGeneric tokenMapper; // The token mapper
+    private final Token lower; // The lower accepted token
+    private final Token upper; // The upper accepted token
+    private final boolean includeLower; // If the lower token must be included if not null
+    private final boolean includeUpper; // If the upper token must be included if not null
 
     /**
      * Builds a new {@link TokenRangeQuery}.

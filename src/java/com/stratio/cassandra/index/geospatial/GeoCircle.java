@@ -17,6 +17,8 @@ package com.stratio.cassandra.index.geospatial;
 
 import com.spatial4j.core.context.SpatialContext;
 import com.spatial4j.core.distance.DistanceUtils;
+import com.spatial4j.core.shape.Shape;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
@@ -27,10 +29,18 @@ import org.codehaus.jackson.annotate.JsonProperty;
  */
 public class GeoCircle extends GeoShape {
 
-    private final double longitude;
-    private final double latitude;
-    private final GeoDistance distance;
+    private final double longitude; // The circle's center point longitude
+    private final double latitude; // The circle's center point latitude
+    private final GeoDistance distance; // The radius of the bounding circle
 
+    /**
+     * Builds a new {@link GeoCircle} centered in the point defined by the specified longitude and latitude, and with
+     * the specified radius.
+     *
+     * @param longitude The circle's center point longitude.
+     * @param latitude  The circle's center point latitude.
+     * @param distance  The radius of the bounding circle.
+     */
     @JsonCreator
     public GeoCircle(@JsonProperty("longitude") double longitude,
                      @JsonProperty("latitude") double latitude,
@@ -42,20 +52,24 @@ public class GeoCircle extends GeoShape {
         this.distance = distance;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public com.spatial4j.core.shape.Shape toSpatial4j(SpatialContext spatialContext) {
+    public Shape toSpatial4j(SpatialContext spatialContext) {
         double kms = distance.getValue(GeoDistanceUnit.KILOMETRES);
         double d = DistanceUtils.dist2Degrees(kms, DistanceUtils.EARTH_MEAN_RADIUS_KM);
         return spatialContext.makeCircle(longitude, latitude, d);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String toString() {
-        final StringBuilder sb = new StringBuilder("Circle{");
-        sb.append("longitude=").append(longitude);
-        sb.append(", latitude=").append(latitude);
-        sb.append(", distance=").append(distance);
-        sb.append('}');
-        return sb.toString();
+        return new ToStringBuilder(this).append("longitude", longitude)
+                                        .append("latitude", latitude)
+                                        .append("distance", distance)
+                                        .toString();
     }
 }

@@ -23,6 +23,7 @@ import com.stratio.cassandra.index.query.RangeCondition;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class RangeConditionBuilder extends ConditionBuilder<RangeCondition, RangeConditionBuilder> {
+
     /** The name of the field to be matched. */
     private final String field;
 

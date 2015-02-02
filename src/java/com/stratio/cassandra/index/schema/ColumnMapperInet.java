@@ -15,7 +15,7 @@
  */
 package com.stratio.cassandra.index.schema;
 
-import com.stratio.cassandra.index.util.Log;
+import com.stratio.cassandra.util.Log;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.InetAddressType;

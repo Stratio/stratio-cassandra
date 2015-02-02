@@ -17,7 +17,7 @@ package com.stratio.cassandra.index;
 
 import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.Columns;
-import com.stratio.cassandra.index.util.ByteBufferUtils;
+import com.stratio.cassandra.util.ByteBufferUtils;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -43,19 +43,12 @@ import java.util.List;
  */
 public class PartitionKeyMapper {
 
-    /**
-     * The Lucene field name.
-     */
+    /** The Lucene field name. */
     public static final String FIELD_NAME = "_partition_key";
 
-    /**
-     * The active active partition key.
-     */
-    private final IPartitioner partitioner;
-
-    private final CFMetaData metadata;
-
-    private final AbstractType<?> type;
+    private final IPartitioner partitioner; // The active active partition key
+    private final CFMetaData metadata; // The table metadata
+    private final AbstractType<?> type; // The partition key type
 
     /**
      * Returns a new {@code PartitionKeyMapper} according to the specified column family meta data.
@@ -137,6 +130,13 @@ public class PartitionKeyMapper {
         return partitioner.decorateKey(partitionKey);
     }
 
+    /**
+     * Returns the columns contained in the partition key of the specified {@link Row}. Note that not all the contained
+     * columns are returned, but only those of the partition key.
+     *
+     * @param row A {@link Row}.
+     * @return The columns contained in the partition key of the specified {@link Row}.
+     */
     public Columns columns(Row row) {
         DecoratedKey partitionKey = row.key;
         Columns columns = new Columns();

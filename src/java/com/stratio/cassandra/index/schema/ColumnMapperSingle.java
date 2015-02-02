@@ -20,7 +20,6 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.search.SortField;
 
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 

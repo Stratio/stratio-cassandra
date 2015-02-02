@@ -30,6 +30,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class PrefixCondition extends SingleFieldCondition {
+
     /** The name of the field to be matched. */
     @JsonProperty("field")
     private final String field;

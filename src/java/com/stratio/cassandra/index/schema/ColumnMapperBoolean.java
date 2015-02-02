@@ -33,6 +33,7 @@ import org.codehaus.jackson.annotate.JsonCreator;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class ColumnMapperBoolean extends ColumnMapperSingle<String> {
+
     /** The {@code String} representation of a true value. */
     private static final String TRUE = "true";
 

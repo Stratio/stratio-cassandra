@@ -17,6 +17,7 @@ package com.stratio.cassandra.index.geospatial;
 
 import com.stratio.cassandra.index.query.Condition;
 import com.stratio.cassandra.index.schema.Schema;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.search.Query;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
@@ -29,17 +30,19 @@ import org.codehaus.jackson.annotate.JsonProperty;
 public class GeoDistanceCondition extends Condition {
 
     private final String field; // The name of the field to be matched.
-    private final double longitude;
-    private final double latitude;
-    private final GeoDistance distance;
+    private final double longitude; // The longitude of the circle's center
+    private final double latitude; // The latitude of the circle's center
+    private final GeoDistance distance; // The radius of the circle
 
     /**
-     * Constructor using the field name and the value to be matched.
      *
-     * @param boost The boost for this query clause. Documents matching this clause will (in addition to the normal
-     *              weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link
-     *              #DEFAULT_BOOST} is used as default.
-     * @param field The name of the field to be matched.
+     * @param boost     The boost for this query clause. Documents matching this clause will (in addition to the normal
+     *                  weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link
+     *                  #DEFAULT_BOOST} is used as default.
+     * @param field     The name of the field to be matched.
+     * @param longitude The longitude of the circle's center.
+     * @param latitude The latitude of the circle's center.
+     * @param distance The radius of the circle.
      */
     @JsonCreator
     public GeoDistanceCondition(@JsonProperty("boost") Float boost,
@@ -64,12 +67,10 @@ public class GeoDistanceCondition extends Condition {
     /** {@inheritDoc} */
     @Override
     public String toString() {
-        final StringBuilder sb = new StringBuilder("GeoDistanceCondition{");
-        sb.append("field='").append(field).append('\'');
-        sb.append(", longitude=").append(longitude);
-        sb.append(", latitude=").append(latitude);
-        sb.append(", distance=").append(distance);
-        sb.append('}');
-        return sb.toString();
+        return new ToStringBuilder(this).append("field", field)
+                                        .append("longitude", longitude)
+                                        .append("latitude", latitude)
+                                        .append("distance", distance)
+                                        .toString();
     }
 }

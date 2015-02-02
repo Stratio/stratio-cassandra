@@ -23,6 +23,7 @@ import com.stratio.cassandra.index.query.WildcardCondition;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class WildcardConditionBuilder extends ConditionBuilder<WildcardCondition, WildcardConditionBuilder> {
+
     /** The name of the field to be matched. */
     private final String field;
 

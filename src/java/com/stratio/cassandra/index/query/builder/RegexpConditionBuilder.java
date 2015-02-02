@@ -23,6 +23,7 @@ import com.stratio.cassandra.index.query.RegexpCondition;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class RegexpConditionBuilder extends ConditionBuilder<RegexpCondition, RegexpConditionBuilder> {
+
     /** The name of the field to be matched. */
     private final String field;
 

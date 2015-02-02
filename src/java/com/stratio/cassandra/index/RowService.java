@@ -19,9 +19,9 @@ import com.stratio.cassandra.index.query.Search;
 import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.schema.Schema;
-import com.stratio.cassandra.index.util.Log;
-import com.stratio.cassandra.index.util.TaskQueue;
-import com.stratio.cassandra.index.util.TimeCounter;
+import com.stratio.cassandra.util.Log;
+import com.stratio.cassandra.util.TaskQueue;
+import com.stratio.cassandra.util.TimeCounter;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.cql3.ColumnIdentifier;
@@ -463,27 +463,6 @@ public abstract class RowService {
      */
     public long getIndexSize() {
         return luceneIndex.getNumDocs();
-    }
-
-    /**
-     * Groups the specified CQL3 {@link Row} into a list of physical storage {@link Row}s. This grouping is based in
-     * row's key.
-     *
-     * @param rows A list of CQL3 {@link Row}s.
-     * @return The specified CQL3 {@link Row} into a list of physical storage {@link Row}s.
-     */
-    public List<Row> group(List<Row> rows) {
-        LinkedList<Row> result = new LinkedList<>();
-        Row lastRow = null;
-        for (Row row : rows) {
-            if (lastRow != null && row.key.equals(lastRow.key)) {
-                lastRow.cf.addAll(row.cf);
-            } else {
-                lastRow = row;
-                result.add(row);
-            }
-        }
-        return result;
     }
 
 }

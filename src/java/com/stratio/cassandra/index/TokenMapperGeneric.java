@@ -15,7 +15,7 @@
  */
 package com.stratio.cassandra.index;
 
-import com.stratio.cassandra.index.util.ByteBufferUtils;
+import com.stratio.cassandra.util.ByteBufferUtils;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.DecoratedKey;
@@ -40,11 +40,10 @@ import java.nio.ByteBuffer;
  * @author Andres de la Pena <adelapena@stratio.com>
  */
 public class TokenMapperGeneric extends TokenMapper {
-    /** The Lucene field name. */
-    public static final String FIELD_NAME = "_token_generic";
 
-    /** The partitioner token factory. */
-    private final TokenFactory factory;
+    public static final String FIELD_NAME = "_token_generic"; // The Lucene field name
+
+    private final TokenFactory factory; // The partitioner token factory
 
     /** Returns a new {@link TokenMapperGeneric}. */
     public TokenMapperGeneric(CFMetaData metadata) {

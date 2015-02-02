@@ -17,7 +17,7 @@ package com.stratio.cassandra.index;
 
 import com.stratio.cassandra.index.query.Search;
 import com.stratio.cassandra.index.schema.Schema;
-import com.stratio.cassandra.index.util.Log;
+import com.stratio.cassandra.util.Log;
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.IndexExpression;
 import org.apache.cassandra.db.Row;
@@ -196,8 +196,6 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
         String comparatorName = comparator.getClass().getSimpleName();
         int endSize = result.size();
         long endTime = System.currentTimeMillis() - startTime;
-
-//        result = rowService.group(result);
 
         Log.debug("Sorted %d rows to %d with comparator %s in %d ms\n", startSize, endSize, comparatorName, endTime);
 
