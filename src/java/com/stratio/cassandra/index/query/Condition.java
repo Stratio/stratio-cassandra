@@ -52,6 +52,7 @@ import java.io.IOException;
                @JsonSubTypes.Type(value = FuzzyCondition.class, name = "fuzzy"),
                @JsonSubTypes.Type(value = LuceneCondition.class, name = "lucene"),
                @JsonSubTypes.Type(value = MatchCondition.class, name = "match"),
+               @JsonSubTypes.Type(value = MatchAllCondition.class, name = "match_all"),
                @JsonSubTypes.Type(value = RangeCondition.class, name = "range"),
                @JsonSubTypes.Type(value = PhraseCondition.class, name = "phrase"),
                @JsonSubTypes.Type(value = PrefixCondition.class, name = "prefix"),
