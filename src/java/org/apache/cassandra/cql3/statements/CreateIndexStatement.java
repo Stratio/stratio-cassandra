@@ -49,13 +49,13 @@ public class CreateIndexStatement extends SchemaAlteringStatement
     private final boolean ifNotExists;
 
     public CreateIndexStatement(CFName name,
-                                String indexName,
+                                IndexName indexName,
                                 IndexTarget.Raw target,
                                 IndexPropDefs properties,
                                 boolean ifNotExists)
     {
         super(name);
-        this.indexName = indexName;
+        this.indexName = indexName.getIdx();
         this.rawTarget = target;
         this.properties = properties;
         this.ifNotExists = ifNotExists;
@@ -79,8 +79,24 @@ public class CreateIndexStatement extends SchemaAlteringStatement
             throw new InvalidRequestException("No column definition found for column " + target.column);
 
         boolean isMap = cd.type instanceof MapType;
-        if (target.isCollectionKeys && !isMap)
-            throw new InvalidRequestException("Cannot create index on keys of column " + target + " with non map type");
+        boolean isFrozenCollection = cd.type.isCollection() && !cd.type.isMultiCell();
+        if (target.isCollectionKeys)
+        {
+            if (!isMap)
+                throw new InvalidRequestException("Cannot create index on keys of column " + target + " with non-map type");
+            if (!cd.type.isMultiCell())
+                throw new InvalidRequestException("Cannot create index on keys of frozen<map> column " + target);
+        }
+        else if (target.isFullCollection)
+        {
+            if (!isFrozenCollection)
+                throw new InvalidRequestException("full() indexes can only be created on frozen collections");
+        }
+        else if (isFrozenCollection)
+        {
+            throw new InvalidRequestException("Frozen collections currently only support full-collection indexes. " +
+                                              "For example, 'CREATE INDEX ON <table>(full(<columnName>))'.");
+        }
 
         if (cd.getIndexType() != null)
         {
@@ -103,8 +119,8 @@ public class CreateIndexStatement extends SchemaAlteringStatement
         properties.validate(cfm);
 
         // TODO: we could lift that limitation
-        if (cfm.comparator.isDense() && cd.kind != ColumnDefinition.Kind.REGULAR)
-            throw new InvalidRequestException(String.format("Secondary index on %s column %s is not yet supported for compact table", cd.kind, target.column));
+        if ((cfm.comparator.isDense() || !cfm.comparator.isCompound()) && cd.kind != ColumnDefinition.Kind.REGULAR)
+            throw new InvalidRequestException("Secondary indexes are not supported on PRIMARY KEY columns in COMPACT STORAGE tables");
 
         // It would be possible to support 2ndary index on static columns (but not without modifications of at least ExtendedFilter and
         // CompositesIndex) and maybe we should, but that means a query like:
@@ -116,7 +132,7 @@ public class CreateIndexStatement extends SchemaAlteringStatement
             throw new InvalidRequestException("Secondary indexes are not allowed on static columns");
 
         if (cd.kind == ColumnDefinition.Kind.PARTITION_KEY && cd.isOnAllComponents())
-            throw new InvalidRequestException(String.format("Cannot add secondary index to already primarily indexed column %s", target.column));
+            throw new InvalidRequestException(String.format("Cannot create secondary index on partition key column %s", target.column));
     }
 
     public boolean announceMigration(boolean isLocalOnly) throws RequestValidationException
@@ -139,7 +155,7 @@ public class CreateIndexStatement extends SchemaAlteringStatement
             // For now, we only allow indexing values for collections, but we could later allow
             // to also index map keys, so we record that this is the values we index to make our
             // lives easier then.
-            if (cd.type.isCollection())
+            if (cd.type.isCollection() && cd.type.isMultiCell())
                 options = ImmutableMap.of(target.isCollectionKeys ? SecondaryIndex.INDEX_KEYS_OPTION_NAME
                                                                   : SecondaryIndex.INDEX_VALUES_OPTION_NAME, "");
             cd.setIndexType(IndexType.COMPOSITES, options);

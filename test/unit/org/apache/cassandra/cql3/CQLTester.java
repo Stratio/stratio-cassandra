@@ -35,17 +35,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.SchemaLoader;
+import org.apache.cassandra.concurrent.ScheduledExecutors;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.Schema;
-import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.marshal.*;
 import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.serializers.TypeSerializer;
-import org.apache.cassandra.service.StorageService;
-import org.apache.cassandra.utils.ByteBufferUtil;
 
 /**
  * Base class for CQL tests.
@@ -64,8 +62,8 @@ public abstract class CQLTester
         SchemaLoader.prepareServer();
     }
 
-    private String currentTable;
-    private final Set<String> currentTypes = new HashSet<>();
+    private List<String> tables = new ArrayList<>();
+    private List<String> types = new ArrayList<>();
 
     @BeforeClass
     public static void setUpClass() throws Throwable
@@ -81,25 +79,23 @@ public abstract class CQLTester
     @After
     public void afterTest() throws Throwable
     {
-        if (currentTable == null)
-            return;
-
-        final String tableToDrop = currentTable;
-        final Set<String> typesToDrop = currentTypes.isEmpty() ? Collections.emptySet() : new HashSet(currentTypes);
-        currentTable = null;
-        currentTypes.clear();
+        final List<String> tablesToDrop = copy(tables);
+        final List<String> typesToDrop = copy(types);
+        tables = null;
+        types = null;
 
         // We want to clean up after the test, but dropping a table is rather long so just do that asynchronously
-        StorageService.optionalTasks.execute(new Runnable()
+        ScheduledExecutors.optionalTasks.execute(new Runnable()
         {
             public void run()
             {
                 try
                 {
-                    schemaChange(String.format("DROP TABLE %s.%s", KEYSPACE, tableToDrop));
+                    for (int i = tablesToDrop.size() - 1; i >=0; i--)
+                        schemaChange(String.format("DROP TABLE IF EXISTS %s.%s", KEYSPACE, tablesToDrop.get(i)));
 
-                    for (String typeName : typesToDrop)
-                        schemaChange(String.format("DROP TYPE %s.%s", KEYSPACE, typeName));
+                    for (int i = typesToDrop.size() - 1; i >=0; i--)
+                        schemaChange(String.format("DROP TYPE IF EXISTS %s.%s", KEYSPACE, typesToDrop.get(i)));
 
                     // Dropping doesn't delete the sstables. It's not a huge deal but it's cleaner to cleanup after us
                     // Thas said, we shouldn't delete blindly before the SSTableDeletingTask for the table we drop
@@ -107,7 +103,7 @@ public abstract class CQLTester
                     // mono-threaded, just push a task on the queue to find when it's empty. No perfect but good enough.
 
                     final CountDownLatch latch = new CountDownLatch(1);
-                    StorageService.tasks.execute(new Runnable()
+                    ScheduledExecutors.nonPeriodicTasks.execute(new Runnable()
                     {
                             public void run()
                             {
@@ -116,7 +112,7 @@ public abstract class CQLTester
                     });
                     latch.await(2, TimeUnit.SECONDS);
 
-                    removeAllSSTables(KEYSPACE, tableToDrop);
+                    removeAllSSTables(KEYSPACE, tablesToDrop);
                 }
                 catch (Exception e)
                 {
@@ -126,10 +122,20 @@ public abstract class CQLTester
         });
     }
 
+    /**
+     * Returns a copy of the specified list.
+     * @return a copy of the specified list.
+     */
+    private static List<String> copy(List<String> list)
+    {
+        return list.isEmpty() ? Collections.<String>emptyList() : new ArrayList<>(list);
+    }
+
     public void flush()
     {
         try
         {
+            String currentTable = currentTable();
             if (currentTable != null)
                 Keyspace.open(KEYSPACE).getColumnFamilyStore(currentTable).forceFlush().get();
         }
@@ -148,14 +154,22 @@ public abstract class CQLTester
         return USE_PREPARED_VALUES;
     }
 
-    private static void removeAllSSTables(String ks, String table)
+    private static void removeAllSSTables(String ks, List<String> tables)
     {
         // clean up data directory which are stored as data directory/keyspace/data files
         for (File d : Directories.getKSChildDirectories(ks))
         {
-            if (d.exists() && d.getName().contains(table))
+            if (d.exists() && containsAny(d.getName(), tables))
                 FileUtils.deleteRecursive(d);
         }
+    }
+
+    private static boolean containsAny(String filename, List<String> tables)
+    {
+        for (int i = 0, m = tables.size(); i < m; i++)
+            if (filename.contains(tables.get(i)))
+                return true;
+        return false;
     }
 
     protected String keyspace()
@@ -165,14 +179,16 @@ public abstract class CQLTester
 
     protected String currentTable()
     {
-        return currentTable;
+        if (tables.isEmpty())
+            return null;
+        return tables.get(tables.size() - 1);
     }
 
     protected String createType(String query)
     {
         String typeName = "type_" + seqNumber.getAndIncrement();
         String fullQuery = String.format(query, KEYSPACE + "." + typeName);
-        currentTypes.add(typeName);
+        types.add(typeName);
         logger.info(fullQuery);
         schemaChange(fullQuery);
         return typeName;
@@ -180,22 +196,81 @@ public abstract class CQLTester
 
     protected void createTable(String query)
     {
-        currentTable = "table_" + seqNumber.getAndIncrement();
+        String currentTable = "table_" + seqNumber.getAndIncrement();
+        tables.add(currentTable);
         String fullQuery = String.format(query, KEYSPACE + "." + currentTable);
         logger.info(fullQuery);
         schemaChange(fullQuery);
     }
 
+    protected void createTableMayThrow(String query) throws Throwable
+    {
+        String currentTable = "table_" + seqNumber.getAndIncrement();
+        tables.add(currentTable);
+        String fullQuery = String.format(query, KEYSPACE + "." + currentTable);
+        logger.info(fullQuery);
+        try
+        {
+            QueryProcessor.executeOnceInternal(fullQuery);
+        }
+        catch (RuntimeException ex)
+        {
+            throw ex.getCause();
+        }
+    }
+
     protected void alterTable(String query)
     {
-        String fullQuery = String.format(query, KEYSPACE + "." + currentTable);
+        String fullQuery = String.format(query, KEYSPACE + "." + currentTable());
+        logger.info(fullQuery);
+        schemaChange(fullQuery);
+    }
+
+    protected void alterTableMayThrow(String query) throws Throwable
+    {
+        String fullQuery = String.format(query, KEYSPACE + "." + currentTable());
+        logger.info(fullQuery);
+        try
+        {
+            QueryProcessor.executeOnceInternal(fullQuery);
+        }
+        catch (RuntimeException ex)
+        {
+            throw ex.getCause();
+        }
+    }
+
+    protected void dropTable(String query)
+    {
+        String fullQuery = String.format(query, KEYSPACE + "." + currentTable());
         logger.info(fullQuery);
         schemaChange(fullQuery);
     }
 
     protected void createIndex(String query)
     {
-        String fullQuery = String.format(query, KEYSPACE + "." + currentTable);
+        String fullQuery = String.format(query, KEYSPACE + "." + currentTable());
+        logger.info(fullQuery);
+        schemaChange(fullQuery);
+    }
+
+    protected void createIndexMayThrow(String query) throws Throwable
+    {
+        String fullQuery = String.format(query, KEYSPACE + "." + currentTable());
+        logger.info(fullQuery);
+        try
+        {
+            QueryProcessor.executeOnceInternal(fullQuery);
+        }
+        catch (RuntimeException ex)
+        {
+            throw ex.getCause();
+        }
+    }
+
+    protected void dropIndex(String query) throws Throwable
+    {
+        String fullQuery = String.format(query, KEYSPACE);
         logger.info(fullQuery);
         schemaChange(fullQuery);
     }
@@ -215,14 +290,14 @@ public abstract class CQLTester
 
     protected CFMetaData currentTableMetadata()
     {
-        return Schema.instance.getCFMetaData(KEYSPACE, currentTable);
+        return Schema.instance.getCFMetaData(KEYSPACE, currentTable());
     }
 
     protected UntypedResultSet execute(String query, Object... values) throws Throwable
     {
         try
         {
-            query = currentTable == null ? query : String.format(query, KEYSPACE + "." + currentTable);
+            query = currentTable() == null ? query : String.format(query, KEYSPACE + "." + currentTable());
 
             UntypedResultSet rs;
             if (USE_PREPARED_VALUES)
@@ -262,7 +337,7 @@ public abstract class CQLTester
         int i = 0;
         while (iter.hasNext() && i < rows.length)
         {
-            Object[] expected = rows[i++];
+            Object[] expected = rows[i];
             UntypedResultSet.Row actual = iter.next();
 
             Assert.assertEquals(String.format("Invalid number of (expected) values provided for row %d", i), meta.size(), expected.length);
@@ -278,6 +353,7 @@ public abstract class CQLTester
                     Assert.fail(String.format("Invalid value for row %d column %d (%s of type %s), expected <%s> but got <%s>",
                                               i, j, column.name, column.type.asCQL3Type(), formatValue(expectedByteValue, column.type), formatValue(actualValue, column.type)));
             }
+            i++;
         }
 
         if (iter.hasNext())
@@ -311,6 +387,11 @@ public abstract class CQLTester
 
     protected void assertInvalid(String query, Object... values) throws Throwable
     {
+        assertInvalidMessage(null, query, values);
+    }
+
+    protected void assertInvalidMessage(String errorMessage, String query, Object... values) throws Throwable
+    {
         try
         {
             execute(query, values);
@@ -321,11 +402,19 @@ public abstract class CQLTester
         }
         catch (InvalidRequestException e)
         {
-            // This is what we expect
+            if (errorMessage != null)
+            {
+                assertMessageContains(errorMessage, e);
+            }
         }
     }
 
     protected void assertInvalidSyntax(String query, Object... values) throws Throwable
+    {
+        assertInvalidSyntaxMessage(null, query, values);
+    }
+
+    protected void assertInvalidSyntaxMessage(String errorMessage, String query, Object... values) throws Throwable
     {
         try
         {
@@ -337,8 +426,23 @@ public abstract class CQLTester
         }
         catch (SyntaxException e)
         {
-            // This is what we expect
+            if (errorMessage != null)
+            {
+                assertMessageContains(errorMessage, e);
+            }
         }
+    }
+
+    /**
+     * Asserts that the message of the specified exception contains the specified text.
+     *
+     * @param text the text that the exception message must contains
+     * @param e the exception to check
+     */
+    private static void assertMessageContains(String text, Exception e)
+    {
+        Assert.assertTrue("Expected error message to contain '" + text + "', but got '" + e.getMessage() + "'",
+                e.getMessage().contains(text));
     }
 
     private static String replaceValues(String query, Object[] values)
@@ -401,7 +505,15 @@ public abstract class CQLTester
                 continue;
             }
 
-            buffers[i] = typeFor(value).decompose(serializeTuples(value));
+            try
+            {
+                buffers[i] = typeFor(value).decompose(serializeTuples(value));
+            }
+            catch (Exception ex)
+            {
+                logger.info("Error serializing query parameter {}:", value, ex);
+                throw ex;
+            }
         }
         return buffers;
     }
@@ -613,14 +725,14 @@ public abstract class CQLTester
         {
             List l = (List)value;
             AbstractType elt = l.isEmpty() ? BytesType.instance : typeFor(l.get(0));
-            return ListType.getInstance(elt);
+            return ListType.getInstance(elt, true);
         }
 
         if (value instanceof Set)
         {
             Set s = (Set)value;
             AbstractType elt = s.isEmpty() ? BytesType.instance : typeFor(s.iterator().next());
-            return SetType.getInstance(elt);
+            return SetType.getInstance(elt, true);
         }
 
         if (value instanceof Map)
@@ -638,7 +750,7 @@ public abstract class CQLTester
                 keys = typeFor(entry.getKey());
                 values = typeFor(entry.getValue());
             }
-            return MapType.getInstance(keys, values);
+            return MapType.getInstance(keys, values, true);
         }
 
         throw new IllegalArgumentException("Unsupported value type (value is " + value + ")");
@@ -673,6 +785,11 @@ public abstract class CQLTester
             }
             sb.append(")");
             return sb.toString();
+        }
+
+        public String toString()
+        {
+            return "TupleValue" + toCQLString();
         }
     }
 }

@@ -255,12 +255,19 @@ JUNK ::= /([ \t\r\f\v]+|(--|[/][/])[^\n\r]*([\n\r]|$)|[/][*].*?[*][/])/ ;
 
 <userType> ::= utname=<cfOrKsName> ;
 
-<storageType> ::= <simpleStorageType> | <collectionType> | <userType> ;
+<storageType> ::= <simpleStorageType> | <collectionType> | <frozenCollectionType> | <userType> ;
 
+# Note: autocomplete for frozen collection types does not handle nesting past depth 1 properly,
+# but that's a lot of work to fix for little benefit.
 <collectionType> ::= "map" "<" <simpleStorageType> "," ( <simpleStorageType> | <userType> ) ">"
                    | "list" "<" ( <simpleStorageType> | <userType> ) ">"
                    | "set" "<" ( <simpleStorageType> | <userType> ) ">"
                    ;
+
+<frozenCollectionType> ::= "frozen" "<" "map"  "<" <storageType> "," <storageType> ">" ">"
+                         | "frozen" "<" "list" "<" <storageType> ">" ">"
+                         | "frozen" "<" "set"  "<" <storageType> ">" ">"
+                         ;
 
 <columnFamilyName> ::= ( ksname=<cfOrKsName> dot="." )? cfname=<cfOrKsName> ;
 
@@ -747,7 +754,7 @@ syntax_rules += r'''
                                   ( "AND" [updateopt]=<usingOption> )* )?
                         "SET" <assignment> ( "," <assignment> )*
                         "WHERE" <whereClause>
-                        ( "IF" <conditions> )?
+                        ( "IF" ( "EXISTS" | <conditions> ))?
                     ;
 <assignment> ::= updatecol=<cident>
                     ( "=" update_rhs=( <term> | <cident> )
@@ -906,11 +913,11 @@ syntax_rules += r'''
 <cfamOrdering> ::= [ordercol]=<cident> ( "ASC" | "DESC" )
                  ;
 
-<singleKeyCfSpec> ::= [newcolname]=<cident> <simpleStorageType> "PRIMARY" "KEY"
+<singleKeyCfSpec> ::= [newcolname]=<cident> <storageType> "PRIMARY" "KEY"
                       ( "," [newcolname]=<cident> <storageType> )*
                     ;
 
-<compositeKeyCfSpec> ::= [newcolname]=<cident> <simpleStorageType>
+<compositeKeyCfSpec> ::= [newcolname]=<cident> <storageType>
                          "," [newcolname]=<cident> <storageType> ( "static" )?
                          ( "," [newcolname]=<cident> <storageType> ( "static" )? )*
                          "," "PRIMARY" k="KEY" p="(" ( partkey=<pkDef> | [pkey]=<cident> )
@@ -985,8 +992,17 @@ def create_cf_composite_primary_key_comma_completer(ctxt, cass):
     return [',']
 
 syntax_rules += r'''
-<createIndexStatement> ::= "CREATE" "CUSTOM"? "INDEX" ("IF" "NOT" "EXISTS")? indexname=<identifier>? "ON"
-                               cf=<columnFamilyName> ( "(" col=<cident> ")" | "(" "KEYS"  "(" col=<cident> ")" ")")
+
+<idxName> ::= <identifier>
+            | <quotedName>
+            | <unreservedKeyword>;
+
+<createIndexStatement> ::= "CREATE" "CUSTOM"? "INDEX" ("IF" "NOT" "EXISTS")? indexname=<idxName>? "ON"
+                               cf=<columnFamilyName> "(" (
+                                   col=<cident> |
+                                   "keys(" col=<cident> ")" |
+                                   "fullCollection(" col=<cident> ")"
+                               ) ")"
                                ( "USING" <stringLiteral> ( "WITH" "OPTIONS" "=" <mapLiteral> )? )?
                          ;
 

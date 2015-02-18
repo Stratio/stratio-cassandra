@@ -18,10 +18,7 @@
 package org.apache.cassandra.io.sstable;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 import com.google.common.collect.AbstractIterator;
 import com.google.common.util.concurrent.RateLimiter;
@@ -33,7 +30,6 @@ import org.apache.cassandra.db.RowPosition;
 import org.apache.cassandra.db.columniterator.IColumnIteratorFactory;
 import org.apache.cassandra.db.columniterator.LazyColumnIterator;
 import org.apache.cassandra.db.columniterator.OnDiskAtomIterator;
-import org.apache.cassandra.db.compaction.ICompactionScanner;
 import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.dht.Bounds;
 import org.apache.cassandra.dht.Range;
@@ -41,8 +37,9 @@ import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.io.util.RandomAccessReader;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.cassandra.utils.Pair;
 
-public class SSTableScanner implements ICompactionScanner
+public class SSTableScanner implements ISSTableScanner
 {
     protected final RandomAccessReader dfile;
     protected final RandomAccessReader ifile;
@@ -55,12 +52,26 @@ public class SSTableScanner implements ICompactionScanner
 
     protected Iterator<OnDiskAtomIterator> iterator;
 
+    public static ISSTableScanner getScanner(SSTableReader sstable, DataRange dataRange, RateLimiter limiter)
+    {
+        return new SSTableScanner(sstable, dataRange, limiter);
+    }
+    public static ISSTableScanner getScanner(SSTableReader sstable, Collection<Range<Token>> tokenRanges, RateLimiter limiter)
+    {
+        // We want to avoid allocating a SSTableScanner if the range don't overlap the sstable (#5249)
+        List<Pair<Long, Long>> positions = sstable.getPositionsForRanges(tokenRanges);
+        if (positions.isEmpty())
+            return new EmptySSTableScanner(sstable.getFilename());
+
+        return new SSTableScanner(sstable, tokenRanges, limiter);
+    }
+
     /**
      * @param sstable SSTable to scan; must not be null
      * @param dataRange a single range to scan; must not be null
      * @param limiter background i/o RateLimiter; may be null
      */
-    SSTableScanner(SSTableReader sstable, DataRange dataRange, RateLimiter limiter)
+    private SSTableScanner(SSTableReader sstable, DataRange dataRange, RateLimiter limiter)
     {
         assert sstable != null;
 
@@ -89,7 +100,7 @@ public class SSTableScanner implements ICompactionScanner
      * @param tokenRanges A set of token ranges to scan
      * @param limiter background i/o RateLimiter; may be null
      */
-    SSTableScanner(SSTableReader sstable, Collection<Range<Token>> tokenRanges, RateLimiter limiter)
+    private SSTableScanner(SSTableReader sstable, Collection<Range<Token>> tokenRanges, RateLimiter limiter)
     {
         assert sstable != null;
 
@@ -291,4 +302,45 @@ public class SSTableScanner implements ICompactionScanner
                " sstable=" + sstable +
                ")";
     }
+
+    public static class EmptySSTableScanner implements ISSTableScanner
+    {
+        private final String filename;
+
+        public EmptySSTableScanner(String filename)
+        {
+            this.filename = filename;
+        }
+
+        public long getLengthInBytes()
+        {
+            return 0;
+        }
+
+        public long getCurrentPosition()
+        {
+            return 0;
+        }
+
+        public String getBackingFiles()
+        {
+            return filename;
+        }
+
+        public boolean hasNext()
+        {
+            return false;
+        }
+
+        public OnDiskAtomIterator next()
+        {
+            return null;
+        }
+
+        public void close() throws IOException { }
+
+        public void remove() { }
+    }
+
+
 }

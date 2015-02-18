@@ -25,7 +25,6 @@ import java.nio.ByteBuffer;
 import java.util.*;
 
 import org.apache.cassandra.thrift.*;
-import org.apache.cassandra.thrift.ConsistencyLevel;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
 public class SettingsSchema implements Serializable
@@ -69,7 +68,7 @@ public class SettingsSchema implements Serializable
         KsDef ksdef = new KsDef();
 
         // column family for standard columns
-        CfDef standardCfDef = new CfDef(keyspace, "Standard1");
+        CfDef standardCfDef = new CfDef(keyspace, "standard1");
         Map<String, String> compressionOptions = new HashMap<>();
         if (compression != null)
             compressionOptions.put("sstable_compression", compression);
@@ -83,7 +82,7 @@ public class SettingsSchema implements Serializable
             standardCfDef.addToColumn_metadata(new ColumnDef(settings.columns.names.get(i), "BytesType"));
 
         // column family for standard counters
-        CfDef counterCfDef = new CfDef(keyspace, "Counter1")
+        CfDef counterCfDef = new CfDef(keyspace, "counter1")
                 .setComparator_type(comparator)
                 .setDefault_validation_class("CounterColumnType")
                 .setCompression_options(compressionOptions);
@@ -159,7 +158,7 @@ public class SettingsSchema implements Serializable
     {
         final OptionReplication replication = new OptionReplication();
         final OptionCompaction compaction = new OptionCompaction();
-        final OptionSimple keyspace = new OptionSimple("keyspace=", ".*", "Keyspace1", "The keyspace name to use", false);
+        final OptionSimple keyspace = new OptionSimple("keyspace=", ".*", "keyspace1", "The keyspace name to use", false);
         final OptionSimple compression = new OptionSimple("compression=", ".*", null, "Specify the compression to use for sstable, default:no compression", false);
 
         @Override

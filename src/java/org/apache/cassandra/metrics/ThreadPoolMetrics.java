@@ -40,6 +40,8 @@ public class ThreadPoolMetrics
     public final Gauge<Long> completedTasks;
     /** Number of tasks waiting to be executed. */
     public final Gauge<Long> pendingTasks;
+    /** Maximum number of threads before it will start queuing tasks */
+    public final Gauge<Integer> maxPoolSize;
 
     private MetricNameFactory factory;
 
@@ -77,6 +79,13 @@ public class ThreadPoolMetrics
                 return executor.getTaskCount() - executor.getCompletedTaskCount();
             }
         });
+        maxPoolSize =  Metrics.newGauge(factory.createMetricName("MaxPoolSize"), new Gauge<Integer>()
+        {
+            public Integer value()
+            {
+                return executor.getMaximumPoolSize();
+            }
+        });
     }
 
     public void release()
@@ -86,5 +95,6 @@ public class ThreadPoolMetrics
         Metrics.defaultRegistry().removeMetric(factory.createMetricName("CompletedTasks"));
         Metrics.defaultRegistry().removeMetric(factory.createMetricName("TotalBlockedTasks"));
         Metrics.defaultRegistry().removeMetric(factory.createMetricName("CurrentlyBlockedTasks"));
+        Metrics.defaultRegistry().removeMetric(factory.createMetricName("MaxPoolSize"));
     }
 }

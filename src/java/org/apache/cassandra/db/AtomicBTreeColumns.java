@@ -391,6 +391,11 @@ public class AtomicBTreeColumns extends ColumnFamily
         return false;
     }
 
+    public BatchRemoveIterator<Cell> batchRemoveIterator()
+    {
+        throw new UnsupportedOperationException();
+    }
+
     private static final class Holder
     {
         final DeletionInfo deletionInfo;
@@ -525,23 +530,24 @@ public class AtomicBTreeColumns extends ColumnFamily
 
         protected Cell computeNext()
         {
-            if (currentSlice == null)
+            while (currentSlice != null || idx < slices.length)
             {
-                if (idx >= slices.length)
-                    return endOfData();
+                if (currentSlice == null)
+                {
+                    ColumnSlice slice = slices[idx++];
+                    if (forwards)
+                        currentSlice = slice(btree, comparator, slice.start, slice.finish, true);
+                    else
+                        currentSlice = slice(btree, comparator, slice.finish, slice.start, false);
+                }
 
-                ColumnSlice slice = slices[idx++];
-                if (forwards)
-                    currentSlice = slice(btree, comparator, slice.start, slice.finish, true);
-                else
-                    currentSlice = slice(btree, comparator, slice.finish, slice.start, false);
+                if (currentSlice.hasNext())
+                    return currentSlice.next();
+
+                currentSlice = null;
             }
 
-            if (currentSlice.hasNext())
-                return currentSlice.next();
-
-            currentSlice = null;
-            return computeNext();
+            return endOfData();
         }
     }
 

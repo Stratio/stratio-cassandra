@@ -23,7 +23,6 @@ import java.util.*;
 import com.google.common.base.Function;
 import com.google.common.collect.*;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.github.jamm.MemoryMeter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,7 +40,7 @@ import org.apache.cassandra.transport.messages.ResultMessage;
  * A <code>BATCH</code> statement parsed from a CQL query.
  *
  */
-public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
+public class BatchStatement implements CQLStatement
 {
     public static enum Type
     {
@@ -74,17 +73,6 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
         this.statements = statements;
         this.attrs = attrs;
         this.hasConditions = hasConditions;
-    }
-
-    public long measureForPreparedCache(MemoryMeter meter)
-    {
-        long size = meter.measure(this)
-                  + meter.measureDeep(type)
-                  + meter.measure(statements)
-                  + meter.measureDeep(attrs);
-        for (ModificationStatement stmt : statements)
-            size += stmt.measureForPreparedCache(meter);
-        return size;
     }
 
     public int getBoundTerms()
@@ -275,7 +263,7 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
             throw new InvalidRequestException("Invalid empty serial consistency level");
 
         if (hasConditions)
-            return executeWithConditions(options, now);
+            return executeWithConditions(options, queryState);
 
         executeWithoutConditions(getMutations(options, local, now), options.getConsistency());
         return new ResultMessage.Void();
@@ -297,9 +285,10 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
         StorageProxy.mutateWithTriggers(mutations, cl, mutateAtomic);
     }
 
-    private ResultMessage executeWithConditions(BatchQueryOptions options, long now)
+    private ResultMessage executeWithConditions(BatchQueryOptions options, QueryState state)
     throws RequestExecutionException, RequestValidationException
     {
+        long now = state.getTimestamp();
         ByteBuffer key = null;
         String ksName = null;
         String cfName = null;
@@ -339,7 +328,7 @@ public class BatchStatement implements CQLStatement, MeasurableForPreparedCache
             casRequest.addRowUpdate(clusteringPrefix, statement, statementOptions, timestamp);
         }
 
-        ColumnFamily result = StorageProxy.cas(ksName, cfName, key, casRequest, options.getSerialConsistency(), options.getConsistency());
+        ColumnFamily result = StorageProxy.cas(ksName, cfName, key, casRequest, options.getSerialConsistency(), options.getConsistency(), state.getClientState());
 
         return new ResultMessage.Rows(ModificationStatement.buildCasResultSet(ksName, key, cfName, result, columnsWithConditions, true, options.forStatement(0)));
     }

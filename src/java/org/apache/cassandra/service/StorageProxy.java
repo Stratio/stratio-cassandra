@@ -79,7 +79,7 @@ public class StorageProxy implements StorageProxyMBean
 
     public static final StorageProxy instance = new StorageProxy();
 
-    private static volatile int maxHintsInProgress = 1024 * FBUtilities.getAvailableProcessors();
+    private static volatile int maxHintsInProgress = 128 * FBUtilities.getAvailableProcessors();
     private static final CacheLoader<InetAddress, AtomicInteger> hintsInProgress = new CacheLoader<InetAddress, AtomicInteger>()
     {
         public AtomicInteger load(InetAddress inetAddress)
@@ -201,7 +201,8 @@ public class StorageProxy implements StorageProxyMBean
                                    ByteBuffer key,
                                    CASRequest request,
                                    ConsistencyLevel consistencyForPaxos,
-                                   ConsistencyLevel consistencyForCommit)
+                                   ConsistencyLevel consistencyForCommit,
+                                   ClientState state)
     throws UnavailableException, IsBootstrappingException, ReadTimeoutException, WriteTimeoutException, InvalidRequestException
     {
         final long start = System.nanoTime();
@@ -221,7 +222,7 @@ public class StorageProxy implements StorageProxyMBean
                 List<InetAddress> liveEndpoints = p.left;
                 int requiredParticipants = p.right;
 
-                final Pair<UUID, Integer> pair = beginAndRepairPaxos(start, key, metadata, liveEndpoints, requiredParticipants, consistencyForPaxos, consistencyForCommit, true);
+                final Pair<UUID, Integer> pair = beginAndRepairPaxos(start, key, metadata, liveEndpoints, requiredParticipants, consistencyForPaxos, consistencyForCommit, true, state);
                 final UUID ballot = pair.left;
                 contentions += pair.right;
                 // read the current values and check they validate the conditions
@@ -303,6 +304,7 @@ public class StorageProxy implements StorageProxyMBean
         Token tk = StorageService.getPartitioner().getToken(key);
         List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(keyspaceName, tk);
         Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk, keyspaceName);
+
         if (consistencyForPaxos == ConsistencyLevel.LOCAL_SERIAL)
         {
             // Restrict naturalEndpoints and pendingEndpoints to node in the local DC only
@@ -311,10 +313,21 @@ public class StorageProxy implements StorageProxyMBean
             naturalEndpoints = ImmutableList.copyOf(Iterables.filter(naturalEndpoints, isLocalDc));
             pendingEndpoints = ImmutableList.copyOf(Iterables.filter(pendingEndpoints, isLocalDc));
         }
-        int requiredParticipants = pendingEndpoints.size() + 1 + naturalEndpoints.size() / 2; // See CASSANDRA-833
+        int participants = pendingEndpoints.size() + naturalEndpoints.size();
+        int requiredParticipants = participants / 2 + 1; // See CASSANDRA-8346, CASSANDRA-833
         List<InetAddress> liveEndpoints = ImmutableList.copyOf(Iterables.filter(Iterables.concat(naturalEndpoints, pendingEndpoints), IAsyncCallback.isAlive));
         if (liveEndpoints.size() < requiredParticipants)
             throw new UnavailableException(consistencyForPaxos, requiredParticipants, liveEndpoints.size());
+
+        // We cannot allow CAS operations with 2 or more pending endpoints, see #8346.
+        // Note that we fake an impossible number of required nodes in the unavailable exception
+        // to nail home the point that it's an impossible operation no matter how many nodes are live.
+        if (pendingEndpoints.size() > 1)
+            throw new UnavailableException(String.format("Cannot perform LWT operation as there is more than one (%d) pending range movement", pendingEndpoints.size()),
+                                           consistencyForPaxos,
+                                           participants + 1,
+                                           liveEndpoints.size());
+
         return Pair.create(liveEndpoints, requiredParticipants);
     }
 
@@ -324,7 +337,15 @@ public class StorageProxy implements StorageProxyMBean
      * @return the Paxos ballot promised by the replicas if no in-progress requests were seen and a quorum of
      * nodes have seen the mostRecentCommit.  Otherwise, return null.
      */
-    private static Pair<UUID, Integer> beginAndRepairPaxos(long start, ByteBuffer key, CFMetaData metadata, List<InetAddress> liveEndpoints, int requiredParticipants, ConsistencyLevel consistencyForPaxos, ConsistencyLevel consistencyForCommit, final boolean isWrite)
+    private static Pair<UUID, Integer> beginAndRepairPaxos(long start,
+                                                           ByteBuffer key,
+                                                           CFMetaData metadata,
+                                                           List<InetAddress> liveEndpoints,
+                                                           int requiredParticipants,
+                                                           ConsistencyLevel consistencyForPaxos,
+                                                           ConsistencyLevel consistencyForCommit,
+                                                           final boolean isWrite,
+                                                           ClientState state)
     throws WriteTimeoutException
     {
         long timeout = TimeUnit.MILLISECONDS.toNanos(DatabaseDescriptor.getCasContentionTimeout());
@@ -333,9 +354,13 @@ public class StorageProxy implements StorageProxyMBean
         int contentions = 0;
         while (System.nanoTime() - start < timeout)
         {
+            // We don't want to use a timestamp that is older than the last one assigned by the ClientState or operations
+            // may appear out-of-order (#7801). But note that state.getTimestamp() is in microseconds while the ballot
+            // timestamp is only in milliseconds
+            long currentTime = (state.getTimestamp() / 1000) + 1;
             long ballotMillis = summary == null
-                              ? System.currentTimeMillis()
-                              : Math.max(System.currentTimeMillis(), 1 + UUIDGen.unixTimestamp(summary.mostRecentInProgressCommit.ballot));
+                              ? currentTime
+                              : Math.max(currentTime, 1 + UUIDGen.unixTimestamp(summary.mostRecentInProgressCommit.ballot));
             UUID ballot = UUIDGen.getTimeUUID(ballotMillis);
 
             // prepare
@@ -393,6 +418,10 @@ public class StorageProxy implements StorageProxyMBean
                 // latter ticket, we can pass CL.ALL to the commit above and remove the 'continue'.
                 continue;
             }
+
+            // We might commit this ballot and we want to ensure operations starting after this CAS succeed will be assigned
+            // a timestamp greater that the one of this ballot, so operation order is preserved (#7801)
+            state.updateLastTimestamp(ballotMillis * 1000);
 
             return Pair.create(ballot, contentions);
         }
@@ -1134,11 +1163,19 @@ public class StorageProxy implements StorageProxyMBean
         return true;
     }
 
+    public static List<Row> read(List<ReadCommand> commands, ConsistencyLevel consistencyLevel)
+    throws UnavailableException, IsBootstrappingException, ReadTimeoutException, InvalidRequestException
+    {
+        // When using serial CL, the ClientState should be provided
+        assert !consistencyLevel.isSerialConsistency();
+        return read(commands, consistencyLevel, null);
+    }
+
     /**
      * Performs the actual reading of a row out of the StorageService, fetching
      * a specific set of column names from a given column family.
      */
-    public static List<Row> read(List<ReadCommand> commands, ConsistencyLevel consistency_level)
+    public static List<Row> read(List<ReadCommand> commands, ConsistencyLevel consistencyLevel, ClientState state)
     throws UnavailableException, IsBootstrappingException, ReadTimeoutException, InvalidRequestException
     {
         if (StorageService.instance.isBootstrapMode() && !systemKeyspaceQuery(commands))
@@ -1148,68 +1185,106 @@ public class StorageProxy implements StorageProxyMBean
             throw new IsBootstrappingException();
         }
 
+        return consistencyLevel.isSerialConsistency()
+             ? readWithPaxos(commands, consistencyLevel, state)
+             : readRegular(commands, consistencyLevel);
+    }
+
+    private static List<Row> readWithPaxos(List<ReadCommand> commands, ConsistencyLevel consistencyLevel, ClientState state)
+    throws InvalidRequestException, UnavailableException, ReadTimeoutException
+    {
+        assert state != null;
+
         long start = System.nanoTime();
         List<Row> rows = null;
+
         try
         {
-            if (consistency_level.isSerialConsistency())
+            // make sure any in-progress paxos writes are done (i.e., committed to a majority of replicas), before performing a quorum read
+            if (commands.size() > 1)
+                throw new InvalidRequestException("SERIAL/LOCAL_SERIAL consistency may only be requested for one row at a time");
+            ReadCommand command = commands.get(0);
+
+            CFMetaData metadata = Schema.instance.getCFMetaData(command.ksName, command.cfName);
+            Pair<List<InetAddress>, Integer> p = getPaxosParticipants(command.ksName, command.key, consistencyLevel);
+            List<InetAddress> liveEndpoints = p.left;
+            int requiredParticipants = p.right;
+
+            // does the work of applying in-progress writes; throws UAE or timeout if it can't
+            final ConsistencyLevel consistencyForCommitOrFetch = consistencyLevel == ConsistencyLevel.LOCAL_SERIAL
+                                                                                   ? ConsistencyLevel.LOCAL_QUORUM
+                                                                                   : ConsistencyLevel.QUORUM;
+            try
             {
-                // make sure any in-progress paxos writes are done (i.e., committed to a majority of replicas), before performing a quorum read
-                if (commands.size() > 1)
-                    throw new InvalidRequestException("SERIAL/LOCAL_SERIAL consistency may only be requested for one row at a time");
-                ReadCommand command = commands.get(0);
-
-                CFMetaData metadata = Schema.instance.getCFMetaData(command.ksName, command.cfName);
-                Pair<List<InetAddress>, Integer> p = getPaxosParticipants(command.ksName, command.key, consistency_level);
-                List<InetAddress> liveEndpoints = p.left;
-                int requiredParticipants = p.right;
-
-                // does the work of applying in-progress writes; throws UAE or timeout if it can't
-                final ConsistencyLevel consistencyForCommitOrFetch = consistency_level == ConsistencyLevel.LOCAL_SERIAL ? ConsistencyLevel.LOCAL_QUORUM : ConsistencyLevel.QUORUM;
-                try
-                {
-                    final Pair<UUID, Integer> pair = beginAndRepairPaxos(start, command.key, metadata, liveEndpoints, requiredParticipants, consistency_level, consistencyForCommitOrFetch, false);
-                    if(pair.right > 0)
-                        casReadMetrics.contention.update(pair.right);
-                }
-                catch (WriteTimeoutException e)
-                {
-                    throw new ReadTimeoutException(consistency_level, 0, consistency_level.blockFor(Keyspace.open(command.ksName)), false);
-                }
-
-                rows = fetchRows(commands, consistencyForCommitOrFetch);
+                final Pair<UUID, Integer> pair = beginAndRepairPaxos(start, command.key, metadata, liveEndpoints, requiredParticipants, consistencyLevel, consistencyForCommitOrFetch, false, state);
+                if (pair.right > 0)
+                    casReadMetrics.contention.update(pair.right);
             }
-            else
+            catch (WriteTimeoutException e)
             {
-                rows = fetchRows(commands, consistency_level);
+                throw new ReadTimeoutException(consistencyLevel, 0, consistencyLevel.blockFor(Keyspace.open(command.ksName)), false);
             }
+
+            rows = fetchRows(commands, consistencyForCommitOrFetch);
         }
         catch (UnavailableException e)
         {
             readMetrics.unavailables.mark();
             ClientRequestMetrics.readUnavailables.inc();
-            if(consistency_level.isSerialConsistency())
-                casReadMetrics.unavailables.mark();
+            casReadMetrics.unavailables.mark();
             throw e;
         }
         catch (ReadTimeoutException e)
         {
             readMetrics.timeouts.mark();
             ClientRequestMetrics.readTimeouts.inc();
-            if(consistency_level.isSerialConsistency())
-                casReadMetrics.timeouts.mark();
+            casReadMetrics.timeouts.mark();
             throw e;
         }
         finally
         {
             long latency = System.nanoTime() - start;
             readMetrics.addNano(latency);
-            if(consistency_level.isSerialConsistency())
-                casReadMetrics.addNano(latency);
+            casReadMetrics.addNano(latency);
             // TODO avoid giving every command the same latency number.  Can fix this in CASSADRA-5329
             for (ReadCommand command : commands)
                 Keyspace.open(command.ksName).getColumnFamilyStore(command.cfName).metric.coordinatorReadLatency.update(latency, TimeUnit.NANOSECONDS);
         }
+
+        return rows;
+    }
+
+    private static List<Row> readRegular(List<ReadCommand> commands, ConsistencyLevel consistencyLevel)
+    throws UnavailableException, ReadTimeoutException
+    {
+        long start = System.nanoTime();
+        List<Row> rows = null;
+
+        try
+        {
+            rows = fetchRows(commands, consistencyLevel);
+        }
+        catch (UnavailableException e)
+        {
+            readMetrics.unavailables.mark();
+            ClientRequestMetrics.readUnavailables.inc();
+            throw e;
+        }
+        catch (ReadTimeoutException e)
+        {
+            readMetrics.timeouts.mark();
+            ClientRequestMetrics.readTimeouts.inc();
+            throw e;
+        }
+        finally
+        {
+            long latency = System.nanoTime() - start;
+            readMetrics.addNano(latency);
+            // TODO avoid giving every command the same latency number.  Can fix this in CASSADRA-5329
+            for (ReadCommand command : commands)
+                Keyspace.open(command.ksName).getColumnFamilyStore(command.cfName).metric.coordinatorReadLatency.update(latency, TimeUnit.NANOSECONDS);
+        }
+
         return rows;
     }
 
@@ -1340,6 +1415,17 @@ public class StorageProxy implements StorageProxyMBean
                     {
                         throw new AssertionError(e); // full data requested from each node here, no digests should be sent
                     }
+                    catch (ReadTimeoutException e)
+                    {
+                        if (Tracing.isTracing())
+                            Tracing.trace("Timed out waiting on digest mismatch repair requests");
+                        else
+                            logger.debug("Timed out waiting on digest mismatch repair requests");
+                        // the caught exception here will have CL.ALL from the repair command,
+                        // not whatever CL the initial command was at (CASSANDRA-7947)
+                        int blockFor = consistencyLevel.blockFor(Keyspace.open(command.getKeyspace()));
+                        throw new ReadTimeoutException(consistencyLevel, blockFor-1, blockFor, true);
+                    }
 
                     RowDataResolver resolver = (RowDataResolver)handler.resolver;
                     try
@@ -1350,7 +1436,10 @@ public class StorageProxy implements StorageProxyMBean
                     }
                     catch (TimeoutException e)
                     {
-                        Tracing.trace("Timed out on digest mismatch retries");
+                        if (Tracing.isTracing())
+                            Tracing.trace("Timed out waiting on digest mismatch repair acknowledgements");
+                        else
+                            logger.debug("Timed out waiting on digest mismatch repair acknowledgements");
                         int blockFor = consistencyLevel.blockFor(Keyspace.open(command.getKeyspace()));
                         throw new ReadTimeoutException(consistencyLevel, blockFor-1, blockFor, true);
                     }
@@ -1512,7 +1601,8 @@ public class StorageProxy implements StorageProxyMBean
         // now scan until we have enough results
         try
         {
-            int cql3RowCount = 0;
+            int liveRowCount = 0;
+            boolean countLiveRows = command.countCQL3Rows() || command.ignoredTombstonedPartitions();
             rows = new ArrayList<>();
 
             // when dealing with LocalStrategy keyspaces, we can skip the range splitting and merging (which can be
@@ -1634,8 +1724,8 @@ public class StorageProxy implements StorageProxyMBean
                         for (Row row : handler.get())
                         {
                             rows.add(row);
-                            if (nodeCmd.countCQL3Rows())
-                                cql3RowCount += row.getLiveCount(command.predicate, command.timestamp);
+                            if (countLiveRows)
+                                liveRowCount += row.getLiveCount(command.predicate, command.timestamp);
                         }
                         repairResponses.addAll(resolver.repairResults);
                     }
@@ -1666,7 +1756,7 @@ public class StorageProxy implements StorageProxyMBean
                     }
 
                     // if we're done, great, otherwise, move to the next range
-                    int count = nodeCmd.countCQL3Rows() ? cql3RowCount : rows.size();
+                    int count = countLiveRows ? liveRowCount : rows.size();
                     if (!command.requiresFullScan() && count >= nodeCmd.limit())
                     {
                         haveSufficientRows = true;
@@ -1695,7 +1785,7 @@ public class StorageProxy implements StorageProxyMBean
                 // based on the results we've seen so far (as long as we still have ranges left to query)
                 if (i < ranges.size())
                 {
-                    float fetchedRows = command.countCQL3Rows() ? cql3RowCount : rows.size();
+                    float fetchedRows = countLiveRows ? liveRowCount : rows.size();
                     float remainingRows = command.limit() - fetchedRows;
                     float actualRowsPerRange;
                     if (fetchedRows == 0.0)
@@ -1725,8 +1815,8 @@ public class StorageProxy implements StorageProxyMBean
 
     private static List<Row> trim(AbstractRangeCommand command, List<Row> rows)
     {
-        // When maxIsColumns, we let the caller trim the result.
-        if (command.countCQL3Rows())
+        // for CQL3 queries, let the caller trim the results
+        if (command.countCQL3Rows() || command.ignoredTombstonedPartitions())
             return rows;
         else
             return rows.size() > command.limit() ? rows.subList(0, command.limit()) : rows;

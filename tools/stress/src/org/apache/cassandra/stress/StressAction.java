@@ -21,19 +21,16 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 
 import com.google.common.util.concurrent.RateLimiter;
 import com.google.common.util.concurrent.Uninterruptibles;
 
-import org.apache.cassandra.stress.generate.Partition;
 import org.apache.cassandra.stress.operations.OpDistribution;
 import org.apache.cassandra.stress.operations.OpDistributionFactory;
-import org.apache.cassandra.stress.settings.*;
+import org.apache.cassandra.stress.settings.StressSettings;
 import org.apache.cassandra.stress.util.JavaDriverClient;
 import org.apache.cassandra.stress.util.ThriftClient;
 import org.apache.cassandra.stress.util.Timer;
@@ -180,16 +177,19 @@ public class StressAction implements Runnable
                                                            : "until stderr of mean < " + settings.command.targetUncertainty));
         final WorkManager workManager;
         if (opCount < 0)
-            workManager = new ContinuousWorkManager();
+            workManager = new WorkManager.ContinuousWorkManager();
         else
-            workManager = new FixedWorkManager(opCount);
+            workManager = new WorkManager.FixedWorkManager(opCount);
 
         final StressMetrics metrics = new StressMetrics(output, settings.log.intervalMillis, settings);
 
         final CountDownLatch done = new CountDownLatch(threadCount);
         final Consumer[] consumers = new Consumer[threadCount];
         for (int i = 0; i < threadCount; i++)
-            consumers[i] = new Consumer(operations, done, workManager, metrics, rateLimiter);
+        {
+            Timer timer = metrics.getTiming().newTimer(settings.samples.liveCount / threadCount);
+            consumers[i] = new Consumer(operations, done, workManager, timer, metrics, rateLimiter);
+        }
 
         // starting worker threadCount
         for (int i = 0; i < threadCount; i++)
@@ -246,19 +246,19 @@ public class StressAction implements Runnable
         private final WorkManager workManager;
         private final CountDownLatch done;
 
-        public Consumer(OpDistributionFactory operations, CountDownLatch done, WorkManager workManager, StressMetrics metrics, RateLimiter rateLimiter)
+        public Consumer(OpDistributionFactory operations, CountDownLatch done, WorkManager workManager, Timer timer, StressMetrics metrics, RateLimiter rateLimiter)
         {
             this.done = done;
             this.rateLimiter = rateLimiter;
             this.workManager = workManager;
             this.metrics = metrics;
-            this.timer = metrics.getTiming().newTimer();
+            this.timer = timer;
             this.operations = operations.get(timer);
         }
 
         public void run()
         {
-
+            timer.init();
             try
             {
 
@@ -282,35 +282,11 @@ public class StressAction implements Runnable
                         throw new IllegalStateException();
                 }
 
-                int maxBatchSize = operations.maxBatchSize();
-                Partition[] partitions = new Partition[maxBatchSize];
                 while (true)
                 {
-
-                    // TODO: Operation should be able to ecapsulate much of this behaviour
                     Operation op = operations.next();
-                    op.generator.reset();
-
-                    int batchSize = workManager.takePermits(Math.max(1, (int) op.partitionCount.next()));
-                    if (batchSize < 0)
+                    if (!op.ready(workManager, rateLimiter))
                         break;
-
-                    if (rateLimiter != null)
-                        rateLimiter.acquire(batchSize);
-
-                    int partitionCount = 0;
-                    while (partitionCount < batchSize)
-                    {
-                        Partition p = op.generator.generate(op);
-                        if (p == null)
-                            break;
-                        partitions[partitionCount++] = p;
-                    }
-
-                    if (partitionCount == 0)
-                        break;
-
-                    op.setPartitions(Arrays.asList(partitions).subList(0, partitionCount));
 
                     try
                     {
@@ -355,65 +331,4 @@ public class StressAction implements Runnable
 
     }
 
-    private interface WorkManager
-    {
-        // -1 indicates consumer should terminate
-        int takePermits(int count);
-
-        // signal all consumers to terminate
-        void stop();
-    }
-
-    private static final class FixedWorkManager implements WorkManager
-    {
-
-        final AtomicLong permits;
-
-        public FixedWorkManager(long permits)
-        {
-            this.permits = new AtomicLong(permits);
-        }
-
-        @Override
-        public int takePermits(int count)
-        {
-            while (true)
-            {
-                long cur = permits.get();
-                if (cur == 0)
-                    return -1;
-                count = (int) Math.min(count, cur);
-                long next = cur - count;
-                if (permits.compareAndSet(cur, next))
-                    return count;
-            }
-        }
-
-        @Override
-        public void stop()
-        {
-            permits.getAndSet(0);
-        }
-    }
-
-    private static final class ContinuousWorkManager implements WorkManager
-    {
-
-        volatile boolean stop = false;
-
-        @Override
-        public int takePermits(int count)
-        {
-            if (stop)
-                return -1;
-            return count;
-        }
-
-        @Override
-        public void stop()
-        {
-            stop = true;
-        }
-
-    }
 }

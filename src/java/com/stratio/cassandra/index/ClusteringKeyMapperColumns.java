@@ -109,7 +109,7 @@ public class ClusteringKeyMapperColumns extends ClusteringKeyMapper {
 
     private boolean includeStart(Composite composite) {
         ByteBuffer[] components = ByteBufferUtils.split(composite.toByteBuffer(), compositeType);
-        return components.length <= numClusteringColumns && composite.eoc() == Composite.EOC.NONE;
+        return components.length <= numClusteringColumns && composite.eoc() != Composite.EOC.END;
     }
 
     private boolean includeStop(Composite composite) {

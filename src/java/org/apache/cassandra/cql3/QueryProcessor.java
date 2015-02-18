@@ -18,28 +18,40 @@
 package org.apache.cassandra.cql3;
 
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.primitives.Ints;
+
+import org.apache.cassandra.service.MigrationListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap;
 import com.googlecode.concurrentlinkedhashmap.EntryWeigher;
 import com.googlecode.concurrentlinkedhashmap.EvictionListener;
-import org.antlr.runtime.*;
-import org.github.jamm.MemoryMeter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+import org.apache.cassandra.concurrent.ScheduledExecutors;
+import org.antlr.runtime.*;
 import org.apache.cassandra.cql3.statements.*;
 import org.apache.cassandra.db.*;
-import org.apache.cassandra.db.composites.*;
+import org.apache.cassandra.db.composites.CType;
+import org.apache.cassandra.db.composites.CellName;
+import org.apache.cassandra.db.composites.CellNameType;
+import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.marshal.AbstractType;
-import org.apache.cassandra.exceptions.*;
+import org.apache.cassandra.exceptions.InvalidRequestException;
+import org.apache.cassandra.exceptions.RequestExecutionException;
+import org.apache.cassandra.exceptions.RequestValidationException;
+import org.apache.cassandra.exceptions.SyntaxException;
 import org.apache.cassandra.metrics.CQLMetrics;
-import org.apache.cassandra.service.*;
+import org.apache.cassandra.service.ClientState;
+import org.apache.cassandra.service.MigrationManager;
+import org.apache.cassandra.service.QueryState;
 import org.apache.cassandra.service.pager.QueryPager;
 import org.apache.cassandra.service.pager.QueryPagers;
 import org.apache.cassandra.thrift.ThriftClientState;
@@ -48,6 +60,7 @@ import org.apache.cassandra.transport.messages.ResultMessage;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.MD5Digest;
 import org.apache.cassandra.utils.SemanticVersion;
+import org.github.jamm.MemoryMeter;
 
 public class QueryProcessor implements QueryHandler
 {
@@ -89,7 +102,6 @@ public class QueryProcessor implements QueryHandler
     public static final CQLMetrics metrics = new CQLMetrics();
 
     private static final AtomicInteger lastMinuteEvictionsCount = new AtomicInteger(0);
-    private static final ScheduledExecutorService evictionCheckTimer = Executors.newScheduledThreadPool(1);
 
     static
     {
@@ -118,7 +130,7 @@ public class QueryProcessor implements QueryHandler
                                    })
                                    .build();
 
-        evictionCheckTimer.scheduleAtFixedRate(new Runnable()
+        ScheduledExecutors.scheduledTasks.scheduleAtFixedRate(new Runnable()
         {
             public void run()
             {
@@ -530,6 +542,7 @@ public class QueryProcessor implements QueryHandler
         }
         catch (RuntimeException re)
         {
+            logger.error(String.format("The statement: [%s] could not be parsed.", queryStr), re);
             throw new SyntaxException(String.format("Failed parsing statement: [%s] reason: %s %s",
                                                     queryStr,
                                                     re.getClass().getSimpleName(),
@@ -543,15 +556,14 @@ public class QueryProcessor implements QueryHandler
 
     private static long measure(Object key)
     {
-        return key instanceof MeasurableForPreparedCache
-             ? ((MeasurableForPreparedCache)key).measureForPreparedCache(meter)
-             : meter.measureDeep(key);
+        return meter.measureDeep(key);
     }
 
-    private static class MigrationSubscriber implements IMigrationListener
+    private static class MigrationSubscriber extends MigrationListener
     {
         private void removeInvalidPreparedStatements(String ksName, String cfName)
         {
+            removeInvalidPreparedStatements(internalStatements.values().iterator(), ksName, cfName);
             removeInvalidPreparedStatements(preparedStatements.values().iterator(), ksName, cfName);
             removeInvalidPreparedStatements(thriftPreparedStatements.values().iterator(), ksName, cfName);
         }
@@ -582,6 +594,16 @@ public class QueryProcessor implements QueryHandler
                 statementKsName = selectStatement.keyspace();
                 statementCfName = selectStatement.columnFamily();
             }
+            else if (statement instanceof BatchStatement)
+            {
+                BatchStatement batchStatement = ((BatchStatement) statement);
+                for (ModificationStatement stmt : batchStatement.getStatements())
+                {
+                    if (shouldInvalidate(ksName, cfName, stmt))
+                        return true;
+                }
+                return false;
+            }
             else
             {
                 return false;
@@ -590,23 +612,25 @@ public class QueryProcessor implements QueryHandler
             return ksName.equals(statementKsName) && (cfName == null || cfName.equals(statementCfName));
         }
 
-        public void onCreateKeyspace(String ksName) { }
-        public void onCreateColumnFamily(String ksName, String cfName) { }
-        public void onCreateUserType(String ksName, String typeName) { }
-        public void onUpdateKeyspace(String ksName) { }
-        public void onUpdateColumnFamily(String ksName, String cfName) { }
-        public void onUpdateUserType(String ksName, String typeName) { }
+        public void onUpdateColumnFamily(String ksName, String cfName, boolean columnsDidChange)
+        {
+            if (columnsDidChange)
+            {
+                logger.info("Column definitions for {}.{} changed, invalidating related prepared statements", ksName, cfName);
+                removeInvalidPreparedStatements(ksName, cfName);
+            }
+        }
 
         public void onDropKeyspace(String ksName)
         {
+            logger.info("Keyspace {} was dropped, invalidating related prepared statements", ksName);
             removeInvalidPreparedStatements(ksName, null);
         }
 
         public void onDropColumnFamily(String ksName, String cfName)
         {
+            logger.info("Table {}.{} was dropped, invalidating related prepared statements", ksName, cfName);
             removeInvalidPreparedStatements(ksName, cfName);
         }
-
-        public void onDropUserType(String ksName, String typeName) { }
 	}
 }

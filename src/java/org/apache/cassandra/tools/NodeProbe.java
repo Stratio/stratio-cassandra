@@ -19,48 +19,45 @@ package org.apache.cassandra.tools;
 
 import java.io.IOException;
 import java.io.PrintStream;
-import java.lang.management.ManagementFactory;
-import java.lang.management.MemoryMXBean;
-import java.lang.management.MemoryUsage;
-import java.lang.management.RuntimeMXBean;
+import java.lang.management.*;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.Condition;
+
 import javax.management.*;
-import javax.management.openmbean.CompositeData;
-import javax.management.remote.JMXConnectionNotification;
-import javax.management.remote.JMXConnector;
-import javax.management.remote.JMXConnectorFactory;
-import javax.management.remote.JMXServiceURL;
-import javax.management.openmbean.TabularData;
+import javax.management.openmbean.*;
+import javax.management.remote.*;
 
-import com.google.common.base.Function;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Sets;
-
-import com.yammer.metrics.reporting.JmxReporter;
 import org.apache.cassandra.concurrent.JMXEnabledThreadPoolExecutorMBean;
-import org.apache.cassandra.db.ColumnFamilyStoreMBean;
-import org.apache.cassandra.db.HintedHandOffManager;
-import org.apache.cassandra.db.HintedHandOffManagerMBean;
+import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.db.compaction.CompactionManagerMBean;
 import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.gms.FailureDetectorMBean;
 import org.apache.cassandra.locator.EndpointSnitchInfoMBean;
+import org.apache.cassandra.metrics.ColumnFamilyMetrics.Sampler;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.net.MessagingServiceMBean;
+import org.apache.cassandra.repair.RepairParallelism;
 import org.apache.cassandra.service.*;
-import org.apache.cassandra.streaming.StreamState;
 import org.apache.cassandra.streaming.StreamManagerMBean;
+import org.apache.cassandra.streaming.StreamState;
 import org.apache.cassandra.streaming.management.StreamStateCompositeData;
-import org.apache.cassandra.utils.concurrent.SimpleCondition;
+import org.apache.cassandra.utils.EstimatedHistogram;
 import org.apache.cassandra.utils.JVMStabilityInspector;
+import org.apache.cassandra.utils.concurrent.SimpleCondition;
+
+import com.google.common.base.Function;
+import com.google.common.collect.*;
+import com.google.common.util.concurrent.Uninterruptibles;
+
+import com.yammer.metrics.reporting.JmxReporter;
+
+import static org.apache.commons.lang3.ArrayUtils.isEmpty;
 
 /**
  * JMX client operations for Cassandra.
@@ -246,12 +243,17 @@ public class NodeProbe implements AutoCloseable
 
     public void forceRepairAsync(final PrintStream out, final String keyspaceName, boolean isSequential, Collection<String> dataCenters, Collection<String> hosts, boolean primaryRange, boolean fullRepair, String... columnFamilies) throws IOException
     {
+        forceRepairAsync(out, keyspaceName, isSequential ? RepairParallelism.SEQUENTIAL : RepairParallelism.PARALLEL, dataCenters, hosts, primaryRange, fullRepair, columnFamilies);
+    }
+
+    public void forceRepairAsync(final PrintStream out, final String keyspaceName, RepairParallelism parallelismDegree, Collection<String> dataCenters, final Collection<String> hosts, boolean primaryRange, boolean fullRepair, String... columnFamilies) throws IOException
+    {
         RepairRunner runner = new RepairRunner(out, keyspaceName, columnFamilies);
         try
         {
             jmxc.addConnectionNotificationListener(runner, null, null);
             ssProxy.addNotificationListener(runner, null, null);
-            if (!runner.repairAndWait(ssProxy, isSequential, dataCenters, hosts, primaryRange, fullRepair))
+            if (!runner.repairAndWait(ssProxy, parallelismDegree, dataCenters, hosts, primaryRange, fullRepair))
                 failed = true;
         }
         catch (Exception e)
@@ -275,12 +277,17 @@ public class NodeProbe implements AutoCloseable
 
     public void forceRepairRangeAsync(final PrintStream out, final String keyspaceName, boolean isSequential, Collection<String> dataCenters, Collection<String> hosts, final String startToken, final String endToken, boolean fullRepair, String... columnFamilies) throws IOException
     {
+        forceRepairRangeAsync(out, keyspaceName, isSequential ? RepairParallelism.SEQUENTIAL : RepairParallelism.PARALLEL, dataCenters, hosts, startToken, endToken, fullRepair, columnFamilies);
+    }
+
+    public void forceRepairRangeAsync(final PrintStream out, final String keyspaceName, RepairParallelism parallelismDegree, Collection<String> dataCenters, final Collection<String> hosts, final String startToken, final String endToken, boolean fullRepair, String... columnFamilies) throws IOException
+    {
         RepairRunner runner = new RepairRunner(out, keyspaceName, columnFamilies);
         try
         {
             jmxc.addConnectionNotificationListener(runner, null, null);
             ssProxy.addNotificationListener(runner, null, null);
-            if (!runner.repairRangeAndWait(ssProxy,  isSequential, dataCenters, hosts, startToken, endToken, fullRepair))
+            if (!runner.repairRangeAndWait(ssProxy, parallelismDegree, dataCenters, hosts, startToken, endToken, fullRepair))
                 failed = true;
         }
         catch (Exception e)
@@ -299,6 +306,22 @@ public class NodeProbe implements AutoCloseable
                 out.println("Exception occurred during clean-up. " + e);
             }
         }
+    }
+
+    public Map<Sampler, CompositeData> getPartitionSample(String ks, String cf, int capacity, int duration, int count, List<Sampler> samplers) throws OpenDataException
+    {
+        ColumnFamilyStoreMBean cfsProxy = getCfsProxy(ks, cf);
+        for(Sampler sampler : samplers)
+        {
+            cfsProxy.beginLocalSampling(sampler.name(), capacity);
+        }
+        Uninterruptibles.sleepUninterruptibly(duration, TimeUnit.MILLISECONDS);
+        Map<Sampler, CompositeData> result = Maps.newHashMap();
+        for(Sampler sampler : samplers)
+        {
+            result.put(sampler, cfsProxy.finishLocalSampling(sampler.name(), count));
+        }
+        return result;
     }
 
     public void invalidateCounterCache()
@@ -639,6 +662,11 @@ public class NodeProbe implements AutoCloseable
         return ssProxy.getOperationMode();
     }
 
+    public boolean isStarting()
+    {
+        return ssProxy.isStarting();
+    }
+
     public void truncate(String keyspaceName, String cfName)
     {
         try
@@ -943,17 +971,17 @@ public class NodeProbe implements AutoCloseable
     {
         return failed;
     }
-    
+
     public long getReadRepairAttempted()
     {
         return spProxy.getReadRepairAttempted();
     }
-    
+
     public long getReadRepairRepairedBlocking()
     {
         return spProxy.getReadRepairRepairedBlocking();
     }
-    
+
     public long getReadRepairRepairedBackground()
     {
         return spProxy.getReadRepairRepairedBackground();
@@ -1011,6 +1039,9 @@ public class NodeProbe implements AutoCloseable
                 case "BloomFilterDiskSpaceUsed":
                 case "BloomFilterFalsePositives":
                 case "BloomFilterFalseRatio":
+                case "BloomFilterOffHeapMemoryUsed":
+                case "IndexSummaryOffHeapMemoryUsed":
+                case "CompressionMetadataOffHeapMemoryUsed":
                 case "CompressionRatio":
                 case "EstimatedColumnCountHistogram":
                 case "EstimatedRowSizeHistogram":
@@ -1020,6 +1051,7 @@ public class NodeProbe implements AutoCloseable
                 case "MeanRowSize":
                 case "MemtableColumnsCount":
                 case "MemtableLiveDataSize":
+                case "MemtableOffHeapSize":
                 case "MinRowSize":
                 case "RecentBloomFilterFalsePositives":
                 case "RecentBloomFilterFalseRatio":
@@ -1121,15 +1153,35 @@ public class NodeProbe implements AutoCloseable
         }
     }
 
-    public double[] metricPercentilesAsArray(JmxReporter.HistogramMBean metric)
+    public double[] metricPercentilesAsArray(long[] counts)
     {
-        return new double[]{ metric.get50thPercentile(),
-                metric.get75thPercentile(),
-                metric.get95thPercentile(),
-                metric.get98thPercentile(),
-                metric.get99thPercentile(),
-                metric.getMin(),
-                metric.getMax()};
+        double[] result = new double[7];
+
+        if (isEmpty(counts))
+        {
+            Arrays.fill(result, Double.NaN);
+            return result;
+        }
+
+        double[] offsetPercentiles = new double[] { 0.5, 0.75, 0.95, 0.98, 0.99 };
+        long[] offsets = new EstimatedHistogram(counts.length).getBucketOffsets();
+        EstimatedHistogram metric = new EstimatedHistogram(offsets, counts);
+
+        if (metric.isOverflowed())
+        {
+            System.err.println(String.format("EstimatedHistogram overflowed larger than %s, unable to calculate percentiles",
+                                             offsets[offsets.length - 1]));
+            for (int i = 0; i < result.length; i++)
+                result[i] = Double.NaN;
+        }
+        else
+        {
+            for (int i = 0; i < offsetPercentiles.length; i++)
+                result[i] = metric.percentile(offsetPercentiles[i]);
+        }
+        result[5] = metric.min();
+        result[6] = metric.max();
+        return result;
     }
 
     public TabularData getCompactionHistory()
@@ -1287,16 +1339,16 @@ class RepairRunner implements NotificationListener
         this.columnFamilies = columnFamilies;
     }
 
-    public boolean repairAndWait(StorageServiceMBean ssProxy, boolean isSequential, Collection<String> dataCenters, Collection<String> hosts, boolean primaryRangeOnly, boolean fullRepair) throws Exception
+    public boolean repairAndWait(StorageServiceMBean ssProxy, RepairParallelism parallelismDegree, Collection<String> dataCenters, Collection<String> hosts, boolean primaryRangeOnly, boolean fullRepair) throws Exception
     {
-        cmd = ssProxy.forceRepairAsync(keyspace, isSequential, dataCenters, hosts, primaryRangeOnly, fullRepair, columnFamilies);
+        cmd = ssProxy.forceRepairAsync(keyspace, parallelismDegree.ordinal(), dataCenters, hosts, primaryRangeOnly, fullRepair, columnFamilies);
         waitForRepair();
         return success;
     }
 
-    public boolean repairRangeAndWait(StorageServiceMBean ssProxy, boolean isSequential, Collection<String> dataCenters, Collection<String> hosts, String startToken, String endToken, boolean fullRepair) throws Exception
+    public boolean repairRangeAndWait(StorageServiceMBean ssProxy, RepairParallelism parallelismDegree, Collection<String> dataCenters, Collection<String> hosts, String startToken, String endToken, boolean fullRepair) throws Exception
     {
-        cmd = ssProxy.forceRepairRangeAsync(startToken, endToken, keyspace, isSequential, dataCenters, hosts, fullRepair, columnFamilies);
+        cmd = ssProxy.forceRepairRangeAsync(startToken, endToken, keyspace, parallelismDegree.ordinal(), dataCenters, hosts, fullRepair, columnFamilies);
         waitForRepair();
         return success;
     }

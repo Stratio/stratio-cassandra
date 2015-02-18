@@ -105,11 +105,11 @@ public abstract class ColumnMapper {
         AbstractType<?> checkedType = type;
         if (type.isCollection()) {
             if (type instanceof MapType<?, ?>) {
-                checkedType = ((MapType<?, ?>) type).values;
+                checkedType = ((MapType<?, ?>) type).getValuesType();
             } else if (type instanceof ListType<?>) {
-                checkedType = ((ListType<?>) type).elements;
+                checkedType = ((ListType<?>) type).getElementsType();
             } else if (type instanceof SetType) {
-                checkedType = ((SetType<?>) type).elements;
+                checkedType = ((SetType<?>) type).getElementsType();
             }
         }
 
