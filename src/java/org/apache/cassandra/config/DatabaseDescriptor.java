@@ -158,6 +158,27 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
+    private static InetAddress getNetworkInterfaceAddress(String intf, String configName) throws ConfigurationException
+    {
+        try
+        {
+            NetworkInterface ni = NetworkInterface.getByName(intf);
+            if (ni == null)
+                throw new ConfigurationException("Configured " + configName + " \"" + intf + "\" could not be found");
+            Enumeration<InetAddress> addrs = ni.getInetAddresses();
+            if (!addrs.hasMoreElements())
+                throw new ConfigurationException("Configured " + configName + " \"" + intf + "\" was found, but had no addresses");
+            InetAddress retval = listenAddress = addrs.nextElement();
+            if (addrs.hasMoreElements())
+                throw new ConfigurationException("Configured " + configName + " \"" + intf + "\" can't have more than one address");
+            return retval;
+        }
+        catch (SocketException e)
+        {
+            throw new ConfigurationException("Configured " + configName + " \"" + intf + "\" caused an exception", e);
+        }
+    }
+
     private static void applyConfig(Config config) throws ConfigurationException
     {
         conf = config;
@@ -195,23 +216,34 @@ public class DatabaseDescriptor
         if (conf.commitlog_total_space_in_mb == null)
             conf.commitlog_total_space_in_mb = hasLargeAddressSpace() ? 8192 : 32;
 
-        /* evaluate the DiskAccessMode Config directive, which also affects indexAccessMode selection */
-        if (conf.disk_access_mode == Config.DiskAccessMode.auto)
-        {
-            conf.disk_access_mode = hasLargeAddressSpace() ? Config.DiskAccessMode.mmap : Config.DiskAccessMode.standard;
-            indexAccessMode = conf.disk_access_mode;
-            logger.info("DiskAccessMode 'auto' determined to be {}, indexAccessMode is {}", conf.disk_access_mode, indexAccessMode);
-        }
-        else if (conf.disk_access_mode == Config.DiskAccessMode.mmap_index_only)
+        // Always force standard mode access on Windows - CASSANDRA-6993. Windows won't allow deletion of hard-links to files that
+        // are memory-mapped which causes trouble with snapshots.
+        if (FBUtilities.isWindows())
         {
             conf.disk_access_mode = Config.DiskAccessMode.standard;
-            indexAccessMode = Config.DiskAccessMode.mmap;
-            logger.info("DiskAccessMode is {}, indexAccessMode is {}", conf.disk_access_mode, indexAccessMode);
+            indexAccessMode = conf.disk_access_mode;
+            logger.info("Windows environment detected.  DiskAccessMode set to {}, indexAccessMode {}", conf.disk_access_mode, indexAccessMode);
         }
         else
         {
-            indexAccessMode = conf.disk_access_mode;
-            logger.info("DiskAccessMode is {}, indexAccessMode is {}", conf.disk_access_mode, indexAccessMode);
+            /* evaluate the DiskAccessMode Config directive, which also affects indexAccessMode selection */
+            if (conf.disk_access_mode == Config.DiskAccessMode.auto)
+            {
+                conf.disk_access_mode = hasLargeAddressSpace() ? Config.DiskAccessMode.mmap : Config.DiskAccessMode.standard;
+                indexAccessMode = conf.disk_access_mode;
+                logger.info("DiskAccessMode 'auto' determined to be {}, indexAccessMode is {}", conf.disk_access_mode, indexAccessMode);
+            }
+            else if (conf.disk_access_mode == Config.DiskAccessMode.mmap_index_only)
+            {
+                conf.disk_access_mode = Config.DiskAccessMode.standard;
+                indexAccessMode = Config.DiskAccessMode.mmap;
+                logger.info("DiskAccessMode is {}, indexAccessMode is {}", conf.disk_access_mode, indexAccessMode);
+            }
+            else
+            {
+                indexAccessMode = conf.disk_access_mode;
+                logger.info("DiskAccessMode is {}, indexAccessMode is {}", conf.disk_access_mode, indexAccessMode);
+            }
         }
 
         /* Authentication and authorization backend, implementing IAuthenticator and IAuthorizer */
@@ -315,18 +347,7 @@ public class DatabaseDescriptor
         }
         else if (conf.listen_interface != null)
         {
-            try
-            {
-                Enumeration<InetAddress> addrs = NetworkInterface.getByName(conf.listen_interface).getInetAddresses();
-                listenAddress = addrs.nextElement();
-                if (addrs.hasMoreElements())
-                    throw new ConfigurationException("Interface " + conf.listen_interface +" can't have more than one address");
-            }
-            catch (SocketException e)
-            {
-                throw new ConfigurationException("Unknown network interface in listen_interface " + conf.listen_interface);
-            }
-
+            listenAddress = getNetworkInterfaceAddress(conf.listen_interface, "listen_interface");
         }
 
         /* Gossip Address to broadcast */
@@ -363,17 +384,7 @@ public class DatabaseDescriptor
         }
         else if (conf.rpc_interface != null)
         {
-            try
-            {
-                Enumeration<InetAddress> addrs = NetworkInterface.getByName(conf.rpc_interface).getInetAddresses();
-                rpcAddress = addrs.nextElement();
-                if (addrs.hasMoreElements())
-                    throw new ConfigurationException("Interface " + conf.rpc_interface +" can't have more than one address");
-            }
-            catch (SocketException e)
-            {
-                throw new ConfigurationException("Unknown network interface in rpc_interface " + conf.rpc_interface);
-            }
+            listenAddress = getNetworkInterfaceAddress(conf.rpc_interface, "rpc_interface");
         }
         else
         {
@@ -627,8 +638,21 @@ public class DatabaseDescriptor
         return conf.dynamic_snitch ? new DynamicEndpointSnitch(snitch) : snitch;
     }
 
-    /** load keyspace (keyspace) definitions, but do not initialize the keyspace instances. */
+    /**
+     * load keyspace (keyspace) definitions, but do not initialize the keyspace instances.
+     * Schema version may be updated as the result.
+     */
     public static void loadSchemas()
+    {
+        loadSchemas(true);
+    }
+
+    /**
+     * Load schema definitions.
+     *
+     * @param updateVersion true if schema version needs to be updated
+     */
+    public static void loadSchemas(boolean updateVersion)
     {
         ColumnFamilyStore schemaCFS = SystemKeyspace.schemaCFS(SystemKeyspace.SCHEMA_KEYSPACES_CF);
 
@@ -647,7 +671,8 @@ public class DatabaseDescriptor
             Schema.instance.load(DefsTables.loadFromKeyspace());
         }
 
-        Schema.instance.updateVersion();
+        if (updateVersion)
+            Schema.instance.updateVersion();
     }
 
     private static boolean hasExistingNoSystemTables()
@@ -689,11 +714,17 @@ public class DatabaseDescriptor
         return conf.permissions_validity_in_ms;
     }
 
-    public static void setPermissionsValidity(int timeout)
+    public static int getPermissionsCacheMaxEntries()
     {
-        conf.permissions_validity_in_ms = timeout;
+        return conf.permissions_cache_max_entries;
     }
 
+    public static int getPermissionsUpdateInterval()
+    {
+        return conf.permissions_update_interval_in_ms == -1
+             ? conf.permissions_validity_in_ms
+             : conf.permissions_update_interval_in_ms;
+    }
 
     public static int getThriftFramedTransportSize()
     {
@@ -1432,7 +1463,8 @@ public class DatabaseDescriptor
 
     public static int getSSTablePreempiveOpenIntervalInMB()
     {
-        return conf.sstable_preemptive_open_interval_in_mb;
+        //return conf.sstable_preemptive_open_interval_in_mb;
+        return -1;
     }
 
     public static boolean getTrickleFsync()

@@ -375,18 +375,20 @@ updateStatement returns [UpdateStatement.ParsedUpdate expr]
     @init {
         Attributes.Raw attrs = new Attributes.Raw();
         List<Pair<ColumnIdentifier.Raw, Operation.RawUpdate>> operations = new ArrayList<Pair<ColumnIdentifier.Raw, Operation.RawUpdate>>();
+        boolean ifExists = false;
     }
     : K_UPDATE cf=columnFamilyName
       ( usingClause[attrs] )?
       K_SET columnOperation[operations] (',' columnOperation[operations])*
       K_WHERE wclause=whereClause
-      ( K_IF conditions=updateConditions )?
+      ( K_IF ( K_EXISTS { ifExists = true; } | conditions=updateConditions ))?
       {
           return new UpdateStatement.ParsedUpdate(cf,
                                                   attrs,
                                                   operations,
                                                   wclause,
-                                                  conditions == null ? Collections.<Pair<ColumnIdentifier.Raw, ColumnCondition.Raw>>emptyList() : conditions);
+                                                  conditions == null ? Collections.<Pair<ColumnIdentifier.Raw, ColumnCondition.Raw>>emptyList() : conditions,
+                                                  ifExists);
      }
     ;
 
@@ -566,17 +568,19 @@ createIndexStatement returns [CreateIndexStatement expr]
     @init {
         IndexPropDefs props = new IndexPropDefs();
         boolean ifNotExists = false;
+        IndexName name = new IndexName();
     }
     : K_CREATE (K_CUSTOM { props.isCustom = true; })? K_INDEX (K_IF K_NOT K_EXISTS { ifNotExists = true; } )?
-        (idxName=IDENT)? K_ON cf=columnFamilyName '(' id=indexIdent ')'
+        (idxName[name])? K_ON cf=columnFamilyName '(' id=indexIdent ')'
         (K_USING cls=STRING_LITERAL { props.customClass = $cls.text; })?
         (K_WITH properties[props])?
-      { $expr = new CreateIndexStatement(cf, $idxName.text, id, props, ifNotExists); }
+      { $expr = new CreateIndexStatement(cf, name, id, props, ifNotExists); }
     ;
 
 indexIdent returns [IndexTarget.Raw id]
-    : c=cident                { $id = IndexTarget.Raw.of(c); }
+    : c=cident                { $id = IndexTarget.Raw.valuesOf(c); }
     | K_KEYS '(' c=cident ')' { $id = IndexTarget.Raw.keysOf(c); }
+    | K_FULL '(' c=cident ')' { $id = IndexTarget.Raw.fullCollection(c); }
     ;
 
 
@@ -831,33 +835,42 @@ ident returns [ColumnIdentifier id]
 // Keyspace & Column family names
 keyspaceName returns [String id]
     @init { CFName name = new CFName(); }
-    : cfOrKsName[name, true] { $id = name.getKeyspace(); }
+    : ksName[name] { $id = name.getKeyspace(); }
     ;
 
 indexName returns [IndexName name]
     @init { $name = new IndexName(); }
-    : (idxOrKsName[name, true] '.')? idxOrKsName[name, false]
-    ;
-
-idxOrKsName[IndexName name, boolean isKs]
-    : t=IDENT              { if (isKs) $name.setKeyspace($t.text, false); else $name.setIndex($t.text, false); }
-    | t=QUOTED_NAME        { if (isKs) $name.setKeyspace($t.text, true); else $name.setIndex($t.text, true); }
-    | k=unreserved_keyword { if (isKs) $name.setKeyspace(k, false); else $name.setIndex(k, false); }
+    : (ksName[name] '.')? idxName[name]
     ;
 
 columnFamilyName returns [CFName name]
     @init { $name = new CFName(); }
-    : (cfOrKsName[name, true] '.')? cfOrKsName[name, false]
+    : (ksName[name] '.')? cfName[name]
     ;
 
 userTypeName returns [UTName name]
     : (ks=ident '.')? ut=non_type_ident { return new UTName(ks, ut); }
     ;
 
-cfOrKsName[CFName name, boolean isKs]
-    : t=IDENT              { if (isKs) $name.setKeyspace($t.text, false); else $name.setColumnFamily($t.text, false); }
-    | t=QUOTED_NAME        { if (isKs) $name.setKeyspace($t.text, true); else $name.setColumnFamily($t.text, true); }
-    | k=unreserved_keyword { if (isKs) $name.setKeyspace(k, false); else $name.setColumnFamily(k, false); }
+ksName[KeyspaceElementName name]
+    : t=IDENT              { $name.setKeyspace($t.text, false);}
+    | t=QUOTED_NAME        { $name.setKeyspace($t.text, true);}
+    | k=unreserved_keyword { $name.setKeyspace(k, false);}
+    | QMARK {addRecognitionError("Bind variables cannot be used for keyspace names");}
+    ;
+
+cfName[CFName name]
+    : t=IDENT              { $name.setColumnFamily($t.text, false); }
+    | t=QUOTED_NAME        { $name.setColumnFamily($t.text, true); }
+    | k=unreserved_keyword { $name.setColumnFamily(k, false); }
+    | QMARK {addRecognitionError("Bind variables cannot be used for table names");}
+    ;
+
+idxName[IndexName name]
+    : t=IDENT              { $name.setIndex($t.text, false); }
+    | t=QUOTED_NAME        { $name.setIndex($t.text, true);}
+    | k=unreserved_keyword { $name.setIndex(k, false); }
+    | QMARK {addRecognitionError("Bind variables cannot be used for index names");}
     ;
 
 constant returns [Constants.Literal constant]
@@ -931,16 +944,19 @@ functionName returns [String s]
     | K_TOKEN                       { $s = "token"; }
     ;
 
-functionArgs returns [List<Term.Raw> a]
-    : '(' ')' { $a = Collections.emptyList(); }
-    | '(' t1=term { List<Term.Raw> args = new ArrayList<Term.Raw>(); args.add(t1); }
-          ( ',' tn=term { args.add(tn); } )*
-       ')' { $a = args; }
+function returns [Term.Raw t]
+    : f=functionName '(' ')'                   { $t = new FunctionCall.Raw(f, Collections.<Term.Raw>emptyList()); }
+    | f=functionName '(' args=functionArgs ')' { $t = new FunctionCall.Raw(f, args); }
+    ;
+
+functionArgs returns [List<Term.Raw> args]
+    @init{ $args = new ArrayList<Term.Raw>(); }
+    : t1=term {args.add(t1); } ( ',' tn=term { args.add(tn); } )*
     ;
 
 term returns [Term.Raw term]
     : v=value                          { $term = v; }
-    | f=functionName args=functionArgs { $term = new FunctionCall.Raw(f, args); }
+    | f=function                       { $term = f; }
     | '(' c=comparatorType ')' t=term  { $term = new TypeCast(c, t); }
     ;
 
@@ -1148,21 +1164,21 @@ native_type returns [CQL3Type t]
 
 collection_type returns [CQL3Type.Raw pt]
     : K_MAP  '<' t1=comparatorType ',' t2=comparatorType '>'
-        { try {
+        {
             // if we can't parse either t1 or t2, antlr will "recover" and we may have t1 or t2 null.
             if (t1 != null && t2 != null)
                 $pt = CQL3Type.Raw.map(t1, t2);
-          } catch (InvalidRequestException e) { addRecognitionError(e.getMessage()); } }
+        }
     | K_LIST '<' t=comparatorType '>'
-        { try { if (t != null) $pt = CQL3Type.Raw.list(t); } catch (InvalidRequestException e) { addRecognitionError(e.getMessage()); } }
+        { if (t != null) $pt = CQL3Type.Raw.list(t); }
     | K_SET  '<' t=comparatorType '>'
-        { try { if (t != null) $pt = CQL3Type.Raw.set(t); } catch (InvalidRequestException e) { addRecognitionError(e.getMessage()); } }
+        { if (t != null) $pt = CQL3Type.Raw.set(t); }
     ;
 
 tuple_type returns [CQL3Type.Raw t]
     : K_TUPLE '<' { List<CQL3Type.Raw> types = new ArrayList<>(); }
          t1=comparatorType { types.add(t1); } (',' tn=comparatorType { types.add(tn); })*
-      '>' { try { $t = CQL3Type.Raw.tuple(types); } catch (InvalidRequestException e) { addRecognitionError(e.getMessage()); }}
+      '>' { $t = CQL3Type.Raw.tuple(types); }
     ;
 
 username
@@ -1227,6 +1243,7 @@ K_WHERE:       W H E R E;
 K_AND:         A N D;
 K_KEY:         K E Y;
 K_KEYS:        K E Y S;
+K_FULL:        F U L L;
 K_INSERT:      I N S E R T;
 K_UPDATE:      U P D A T E;
 K_WITH:        W I T H;

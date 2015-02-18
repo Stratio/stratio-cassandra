@@ -17,6 +17,9 @@
  */
 package org.apache.cassandra.streaming;
 
+import java.io.File;
+import java.io.IOError;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -32,6 +35,8 @@ import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.io.sstable.SSTableWriter;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
+
+import org.apache.cassandra.utils.concurrent.Refs;
 
 /**
  * Task that manages receiving files for the session for certain ColumnFamily.
@@ -113,7 +118,10 @@ public class StreamReceiveTask extends StreamTask
             }
             ColumnFamilyStore cfs = Keyspace.open(kscf.left).getColumnFamilyStore(kscf.right);
 
-            StreamLockfile lockfile = new StreamLockfile(cfs.directories.getWriteableLocationAsFile(), UUID.randomUUID());
+            File lockfiledir = cfs.directories.getWriteableLocationAsFile(task.sstables.size() * 256);
+            if (lockfiledir == null)
+                throw new IOError(new IOException("All disks full"));
+            StreamLockfile lockfile = new StreamLockfile(lockfiledir, UUID.randomUUID());
             lockfile.create(task.sstables);
             List<SSTableReader> readers = new ArrayList<>();
             for (SSTableWriter writer : task.sstables)
@@ -121,17 +129,11 @@ public class StreamReceiveTask extends StreamTask
             lockfile.delete();
             task.sstables.clear();
 
-            if (!SSTableReader.acquireReferences(readers))
-                throw new AssertionError("We shouldn't fail acquiring a reference on a sstable that has just been transferred");
-            try
+            try (Refs<SSTableReader> refs = Refs.ref(readers))
             {
                 // add sstables and build secondary indexes
                 cfs.addSSTables(readers);
                 cfs.indexManager.maybeBuildSecondaryIndexes(readers, cfs.indexManager.allIndexesNames());
-            }
-            finally
-            {
-                SSTableReader.releaseReferences(readers);
             }
 
             task.session.taskCompleted(task);

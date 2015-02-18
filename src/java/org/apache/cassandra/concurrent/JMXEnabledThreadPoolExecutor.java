@@ -73,7 +73,6 @@ public class JMXEnabledThreadPoolExecutor extends DebuggableThreadPoolExecutor i
     {
         super(corePoolSize, maxPoolSize, keepAliveTime, unit, workQueue, threadFactory);
         super.prestartAllCoreThreads();
-
         metrics = new ThreadPoolMetrics(this, jmxPath, threadFactory.id);
 
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();

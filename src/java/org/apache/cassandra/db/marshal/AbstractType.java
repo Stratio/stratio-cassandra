@@ -28,6 +28,7 @@ import org.apache.cassandra.cql3.CQL3Type;
 import org.apache.cassandra.exceptions.SyntaxException;
 import org.apache.cassandra.serializers.TypeSerializer;
 import org.apache.cassandra.serializers.MarshalException;
+import org.github.jamm.Unmetered;
 
 /**
  * Specifies a Comparator for a specific type of ByteBuffer.
@@ -37,6 +38,7 @@ import org.apache.cassandra.serializers.MarshalException;
  * should always handle those values even if they normally do not
  * represent a valid ByteBuffer for the type being compared.
  */
+@Unmetered
 public abstract class AbstractType<T> implements Comparator<ByteBuffer>
 {
     public final Comparator<ByteBuffer> reverseComparator;
@@ -221,6 +223,24 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>
     public boolean isCollection()
     {
         return false;
+    }
+
+    public boolean isMultiCell()
+    {
+        return false;
+    }
+
+    public AbstractType<?> freeze()
+    {
+        return this;
+    }
+
+    /**
+     * @param ignoreFreezing if true, the type string will not be wrapped with FrozenType(...), even if this type is frozen.
+     */
+    public String toString(boolean ignoreFreezing)
+    {
+        return this.toString();
     }
 
     /**

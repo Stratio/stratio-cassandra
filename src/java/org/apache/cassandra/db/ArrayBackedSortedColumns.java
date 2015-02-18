@@ -17,21 +17,17 @@
  */
 package org.apache.cassandra.db;
 
-import java.util.AbstractCollection;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.Iterator;
+import java.util.*;
 
 import com.google.common.base.Function;
 import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Iterables;
 
-import net.nicoulaj.compilecommand.annotations.Inline;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.db.composites.CellName;
 import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.filter.ColumnSlice;
+import org.apache.cassandra.utils.BatchRemoveIterator;
 import org.apache.cassandra.utils.memory.AbstractAllocator;
 
 /**
@@ -112,6 +108,78 @@ public class ArrayBackedSortedColumns extends ColumnFamily
     public boolean isInsertReversed()
     {
         return reversed;
+    }
+
+    public BatchRemoveIterator<Cell> batchRemoveIterator()
+    {
+        maybeSortCells();
+
+        return new BatchRemoveIterator<Cell>()
+        {
+            private final Iterator<Cell> iter = iterator();
+            private BitSet removedIndexes = new BitSet(size);
+            private int idx = -1;
+            private boolean shouldCallNext = false;
+            private boolean isCommitted = false;
+            private boolean removedAnything = false;
+
+            public void commit()
+            {
+                if (isCommitted)
+                    throw new IllegalStateException();
+                isCommitted = true;
+
+                if (!removedAnything)
+                    return;
+
+                int retainedCount = 0;
+                int clearIdx, setIdx = -1;
+
+                // shift all [clearIdx, setIdx) segments to the left, skipping any removed columns
+                while (true)
+                {
+                    clearIdx = removedIndexes.nextClearBit(setIdx + 1);
+                    if (clearIdx >= size)
+                        break; // nothing left to retain
+
+                    setIdx = removedIndexes.nextSetBit(clearIdx + 1);
+                    if (setIdx < 0)
+                        setIdx = size; // no removals past retainIdx - copy all remaining cells
+
+                    if (retainedCount != clearIdx)
+                        System.arraycopy(cells, clearIdx, cells, retainedCount, setIdx - clearIdx);
+
+                    retainedCount += (setIdx - clearIdx);
+                }
+
+                for (int i = retainedCount; i < size; i++)
+                    cells[i] = null;
+
+                size = sortedSize = retainedCount;
+            }
+
+            public boolean hasNext()
+            {
+                return iter.hasNext();
+            }
+
+            public Cell next()
+            {
+                idx++;
+                shouldCallNext = false;
+                return iter.next();
+            }
+
+            public void remove()
+            {
+                if (shouldCallNext)
+                    throw new IllegalStateException();
+
+                removedIndexes.set(reversed ? size - idx - 1 : idx);
+                removedAnything = true;
+                shouldCallNext = true;
+            }
+        };
     }
 
     private Comparator<Composite> internalComparator()

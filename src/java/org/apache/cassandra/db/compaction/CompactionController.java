@@ -33,6 +33,8 @@ import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.utils.AlwaysPresentFilter;
 
+import org.apache.cassandra.utils.concurrent.Refs;
+
 /**
  * Manage compaction options.
  */
@@ -42,8 +44,8 @@ public class CompactionController implements AutoCloseable
 
     public final ColumnFamilyStore cfs;
     private DataTracker.SSTableIntervalTree overlappingTree;
-    private Set<SSTableReader> overlappingSSTables;
-    private final Set<SSTableReader> compacting;
+    private Refs<SSTableReader> overlappingSSTables;
+    private final Iterable<SSTableReader> compacting;
 
     public final int gcBefore;
 
@@ -76,11 +78,13 @@ public class CompactionController implements AutoCloseable
     private void refreshOverlaps()
     {
         if (this.overlappingSSTables != null)
-            SSTableReader.releaseReferences(overlappingSSTables);
+            overlappingSSTables.release();
 
-        Set<SSTableReader> overlapping = compacting == null ? null : cfs.getAndReferenceOverlappingSSTables(compacting);
-        this.overlappingSSTables = overlapping == null ? Collections.<SSTableReader>emptySet() : overlapping;
-        this.overlappingTree = overlapping == null ? null : DataTracker.buildIntervalTree(overlapping);
+        if (compacting == null)
+            overlappingSSTables = Refs.tryRef(Collections.<SSTableReader>emptyList());
+        else
+            overlappingSSTables = cfs.getAndReferenceOverlappingSSTables(compacting);
+        this.overlappingTree = DataTracker.buildIntervalTree(overlappingSSTables);
     }
 
     public Set<SSTableReader> getFullyExpiredSSTables()
@@ -92,12 +96,11 @@ public class CompactionController implements AutoCloseable
      * Finds expired sstables
      *
      * works something like this;
-     * 1. find "global" minTimestamp of overlapping sstables (excluding the possibly droppable ones)
-     * 2. build a list of candidates to be dropped
-     * 3. sort the candidate list, biggest maxTimestamp first in list
-     * 4. check if the candidates to be dropped actually can be dropped (maxTimestamp < global minTimestamp) and it is included in the compaction
-     *    - if not droppable, update global minTimestamp and remove from candidates
-     * 5. return candidates.
+     * 1. find "global" minTimestamp of overlapping sstables and compacting sstables containing any non-expired data
+     * 2. build a list of fully expired candidates
+     * 3. check if the candidates to be dropped actually can be dropped (maxTimestamp < global minTimestamp)
+     *    - if not droppable, remove from candidates
+     * 4. return candidates.
      *
      * @param cfStore
      * @param compacting we take the drop-candidates from this set, it is usually the sstables included in the compaction
@@ -105,7 +108,7 @@ public class CompactionController implements AutoCloseable
      * @param gcBefore
      * @return
      */
-    public static Set<SSTableReader> getFullyExpiredSSTables(ColumnFamilyStore cfStore, Set<SSTableReader> compacting, Set<SSTableReader> overlapping, int gcBefore)
+    public static Set<SSTableReader> getFullyExpiredSSTables(ColumnFamilyStore cfStore, Iterable<SSTableReader> compacting, Iterable<SSTableReader> overlapping, int gcBefore)
     {
         logger.debug("Checking droppable sstables in {}", cfStore);
 
@@ -127,10 +130,10 @@ public class CompactionController implements AutoCloseable
                 minTimestamp = Math.min(minTimestamp, candidate.getMinTimestamp());
         }
 
-        // we still need to keep candidates that might shadow something in a
-        // non-candidate sstable. And if we remove a sstable from the candidates, we
-        // must take it's timestamp into account (hence the sorting below).
-        Collections.sort(candidates, SSTableReader.maxTimestampComparator);
+        // At this point, minTimestamp denotes the lowest timestamp of any relevant
+        // SSTable that contains a constructive value. candidates contains all the
+        // candidates with no constructive values. The ones out of these that have
+        // (getMaxTimestamp() < minTimestamp) serve no purpose anymore.
 
         Iterator<SSTableReader> iterator = candidates.iterator();
         while (iterator.hasNext())
@@ -138,7 +141,6 @@ public class CompactionController implements AutoCloseable
             SSTableReader candidate = iterator.next();
             if (candidate.getMaxTimestamp() >= minTimestamp)
             {
-                minTimestamp = Math.min(candidate.getMinTimestamp(), minTimestamp);
                 iterator.remove();
             }
             else
@@ -189,6 +191,6 @@ public class CompactionController implements AutoCloseable
 
     public void close()
     {
-        SSTableReader.releaseReferences(overlappingSSTables);
+        overlappingSSTables.release();
     }
 }

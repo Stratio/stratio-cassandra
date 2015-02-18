@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -16,11 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.cassandra.cql3;
 
-import org.github.jamm.MemoryMeter;
+package org.apache.cassandra.io.sstable;
 
-public interface MeasurableForPreparedCache
+import org.apache.cassandra.db.columniterator.OnDiskAtomIterator;
+import org.apache.cassandra.utils.CloseableIterator;
+
+/**
+ * An ISSTableScanner is an abstraction allowing multiple SSTableScanners to be
+ * chained together under the hood.  See LeveledCompactionStrategy.getScanners.
+ */
+public interface ISSTableScanner extends CloseableIterator<OnDiskAtomIterator>
 {
-    public long measureForPreparedCache(MemoryMeter meter);
+    public long getLengthInBytes();
+    public long getCurrentPosition();
+    public String getBackingFiles();
 }

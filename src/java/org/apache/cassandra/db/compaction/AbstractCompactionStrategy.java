@@ -22,7 +22,6 @@ import java.util.*;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.base.Predicate;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.RateLimiter;
 import org.slf4j.Logger;
@@ -34,6 +33,7 @@ import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.io.sstable.Component;
+import org.apache.cassandra.io.sstable.ISSTableScanner;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.utils.JVMStabilityInspector;
 
@@ -269,7 +269,7 @@ public abstract class AbstractCompactionStrategy
     public ScannerList getScanners(Collection<SSTableReader> sstables, Range<Token> range)
     {
         RateLimiter limiter = CompactionManager.instance.getRateLimiter();
-        ArrayList<ICompactionScanner> scanners = new ArrayList<ICompactionScanner>();
+        ArrayList<ISSTableScanner> scanners = new ArrayList<ISSTableScanner>();
         try
         {
             for (SSTableReader sstable : sstables)
@@ -300,14 +300,22 @@ public abstract class AbstractCompactionStrategy
         return getClass().getSimpleName();
     }
 
+    public synchronized void replaceSSTables(Collection<SSTableReader> removed, Collection<SSTableReader> added)
+    {
+        for (SSTableReader remove : removed)
+            removeSSTable(remove);
+        for (SSTableReader add : added)
+            addSSTable(add);
+    }
+
     public abstract void addSSTable(SSTableReader added);
 
     public abstract void removeSSTable(SSTableReader sstable);
 
     public static class ScannerList implements AutoCloseable
     {
-        public final List<ICompactionScanner> scanners;
-        public ScannerList(List<ICompactionScanner> scanners)
+        public final List<ISSTableScanner> scanners;
+        public ScannerList(List<ISSTableScanner> scanners)
         {
             this.scanners = scanners;
         }
@@ -315,7 +323,7 @@ public abstract class AbstractCompactionStrategy
         public void close()
         {
             Throwable t = null;
-            for (ICompactionScanner scanner : scanners)
+            for (ISSTableScanner scanner : scanners)
             {
                 try
                 {
@@ -364,7 +372,7 @@ public abstract class AbstractCompactionStrategy
         if (uncheckedTombstoneCompaction)
             return true;
 
-        Set<SSTableReader> overlaps = cfs.getOverlappingSSTables(Collections.singleton(sstable));
+        Collection<SSTableReader> overlaps = cfs.getOverlappingSSTables(Collections.singleton(sstable));
         if (overlaps.isEmpty())
         {
             // there is no overlap, tombstones are safely droppable
