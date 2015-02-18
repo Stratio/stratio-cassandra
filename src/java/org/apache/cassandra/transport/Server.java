@@ -27,8 +27,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 
-import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.epoll.Epoll;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.epoll.EpollServerSocketChannel;
@@ -324,14 +322,14 @@ public class Server implements CassandraDaemon.Server
             sslEngine.setUseClientMode(false);
             sslEngine.setEnabledCipherSuites(encryptionOptions.cipher_suites);
             sslEngine.setNeedClientAuth(encryptionOptions.require_client_auth);
-
+            sslEngine.setEnabledProtocols(SSLFactory.ACCEPTED_PROTOCOLS);
             SslHandler sslHandler = new SslHandler(sslEngine);
             super.initChannel(channel);
             channel.pipeline().addFirst("ssl", sslHandler);
         }
     }
 
-    private static class EventNotifier implements IEndpointLifecycleSubscriber, IMigrationListener
+    private static class EventNotifier extends MigrationListener implements IEndpointLifecycleSubscriber
     {
         private final Server server;
         private static final InetAddress bindAll;
@@ -416,7 +414,7 @@ public class Server implements CassandraDaemon.Server
             server.connectionTracker.send(new Event.SchemaChange(Event.SchemaChange.Change.UPDATED, ksName));
         }
 
-        public void onUpdateColumnFamily(String ksName, String cfName)
+        public void onUpdateColumnFamily(String ksName, String cfName, boolean columnsDidChange)
         {
             server.connectionTracker.send(new Event.SchemaChange(Event.SchemaChange.Change.UPDATED, Event.SchemaChange.Target.TABLE, ksName, cfName));
         }

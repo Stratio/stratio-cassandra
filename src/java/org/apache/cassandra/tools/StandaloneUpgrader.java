@@ -19,6 +19,7 @@ package org.apache.cassandra.tools;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.cli.*;
 
@@ -27,6 +28,7 @@ import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.db.compaction.Upgrader;
 import org.apache.cassandra.io.sstable.*;
 import org.apache.cassandra.utils.JVMStabilityInspector;
@@ -46,7 +48,7 @@ public class StandaloneUpgrader
         try
         {
             // load keyspace descriptions.
-            DatabaseDescriptor.loadSchemas();
+            DatabaseDescriptor.loadSchemas(false);
 
             if (Schema.instance.getCFMetaData(options.keyspace, options.cf) == null)
                 throw new IllegalArgumentException(String.format("Unknown keyspace/columnFamily %s.%s",
@@ -107,7 +109,7 @@ public class StandaloneUpgrader
                         e.printStackTrace(System.err);
                 }
             }
-
+            CompactionManager.instance.finishCompactionsAndShutdown(5, TimeUnit.MINUTES);
             SSTableDeletingTask.waitForDeletions();
             System.exit(0);
         }

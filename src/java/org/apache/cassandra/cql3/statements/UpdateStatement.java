@@ -25,7 +25,7 @@ import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.composites.Composite;
-import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.index.SecondaryIndexManager;
 import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.Pair;
@@ -97,6 +97,21 @@ public class UpdateStatement extends ModificationStatement
             for (Operation update : updates)
                 update.execute(key, cf, prefix, params);
         }
+
+        SecondaryIndexManager indexManager = Keyspace.open(cfm.ksName).getColumnFamilyStore(cfm.cfId).indexManager;
+        if (indexManager.hasIndexes())
+        {
+            for (Cell cell : cf)
+            {
+                // Indexed values must be validated by any applicable index. See CASSANDRA-3057/4240/8081 for more details
+                if (!indexManager.validate(cell))
+                    throw new InvalidRequestException(String.format("Can't index column value of size %d for index %s on %s.%s",
+                                                                    cell.value().remaining(),
+                                                                    cfm.getColumnDefinition(cell.name()).getIndexName(),
+                                                                    cfm.ksName,
+                                                                    cfm.cfName));
+            }
+        }
     }
 
     public static class ParsedInsert extends ModificationStatement.Parsed
@@ -136,13 +151,17 @@ public class UpdateStatement extends ModificationStatement
 
             for (int i = 0; i < columnNames.size(); i++)
             {
-                ColumnDefinition def = cfm.getColumnDefinition(columnNames.get(i).prepare(cfm));
+                ColumnIdentifier id = columnNames.get(i).prepare(cfm);
+                ColumnDefinition def = cfm.getColumnDefinition(id);
                 if (def == null)
-                    throw new InvalidRequestException(String.format("Unknown identifier %s", columnNames.get(i)));
+                    throw new InvalidRequestException(String.format("Unknown identifier %s", id));
 
                 for (int j = 0; j < i; j++)
-                    if (def.name.equals(columnNames.get(j)))
-                        throw new InvalidRequestException(String.format("Multiple definitions found for column %s", def.name));
+                {
+                    ColumnIdentifier otherId = columnNames.get(j).prepare(cfm);
+                    if (id.equals(otherId))
+                        throw new InvalidRequestException(String.format("Multiple definitions found for column %s", id));
+                }
 
                 Term.Raw value = columnValues.get(i);
 
@@ -179,14 +198,16 @@ public class UpdateStatement extends ModificationStatement
          * @param attrs additional attributes for statement (timestamp, timeToLive)
          * @param updates a map of column operations to perform
          * @param whereClause the where clause
-         */
+         * @param ifExists flag to check if row exists
+         * */
         public ParsedUpdate(CFName name,
                             Attributes.Raw attrs,
                             List<Pair<ColumnIdentifier.Raw, Operation.RawUpdate>> updates,
                             List<Relation> whereClause,
-                            List<Pair<ColumnIdentifier.Raw, ColumnCondition.Raw>> conditions)
+                            List<Pair<ColumnIdentifier.Raw, ColumnCondition.Raw>> conditions,
+                            boolean ifExists)
         {
-            super(name, attrs, conditions, false, false);
+            super(name, attrs, conditions, false, ifExists);
             this.updates = updates;
             this.whereClause = whereClause;
         }

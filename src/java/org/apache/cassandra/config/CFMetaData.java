@@ -57,6 +57,7 @@ import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.UUIDGen;
+import org.github.jamm.Unmetered;
 
 import static org.apache.cassandra.utils.FBUtilities.fromJsonList;
 import static org.apache.cassandra.utils.FBUtilities.fromJsonMap;
@@ -65,6 +66,7 @@ import static org.apache.cassandra.utils.FBUtilities.json;
 /**
  * This class can be tricky to modify. Please read http://wiki.apache.org/cassandra/ConfigurationNotes for how to do so safely.
  */
+@Unmetered
 public final class CFMetaData
 {
     private static final Logger logger = LoggerFactory.getLogger(CFMetaData.class);
@@ -222,7 +224,7 @@ public final class CFMetaData
                                                              + "started_at timestamp,"
                                                              + "parameters map<text, text>,"
                                                              + "duration int"
-                                                             + ") WITH COMMENT='traced sessions'",
+                                                             + ") WITH COMMENT='traced sessions' AND default_time_to_live=86400",
                                                              Tracing.TRACE_KS);
 
     public static final CFMetaData TraceEventsCf = compile("CREATE TABLE " + Tracing.EVENTS_CF + " ("
@@ -233,7 +235,7 @@ public final class CFMetaData
                                                            + "activity text,"
                                                            + "source_elapsed int,"
                                                            + "PRIMARY KEY (session_id, event_id)"
-                                                           + ")",
+                                                           + ") WITH default_time_to_live=86400",
                                                            Tracing.TRACE_KS);
 
     public static final CFMetaData BatchlogCf = compile("CREATE TABLE " + SystemKeyspace.BATCHLOG_CF + " ("
@@ -287,6 +289,16 @@ public final class CFMetaData
                                                                  + "rows_merged map<int, bigint>,"
                                                                  + "PRIMARY KEY (id)"
                                                                  + ") WITH COMMENT='show all compaction history' AND DEFAULT_TIME_TO_LIVE=604800");
+
+    public static final CFMetaData SizeEstimatesCf = compile("CREATE TABLE " + SystemKeyspace.SIZE_ESTIMATES_CF + " ("
+                                                             + "keyspace_name text,"
+                                                             + "table_name text,"
+                                                             + "range_start text,"
+                                                             + "range_end text,"
+                                                             + "mean_partition_size bigint,"
+                                                             + "partitions_count bigint,"
+                                                             + "PRIMARY KEY ((keyspace_name), table_name, range_start, range_end)"
+                                                             + ") WITH COMMENT='per-table primary range size estimates'");
 
 
     public static class SpeculativeRetry
@@ -1109,7 +1121,11 @@ public final class CFMetaData
         return m;
     }
 
-    public void reload()
+    /**
+     * Updates this object in place to match the definition in the system schema tables.
+     * @return true if any columns were added, removed, or altered; otherwise, false is returned
+     */
+    public boolean reload()
     {
         Row cfDefRow = SystemKeyspace.readSchemaRow(SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF, ksName, cfName);
 
@@ -1118,7 +1134,7 @@ public final class CFMetaData
 
         try
         {
-            apply(fromSchema(cfDefRow));
+            return apply(fromSchema(cfDefRow));
         }
         catch (ConfigurationException e)
         {
@@ -1131,9 +1147,10 @@ public final class CFMetaData
      *
      * *Note*: This method left package-private only for DefsTest, don't use directly!
      *
+     * @return true if any columns were added, removed, or altered; otherwise, false is returned
      * @throws ConfigurationException if ks/cf names or cf ids didn't match
      */
-    void apply(CFMetaData cfm) throws ConfigurationException
+    boolean apply(CFMetaData cfm) throws ConfigurationException
     {
         logger.debug("applying {} to {}", cfm, this);
 
@@ -1193,6 +1210,10 @@ public final class CFMetaData
 
         rebuild();
         logger.debug("application result is {}", this);
+
+        return !columnDiff.entriesOnlyOnLeft().isEmpty() ||
+               !columnDiff.entriesOnlyOnRight().isEmpty() ||
+               !columnDiff.entriesDiffering().isEmpty();
     }
 
     public void validateCompatility(CFMetaData cfm) throws ConfigurationException
@@ -1250,7 +1271,7 @@ public final class CFMetaData
     {
         className = className.contains(".") ? className : "org.apache.cassandra.db.compaction." + className;
         Class<AbstractCompactionStrategy> strategyClass = FBUtilities.classForName(className, "compaction strategy");
-        if (strategyClass.equals(WrappingCompactionStrategy.class))
+        if (className.equals(WrappingCompactionStrategy.class.getName()))
             throw new ConfigurationException("You can't set WrappingCompactionStrategy as the compaction strategy!");
         if (!AbstractCompactionStrategy.class.isAssignableFrom(strategyClass))
             throw new ConfigurationException(String.format("Specified compaction strategy class (%s) is not derived from AbstractReplicationStrategy", className));
@@ -1262,10 +1283,8 @@ public final class CFMetaData
     {
         try
         {
-            Constructor<? extends AbstractCompactionStrategy> constructor = compactionStrategyClass.getConstructor(new Class[] {
-                ColumnFamilyStore.class,
-                Map.class // options
-            });
+            Constructor<? extends AbstractCompactionStrategy> constructor =
+                compactionStrategyClass.getConstructor(ColumnFamilyStore.class, Map.class);
             return constructor.newInstance(cfs, compactionStrategyOptions);
         }
         catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException | InstantiationException e)

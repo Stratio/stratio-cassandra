@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.cassandra.stress.generate.SeedManager;
 import org.apache.cassandra.stress.operations.OpDistributionFactory;
 import org.apache.cassandra.thrift.ConsistencyLevel;
 
@@ -63,7 +62,7 @@ public abstract class SettingsCommand implements Serializable
         this.noWarmup = options.noWarmup.setByUser();
         if (count != null)
         {
-            this.count = Long.parseLong(count.count.value());
+            this.count = OptionDistribution.parseLong(count.count.value());
             this.duration = 0;
             this.durationUnits = null;
             this.targetUncertainty = -1;
@@ -108,12 +107,12 @@ public abstract class SettingsCommand implements Serializable
     static abstract class Options extends GroupedOptions
     {
         final OptionSimple noWarmup = new OptionSimple("no-warmup", "", null, "Do not warmup the process", false);
-        final OptionSimple consistencyLevel = new OptionSimple("cl=", "ONE|QUORUM|LOCAL_QUORUM|EACH_QUORUM|ALL|ANY", "ONE", "Consistency level to use", false);
+        final OptionSimple consistencyLevel = new OptionSimple("cl=", "ONE|QUORUM|LOCAL_QUORUM|EACH_QUORUM|ALL|ANY|TWO|THREE|SERIAL|LOCAL_SERIAL|LOCAL_ONE", "ONE", "Consistency level to use", false);
     }
 
     static class Count extends Options
     {
-        final OptionSimple count = new OptionSimple("n=", "[0-9]+", null, "Number of operations to perform", true);
+        final OptionSimple count = new OptionSimple("n=", "[0-9]+[bmk]?", null, "Number of operations to perform", true);
         @Override
         public List<? extends Option> options()
         {

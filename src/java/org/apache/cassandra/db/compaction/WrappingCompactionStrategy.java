@@ -20,8 +20,11 @@ package org.apache.cassandra.db.compaction;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Callable;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,6 +32,7 @@ import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.io.sstable.ISSTableScanner;
 import org.apache.cassandra.io.sstable.SSTableReader;
 import org.apache.cassandra.notifications.INotification;
 import org.apache.cassandra.notifications.INotificationConsumer;
@@ -211,6 +215,12 @@ public final class WrappingCompactionStrategy extends AbstractCompactionStrategy
     }
 
     @Override
+    public void replaceSSTables(Collection<SSTableReader> removed, Collection<SSTableReader> added)
+    {
+        throw new UnsupportedOperationException("Can't replace sstables in the wrapping compaction strategy");
+    }
+
+    @Override
     public void addSSTable(SSTableReader added)
     {
         throw new UnsupportedOperationException("Can't add sstables to the wrapping compaction strategy");
@@ -235,18 +245,42 @@ public final class WrappingCompactionStrategy extends AbstractCompactionStrategy
         else if (notification instanceof SSTableListChangedNotification)
         {
             SSTableListChangedNotification listChangedNotification = (SSTableListChangedNotification) notification;
+            Set<SSTableReader> repairedRemoved = new HashSet<>();
+            Set<SSTableReader> repairedAdded = new HashSet<>();
+            Set<SSTableReader> unrepairedRemoved = new HashSet<>();
+            Set<SSTableReader> unrepairedAdded = new HashSet<>();
+
             for (SSTableReader sstable : listChangedNotification.removed)
             {
                 if (sstable.isRepaired())
-                    repaired.removeSSTable(sstable);
+                    repairedRemoved.add(sstable);
                 else
-                    unrepaired.removeSSTable(sstable);
+                    unrepairedRemoved.add(sstable);
             }
             for (SSTableReader sstable : listChangedNotification.added)
             {
                 if (sstable.isRepaired())
-                    repaired.addSSTable(sstable);
+                    repairedAdded.add(sstable);
                 else
+                    unrepairedAdded.add(sstable);
+            }
+            if (!repairedRemoved.isEmpty())
+            {
+                repaired.replaceSSTables(repairedRemoved, repairedAdded);
+            }
+            else
+            {
+                for (SSTableReader sstable : repairedAdded)
+                    repaired.addSSTable(sstable);
+            }
+
+            if (!unrepairedRemoved.isEmpty())
+            {
+                unrepaired.replaceSSTables(unrepairedRemoved, unrepairedAdded);
+            }
+            else
+            {
+                for (SSTableReader sstable : unrepairedAdded)
                     unrepaired.addSSTable(sstable);
             }
         }
@@ -289,10 +323,13 @@ public final class WrappingCompactionStrategy extends AbstractCompactionStrategy
         super.startup();
         for (SSTableReader sstable : cfs.getSSTables())
         {
-            if (sstable.isRepaired())
-                repaired.addSSTable(sstable);
-            else
-                unrepaired.addSSTable(sstable);
+            if (sstable.openReason != SSTableReader.OpenReason.EARLY)
+            {
+                if (sstable.isRepaired())
+                    repaired.addSSTable(sstable);
+                else
+                    unrepaired.addSSTable(sstable);
+            }
         }
         repaired.startup();
         unrepaired.startup();
@@ -318,7 +355,7 @@ public final class WrappingCompactionStrategy extends AbstractCompactionStrategy
                 unrepairedSSTables.add(sstable);
         ScannerList repairedScanners = repaired.getScanners(repairedSSTables, range);
         ScannerList unrepairedScanners = unrepaired.getScanners(unrepairedSSTables, range);
-        List<ICompactionScanner> scanners = new ArrayList<>(repairedScanners.scanners.size() + unrepairedScanners.scanners.size());
+        List<ISSTableScanner> scanners = new ArrayList<>(repairedScanners.scanners.size() + unrepairedScanners.scanners.size());
         scanners.addAll(repairedScanners.scanners);
         scanners.addAll(unrepairedScanners.scanners);
         return new ScannerList(scanners);

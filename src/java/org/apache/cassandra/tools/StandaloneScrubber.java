@@ -20,7 +20,12 @@ package org.apache.cassandra.tools;
 
 import java.io.File;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
+import com.google.common.base.Predicate;
+import com.google.common.base.Predicates;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import org.apache.commons.cli.*;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -28,9 +33,12 @@ import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.db.compaction.AbstractCompactionStrategy;
+import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.db.compaction.LeveledCompactionStrategy;
 import org.apache.cassandra.db.compaction.LeveledManifest;
 import org.apache.cassandra.db.compaction.Scrubber;
+import org.apache.cassandra.db.compaction.WrappingCompactionStrategy;
 import org.apache.cassandra.io.sstable.*;
 import org.apache.cassandra.utils.JVMStabilityInspector;
 import org.apache.cassandra.utils.OutputHandler;
@@ -52,7 +60,7 @@ public class StandaloneScrubber
         try
         {
             // load keyspace descriptions.
-            DatabaseDescriptor.loadSchemas();
+            DatabaseDescriptor.loadSchemas(false);
 
             if (Schema.instance.getCFMetaData(options.keyspaceName, options.cfName) == null)
                 throw new IllegalArgumentException(String.format("Unknown keyspace/columnFamily %s.%s",
@@ -95,14 +103,6 @@ public class StandaloneScrubber
             }
             System.out.println(String.format("Pre-scrub sstables snapshotted into snapshot %s", snapshotName));
 
-            LeveledManifest manifest = null;
-            // If leveled, load the manifest
-            if (cfs.getCompactionStrategy() instanceof LeveledCompactionStrategy)
-            {
-                int maxSizeInMB = (int)((cfs.getCompactionStrategy().getMaxSSTableBytes()) / (1024L * 1024L));
-                manifest = LeveledManifest.create(cfs, maxSizeInMB, sstables);
-            }
-
             if (!options.manifestCheckOnly)
             {
                 for (SSTableReader sstable : sstables)
@@ -121,7 +121,7 @@ public class StandaloneScrubber
 
                         // Remove the sstable (it's been copied by scrub and snapshotted)
                         sstable.markObsolete();
-                        sstable.releaseReference();
+                        sstable.sharedRef().release();
                     }
                     catch (Exception e)
                     {
@@ -131,10 +131,9 @@ public class StandaloneScrubber
                 }
             }
 
-            // Check (and repair) manifest
-            if (manifest != null)
-                checkManifest(manifest);
-
+            // Check (and repair) manifests
+            checkManifest(cfs.getCompactionStrategy(), cfs, sstables);
+            CompactionManager.instance.finishCompactionsAndShutdown(5, TimeUnit.MINUTES);
             SSTableDeletingTask.waitForDeletions();
             System.exit(0); // We need that to stop non daemonized threads
         }
@@ -147,11 +146,36 @@ public class StandaloneScrubber
         }
     }
 
-    private static void checkManifest(LeveledManifest manifest)
+    private static void checkManifest(AbstractCompactionStrategy strategy, ColumnFamilyStore cfs, Collection<SSTableReader> sstables)
     {
-        System.out.println(String.format("Checking leveled manifest"));
-        for (int i = 1; i <= manifest.getLevelCount(); ++i)
-            manifest.repairOverlappingSSTables(i);
+        WrappingCompactionStrategy wrappingStrategy = (WrappingCompactionStrategy)strategy;
+        int maxSizeInMB = (int)((cfs.getCompactionStrategy().getMaxSSTableBytes()) / (1024L * 1024L));
+        if (wrappingStrategy.getWrappedStrategies().size() == 2 && wrappingStrategy.getWrappedStrategies().iterator().next() instanceof LeveledCompactionStrategy)
+        {
+            System.out.println("Checking leveled manifest");
+            Predicate<SSTableReader> repairedPredicate = new Predicate<SSTableReader>()
+            {
+                @Override
+                public boolean apply(SSTableReader sstable)
+                {
+                    return sstable.isRepaired();
+                }
+            };
+
+            List<SSTableReader> repaired = Lists.newArrayList(Iterables.filter(sstables, repairedPredicate));
+            List<SSTableReader> unRepaired = Lists.newArrayList(Iterables.filter(sstables, Predicates.not(repairedPredicate)));
+
+            LeveledManifest repairedManifest = LeveledManifest.create(cfs, maxSizeInMB, repaired);
+            for (int i = 1; i < repairedManifest.getLevelCount(); i++)
+            {
+                repairedManifest.repairOverlappingSSTables(i);
+            }
+            LeveledManifest unRepairedManifest = LeveledManifest.create(cfs, maxSizeInMB, unRepaired);
+            for (int i = 1; i < unRepairedManifest.getLevelCount(); i++)
+            {
+                unRepairedManifest.repairOverlappingSSTables(i);
+            }
+        }
     }
 
     private static class Options

@@ -15,13 +15,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.cassandra.auth;
+package org.apache.cassandra.utils;
 
-public interface AuthMBean
+import java.util.Iterator;
+
+/**
+ * Iterator that allows us to more efficiently remove many items
+ */
+public interface BatchRemoveIterator<T> extends Iterator<T>
 {
-    public int getPermissionsValidity();
-
-    public void setPermissionsValidity(int timeoutInMs);
-
-    public void invalidatePermissionsCache();
+    /**
+     * Commits the remove operations in this batch iterator. After this no more
+     * deletes can be made. Any further calls to remove() or commit() will throw IllegalStateException.
+     */
+    void commit();
 }

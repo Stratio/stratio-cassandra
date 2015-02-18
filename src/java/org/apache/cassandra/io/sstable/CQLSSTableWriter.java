@@ -34,6 +34,7 @@ import org.apache.cassandra.cql3.statements.*;
 import org.apache.cassandra.cql3.*;
 import org.apache.cassandra.config.*;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.db.composites.Composite;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.dht.IPartitioner;
@@ -76,6 +77,12 @@ import org.apache.cassandra.utils.Pair;
  */
 public class CQLSSTableWriter implements Closeable
 {
+    static
+    {
+        // The Keyspace need to be initialized before we can call Keyspace.open
+        Keyspace.setInitialized();
+    }
+
     private final AbstractSSTableSimpleWriter writer;
     private final UpdateStatement insert;
     private final List<ColumnSpecification> boundNames;
@@ -263,6 +270,14 @@ public class CQLSSTableWriter implements Closeable
     public void close() throws IOException
     {
         writer.close();
+        try
+        {
+            CommitLog.instance.shutdownBlocking();
+        }
+        catch (InterruptedException e)
+        {
+            Thread.currentThread().interrupt();
+        }
     }
 
     /**
@@ -532,6 +547,11 @@ public class CQLSSTableWriter implements Closeable
                     }
                 }
             };
+        }
+
+        protected void addColumn(Cell cell) throws IOException
+        {
+            throw new UnsupportedOperationException();
         }
 
         static class SyncException extends RuntimeException
