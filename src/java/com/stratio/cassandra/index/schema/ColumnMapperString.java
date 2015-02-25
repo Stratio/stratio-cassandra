@@ -23,6 +23,9 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
+import org.codehaus.jackson.annotate.JsonProperty;
+
+import java.io.Reader;
 
 /**
  * A {@link ColumnMapper} to map a string, not tokenized field.
@@ -31,11 +34,19 @@ import org.codehaus.jackson.annotate.JsonCreator;
  */
 public class ColumnMapperString extends ColumnMapperSingle<String> {
 
+    /** The default case sensitive option. */
+    public static final boolean DEFAULT_CASE_SENSITIVE = true;
+
+    /** If it must be case sensitive. */
+    private final boolean caseSensitive;
+
     /**
      * Builds a new {@link ColumnMapperString}.
+     *
+     * @param caseSensitive If the analyzer must be case sensitive.
      */
     @JsonCreator
-    public ColumnMapperString() {
+    public ColumnMapperString(@JsonProperty("case_sensitive") Boolean caseSensitive) {
         super(new AbstractType<?>[]{AsciiType.instance,
                                     UTF8Type.instance,
                                     Int32Type.instance,
@@ -49,6 +60,14 @@ public class ColumnMapperString extends ColumnMapperSingle<String> {
                                     TimestampType.instance,
                                     BytesType.instance,
                                     InetAddressType.instance}, new AbstractType[]{UTF8Type.instance});
+        this.caseSensitive = caseSensitive == null ? DEFAULT_CASE_SENSITIVE : caseSensitive;
+    }
+
+    /**
+     * Builds a new {@link ColumnMapperString} using {@link #DEFAULT_CASE_SENSITIVE}.
+     */
+    public ColumnMapperString() {
+        this(DEFAULT_CASE_SENSITIVE);
     }
 
     /** {@inheritDoc} */
@@ -63,7 +82,8 @@ public class ColumnMapperString extends ColumnMapperSingle<String> {
         if (value == null) {
             return null;
         } else {
-            return value.toString();
+            String string = value.toString();
+            return caseSensitive ? string : string.toLowerCase();
         }
     }
 
