@@ -98,20 +98,36 @@ public class ClusteringKeyMapperColumns extends ClusteringKeyMapper {
         return sortFields;
     }
 
-    private Object queryValue(Composite composite, int i) {
+    /**
+     * Returns the {@code i} component of the specified {@link Composite} composed by its {@link AbstractType}.
+     *
+     * @param composite A {@link Composite}.
+     * @param i         The index of the {@link Composite} component to be composed.
+     * @return The {@code i} component of the specified {@link Composite} composed by its {@link AbstractType}.
+     */
+    private Object getComposedComponent(Composite composite, int i) {
         ByteBuffer component = composite.get(i);
-        String name = names[i];
-        ColumnMapperSingle columnMapper = columnMappers[i];
         AbstractType<?> type = types[i];
-        Object value = type.compose(component);
-        return columnMapper.queryValue(name, value);
+        return type.compose(component);
     }
 
+    /**
+     * Returns {@code true} if the specified {@link Composite} must be included when used as a range start.
+     *
+     * @param composite A {@link Composite}.
+     * @return {@code true} if the specified {@link Composite} must be included when used as a range start.
+     */
     private boolean includeStart(Composite composite) {
         ByteBuffer[] components = ByteBufferUtils.split(composite.toByteBuffer(), compositeType);
         return components.length <= numClusteringColumns && composite.eoc() != Composite.EOC.END;
     }
 
+    /**
+     * Returns {@code true} if the specified {@link Composite} must be included when used as a range stop.
+     *
+     * @param composite A {@link Composite}.
+     * @return {@code true} if the specified {@link Composite} must be included when used as a range stop.
+     */
     private boolean includeStop(Composite composite) {
         ByteBuffer[] components = ByteBufferUtils.split(composite.toByteBuffer(), compositeType);
         return components.length > numClusteringColumns || composite.eoc() == Composite.EOC.END;
@@ -127,11 +143,11 @@ public class ClusteringKeyMapperColumns extends ClusteringKeyMapper {
                 BooleanQuery q = new BooleanQuery();
                 for (int j = 0; j < i; j++) {
                     String name = names[j];
-                    Object value = queryValue(start, j);
+                    Object value = getComposedComponent(start, j);
                     q.add(new MatchConditionBuilder(name, value).build().query(schema), MUST);
                 }
                 String name = names[i];
-                Object value = queryValue(start, i);
+                Object value = getComposedComponent(start, i);
                 boolean include = (i == numClusteringColumns - 1) && includeStart(start);
                 q.add(new RangeConditionBuilder(name).lower(value).includeLower(include).build().query(schema), MUST);
                 startQuery.add(q, SHOULD);
@@ -145,11 +161,11 @@ public class ClusteringKeyMapperColumns extends ClusteringKeyMapper {
                 BooleanQuery q = new BooleanQuery();
                 for (int j = 0; j < i; j++) {
                     String name = names[j];
-                    Object value = queryValue(stop, j);
+                    Object value = getComposedComponent(stop, j);
                     q.add(new MatchConditionBuilder(name, value).build().query(schema), MUST);
                 }
                 String name = names[i];
-                Object value = queryValue(stop, i);
+                Object value = getComposedComponent(stop, i);
                 boolean include = (i == numClusteringColumns - 1) && includeStop(stop);
                 q.add(new RangeConditionBuilder(name).upper(value).includeUpper(include).build().query(schema), MUST);
                 stopQuery.add(q, SHOULD);

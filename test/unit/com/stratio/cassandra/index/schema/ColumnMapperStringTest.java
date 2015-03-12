@@ -146,6 +146,42 @@ public class ColumnMapperStringTest
     }
 
     @Test
+    public void testCaseSensitiveNull()
+    {
+        ColumnMapperString mapper = new ColumnMapperString(null);
+        Field field = mapper.field("name", "Hello");
+        Assert.assertNotNull(field);
+        Assert.assertEquals("Hello", field.stringValue());
+    }
+
+    @Test
+    public void testCaseSensitiveTrue()
+    {
+        ColumnMapperString mapper = new ColumnMapperString(true);
+        Field field = mapper.field("name", "Hello");
+        Assert.assertNotNull(field);
+        Assert.assertEquals("Hello", field.stringValue());
+    }
+
+    @Test
+    public void testCaseSensitiveDefault()
+    {
+        ColumnMapperString mapper = new ColumnMapperString();
+        Field field = mapper.field("name", "Hello");
+        Assert.assertNotNull(field);
+        Assert.assertEquals("Hello", field.stringValue());
+    }
+
+    @Test
+    public void testCaseSensitiveFalse()
+    {
+        ColumnMapperString mapper = new ColumnMapperString(false);
+        Field field = mapper.field("name", "Hello");
+        Assert.assertNotNull(field);
+        Assert.assertEquals("hello", field.stringValue());
+    }
+
+    @Test
     public void testExtractAnalyzers()
     {
         ColumnMapperString mapper = new ColumnMapperString();
