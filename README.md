@@ -1,7 +1,7 @@
 Stratio Cassandra
 =================
 
-Stratio Cassandra is a fork of [Apache Cassandra](http://cassandra.apache.org/) where index functionality has been extended to provide near real time search such as ElasticSearch or Solr, including [full text search](http://en.wikipedia.org/wiki/Full_text_search) capabilities and free multivariable search. It is achieved through an http://lucene.apache.org/[Apache Lucene] based implementation of Cassandra secondary indexes, where each node of the cluster indexes its own data. Stratio Cassandra is one of the core modules on which [Stratio's BigData platform (SDS)](http://www.stratio.com/) is based.
+Stratio Cassandra is a fork of [Apache Cassandra](http://cassandra.apache.org/) where index functionality has been extended to provide near real time search such as ElasticSearch or Solr, including [full text search](http://en.wikipedia.org/wiki/Full_text_search) capabilities and free multivariable search. It is achieved through an [Apache Lucene](http://lucene.apache.org/) based implementation of Cassandra secondary indexes, where each node of the cluster indexes its own data. Stratio Cassandra is one of the core modules on which [Stratio's BigData platform (SDS)](http://www.stratio.com/) is based.
 
 Index [relevance queries](http://en.wikipedia.org/wiki/Relevance_(information_retrieval)) allows you to retrieve the *n* more relevant results satisfying a query. The coordinator node sends the query to each node in the cluster, each node returns its *n* best results and then the coordinator combines these partial results and gives you the *n* best of them, avoiding full scan. You can also base the sorting in a combination of fields.
 
