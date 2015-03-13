@@ -156,4 +156,4 @@ SELECT * FROM tweets WHERE lucene='{
 
 This last is the basis for Hadoop, Spark and other MapReduce frameworks support.
 
-Please, refer to the comprehensive Stratio Cassandra documentation at http://www.openstratio.org/manuals/extended-search-in-cassandra/[Stratio website].
+Please, refer to the comprehensive [Stratio Cassandra documentation](doc/stratio/extended-search-in-cassandra.md).
