@@ -68,7 +68,7 @@ bin/cqlsh
 
 The Lucene's index files will be stored in the same directories where the Cassandra's will be. The default data directory is `/var/lib/cassandra/data`, and each index is placed next to the SSTables of its indexed column family. 
 
-For more details about Cassandra please see its http://cassandra.apache.org/[documentation].
+For more details about Cassandra please see its [documentation](http://cassandra.apache.org/).
 
 Example
 =======
