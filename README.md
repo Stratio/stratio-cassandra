@@ -1,15 +1,15 @@
 Stratio Cassandra
 =================
 
-Stratio Cassandra is a fork of http://cassandra.apache.org/[Apache Cassandra] where index functionality has been extended to provide near real time search such as ElasticSearch or Solr, including http://en.wikipedia.org/wiki/Full_text_search[full text search] capabilities and free multivariable search. It is achieved through an http://lucene.apache.org/[Apache Lucene] based implementation of Cassandra secondary indexes, where each node of the cluster indexes its own data. Stratio Cassandra is one of the core modules on which http://www.stratio.com/[Stratio's BigData platform (SDS)] is based.
+Stratio Cassandra is a fork of [Apache Cassandra](http://cassandra.apache.org/) where index functionality has been extended to provide near real time search such as ElasticSearch or Solr, including [full text search](http://en.wikipedia.org/wiki/Full_text_search) capabilities and free multivariable search. It is achieved through an [Apache Lucene](http://lucene.apache.org/) based implementation of Cassandra secondary indexes, where each node of the cluster indexes its own data. Stratio Cassandra is one of the core modules on which [Stratio's BigData platform (SDS)](http://www.stratio.com/) is based.
 
-Index http://en.wikipedia.org/wiki/Relevance_(information_retrieval)[relevance queries] allows you to retrieve the *n* more relevant results satisfying a query. The coordinator node sends the query to each node in the cluster, each node returns its *n* best results and then the coordinator combines these partial results and gives you the *n* best of them, avoiding full scan. You can also base the sorting in a combination of fields.
+Index [relevance queries](http://en.wikipedia.org/wiki/Relevance_(information_retrieval)) allows you to retrieve the *n* more relevant results satisfying a query. The coordinator node sends the query to each node in the cluster, each node returns its *n* best results and then the coordinator combines these partial results and gives you the *n* best of them, avoiding full scan. You can also base the sorting in a combination of fields.
 
-Index filtered queries are a powerful help when analyzing the data stored in Cassandra with http://es.wikipedia.org/wiki/MapReduce[MapReduce] frameworks as http://hadoop.apache.org/[Apache Hadoop] or, even better, http://spark.apache.org/[Apache Spark] through https://github.com/Stratio/stratio-deep[Stratio Deep]. Adding Lucene filters in the jobs input can dramatically reduce the amount of data to be processed, avoiding full scan.
+Index filtered queries are a powerful help when analyzing the data stored in Cassandra with [MapReduce](http://es.wikipedia.org/wiki/MapReduce) frameworks as [Apache Hadoop](http://hadoop.apache.org/) or, even better, [Apache Spark](http://spark.apache.org/) through [Stratio Deep](https://github.com/Stratio/stratio-deep). Adding Lucene filters in the jobs input can dramatically reduce the amount of data to be processed, avoiding full scan.
 
 Any cell in the tables can be indexed, including those in the primary key as well as collections. Wide rows are also supported. You can scan token/key ranges, apply additional CQL3 clauses and page on the filtered results.
 
-Other information including documentation is available at http://www.openstratio.org/manuals/extended-search-in-cassandra[Stratio website].
+More detailed information is available at [Stratio Cassandra documentation](doc/stratio/extended-search-in-cassandra.md) .
 
 Features
 ========
@@ -29,7 +29,7 @@ Stratio Cassandra and its integration with Lucene search technology provides:
   * Support for searching with clauses with `ALLOW FILTERING`
   * Apache Spark compatibility
   * Apache Hadoop compatibility
-  * https://github.com/Stratio/stratio-deep[Stratio Deep] support compatibility
+  * [Stratio Deep](https://github.com/Stratio/stratio-deep) support compatibility
   * Self contained distribution
   
 Not yet supported:
@@ -68,7 +68,7 @@ bin/cqlsh
 
 The Lucene's index files will be stored in the same directories where the Cassandra's will be. The default data directory is `/var/lib/cassandra/data`, and each index is placed next to the SSTables of its indexed column family. 
 
-For more details about Cassandra please see its http://cassandra.apache.org/[documentation].
+For more details about Cassandra please see its [documentation](http://cassandra.apache.org/).
 
 Example
 =======
