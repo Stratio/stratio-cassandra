@@ -15,19 +15,17 @@
  */
 package com.stratio.cassandra.index.schema;
 
-import com.stratio.cassandra.index.AnalyzerFactory;
+import com.stratio.cassandra.index.schema.analysis.Analyzer;
+import com.stratio.cassandra.index.schema.analysis.Analyzers;
 import com.stratio.cassandra.util.JsonSerializer;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexableField;
-import org.apache.lucene.util.Version;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
@@ -44,48 +42,54 @@ import java.util.Map.Entry;
  */
 public class Schema {
 
-    /** The default Lucene analyzer to be used if no other specified. */
-    public static final Analyzer DEFAULT_ANALYZER = new StandardAnalyzer(Version.LUCENE_48);
+    /** The default Lucene getAnalyzer to be used if no other specified. */
+    public static final String DEFAULT_ANALYZER = "standard";
 
-    /** The Lucene {@link Analyzer}. */
-    private final Analyzer defaultAnalyzer;
+    /** The Lucene {@link org.apache.lucene.analysis.Analyzer}. */
+    private final org.apache.lucene.analysis.Analyzer defaultAnalyzer;
 
-    /** The per field Lucene analyzer to be used. */
+    /** The per field Lucene getAnalyzer to be used. */
     private final PerFieldAnalyzerWrapper perFieldAnalyzer;
 
     /** The column mappers. */
     private Map<String, ColumnMapper> columnMappers;
 
+    private Analyzers analyzers;
+
     /**
-     * Builds a new {@code ColumnsMapper} for the specified analyzer and cell mappers.
+     * Builds a new {@code ColumnsMapper} for the specified getAnalyzer and cell mappers.
      *
-     * @param analyzerClassName The name of the class of the analyzer to be used.
+     * @param defaultAnalyzer The name of the class of the getAnalyzer to be used.
      * @param columnMappers     The {@link Column} mappers to be used.
      */
     @JsonCreator
-    public Schema(@JsonProperty("default_analyzer") String analyzerClassName,
-                  @JsonProperty("fields") Map<String, ColumnMapper> columnMappers) {
+    public Schema(@JsonProperty("default_analyzer") String defaultAnalyzer,
+                  @JsonProperty("fields") Map<String, ColumnMapper> columnMappers,
+                  @JsonProperty("analyzers") Map<String, Analyzer> analyzers) {
+
         // Copy lower cased mappers
         this.columnMappers = columnMappers;
 
-        // Setup default analyzer
-        if (analyzerClassName == null) {
-            this.defaultAnalyzer = DEFAULT_ANALYZER;
+        this.analyzers = new Analyzers(analyzers);
+
+        // Setup default getAnalyzer
+        if (defaultAnalyzer == null) {
+            this.defaultAnalyzer = this.analyzers.getAnalyzer(DEFAULT_ANALYZER);
         } else {
-            this.defaultAnalyzer = AnalyzerFactory.getAnalyzer(analyzerClassName);
+            this.defaultAnalyzer = this.analyzers.getAnalyzer(defaultAnalyzer);
         }
 
         // Setup per field analyzer
-        Map<String, Analyzer> analyzers = new HashMap<>();
+        Map<String, org.apache.lucene.analysis.Analyzer> luceneAnalyzers = new HashMap<>();
         for (Entry<String, ColumnMapper> entry : columnMappers.entrySet()) {
             String name = entry.getKey();
             ColumnMapper mapper = entry.getValue();
-            Analyzer fieldAnalyzer = mapper.analyzer();
+            String fieldAnalyzer = mapper.analyzer();
             if (fieldAnalyzer != null) {
-                analyzers.put(name, fieldAnalyzer);
+                luceneAnalyzers.put(name, this.analyzers.getAnalyzer(fieldAnalyzer));
             }
         }
-        perFieldAnalyzer = new PerFieldAnalyzerWrapper(defaultAnalyzer, analyzers);
+        perFieldAnalyzer = new PerFieldAnalyzerWrapper(this.defaultAnalyzer, luceneAnalyzers);
     }
 
     /**

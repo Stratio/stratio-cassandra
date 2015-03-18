@@ -61,12 +61,6 @@ public class GeoShapeMapper extends ColumnMapper {
         this.grid = new GeohashPrefixTree(spatialContext, this.maxLevels);
     }
 
-    /** {@inheritDoc} */
-    @Override
-    public Analyzer analyzer() {
-        return EMPTY_ANALYZER;
-    }
-
     public Set<IndexableField> fields(Column column) {
         String fieldName = column.getFieldName();
         SpatialStrategy strategy = getStrategy(fieldName);

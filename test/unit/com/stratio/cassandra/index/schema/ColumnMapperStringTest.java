@@ -185,8 +185,8 @@ public class ColumnMapperStringTest
     public void testExtractAnalyzers()
     {
         ColumnMapperString mapper = new ColumnMapperString();
-        Analyzer analyzer = mapper.analyzer();
-        Assert.assertEquals(ColumnMapper.EMPTY_ANALYZER, analyzer);
+        String analyzer = mapper.analyzer();
+        Assert.assertEquals(ColumnMapper.KEYWORD_ANALYZER, analyzer);
     }
 
     @Test

@@ -17,7 +17,6 @@ package com.stratio.cassandra.index.schema;
 
 import org.apache.cassandra.db.marshal.*;
 import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FloatField;
 import org.apache.lucene.search.SortField;
@@ -54,12 +53,6 @@ public class ColumnMapperFloat extends ColumnMapperSingle<Float> {
                                     DoubleType.instance,
                                     DecimalType.instance}, new AbstractType[]{FloatType.instance});
         this.boost = boost == null ? DEFAULT_BOOST : boost;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Analyzer analyzer() {
-        return EMPTY_ANALYZER;
     }
 
     /** {@inheritDoc} */

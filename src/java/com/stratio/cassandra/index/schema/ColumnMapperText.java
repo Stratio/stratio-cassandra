@@ -15,7 +15,6 @@
  */
 package com.stratio.cassandra.index.schema;
 
-import com.stratio.cassandra.index.AnalyzerFactory;
 import org.apache.cassandra.db.marshal.*;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
@@ -34,15 +33,15 @@ import org.codehaus.jackson.annotate.JsonProperty;
 public class ColumnMapperText extends ColumnMapperSingle<String> {
 
     /** The Lucene {@link Analyzer} to be used. */
-    private Analyzer analyzer;
+    private String analyzer;
 
     /**
      * Builds a new {@link ColumnMapperText} using the specified Lucene {@link Analyzer}.
      *
-     * @param analyzerClassName The Lucene {@link Analyzer} to be used.
+     * @param analyzer The Lucene {@link Analyzer} to be used.
      */
     @JsonCreator
-    public ColumnMapperText(@JsonProperty("analyzer") String analyzerClassName) {
+    public ColumnMapperText(@JsonProperty("analyzer") String analyzer) {
         super(new AbstractType<?>[]{AsciiType.instance,
                                     UTF8Type.instance,
                                     Int32Type.instance,
@@ -56,16 +55,13 @@ public class ColumnMapperText extends ColumnMapperSingle<String> {
                                     TimestampType.instance,
                                     BytesType.instance,
                                     InetAddressType.instance}, new AbstractType[]{});
-        if (analyzerClassName != null) {
-            this.analyzer = AnalyzerFactory.getAnalyzer(analyzerClassName);
-        } else {
-            this.analyzer = Schema.DEFAULT_ANALYZER;
-        }
+        this.analyzer = analyzer == null ? Schema.DEFAULT_ANALYZER : analyzer;
+
     }
 
     /** {@inheritDoc} */
     @Override
-    public Analyzer analyzer() {
+    public String analyzer() {
         return analyzer;
     }
 
@@ -107,6 +103,6 @@ public class ColumnMapperText extends ColumnMapperSingle<String> {
     /** {@inheritDoc} */
     @Override
     public String toString() {
-        return new ToStringBuilder(this).append("analyzer", analyzer).toString();
+        return new ToStringBuilder(this).append("get", analyzer).toString();
     }
 }

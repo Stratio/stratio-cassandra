@@ -114,7 +114,12 @@ public class RowIndex extends PerRowSecondaryIndex {
 
     @Override
     public void validate(CFMetaData metadata, Map<String, String> indexOptions) {
-        new RowIndexConfig(metadata, indexOptions);
+        try {
+            new RowIndexConfig(metadata, indexOptions);
+        } catch (RuntimeException e) {
+            Log.error(e, "Error validating index config");
+            throw e;
+        }
     }
 
     private void setup() {

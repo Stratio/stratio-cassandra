@@ -22,7 +22,6 @@ import org.apache.cassandra.db.marshal.BytesType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.utils.Hex;
 import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.SortField;
@@ -44,12 +43,6 @@ public class ColumnMapperBlob extends ColumnMapperSingle<String> {
     @JsonCreator
     public ColumnMapperBlob() {
         super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, BytesType.instance}, new AbstractType[]{});
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Analyzer analyzer() {
-        return EMPTY_ANALYZER;
     }
 
     /** {@inheritDoc} */

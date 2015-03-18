@@ -123,8 +123,8 @@ public class ColumnMapperUUIDTest {
     @Test
     public void testExtractAnalyzers() {
         ColumnMapperUUID mapper = new ColumnMapperUUID();
-        Analyzer analyzer = mapper.analyzer();
-        Assert.assertEquals(ColumnMapper.EMPTY_ANALYZER, analyzer);
+        String analyzer = mapper.analyzer();
+        Assert.assertEquals(ColumnMapper.KEYWORD_ANALYZER, analyzer);
     }
 
     @Test

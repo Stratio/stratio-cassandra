@@ -100,10 +100,10 @@ public abstract class Condition {
         return new QueryWrapperFilter(query(schema));
     }
 
-    protected String analyze(String field, String value, ColumnMapper columnMapper) {
+    protected String analyze(String field, String value, Schema schema) {
         TokenStream source = null;
         try {
-            Analyzer analyzer = columnMapper.analyzer();
+            Analyzer analyzer = schema.analyzer();
             source = analyzer.tokenStream(field, value);
             source.reset();
 
@@ -115,7 +115,7 @@ public abstract class Condition {
             }
             termAtt.fillBytesRef();
             if (source.incrementToken()) {
-                throw new IllegalArgumentException("analyzer returned too many terms for multiTerm term: " + value);
+                throw new IllegalArgumentException("Analyzer returned too many terms for multiTerm term: " + value);
             }
             source.end();
             return BytesRef.deepCopyOf(bytes).utf8ToString();

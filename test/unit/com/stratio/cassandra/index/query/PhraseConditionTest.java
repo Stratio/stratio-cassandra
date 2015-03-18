@@ -44,7 +44,7 @@ public class PhraseConditionTest extends AbstractConditionTest
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperBoolean());
-        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map, null);
 
         List<String> values = new ArrayList<>();
         values.add("hola");

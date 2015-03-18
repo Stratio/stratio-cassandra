@@ -141,8 +141,8 @@ public class ColumnMapperFloatTest
     public void testExtractAnalyzers()
     {
         ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
-        Analyzer analyzer = mapper.analyzer();
-        Assert.assertEquals(ColumnMapper.EMPTY_ANALYZER, analyzer);
+        String analyzer = mapper.analyzer();
+        Assert.assertEquals(ColumnMapper.KEYWORD_ANALYZER, analyzer);
     }
 
     @Test

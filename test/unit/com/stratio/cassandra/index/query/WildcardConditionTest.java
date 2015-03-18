@@ -39,7 +39,7 @@ public class WildcardConditionTest extends AbstractConditionTest
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperString());
-        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map, null);
 
         WildcardCondition wildcardCondition = new WildcardCondition(0.5f, "name", "tr*");
         Query query = wildcardCondition.query(mappers);
@@ -58,7 +58,7 @@ public class WildcardConditionTest extends AbstractConditionTest
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInteger(1f));
-        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map, null);
 
         WildcardCondition wildcardCondition = new WildcardCondition(0.5f, "name", "22*");
         wildcardCondition.query(mappers);
@@ -70,7 +70,7 @@ public class WildcardConditionTest extends AbstractConditionTest
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInet());
-        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map, null);
 
         WildcardCondition wildcardCondition = new WildcardCondition(0.5f, "name", "192.168.*");
         Query query = wildcardCondition.query(mappers);
@@ -89,7 +89,7 @@ public class WildcardConditionTest extends AbstractConditionTest
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInet());
-        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map, null);
 
         WildcardCondition wildcardCondition = new WildcardCondition(0.5f, "name", "2001:db8:2de:0:0:0:0:e*");
         Query query = wildcardCondition.query(mappers);

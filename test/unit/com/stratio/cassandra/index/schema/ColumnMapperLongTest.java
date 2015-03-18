@@ -142,8 +142,8 @@ public class ColumnMapperLongTest
     public void testExtractAnalyzers()
     {
         ColumnMapperLong mapper = new ColumnMapperLong(1f);
-        Analyzer analyzer = mapper.analyzer();
-        Assert.assertEquals(ColumnMapper.EMPTY_ANALYZER, analyzer);
+        String analyzer = mapper.analyzer();
+        Assert.assertEquals(ColumnMapper.KEYWORD_ANALYZER, analyzer);
     }
 
     @Test

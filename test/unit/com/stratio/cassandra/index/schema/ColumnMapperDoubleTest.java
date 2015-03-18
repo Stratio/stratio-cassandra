@@ -140,8 +140,8 @@ public class ColumnMapperDoubleTest
     public void testExtractAnalyzers()
     {
         ColumnMapperDouble mapper = new ColumnMapperDouble(1f);
-        Analyzer analyzer = mapper.analyzer();
-        Assert.assertEquals(ColumnMapper.EMPTY_ANALYZER, analyzer);
+        String analyzer = mapper.analyzer();
+        Assert.assertEquals(ColumnMapper.KEYWORD_ANALYZER, analyzer);
     }
 
     @Test

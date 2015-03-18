@@ -96,7 +96,7 @@ public class PhraseCondition extends SingleFieldCondition {
             int count = 0;
             for (String value : values) {
                 if (value != null) {
-                    String analyzedValue = analyze(field, value, columnMapper);
+                    String analyzedValue = analyze(field, value, schema);
                     if (analyzedValue != null) {
                         Term term = new Term(field, analyzedValue);
                         query.add(term, count);

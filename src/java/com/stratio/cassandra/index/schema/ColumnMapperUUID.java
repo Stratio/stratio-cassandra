@@ -19,7 +19,6 @@ import com.google.common.primitives.Longs;
 import com.stratio.cassandra.util.ByteBufferUtils;
 import org.apache.cassandra.db.marshal.*;
 import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.SortField;
@@ -43,12 +42,6 @@ public class ColumnMapperUUID extends ColumnMapperSingle<String> {
     public ColumnMapperUUID() {
         super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, UUIDType.instance, TimeUUIDType.instance},
               new AbstractType[]{UUIDType.instance, TimeUUIDType.instance});
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Analyzer analyzer() {
-        return EMPTY_ANALYZER;
     }
 
     /** {@inheritDoc} */

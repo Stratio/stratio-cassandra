@@ -24,7 +24,7 @@ public class SchemaTest {
         columnMappers.put("a.b", columnMapper2);
         columnMappers.put("a.b.c", columnMapper3);
 
-        Schema schema = new Schema(null, columnMappers);
+        Schema schema = new Schema(null, columnMappers, null);
         Assert.assertEquals(columnMapper1, schema.getMapper("a"));
         Assert.assertEquals(columnMapper2, schema.getMapper("a.b"));
         Assert.assertEquals(columnMapper3, schema.getMapper("a.b.c"));

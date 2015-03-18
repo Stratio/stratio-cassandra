@@ -16,12 +16,13 @@
 package com.stratio.cassandra.index.schema;
 
 import com.stratio.cassandra.index.geospatial.GeoShapeMapper;
+import com.stratio.cassandra.index.schema.analysis.AnalyzerFactory;
+import com.stratio.cassandra.index.schema.analysis.PreBuiltAnalyzers;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.ListType;
 import org.apache.cassandra.db.marshal.MapType;
 import org.apache.cassandra.db.marshal.SetType;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.core.KeywordAnalyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.index.IndexableField;
@@ -53,8 +54,8 @@ import java.util.Set;
                @JsonSubTypes.Type(value = GeoShapeMapper.class, name = "geo_shape"),})
 public abstract class ColumnMapper {
 
-    /** A no-action analyzer for not tokenized {@link ColumnMapper} implementations. */
-    protected static final Analyzer EMPTY_ANALYZER = new KeywordAnalyzer();
+    /** A no-action getAnalyzer for not tokenized {@link ColumnMapper} implementations. */
+    protected static final String KEYWORD_ANALYZER = PreBuiltAnalyzers.KEYWORD.toString();
 
     /** The store field in Lucene default option. */
     protected static final Store STORE = Store.NO;
@@ -72,11 +73,13 @@ public abstract class ColumnMapper {
     }
 
     /**
-     * Returns the used {@link Analyzer}.
+     * Returns the name of the used {@link Analyzer}.
      *
-     * @return The used {@link Analyzer}.
+     * @return The name of the used {@link Analyzer}.
      */
-    public abstract Analyzer analyzer();
+    public String analyzer() {
+        return KEYWORD_ANALYZER;
+    }
 
     /**
      * Returns the Lucene {@link Field}s resulting from the mapping of the specified {@link Column}.

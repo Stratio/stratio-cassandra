@@ -15,14 +15,13 @@
  */
 package com.stratio.cassandra.index.schema;
 
-import java.io.IOException;
-import java.util.Date;
-import java.util.UUID;
-
-import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.util.Date;
+import java.util.UUID;
 
 public class ColumnMapperBigDecimalTest
 {
@@ -531,8 +530,8 @@ public class ColumnMapperBigDecimalTest
     public void testExtractAnalyzers()
     {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(10, 10);
-        Analyzer analyzer = mapper.analyzer();
-        Assert.assertEquals(ColumnMapper.EMPTY_ANALYZER, analyzer);
+        String analyzer = mapper.analyzer();
+        Assert.assertEquals(ColumnMapper.KEYWORD_ANALYZER, analyzer);
     }
 
     @Test

@@ -73,7 +73,7 @@ public class MatchCondition extends SingleFieldCondition {
         Query query;
         if (clazz == String.class) {
             String value = (String) columnMapper.queryValue(field, this.value);
-            String analyzedValue = analyze(field, value, columnMapper);
+            String analyzedValue = analyze(field, value, schema);
             if (analyzedValue == null) {
                 throw new IllegalArgumentException("Value discarded by analyzer");
             }

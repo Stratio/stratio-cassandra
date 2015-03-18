@@ -34,14 +34,6 @@ public class ColumnMapperTextTest
         Assert.assertNull(parsed);
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void testAnalyzerInvalid()
-    {
-        ColumnMapperText mapper = new ColumnMapperText("hello");
-        String parsed = mapper.indexValue("test", null);
-        Assert.assertNull(parsed);
-    }
-
     @Test()
     public void testValueNull()
     {
@@ -165,14 +157,13 @@ public class ColumnMapperTextTest
     public void testExtractAnalyzers()
     {
         ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
-        Analyzer analyzer = mapper.analyzer();
-        Assert.assertEquals(org.apache.lucene.analysis.en.EnglishAnalyzer.class, analyzer.getClass());
+        Assert.assertEquals("org.apache.lucene.analysis.en.EnglishAnalyzer", mapper.analyzer());
     }
 
     @Test
     public void testParseJSONWithAnayzer() throws IOException
     {
-        String json = "{fields:{age:{type:\"text\", analyzer:\"org.apache.lucene.analysis.en.EnglishAnalyzer\"}}}";
+        String json = "{fields:{age:{type:\"text\", getAnalyzer:\"org.apache.lucene.analysis.en.EnglishAnalyzer\"}}}";
         Schema schema = Schema.fromJson(json);
         ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNotNull(columnMapper);

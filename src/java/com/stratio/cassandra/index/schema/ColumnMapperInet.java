@@ -21,7 +21,6 @@ import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.InetAddressType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.SortField;
@@ -52,12 +51,6 @@ public class ColumnMapperInet extends ColumnMapperSingle<String> {
     public ColumnMapperInet() {
         super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, InetAddressType.instance},
               new AbstractType[]{});
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Analyzer analyzer() {
-        return EMPTY_ANALYZER;
     }
 
     /** {@inheritDoc} */
