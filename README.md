@@ -52,11 +52,7 @@ Building and running
 Stratio Cassandra is distributed as a fork of Apache Cassandra, so its building, installation, operation and maintenance is overall identical. To build and run type:
 
 ```
-ant
-sudo mkdir -p /var/log/cassandra
-sudo chown -R `whoami` /var/log/cassandra
-sudo mkdir -p /var/lib/cassandra
-sudo chown -R `whoami` /var/lib/cassandra
+ant build
 bin/cassandra -f
 ```
 
@@ -76,6 +72,9 @@ Example
 We will create the following table to store tweets:
 
 ```
+CREATE KEYSPACE demo
+WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor': 1};
+USE demo;
 CREATE TABLE tweets (
     id INT PRIMARY KEY,
     user TEXT,
@@ -89,14 +88,14 @@ We have created a column called *lucene* to link the index queries. This column 
 
 ```
 CREATE CUSTOM INDEX tweets_index ON tweets (lucene) 
-USING 'org.apache.cassandra.db.index.stratio.RowIndex'
+USING 'com.stratio.cassandra.index.RowIndex'
 WITH OPTIONS = {
-    'refresh_seconds'    : '1',
+    'refresh_seconds' : '1',
     'schema' : '{
         fields : {
             id   : {type : "integer"},
             user : {type : "string"},
-            body : {type : "text",  analyzer : "org.apache.lucene.analysis.en.EnglishAnalyzer"},
+            body : {type : "text",  analyzer : "english"},
             time : {type : "date", pattern  : "yyyy/MM/dd"}
         }
     }'
