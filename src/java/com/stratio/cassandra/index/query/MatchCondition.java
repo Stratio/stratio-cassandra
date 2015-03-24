@@ -15,7 +15,7 @@
  */
 package com.stratio.cassandra.index.query;
 
-import com.stratio.cassandra.index.schema.ColumnMapperSingle;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperSingle;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.index.Term;
@@ -73,7 +73,7 @@ public class MatchCondition extends SingleFieldCondition {
         Query query;
         if (clazz == String.class) {
             String value = (String) columnMapper.queryValue(field, this.value);
-            String analyzedValue = analyze(field, value, columnMapper);
+            String analyzedValue = analyze(field, value, schema);
             if (analyzedValue == null) {
                 throw new IllegalArgumentException("Value discarded by analyzer");
             }

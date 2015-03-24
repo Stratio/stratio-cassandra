@@ -18,12 +18,11 @@ package com.stratio.cassandra.index.geospatial;
 import com.spatial4j.core.context.SpatialContext;
 import com.spatial4j.core.shape.Shape;
 import com.stratio.cassandra.index.schema.Column;
-import com.stratio.cassandra.index.schema.ColumnMapper;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapper;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
@@ -59,12 +58,6 @@ public class GeoShapeMapper extends ColumnMapper {
         super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance});
         this.maxLevels = maxLevels == null ? DEFAULT_MAX_LEVELS : maxLevels;
         this.grid = new GeohashPrefixTree(spatialContext, this.maxLevels);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Analyzer analyzer() {
-        return EMPTY_ANALYZER;
     }
 
     public Set<IndexableField> fields(Column column) {

@@ -30,7 +30,7 @@ import java.util.List;
 public class Columns implements Iterable<Column> {
 
     /** The wrapped columns. */
-    private List<Column> columns;
+    private final List<Column> columns;
 
     /** Constructs an empty {@link Column} list. */
     public Columns() {

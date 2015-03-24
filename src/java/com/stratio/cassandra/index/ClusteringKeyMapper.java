@@ -147,7 +147,7 @@ public abstract class ClusteringKeyMapper {
             components[i] = cellName.get(i);
         }
         components[numClusteringColumns] = ByteBufferUtil.EMPTY_BYTE_BUFFER;
-        return cellNameType.makeCellName(components);
+        return cellNameType.makeCellName((Object[])components);
     }
 
     protected final boolean isStatic(CellName cellName) {

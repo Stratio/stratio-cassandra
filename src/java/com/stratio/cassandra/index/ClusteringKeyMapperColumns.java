@@ -2,8 +2,8 @@ package com.stratio.cassandra.index;
 
 import com.stratio.cassandra.index.query.builder.MatchConditionBuilder;
 import com.stratio.cassandra.index.query.builder.RangeConditionBuilder;
-import com.stratio.cassandra.index.schema.ColumnMapper;
-import com.stratio.cassandra.index.schema.ColumnMapperSingle;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapper;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperSingle;
 import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.util.ByteBufferUtils;
 import org.apache.cassandra.config.CFMetaData;

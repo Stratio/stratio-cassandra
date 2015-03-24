@@ -28,16 +28,16 @@ import java.nio.ByteBuffer;
 public class Column {
 
     /** The column's name. */
-    private String name;
+    private final String name;
 
     /** The column's name sufix used for maps. */
-    private String nameSufix;
+    private final String nameSufix;
 
     /** The column's value as {@link ByteBuffer}. */
-    private ByteBuffer value;
+    private final ByteBuffer value;
 
     /** The column's Cassandra type. */
-    private AbstractType<?> type;
+    private final AbstractType<?> type;
 
     /**
      * Builds a new {@link Column} with the specified name, value, and type.
@@ -48,6 +48,7 @@ public class Column {
      */
     public Column(String name, ByteBuffer value, AbstractType<?> type) {
         this.name = name;
+        this.nameSufix = null;
         this.value = value;
         this.type = type;
     }

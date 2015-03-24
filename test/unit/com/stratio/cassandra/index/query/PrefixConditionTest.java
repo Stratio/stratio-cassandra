@@ -16,6 +16,10 @@
 package com.stratio.cassandra.index.query;
 
 import com.stratio.cassandra.index.schema.*;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapper;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperInet;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperInteger;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperString;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.Query;
@@ -40,7 +44,7 @@ public class PrefixConditionTest extends AbstractConditionTest
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperString());
-        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         PrefixCondition prefixCondition = new PrefixCondition(0.5f, "name", "tr");
         Query query = prefixCondition.query(mappers);
@@ -59,7 +63,7 @@ public class PrefixConditionTest extends AbstractConditionTest
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInteger(1f));
-        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         PrefixCondition prefixCondition = new PrefixCondition(0.5f, "name", "2*");
         prefixCondition.query(mappers);
@@ -71,7 +75,7 @@ public class PrefixConditionTest extends AbstractConditionTest
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInet());
-        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         PrefixCondition wildcardCondition = new PrefixCondition(0.5f, "name", "192.168.");
         Query query = wildcardCondition.query(mappers);
@@ -90,7 +94,7 @@ public class PrefixConditionTest extends AbstractConditionTest
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInet());
-        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         PrefixCondition wildcardCondition = new PrefixCondition(0.5f, "name", "2001:db8:2de:0:0:0:0:e");
         Query query = wildcardCondition.query(mappers);

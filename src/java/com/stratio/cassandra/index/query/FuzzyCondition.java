@@ -15,7 +15,7 @@
  */
 package com.stratio.cassandra.index.query;
 
-import com.stratio.cassandra.index.schema.ColumnMapperSingle;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperSingle;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.index.Term;
@@ -128,7 +128,7 @@ public class FuzzyCondition extends SingleFieldCondition {
         ColumnMapperSingle<?> columnMapper = getMapper(schema, field);
         Class<?> clazz = columnMapper.baseClass();
         if (clazz == String.class) {
-            String analyzedValue = analyze(field, value, columnMapper);
+            String analyzedValue = analyze(field, value, schema);
             Term term = new Term(field, analyzedValue);
             Query query = new FuzzyQuery(term, maxEdits, prefixLength, maxExpansions, transpositions);
             query.setBoost(boost);
