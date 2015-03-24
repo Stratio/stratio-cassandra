@@ -81,7 +81,7 @@ public abstract class RowService {
                                            config.getRamBufferMB(),
                                            config.getMaxMergeMB(),
                                            config.getMaxCachedMB(),
-                                           schema.analyzer());
+                                           schema.getAnalyzer());
 
         int indexingThreads = config.getIndexingThreads();
         if (indexingThreads > 0) {
@@ -192,7 +192,8 @@ public abstract class RowService {
      * Closes and removes all the index files.
      */
     public final void delete() {
-        luceneIndex.drop();
+        luceneIndex.delete();
+        schema.close();
     }
 
     /**

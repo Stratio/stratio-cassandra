@@ -1,6 +1,6 @@
 /*
  * Copyright 2009-2014 Elasticsearch.
- * Modification and adapations - Copyright 2015, Stratio.
+ * Modification and adaptations - Copyright 2015, Stratio.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,34 +59,34 @@ import org.apache.lucene.analysis.tr.TurkishAnalyzer;
 import java.util.Locale;
 
 /**
- *
+ * Prebuilt Lucene {@link Analyzer}s that can be instantiated by name.
  */
 public enum PreBuiltAnalyzers {
 
     STANDARD() {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new StandardAnalyzer();
         }
     },
 
     DEFAULT() {
         @Override
-        protected Analyzer create() {
-            return STANDARD.create();
+        protected Analyzer instantiate() {
+            return STANDARD.get();
         }
     },
 
     KEYWORD() {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new KeywordAnalyzer();
         }
     },
 
     STOP {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new StopAnalyzer();
 
         }
@@ -94,7 +94,7 @@ public enum PreBuiltAnalyzers {
 
     WHITESPACE {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new WhitespaceAnalyzer();
 
         }
@@ -102,7 +102,7 @@ public enum PreBuiltAnalyzers {
 
     SIMPLE {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new SimpleAnalyzer();
 
         }
@@ -110,7 +110,7 @@ public enum PreBuiltAnalyzers {
 
     CLASSIC {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new ClassicAnalyzer();
 
         }
@@ -118,70 +118,70 @@ public enum PreBuiltAnalyzers {
 
     ARABIC {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new ArabicAnalyzer();
         }
     },
 
     ARMENIAN {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new ArmenianAnalyzer();
         }
     },
 
     BASQUE {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new BasqueAnalyzer();
         }
     },
 
     BRAZILIAN {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new BrazilianAnalyzer();
         }
     },
 
     BULGARIAN {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new BulgarianAnalyzer();
         }
     },
 
     CATALAN {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new CatalanAnalyzer();
         }
     },
 
     CHINESE() {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new StandardAnalyzer();
         }
     },
 
     CJK {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new CJKAnalyzer();
         }
     },
 
     CZECH {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new CzechAnalyzer();
         }
     },
 
     DUTCH {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new DutchAnalyzer();
 
         }
@@ -189,7 +189,7 @@ public enum PreBuiltAnalyzers {
 
     DANISH {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new DanishAnalyzer();
 
         }
@@ -197,49 +197,49 @@ public enum PreBuiltAnalyzers {
 
     ENGLISH {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new EnglishAnalyzer();
         }
     },
 
     FINNISH {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new FinnishAnalyzer();
         }
     },
 
     FRENCH {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new FrenchAnalyzer();
         }
     },
 
     GALICIAN {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new GalicianAnalyzer();
         }
     },
 
     GERMAN {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new GermanAnalyzer();
         }
     },
 
     GREEK {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new GreekAnalyzer();
         }
     },
 
     HINDI {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new HindiAnalyzer();
 
         }
@@ -247,63 +247,63 @@ public enum PreBuiltAnalyzers {
 
     HUNGARIAN {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new HungarianAnalyzer();
         }
     },
 
     INDONESIAN {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new IndonesianAnalyzer();
         }
     },
 
     IRISH {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new IrishAnalyzer();
         }
     },
 
     ITALIAN {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new ItalianAnalyzer();
         }
     },
 
     LATVIAN {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new LatvianAnalyzer();
         }
     },
 
     NORWEGIAN {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new NorwegianAnalyzer();
         }
     },
 
     PERSIAN {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new PersianAnalyzer();
         }
     },
 
     PORTUGUESE {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new PortugueseAnalyzer();
         }
     },
 
     ROMANIAN {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new RomanianAnalyzer();
 
         }
@@ -311,51 +311,59 @@ public enum PreBuiltAnalyzers {
 
     RUSSIAN {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new RussianAnalyzer();
         }
     },
 
     SORANI {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new SoraniAnalyzer();
         }
     },
 
     SPANISH {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new SpanishAnalyzer();
         }
     },
 
     SWEDISH {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new SwedishAnalyzer();
         }
     },
 
     TURKISH {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new TurkishAnalyzer();
         }
     },
 
     THAI {
         @Override
-        protected Analyzer create() {
+        protected Analyzer instantiate() {
             return new ThaiAnalyzer();
         }
     };
 
-    abstract protected Analyzer create();
+    private Analyzer analyzer;
 
-    public synchronized static Analyzer get(String name) {
+    public synchronized Analyzer get() {
+        if (analyzer == null)
+            analyzer = instantiate();
+        return analyzer;
+    }
+    
+    abstract protected Analyzer instantiate();
+
+    public static Analyzer get(String name) {
         try {
-            return valueOf(name.toUpperCase(Locale.ROOT)).create();
+            return valueOf(name.toUpperCase(Locale.ROOT)).get();
         } catch (IllegalArgumentException ie) {
             return null;
         }

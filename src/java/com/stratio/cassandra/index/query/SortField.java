@@ -16,7 +16,7 @@
 package com.stratio.cassandra.index.query;
 
 import com.stratio.cassandra.index.schema.Column;
-import com.stratio.cassandra.index.schema.ColumnMapper;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapper;
 import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.cassandra.db.marshal.AbstractType;

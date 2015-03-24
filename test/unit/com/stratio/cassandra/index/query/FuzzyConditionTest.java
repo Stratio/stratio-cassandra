@@ -15,8 +15,8 @@
  */
 package com.stratio.cassandra.index.query;
 
-import com.stratio.cassandra.index.schema.ColumnMapper;
-import com.stratio.cassandra.index.schema.ColumnMapperBoolean;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapper;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperBoolean;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.search.Query;
@@ -41,7 +41,7 @@ public class FuzzyConditionTest extends AbstractConditionTest
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperBoolean());
-        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map, null);
+        Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         FuzzyCondition fuzzyCondition = new FuzzyCondition(0.5f, "name", "tr", 1, 2, 49, true);
         Query query = fuzzyCondition.query(mappers);

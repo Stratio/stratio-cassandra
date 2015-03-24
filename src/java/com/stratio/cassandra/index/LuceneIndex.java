@@ -221,7 +221,6 @@ public class LuceneIndex {
             searcherManager.close();
             indexWriter.close();
             directory.close();
-            analyzer.close();
         } catch (IOException e) {
             Log.error(e, "Error while closing index");
             throw new RuntimeException(e);
@@ -231,7 +230,7 @@ public class LuceneIndex {
     /**
      * Closes the index and removes all its files.
      */
-    public void drop() {
+    public void delete() {
         Log.info("Removing");
         close();
         FileUtils.deleteRecursive(file);

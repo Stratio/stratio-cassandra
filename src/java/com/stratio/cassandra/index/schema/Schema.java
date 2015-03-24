@@ -15,20 +15,26 @@
  */
 package com.stratio.cassandra.index.schema;
 
-import com.stratio.cassandra.index.schema.analysis.Analyzer;
-import com.stratio.cassandra.index.schema.analysis.Analyzers;
+import com.stratio.cassandra.index.schema.analysis.Analysis;
+import com.stratio.cassandra.index.schema.analysis.AnalyzerBuilder;
+import com.stratio.cassandra.index.schema.analysis.PreBuiltAnalyzers;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapper;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperSingle;
+import com.stratio.cassandra.index.schema.mapping.Mapping;
 import com.stratio.cassandra.util.JsonSerializer;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexableField;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -40,111 +46,50 @@ import java.util.Map.Entry;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class Schema {
+public class Schema implements Closeable {
 
-    /** The default Lucene getAnalyzer to be used if no other specified. */
-    public static final String DEFAULT_ANALYZER = "standard";
+    /** The analysis properties. */
+    private final Analysis analysis;
 
-    /** The Lucene {@link org.apache.lucene.analysis.Analyzer}. */
-    private final org.apache.lucene.analysis.Analyzer defaultAnalyzer;
+    private final Mapping mapping;
 
-    /** The per field Lucene getAnalyzer to be used. */
-    private final PerFieldAnalyzerWrapper perFieldAnalyzer;
+    private final Analyzer defaultAnalyzer;
 
-    /** The column mappers. */
-    private Map<String, ColumnMapper> columnMappers;
-
-    private Analyzers analyzers;
+    private final Analyzer analyzer;
 
     /**
      * Builds a new {@code ColumnsMapper} for the specified getAnalyzer and cell mappers.
      *
+     * @param columnMappers   The {@link Column} mappers to be used.
+     * @param analyzers        The {@link AnalyzerBuilder}s to be used.
      * @param defaultAnalyzer The name of the class of the getAnalyzer to be used.
-     * @param columnMappers     The {@link Column} mappers to be used.
      */
     @JsonCreator
-    public Schema(@JsonProperty("default_analyzer") String defaultAnalyzer,
-                  @JsonProperty("fields") Map<String, ColumnMapper> columnMappers,
-                  @JsonProperty("analyzers") Map<String, Analyzer> analyzers) {
+    public Schema(@JsonProperty("fields") Map<String, ColumnMapper> columnMappers,
+                  @JsonProperty("analyzers") Map<String, AnalyzerBuilder> analyzers,
+                  @JsonProperty("default_analyzer") String defaultAnalyzer) {
 
-        // Copy lower cased mappers
-        this.columnMappers = columnMappers;
+        this.mapping = new Mapping(columnMappers);
+        this.analysis = new Analysis(analyzers);
+        this.defaultAnalyzer = analysis.getDefaultAnalyzer(defaultAnalyzer);
+        this.analyzer = mapping.getAnalyzer(this.defaultAnalyzer, analysis);
+    }
 
-        this.analyzers = new Analyzers(analyzers);
+    public Analyzer getDefaultAnalyzer() {
+        return defaultAnalyzer;
+    }
 
-        // Setup default getAnalyzer
-        if (defaultAnalyzer == null) {
-            this.defaultAnalyzer = this.analyzers.getAnalyzer(DEFAULT_ANALYZER);
-        } else {
-            this.defaultAnalyzer = this.analyzers.getAnalyzer(defaultAnalyzer);
-        }
-
-        // Setup per field analyzer
-        Map<String, org.apache.lucene.analysis.Analyzer> luceneAnalyzers = new HashMap<>();
-        for (Entry<String, ColumnMapper> entry : columnMappers.entrySet()) {
-            String name = entry.getKey();
-            ColumnMapper mapper = entry.getValue();
-            String fieldAnalyzer = mapper.analyzer();
-            if (fieldAnalyzer != null) {
-                luceneAnalyzers.put(name, this.analyzers.getAnalyzer(fieldAnalyzer));
-            }
-        }
-        perFieldAnalyzer = new PerFieldAnalyzerWrapper(this.defaultAnalyzer, luceneAnalyzers);
+    public Analyzer getAnalyzer(String name) {
+        return analysis.getAnalyzer(name);
     }
 
     /**
-     * Checks if this is consistent with the specified column family metadata.
+     * Returns the used {@link Analyzer} wrapper.
      *
-     * @param metadata A column family metadata.
+     * @return The used {@link Analyzer} wrapper.
      */
-    public void validate(CFMetaData metadata) {
-        for (Entry<String, ColumnMapper> entry : columnMappers.entrySet()) {
-
-            String name = entry.getKey();
-            ColumnMapper columnMapper = entry.getValue();
-            ByteBuffer columnName = UTF8Type.instance.decompose(name);
-
-            ColumnDefinition columnDefinition = metadata.getColumnDefinition(columnName);
-            if (columnDefinition == null) {
-                throw new RuntimeException("No column definition for mapper " + name);
-            }
-
-            if (columnDefinition.isStatic()) {
-                throw new RuntimeException("Lucene indexes are not allowed on static columns as " + name);
-            }
-
-            AbstractType<?> type = columnDefinition.type;
-            if (!columnMapper.supports(type)) {
-                throw new RuntimeException("Not supported type for mapper " + name);
-            }
-        }
-    }
-
-    /**
-     * Returns the used {@link PerFieldAnalyzerWrapper}.
-     *
-     * @return The used {@link PerFieldAnalyzerWrapper}.
-     */
-    public PerFieldAnalyzerWrapper analyzer() {
-        return perFieldAnalyzer;
-    }
-
-    /**
-     * Adds to the specified {@link Document} the Lucene fields representing the specified {@link Columns}.
-     *
-     * @param document The Lucene {@link Document} where the fields are going to be added.
-     * @param columns  The {@link Columns} to be added.
-     */
-    public void addFields(Document document, Columns columns) {
-        for (Column column : columns) {
-            String name = column.getName();
-            ColumnMapper columnMapper = getMapper(name);
-            if (columnMapper != null) {
-                for (IndexableField field : columnMapper.fields(column)) {
-                    document.add(field);
-                }
-            }
-        }
+    public Analyzer getAnalyzer() {
+        return analyzer;
     }
 
     /**
@@ -154,32 +99,39 @@ public class Schema {
      * @return The {@link ColumnMapper} identified by the specified field name, or {@code null} if not found.
      */
     public ColumnMapper getMapper(String field) {
-        String[] components = field.split("\\.");
-        for (int i = components.length - 1; i >= 0; i--) {
-            StringBuilder sb = new StringBuilder();
-            for (int j = 0; j <= i; j++) {
-                sb.append(components[j]);
-                if (j < i) sb.append('.');
-            }
-            ColumnMapper columnMapper = columnMappers.get(sb.toString());
-            if (columnMapper != null) return columnMapper;
-        }
-        return null;
+        return mapping.getMapper(field);
     }
 
     /**
-     * Returns the {@link ColumnMapperSingle} identified by the specified field name, or {@code null} if not found.
+     * Returns the {@link com.stratio.cassandra.index.schema.mapping.ColumnMapperSingle} identified by the specified
+     * field name, or {@code null} if not found.
      *
      * @param field A field name.
-     * @return The {@link ColumnMapperSingle} identified by the specified field name, or {@code null} if not found.
+     * @return The {@link com.stratio.cassandra.index.schema.mapping.ColumnMapperSingle} identified by the specified
+     * field name, or {@code null} if not found.
      */
     public ColumnMapperSingle<?> getMapperSingle(String field) {
-        ColumnMapper columnMapper = getMapper(field);
-        if (columnMapper != null && columnMapper instanceof ColumnMapperSingle<?>) {
-            return (ColumnMapperSingle<?>) columnMapper;
-        } else {
-            return null;
-        }
+        return mapping.getMapperSingle(field);
+    }
+
+    /**
+     * Adds to the specified {@link org.apache.lucene.document.Document} the Lucene fields representing the specified
+     * {@link com.stratio.cassandra.index.schema.Columns}.
+     *
+     * @param document The Lucene {@link org.apache.lucene.document.Document} where the fields are going to be added.
+     * @param columns  The {@link com.stratio.cassandra.index.schema.Columns} to be added.
+     */
+    public void addFields(Document document, Columns columns) {
+        mapping.addFields(document, columns);
+    }
+
+    /**
+     * Checks if this is consistent with the specified column family metadata.
+     *
+     * @param metadata A column family metadata.
+     */
+    public void validate(CFMetaData metadata) {
+        mapping.validate(metadata);
     }
 
     /**
@@ -194,10 +146,15 @@ public class Schema {
 
     /** {@inheritDoc} */
     @Override
+    public void close() {
+        analyzer.close();
+    }
+
+    @Override
     public String toString() {
-        return new ToStringBuilder(this).append("defaultAnalyzer", defaultAnalyzer)
-                                        .append("perFieldAnalyzer", perFieldAnalyzer)
-                                        .append("columnMappers", columnMappers)
+        return new ToStringBuilder(this).append("analysis", analysis)
+                                        .append("mapping", mapping)
+                                        .append("analyzer", analyzer)
                                         .toString();
     }
 }

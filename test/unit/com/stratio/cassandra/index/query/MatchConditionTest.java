@@ -16,6 +16,7 @@
 package com.stratio.cassandra.index.query;
 
 import com.stratio.cassandra.index.schema.*;
+import com.stratio.cassandra.index.schema.mapping.*;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.search.NumericRangeQuery;
 import org.apache.lucene.search.Query;
@@ -41,7 +42,7 @@ public class MatchConditionTest extends AbstractConditionTest
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperString());
-        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map, null);
+        Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         MatchCondition matchCondition = new MatchCondition(0.5f, "name", "casa");
         Query query = matchCondition.query(mappers);
@@ -58,7 +59,7 @@ public class MatchConditionTest extends AbstractConditionTest
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInteger(1f));
-        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map, null);
+        Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         MatchCondition matchCondition = new MatchCondition(0.5f, "name", 42);
         Query query = matchCondition.query(mappers);
@@ -78,7 +79,7 @@ public class MatchConditionTest extends AbstractConditionTest
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperLong(1f));
-        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map, null);
+        Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         MatchCondition matchCondition = new MatchCondition(0.5f, "name", 42L);
         Query query = matchCondition.query(mappers);
@@ -98,7 +99,7 @@ public class MatchConditionTest extends AbstractConditionTest
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperFloat(1f));
-        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map, null);
+        Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         MatchCondition matchCondition = new MatchCondition(0.5f, "name", 42.42F);
         Query query = matchCondition.query(mappers);
@@ -118,7 +119,7 @@ public class MatchConditionTest extends AbstractConditionTest
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperDouble(1f));
-        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map, null);
+        Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         MatchCondition matchCondition = new MatchCondition(0.5f, "name", 42.42D);
         Query query = matchCondition.query(mappers);
@@ -138,7 +139,7 @@ public class MatchConditionTest extends AbstractConditionTest
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperBlob());
-        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map, null);
+        Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         MatchCondition matchCondition = new MatchCondition(0.5f, "name", "0Fa1");
         Query query = matchCondition.query(mappers);
@@ -155,7 +156,7 @@ public class MatchConditionTest extends AbstractConditionTest
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInet());
-        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map, null);
+        Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         MatchCondition matchCondition = new MatchCondition(0.5f, "name", "192.168.0.01");
         Query query = matchCondition.query(mappers);
@@ -172,7 +173,7 @@ public class MatchConditionTest extends AbstractConditionTest
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInet());
-        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map, null);
+        Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         MatchCondition matchCondition = new MatchCondition(0.5f, "name", "2001:DB8:2de::0e13");
         Query query = matchCondition.query(mappers);
