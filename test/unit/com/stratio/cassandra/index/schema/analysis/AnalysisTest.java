@@ -21,7 +21,6 @@ public class AnalysisTest {
         Analysis analysis = new Analysis();
         Analyzer analyzer = analysis.getAnalyzer("English");
         Assert.assertEquals(EnglishAnalyzer.class, analyzer.getClass());
-        analysis.close();
     }
 
     @Test
@@ -35,8 +34,6 @@ public class AnalysisTest {
 
         Analyzer customAnalyzer = analysis.getAnalyzer("custom");
         Assert.assertEquals(SpanishAnalyzer.class, customAnalyzer.getClass());
-
-        analysis.close();
     }
 
     @Test
@@ -44,7 +41,6 @@ public class AnalysisTest {
         Analysis analysis = new Analysis(null);
         Analyzer analyzer = analysis.getAnalyzer("English");
         Assert.assertEquals(EnglishAnalyzer.class, analyzer.getClass());
-        analysis.close();
     }
 
     @Test
@@ -53,7 +49,6 @@ public class AnalysisTest {
         Analysis analysis = new Analysis(analyzers);
         Analyzer analyzer = analysis.getAnalyzer("English");
         Assert.assertEquals(EnglishAnalyzer.class, analyzer.getClass());
-        analysis.close();
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -66,13 +61,11 @@ public class AnalysisTest {
     public void testGetAnalyzerNull() {
         Analysis analysis = new Analysis();
         analysis.getAnalyzer(null);
-        analysis.close();
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testGetAnalyzerEmpty() {
         Analysis analysis = new Analysis();
         analysis.getAnalyzer(" \t");
-        analysis.close();
     }
 }
