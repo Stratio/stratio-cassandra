@@ -39,12 +39,14 @@ Lucene search technology integration into Cassandra provides:
 -   General top-k queries
 -   Complex boolean queries (and, or, not)
 -   Near real-time search
+-   Custom analyzers
 -   CQL3 support
 -   Wide rows support
 -   Partition and cluster composite keys support
 -   Support for indexing columns part of primary key
--   Stratio Deep Hadoop support compatibility
--   Self contained distribution
+-   Third-party drivers compatibility
+-   Spark compatibility
+-   Hadoop compatibility
 
 Not yet supported:
 
@@ -52,6 +54,8 @@ Not yet supported:
 -   Legacy compact storage option
 -   Type "counter"
 -   Columns with TTL
+-   Static columns
+-   User-defined types
 
 Index Creation
 ==============
@@ -62,7 +66,7 @@ Syntax
 ```sql
 CREATE CUSTOM INDEX (IF NOT EXISTS)? <index_name>
                                   ON <table_name> ( <magic_column> )
-                               USING 'org.apache.cassandra.db.index.stratio.RowIndex'
+                               USING 'com.stratio.cassandra.index.RowIndex'
                         WITH OPTIONS = <options>
 ```
 
@@ -170,7 +174,7 @@ can be sourced from the Cassandra shell:
 ```sql
 CREATE CUSTOM INDEX IF NOT EXISTS users_index
 ON test.users (stratio_col)
-USING 'org.apache.cassandra.db.index.stratio.RowIndex'
+USING 'com.stratio.cassandra.index.RowIndex'
 WITH OPTIONS = {
     'refresh_seconds'      : '1',
     'ram_buffer_mb'        : '64',
