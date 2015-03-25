@@ -305,6 +305,14 @@ In addition to the options described in the table, all query types have a “**b
 </ul></td>
 </tr>
 <tr class="even">
+<td align="left"><a href="#contains-query" title="Contains query details">Contains</a></td>
+<td align="left">All</td>
+<td align="left"><ul>
+<li><strong>field</strong>: the field name.</li>
+<li><strong>values</strong>: the matched field values.</li>
+</ul></td>
+</tr>
+<tr class="odd">
 <td align="left"><a href="#fuzzy-query">Fuzzy</a></td>
 <td align="left">bytes<br /> inet<br /> string<br /> text</td>
 <td align="left"><ul>
@@ -316,7 +324,7 @@ In addition to the options described in the table, all query types have a “**b
 <li><strong>transpositions</strong> (default = true): if transpositions should be treated as a primitive edit operation (<a href="http://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance" title="Wikipedia article on Damerau-Levenshtein Distance">Damerau-Levenshtein distance</a>). When false, comparisons will implement the classic <a href="http://en.wikipedia.org/wiki/Levenshtein_distance" title="Wikipedia article on Levenshtein Distance">Levenshtein distance</a>.</li>
 </ul></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left"><a href="#match-query">Match</a></td>
 <td align="left">All</td>
 <td align="left"><ul>
@@ -324,7 +332,7 @@ In addition to the options described in the table, all query types have a “**b
 <li><strong>value</strong>: the field value.</li>
 </ul></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left"><a href="#phrase-query">Phrase</a></td>
 <td align="left">bytes<br /> inet<br /> text</td>
 <td align="left"><ul>
@@ -333,7 +341,7 @@ In addition to the options described in the table, all query types have a “**b
 <li><strong>slop</strong> (default = 0): number of other words permitted between words.</li>
 </ul></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left"><a href="#prefix-query">Prefix</a></td>
 <td align="left">bytes<br /> inet<br /> string<br /> text</td>
 <td align="left"><ul>
@@ -341,7 +349,7 @@ In addition to the options described in the table, all query types have a “**b
 <li><strong>value</strong>: fieldvalue.</li>
 </ul></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left"><a href="#range-query">Range</a></td>
 <td align="left">All</td>
 <td align="left"><ul>
@@ -352,7 +360,7 @@ In addition to the options described in the table, all query types have a “**b
 <li><strong>include_upper</strong> (default = false): if the right value is included in the results (&lt;=).</li>
 </ul></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left"><a href="#regexp-query">Regexp</a></td>
 <td align="left">bytes<br /> inet<br /> string<br /> text</td>
 <td align="left"><ul>
@@ -360,7 +368,7 @@ In addition to the options described in the table, all query types have a “**b
 <li><strong>value</strong>: regular expression.</li>
 </ul></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left"><a href="#wildcard-query">Wildcard</a></td>
 <td align="left">bytes<br /> inet<br /> string<br /> text</td>
 <td align="left"><ul>
@@ -422,6 +430,40 @@ WHERE stratio_col = '{query : {
                         type   : "boolean",
                         should : [{type : "wildcard", field : "name", value : "*a"},
                                   {type : "wildcard", field : "food", value : "tu*"}]}}';
+```
+
+Contains query
+--------------
+
+Syntax:
+
+```sql
+SELECT ( <fields> | * )
+FROM <table>
+WHERE <magic_column> = '{ query : {
+                            type  : "contains",
+                            field : <fieldname> ,
+                            values : <value_list> }}';
+```
+
+Example 1: will return rows where name matches “Alicia” or “mancha”
+
+```sql
+SELECT * FROM test.users
+WHERE stratio_col = '{query : {
+                        type   : "contains",
+                        field  : "name",
+                        values : ["Alicia","mancha"] }}';
+```
+
+Example 2: will return rows where date matches “2014/01/01″, “2014/01/02″ or “2014/01/03″
+
+```sql
+SELECT * FROM test.users
+WHERE stratio_col = '{query : {
+                        type   : "contains",
+                        field  : "date",
+                        values : ["2014/01/01", "2014/01/02", "2014/01/03"] }}';
 ```
 
 Fuzzy query
@@ -609,7 +651,7 @@ are specified. If only “lower” is specified, all rows with values from “lo
 If only “upper” is specified then all rows with field values up to “upper” will be returned. If 
 both are omitted than all rows will be returned.
 
-Example 1: will return rows where $age \\in [1,+\\infty)$
+Example 1: will return rows where *age* in [1,&#8734)
 
 ```sql
 SELECT * FROM test.users
@@ -758,7 +800,7 @@ CQL to Field type
         <th>CQL type</th>
         <th>Description</th>
         <th>Field type</th>
-        <th>Supported in query types</th>
+        <th>Query types</th>
     </tr>
     </thead>
     <tbody>
@@ -773,6 +815,7 @@ CQL to Field type
         <td>64-bit signed long</td>
         <td>long</td>
         <td>boolean<br />
+            contains<br />
             match<br />
             range</td>
     </tr>
@@ -805,6 +848,7 @@ CQL to Field type
         <td>64-bit IEEE-754 floating point</td>
         <td>double</td>
         <td>boolean<br />
+            contains<br />
             match<br />
             range</td>
     </tr>
@@ -813,6 +857,7 @@ CQL to Field type
         <td>32-bit IEEE-754 floating point</td>
         <td>float</td>
         <td>boolean<br />
+            contains<br />
             match<br />
             range</td>
     </tr>
@@ -827,6 +872,7 @@ CQL to Field type
         <td>32-bit signed integer</td>
         <td>integer</td>
         <td>boolean<br />
+            contains<br />
             match<br />
             range</td>
     </tr>
@@ -859,6 +905,7 @@ CQL to Field type
         <td>Date plus time, encoded as 8 bytes since epoch</td>
         <td>date</td>
         <td>boolean<br />
+            contains<br />
             match<br />
             range</td>
     </tr>
