@@ -87,17 +87,18 @@ where:
 
 Options, except “schema”, take a positive integer value enclosed in single quotes:
 
--   **refresh_seconds**: number of seconds before refreshing the index (between writers and readers). Defaults to ’60′.
--   **ram_buffer_mb**: size of the write buffer. Its content will be committed to disk when full. Defaults to ’64′.
--   **max_merge_mb**: defaults to ’5′.
--   **max_cached_mb**: defaults to ’30′.
--   **indexing_threads**: number of asynchronous indexing threads. ’0′ means synchronous indexing. Defaults to ’0′.
--   **indexing_queues_size**: max number of queued documents per asynchronous indexing thread. Defaults to ’50′.
+-   **refresh_seconds**: number of seconds before refreshing the index (between writers and readers). Defaults to ’60’.
+-   **ram_buffer_mb**: size of the write buffer. Its content will be committed to disk when full. Defaults to ’64’.
+-   **max_merge_mb**: defaults to ’5’.
+-   **max_cached_mb**: defaults to ’30’.
+-   **indexing_threads**: number of asynchronous indexing threads. ’0’ means synchronous indexing. Defaults to ’0’.
+-   **indexing_queues_size**: max number of queued documents per asynchronous indexing thread. Defaults to ’50’.
 -   **schema**: see below
 
 ```sql
 <schema_definition> := {
-    (default_analyzer : "<analyzer_class_name>",)?
+    (analyzers : { <analyzer_definition> (, <analyzer_definition>)* } ,)?
+    (default_analyzer : "<analyzer_name>",)?
     fields : { <field_definition> (, <field_definition>)* }
 }
 ```
@@ -105,7 +106,46 @@ Options, except “schema”, take a positive integer value enclosed in single q
 Where default_analyzer defaults to ‘org.apache.lucene.analysis.standard.StandardAnalyzer’.
 
 ```sql
-<field_definition> := {
+<analyzer_definition> := <analyzer_name> : {
+    type : "<analyzer_type>" (, <option> : "<value>")*
+}
+```
+
+Analyzer definition options depend on the analyzer type. Details and default values are listed in the table below.
+
+<table>
+    <thead>
+    <tr>
+        <th>Analyzer type</th>
+        <th>Option</th>
+        <th>Value type</th>
+        <th>Default value</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>classpath</td>
+        <td>class</td>
+        <td>string</td>
+        <td>null</td>
+    </tr>
+    <tr>
+        <td>snowball</td>
+        <td>language</td>
+        <td>string</td>
+        <td>null</td>
+    </tr>
+    <tr>
+        <td></td>
+        <td>stopwords</td>
+        <td>string</td>
+        <td>null</td>
+    </tr>
+    </tbody>
+</table>
+
+```sql
+<field_definition> := <column_name> : {
     type : "<field_type>" (, <option> : "<value>")*
 }
 ```
@@ -340,16 +380,17 @@ Syntax:
 SELECT ( <fields> | * )
 FROM <table>
 WHERE <magic_column> = '{ query : {
-                           type : "boolean",
-                           ( not: <query_list> , )?
-                           ( must | should ) : <query_list> }}';
+                           type     : "boolean",
+                           ( must   : [(query,)?] , )?
+                           ( should : [(query,)?] , )?
+                           ( not    : [(query,)?] , )? } }';
 ```
 
 where:
 
--   **must**: returns the conjunction of queries: $(q_1 \\land q_2 \\land … \\land q_n)$
--   **should**: returns the disjunction of queries: $(q_1 \\lor q_2 \\lor … \\lor q_n)$
--   **not**: returns the negation of the disjunction of queries: $\\lnot(q_1 \\lor q_2 \\lor … \\lor q_n)$.
+-   **must**: represents the conjunction of queries: query<sub>1</sub> AND query<sub>2</sub> AND … AND query<sub>n</sub>
+-   **should**: represents the disjunction of queries: query<sub>1</sub> OR query<sub>12</sub> OR … OR query<sub>n</sub>
+-   **not**: represents the negation of the disjunction of queries: NOT(query<sub>1</sub> OR query<sub>2</sub> OR … OR query<sub>n</sub>)
 
 Since "not" will be applied to the results of a "must" or "should" condition, it can not be used in isolation.
 
