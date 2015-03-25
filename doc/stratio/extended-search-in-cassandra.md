@@ -651,7 +651,7 @@ are specified. If only “lower” is specified, all rows with values from “lo
 If only “upper” is specified then all rows with field values up to “upper” will be returned. If 
 both are omitted than all rows will be returned.
 
-Example 1: will return rows where *age* in [1,&#8734)
+Example 1: will return rows where *age* is in [1, ∞)
 
 ```sql
 SELECT * FROM test.users
@@ -662,7 +662,7 @@ WHERE stratio_col = '{query : {
                         include_lower : true }}';
 ```
 
-Example 2: will return rows where $age \\in (-\\infty,0]$
+Example 2: will return rows where *age* is in (-∞y, 0]
 
 ```sql
 SELECT * FROM test.users
@@ -673,7 +673,7 @@ WHERE stratio_col = '{query : {
                         include_upper : true }}';
 ```
 
-Example 3: will return rows where $age \\in [-1,1]$
+Example 3: will return rows where *age* is in [-1, 1]
 
 ```sql
 SELECT * FROM test.users
@@ -686,7 +686,7 @@ WHERE stratio_col = '{query : {
                         include_upper : true }}';
 ```
 
-Example 4: will return rows where $date \\ge \\text"2014/01/01" \\land date \\le \\text"2014/01/02"$
+Example 4: will return rows where *date* is in [2014/01/01, 2014/01/02]
 
 ```sql
 SELECT * FROM test.users
