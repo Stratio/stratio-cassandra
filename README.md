@@ -12,7 +12,7 @@ Any cell in the tables can be indexed, including those in the primary key as wel
 More detailed information is available at [Stratio Cassandra documentation](doc/stratio/extended-search-in-cassandra.md) .
 
 Features
-========
+--------
 
 Stratio Cassandra and its integration with Lucene search technology provides:
 
@@ -41,13 +41,13 @@ Not yet supported:
   * CQL user defined types.
 
 Requirements
-============
+------------
 
   * Java >= 1.7 (OpenJDK and Sun have been tested)
   * Ant >= 1.8
 
 Building and running
-====================
+--------------------
 
 Stratio Cassandra is distributed as a fork of Apache Cassandra, so its building, installation, operation and maintenance is overall identical. To build and run type:
 
@@ -67,7 +67,7 @@ The Lucene's index files will be stored in the same directories where the Cassan
 For more details about Apache Cassandra please see its [documentation](http://cassandra.apache.org/).
 
 Example
-=======
+-------
 
 We will create the following table to store tweets:
 

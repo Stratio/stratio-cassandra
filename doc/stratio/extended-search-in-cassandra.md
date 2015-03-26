@@ -1,15 +1,14 @@
----
-title: Extended Search in Cassandra
----
+Extended Search in Cassandra
+============================
 
-[Cassandra](http://cassandra.apache.org/ "Apache Cassandra project") index functionality has been extended to provide near
-real time search such as [ElasticSearch](http://www.elasticsearch.org/ "ElasticSearch project")
-or [Solr](https://lucene.apache.org/solr/ "Apache Solr project"), including full text search capabilities and free
-multivariable search. It is achieved through a Lucene based implementation of Cassandra secondary indexes, where each
-node of the cluster indexes its own data.
+[Cassandra](http://cassandra.apache.org/ "Apache Cassandra project") index functionality has been extended to provide near real time search such as [ElasticSearch](http://www.elasticsearch.org/ "ElasticSearch project") or [Solr](https://lucene.apache.org/solr/ "Apache Solr project"), including full text search capabilities and free multivariable search.
+
+It is also fully compatible with [Apache Spark](https://spark.apache.org/) and [Apache Hadoop](https://hadoop.apache.org/), allowing you to filter data at database level. This speeds up jobs reducing the amount of data to be collected and processed.
+
+Indexing is achieved through a Lucene based implementation of Cassandra secondary indexes, where each node of the cluster indexes its own data. Stratio Cassandra is one of the core modules on which Stratio's BigData platform (SDS) is based.
 
 Table of Contents
-=================
+-----------------
 
 -   [Overview](#overview)
 -   [Index creation](#index-creation)
@@ -22,7 +21,7 @@ Table of Contents
     -   [Range](#range-query)
     -   [Regexp](#regexp-query)
     -   [Wildcard](#wildcard-query)
--   [Other interesting queries](#other-interesting-queries)
+-   [Spark and Hadoop Integration](#spark-and-hadoop-integration)
     -   [Token Function](#token-function)
     -   [Server Side Filtering](#server-side-filtering)
 -   [Datatypes Mapping](#datatypes-mapping)
@@ -30,7 +29,7 @@ Table of Contents
     -   [Field type to CQL](#field-type-to-cql)
 
 Overview
-========
+--------
 
 Lucene search technology integration into Cassandra provides:
 
@@ -58,10 +57,9 @@ Not yet supported:
 -   User-defined types
 
 Index Creation
-==============
+--------------
 
-Syntax
-------
+###Syntax
 
 ```sql
 CREATE CUSTOM INDEX (IF NOT EXISTS)? <index_name>
@@ -204,8 +202,7 @@ Field definition options depend on the field type. Details and default values ar
 Note that Cassandra allows one custom index per table. On the other hand, Cassandra does not allow a modify 
 operation on indexes. To modify an index it needs to be deleted first and created again.
 
-Example
--------
+###Example
 
 This code below and the one for creating the corresponding keyspace and table is available in a CQL script that 
 can be sourced from the Cassandra shell: 
@@ -223,7 +220,13 @@ WITH OPTIONS = {
     'indexing_threads'     : '4',
     'indexing_queues_size' : '50',
     'schema' : '{
-        default_analyzer : "org.apache.lucene.analysis.standard.StandardAnalyzer",
+        analyzers : {
+              my_custom_analyzer : {
+                  type:"snowball",
+                  language:"Spanish",
+                  stopwords : "el,la,lo,loas,las,a,ante,bajo,cabe,con,contra"}
+        },
+        default_analyzer : "english",
         fields : {
             name   : {type     : "string"},
             gender : {type     : "string"},
@@ -238,16 +241,16 @@ WITH OPTIONS = {
             setz   : {type     : "string"},
             listz  : {type     : "string"},
             phrase : {type     : "text",
-                      analyzer : "org.apache.lucene.analysis.es.SpanishAnalyzer"}
+                      analyzer : "my_custom_analyzer"}
         }
     }'
 };
 ```
 
 Queries
-=======
+-------
 
-Syntax:
+###Syntax:
 
 ```sql
 SELECT ( <fields> | * )
@@ -379,8 +382,7 @@ In addition to the options described in the table, all query types have a “**b
 </tbody>
 </table>
 
-Boolean query
--------------
+###Boolean query
 
 Syntax:
 
@@ -432,8 +434,7 @@ WHERE stratio_col = '{query : {
                                   {type : "wildcard", field : "food", value : "tu*"}]}}';
 ```
 
-Contains query
---------------
+###Contains query
 
 Syntax:
 
@@ -466,8 +467,7 @@ WHERE stratio_col = '{query : {
                         values : ["2014/01/01", "2014/01/02", "2014/01/03"] }}';
 ```
 
-Fuzzy query
------------
+###Fuzzy query
 
 Syntax:
 
@@ -513,8 +513,7 @@ WHERE stratio_col = '{query : { type          : "fuzzy",
                                 prefix_length : 2 }}';
 ```
 
-Match query
------------
+###Match query
 
 Syntax:
 
@@ -557,8 +556,7 @@ WHERE stratio_col = '{query : {
                         value : "2014/01/01" }}';
 ```
 
-Phrase query
-------------
+###Phrase query
 
 Syntax:
 
@@ -599,8 +597,7 @@ WHERE stratio_col = '{query : {
                         slop   : 2 }}';
 ```
 
-Prefix query
-------------
+###Prefix query
 
 Syntax:
 
@@ -623,8 +620,7 @@ WHERE stratio_col = '{query : {
                         value         : "lu" }}';
 ```
 
-Range query
------------
+###Range query
 
 Syntax:
 
@@ -662,7 +658,7 @@ WHERE stratio_col = '{query : {
                         include_lower : true }}';
 ```
 
-Example 2: will return rows where *age* is in (-∞y, 0]
+Example 2: will return rows where *age* is in (-∞, 0]
 
 ```sql
 SELECT * FROM test.users
@@ -699,8 +695,7 @@ WHERE stratio_col = '{query : {
                         include_upper : true }}';
 ```
 
-Regexp query
-------------
+###Regexp query
 
 Syntax:
 
@@ -727,8 +722,7 @@ WHERE stratio_col = '{query : {
                         value : "[J][aeiou]{2}.*" }}';
 ```
 
-Wildcard query
---------------
+###Wildcard query
 
 Syntax:
 
@@ -756,12 +750,11 @@ WHERE stratio_col = '{query : {
 ```
 
 Spark and Hadoop Integration
-============================
+----------------------------
 
 Spark and Hadoop integrations are fully supported because Lucene queries can be combined with token range queries and pagination, which are the basis of MapReduce frameworks support.
 
-Token Range Queries
--------------------
+###Token Range Queries
 
 The token function allows computing the token for a given partition key. The primary key of the example table “users” is ((name, gender), animal, age) where (name, gender) is the partition key. When combining the token function and a Lucene-based filter in a where clause, the filter on tokens is applied first and then the condition of the filter clause.
 
@@ -774,8 +767,7 @@ SELECT name,gender
    AND token(name, gender) > token('Alicia', 'female');
 ```
 
-Pagination
-----------
+###Pagination
 
 Pagination over filtered results is fully supported. You can retrieve the rows starting from a certain key. For example, if the primary key is (userid, createdAt), you can query:
 
@@ -789,10 +781,9 @@ SELECT *
 ```
 
 Datatypes Mapping
-=================
-
-CQL to Field type
 -----------------
+
+###CQL to Field type
 
 <table>
     <thead>
@@ -936,8 +927,7 @@ CQL to Field type
     </tbody>
 </table>
 
-Field type to CQL
------------------
+###Field type to CQL
 
 <table>
     <thead>
