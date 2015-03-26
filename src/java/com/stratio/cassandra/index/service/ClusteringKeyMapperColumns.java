@@ -1,4 +1,4 @@
-package com.stratio.cassandra.index;
+package com.stratio.cassandra.index.service;
 
 import com.stratio.cassandra.index.query.builder.MatchConditionBuilder;
 import com.stratio.cassandra.index.query.builder.RangeConditionBuilder;

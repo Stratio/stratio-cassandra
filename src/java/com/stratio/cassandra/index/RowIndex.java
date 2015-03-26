@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index;
 
+import com.stratio.cassandra.index.service.RowService;
 import com.stratio.cassandra.util.Log;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;

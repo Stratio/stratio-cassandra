@@ -13,8 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.stratio.cassandra.index;
+package com.stratio.cassandra.index.service;
 
+import com.stratio.cassandra.index.RowIndexConfig;
 import com.stratio.cassandra.index.query.Search;
 import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.Columns;
@@ -112,7 +113,7 @@ public abstract class RowService {
      *
      * @return The used {@link Schema}.
      */
-    protected final Schema getSchema() {
+    public final Schema getSchema() {
         return schema;
     }
 
@@ -133,7 +134,7 @@ public abstract class RowService {
      * @param columnFamily A {@link ColumnFamily} with a single common cluster key.
      * @param timestamp    The insertion time.
      */
-    protected void index(final ByteBuffer key, final ColumnFamily columnFamily, final long timestamp) {
+    public void index(final ByteBuffer key, final ColumnFamily columnFamily, final long timestamp) {
         if (indexQueue == null) {
             indexInner(key, columnFamily, timestamp);
         } else {

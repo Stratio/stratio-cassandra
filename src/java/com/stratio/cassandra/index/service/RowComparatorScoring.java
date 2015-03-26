@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.stratio.cassandra.index;
+package com.stratio.cassandra.index.service;
 
 import org.apache.cassandra.db.Row;
 
@@ -27,14 +27,14 @@ import java.util.Comparator;
 public class RowComparatorScoring implements RowComparator {
 
     /**
-     * The used {@link com.stratio.cassandra.index.RowService}.
+     * The used {@link RowService}.
      */
     private final RowService rowService;
 
     /**
      * Returns a new {@link Comparator} for comparing {@link Row}s according to its Lucene scoring.
      *
-     * @param rowService The used {@link com.stratio.cassandra.index.RowService}.
+     * @param rowService The used {@link RowService}.
      */
     public RowComparatorScoring(RowService rowService) {
         this.rowService = rowService;
