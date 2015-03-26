@@ -51,10 +51,10 @@ Not yet supported:
 
 -   Thrift API
 -   Legacy compact storage option
--   Type "counter"
+-   Indexing `counter` columns
 -   Columns with TTL
+-   CQL user defined types
 -   Static columns
--   User-defined types
 
 Index Creation
 --------------

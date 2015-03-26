@@ -16,29 +16,28 @@ Features
 
 Stratio Cassandra and its integration with Lucene search technology provides:
 
-  * Big data full text search
-  * Relevance scoring and sorting
-  * Top-k queries
-  * Complex boolean queries (and, or, not)
-  * Near real time search
-  * CQL3 support
-  * Wide rows support
-  * Partition and cluster composite keys support
-  * Support for indexing columns part of primary key
-  * Support for searching with key/token clauses
-  * Support for searching with clauses with `ALLOW FILTERING`
-  * Apache Spark compatibility
-  * Apache Hadoop compatibility
-  * [Stratio Deep](https://github.com/Stratio/stratio-deep) support compatibility
-  * Self contained distribution
-  
+-   Big data full text search
+-   Relevance scoring and sorting
+-   General top-k queries
+-   Complex boolean queries (and, or, not)
+-   Near real-time search
+-   Custom analyzers
+-   CQL3 support
+-   Wide rows support
+-   Partition and cluster composite keys support
+-   Support for indexing columns part of primary key
+-   Third-party drivers compatibility
+-   Spark compatibility
+-   Hadoop compatibility
+
 Not yet supported:
 
-  * Thrift API
-  * Legacy compact storage option
-  * Indexing `counter` columns
-  * Columns with TTL
-  * CQL user defined types.
+-   Thrift API
+-   Legacy compact storage option
+-   Indexing `counter` columns
+-   Columns with TTL
+-   CQL user defined types
+-   Static columns
 
 Requirements
 ------------
