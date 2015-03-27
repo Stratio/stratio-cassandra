@@ -15,9 +15,9 @@
  */
 package com.stratio.cassandra.index.query;
 
+import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.index.schema.mapping.ColumnMapper;
 import com.stratio.cassandra.index.schema.mapping.ColumnMapperBoolean;
-import com.stratio.cassandra.index.schema.Schema;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.search.Query;
 import org.junit.Assert;
@@ -32,12 +32,10 @@ import static com.stratio.cassandra.index.query.builder.SearchBuilders.fuzzy;
 /**
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class FuzzyConditionTest extends AbstractConditionTest
-{
+public class FuzzyConditionTest extends AbstractConditionTest {
 
     @Test
-    public void testFuzzyQuery()
-    {
+    public void testFuzzyQuery() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperBoolean());
@@ -57,14 +55,12 @@ public class FuzzyConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testJson()
-    {
-        testJsonCondition(filter(fuzzy("name", "tr")
-                                         .maxEdits(1)
-                                         .maxExpansions(1)
-                                         .prefixLength(40)
-                                         .transpositions(true)
-                                         .boost(0.5f)));
+    public void testJson() {
+        testJsonCondition(filter(fuzzy("name", "tr").maxEdits(1)
+                                                    .maxExpansions(1)
+                                                    .prefixLength(40)
+                                                    .transpositions(true)
+                                                    .boost(0.5f)));
     }
 
 }

@@ -15,131 +15,112 @@
  */
 package com.stratio.cassandra.index.schema.mapping;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.UUID;
-
 import com.stratio.cassandra.index.schema.Schema;
-import com.stratio.cassandra.index.schema.mapping.ColumnMapper;
-import com.stratio.cassandra.index.schema.mapping.ColumnMapperBlob;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.Hex;
 import org.apache.lucene.document.Field;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.UUID;
 
-public class ColumnMapperBlobTest
-{
+public class ColumnMapperBlobTest {
 
     @Test()
-    public void testValueNull()
-    {
+    public void testValueNull() {
         ColumnMapperBlob mapper = new ColumnMapperBlob();
         String parsed = mapper.indexValue("test", null);
         Assert.assertNull(parsed);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueInteger()
-    {
+    public void testValueInteger() {
         ColumnMapperBlob mapper = new ColumnMapperBlob();
         mapper.indexValue("test", 3);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueLong()
-    {
+    public void testValueLong() {
         ColumnMapperBlob mapper = new ColumnMapperBlob();
         mapper.indexValue("test", 3l);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueFloat()
-    {
+    public void testValueFloat() {
         ColumnMapperBlob mapper = new ColumnMapperBlob();
         mapper.indexValue("test", 3.5f);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueDouble()
-    {
+    public void testValueDouble() {
         ColumnMapperBlob mapper = new ColumnMapperBlob();
         mapper.indexValue("test", 3.6d);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueUUID()
-    {
+    public void testValueUUID() {
         ColumnMapperBlob mapper = new ColumnMapperBlob();
         mapper.indexValue("test", UUID.randomUUID());
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueStringInvalid()
-    {
+    public void testValueStringInvalid() {
         ColumnMapperBlob mapper = new ColumnMapperBlob();
         mapper.indexValue("test", "Hello");
     }
 
     @Test
-    public void testValueStringLowerCaseWithoutPrefix()
-    {
+    public void testValueStringLowerCaseWithoutPrefix() {
         ColumnMapperBlob mapper = new ColumnMapperBlob();
         String parsed = mapper.indexValue("test", "f1");
         Assert.assertEquals("f1", parsed);
     }
 
     @Test
-    public void testValueStringUpperCaseWithoutPrefix()
-    {
+    public void testValueStringUpperCaseWithoutPrefix() {
         ColumnMapperBlob mapper = new ColumnMapperBlob();
         String parsed = mapper.indexValue("test", "F1");
         Assert.assertEquals("f1", parsed);
     }
 
     @Test
-    public void testValueStringMixedCaseWithoutPrefix()
-    {
+    public void testValueStringMixedCaseWithoutPrefix() {
         ColumnMapperBlob mapper = new ColumnMapperBlob();
         String parsed = mapper.indexValue("test", "F1a2B3");
         Assert.assertEquals("f1a2b3", parsed);
     }
 
     @Test
-    public void testValueStringLowerCaseWithPrefix()
-    {
+    public void testValueStringLowerCaseWithPrefix() {
         ColumnMapperBlob mapper = new ColumnMapperBlob();
         String parsed = mapper.indexValue("test", "0xf1");
         Assert.assertEquals("f1", parsed);
     }
 
     @Test
-    public void testValueStringUpperCaseWithPrefix()
-    {
+    public void testValueStringUpperCaseWithPrefix() {
         ColumnMapperBlob mapper = new ColumnMapperBlob();
         String parsed = mapper.indexValue("test", "0xF1");
         Assert.assertEquals("f1", parsed);
     }
 
     @Test
-    public void testValueStringMixedCaseWithPrefix()
-    {
+    public void testValueStringMixedCaseWithPrefix() {
         ColumnMapperBlob mapper = new ColumnMapperBlob();
         String parsed = mapper.indexValue("test", "0xF1a2B3");
         Assert.assertEquals("f1a2b3", parsed);
     }
 
     @Test(expected = NumberFormatException.class)
-    public void testValueStringOdd()
-    {
+    public void testValueStringOdd() {
         ColumnMapperBlob mapper = new ColumnMapperBlob();
         mapper.indexValue("test", "f");
     }
 
     @Test
-    public void testValueByteBuffer()
-    {
+    public void testValueByteBuffer() {
         ColumnMapperBlob mapper = new ColumnMapperBlob();
         ByteBuffer bb = ByteBufferUtil.hexToBytes("f1");
         String parsed = mapper.indexValue("test", bb);
@@ -147,8 +128,7 @@ public class ColumnMapperBlobTest
     }
 
     @Test
-    public void testValueBytes()
-    {
+    public void testValueBytes() {
         ColumnMapperBlob mapper = new ColumnMapperBlob();
         byte[] bytes = Hex.hexToBytes("f1");
         String parsed = mapper.indexValue("test", bytes);
@@ -156,8 +136,7 @@ public class ColumnMapperBlobTest
     }
 
     @Test
-    public void testField()
-    {
+    public void testField() {
         ColumnMapperBlob mapper = new ColumnMapperBlob();
         Field field = mapper.field("name", "f1B2");
         Assert.assertNotNull(field);
@@ -167,16 +146,14 @@ public class ColumnMapperBlobTest
     }
 
     @Test
-    public void testExtractAnalyzers()
-    {
+    public void testExtractAnalyzers() {
         ColumnMapperBlob mapper = new ColumnMapperBlob();
         String analyzer = mapper.analyzer();
         Assert.assertEquals(ColumnMapper.KEYWORD_ANALYZER, analyzer);
     }
 
     @Test
-    public void testParseJSON() throws IOException
-    {
+    public void testParseJSON() throws IOException {
         String json = "{fields:{age:{type:\"bytes\"}}}";
         Schema schema = Schema.fromJson(json);
         ColumnMapper columnMapper = schema.getMapper("age");
@@ -185,8 +162,7 @@ public class ColumnMapperBlobTest
     }
 
     @Test
-    public void testParseJSONEmpty() throws IOException
-    {
+    public void testParseJSONEmpty() throws IOException {
         String json = "{fields:{}}";
         Schema schema = Schema.fromJson(json);
         ColumnMapper columnMapper = schema.getMapper("age");
@@ -194,8 +170,7 @@ public class ColumnMapperBlobTest
     }
 
     @Test(expected = IOException.class)
-    public void testParseJSONInvalid() throws IOException
-    {
+    public void testParseJSONInvalid() throws IOException {
         String json = "{fields:{age:{}}";
         Schema.fromJson(json);
     }

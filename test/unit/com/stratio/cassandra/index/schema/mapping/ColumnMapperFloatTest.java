@@ -15,53 +15,45 @@
  */
 package com.stratio.cassandra.index.schema.mapping;
 
-import java.io.IOException;
-
 import com.stratio.cassandra.index.schema.Schema;
-import com.stratio.cassandra.index.schema.mapping.ColumnMapper;
-import com.stratio.cassandra.index.schema.mapping.ColumnMapperFloat;
 import org.apache.lucene.document.Field;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class ColumnMapperFloatTest
-{
+import java.io.IOException;
+
+public class ColumnMapperFloatTest {
 
     @Test()
-    public void testValueNull()
-    {
+    public void testValueNull() {
         ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
         Float parsed = mapper.indexValue("test", null);
         Assert.assertNull(parsed);
     }
 
     @Test
-    public void testValueInteger()
-    {
+    public void testValueInteger() {
         ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
         Float parsed = mapper.indexValue("test", 3);
         Assert.assertEquals(Float.valueOf(3), parsed);
     }
 
     @Test
-    public void testValueLong()
-    {
+    public void testValueLong() {
         ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
         Float parsed = mapper.indexValue("test", 3l);
         Assert.assertEquals(Float.valueOf(3), parsed);
     }
 
     @Test
-    public void testValueFloatWithoutDecimal()
-    {
+    public void testValueFloatWithoutDecimal() {
         ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
         Float parsed = mapper.indexValue("test", 3f);
         Assert.assertEquals(Float.valueOf(3), parsed);
     }
 
     @Test
-    public void testValueFloatWithDecimalFloor()
-    {
+    public void testValueFloatWithDecimalFloor() {
         ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
         Float parsed = mapper.indexValue("test", 3.5f);
         Assert.assertEquals(Float.valueOf(3.5f), parsed);
@@ -69,8 +61,7 @@ public class ColumnMapperFloatTest
     }
 
     @Test
-    public void testValueFloatWithDecimalCeil()
-    {
+    public void testValueFloatWithDecimalCeil() {
         ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
         Float parsed = mapper.indexValue("test", 3.6f);
         Assert.assertEquals(Float.valueOf(3.6f), parsed);
@@ -78,16 +69,14 @@ public class ColumnMapperFloatTest
     }
 
     @Test
-    public void testValueDoubleWithoutDecimal()
-    {
+    public void testValueDoubleWithoutDecimal() {
         ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
         Float parsed = mapper.indexValue("test", 3d);
         Assert.assertEquals(Float.valueOf(3), parsed);
     }
 
     @Test
-    public void testValueDoubleWithDecimalFloor()
-    {
+    public void testValueDoubleWithDecimalFloor() {
         ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
         Float parsed = mapper.indexValue("test", 3.5d);
         Assert.assertEquals(Float.valueOf(3.5f), parsed);
@@ -95,8 +84,7 @@ public class ColumnMapperFloatTest
     }
 
     @Test
-    public void testValueDoubleWithDecimalCeil()
-    {
+    public void testValueDoubleWithDecimalCeil() {
         ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
         Float parsed = mapper.indexValue("test", 3.6d);
         Assert.assertEquals(Float.valueOf(3.6f), parsed);
@@ -104,24 +92,21 @@ public class ColumnMapperFloatTest
     }
 
     @Test
-    public void testValueStringWithoutDecimal()
-    {
+    public void testValueStringWithoutDecimal() {
         ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
         Float parsed = mapper.indexValue("test", "3");
         Assert.assertEquals(Float.valueOf(3), parsed);
     }
 
     @Test
-    public void testValueStringWithDecimalFloor()
-    {
+    public void testValueStringWithDecimalFloor() {
         ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
         Float parsed = mapper.indexValue("test", "3.2");
         Assert.assertEquals(Float.valueOf(3.2f), parsed);
     }
 
     @Test
-    public void testValueStringWithDecimalCeil()
-    {
+    public void testValueStringWithDecimalCeil() {
         ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
         Float parsed = mapper.indexValue("test", "3.6");
         Assert.assertEquals(Float.valueOf(3.6f), parsed);
@@ -129,8 +114,7 @@ public class ColumnMapperFloatTest
     }
 
     @Test
-    public void testField()
-    {
+    public void testField() {
         ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
         Field field = mapper.field("name", "3.2");
         Assert.assertNotNull(field);
@@ -140,16 +124,14 @@ public class ColumnMapperFloatTest
     }
 
     @Test
-    public void testExtractAnalyzers()
-    {
+    public void testExtractAnalyzers() {
         ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
         String analyzer = mapper.analyzer();
         Assert.assertEquals(ColumnMapper.KEYWORD_ANALYZER, analyzer);
     }
 
     @Test
-    public void testParseJSON() throws IOException
-    {
+    public void testParseJSON() throws IOException {
         String json = "{fields:{age:{type:\"float\"}}}";
         Schema schema = Schema.fromJson(json);
         ColumnMapper columnMapper = schema.getMapper("age");
@@ -158,8 +140,7 @@ public class ColumnMapperFloatTest
     }
 
     @Test
-    public void testParseJSONEmpty() throws IOException
-    {
+    public void testParseJSONEmpty() throws IOException {
         String json = "{fields:{}}";
         Schema schema = Schema.fromJson(json);
         ColumnMapper columnMapper = schema.getMapper("age");
@@ -167,8 +148,7 @@ public class ColumnMapperFloatTest
     }
 
     @Test(expected = IOException.class)
-    public void testParseJSONInvalid() throws IOException
-    {
+    public void testParseJSONInvalid() throws IOException {
         String json = "{fields:{age:{}}";
         Schema.fromJson(json);
     }

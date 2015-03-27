@@ -15,62 +15,53 @@
  */
 package com.stratio.cassandra.index.schema.mapping;
 
-import java.io.IOException;
-import java.util.UUID;
-
 import com.stratio.cassandra.index.schema.Schema;
-import com.stratio.cassandra.index.schema.mapping.ColumnMapper;
-import com.stratio.cassandra.index.schema.mapping.ColumnMapperText;
 import org.apache.lucene.document.Field;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class ColumnMapperTextTest
-{
+import java.io.IOException;
+import java.util.UUID;
+
+public class ColumnMapperTextTest {
 
     @Test()
-    public void testAnalyzerNull()
-    {
+    public void testAnalyzerNull() {
         ColumnMapperText mapper = new ColumnMapperText(null);
         String parsed = mapper.indexValue("test", null);
         Assert.assertNull(parsed);
     }
 
     @Test()
-    public void testValueNull()
-    {
+    public void testValueNull() {
         ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
         String parsed = mapper.indexValue("test", null);
         Assert.assertNull(parsed);
     }
 
     @Test
-    public void testValueInteger()
-    {
+    public void testValueInteger() {
         ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
         String parsed = mapper.indexValue("test", 3);
         Assert.assertEquals("3", parsed);
     }
 
     @Test
-    public void testValueLong()
-    {
+    public void testValueLong() {
         ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
         String parsed = mapper.indexValue("test", 3l);
         Assert.assertEquals("3", parsed);
     }
 
     @Test
-    public void testValueFloatWithoutDecimal()
-    {
+    public void testValueFloatWithoutDecimal() {
         ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
         String parsed = mapper.indexValue("test", 3f);
         Assert.assertEquals("3.0", parsed);
     }
 
     @Test
-    public void testValueFloatWithDecimalFloor()
-    {
+    public void testValueFloatWithDecimalFloor() {
         ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
         String parsed = mapper.indexValue("test", 3.5f);
         Assert.assertEquals("3.5", parsed);
@@ -78,24 +69,21 @@ public class ColumnMapperTextTest
     }
 
     @Test
-    public void testValueFloatWithDecimalCeil()
-    {
+    public void testValueFloatWithDecimalCeil() {
         ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
         String parsed = mapper.indexValue("test", 3.6f);
         Assert.assertEquals("3.6", parsed);
     }
 
     @Test
-    public void testValueDoubleWithoutDecimal()
-    {
+    public void testValueDoubleWithoutDecimal() {
         ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
         String parsed = mapper.indexValue("test", 3d);
         Assert.assertEquals("3.0", parsed);
     }
 
     @Test
-    public void testValueDoubleWithDecimalFloor()
-    {
+    public void testValueDoubleWithDecimalFloor() {
         ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
         String parsed = mapper.indexValue("test", 3.5d);
         Assert.assertEquals("3.5", parsed);
@@ -103,8 +91,7 @@ public class ColumnMapperTextTest
     }
 
     @Test
-    public void testValueDoubleWithDecimalCeil()
-    {
+    public void testValueDoubleWithDecimalCeil() {
         ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
         String parsed = mapper.indexValue("test", 3.6d);
         Assert.assertEquals("3.6", parsed);
@@ -112,24 +99,21 @@ public class ColumnMapperTextTest
     }
 
     @Test
-    public void testValueStringWithoutDecimal()
-    {
+    public void testValueStringWithoutDecimal() {
         ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
         String parsed = mapper.indexValue("test", "3");
         Assert.assertEquals("3", parsed);
     }
 
     @Test
-    public void testValueStringWithDecimalFloor()
-    {
+    public void testValueStringWithDecimalFloor() {
         ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
         String parsed = mapper.indexValue("test", "3.2");
         Assert.assertEquals("3.2", parsed);
     }
 
     @Test
-    public void testValueStringWithDecimalCeil()
-    {
+    public void testValueStringWithDecimalCeil() {
         ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
         String parsed = mapper.indexValue("test", "3.6");
         Assert.assertEquals("3.6", parsed);
@@ -137,16 +121,14 @@ public class ColumnMapperTextTest
     }
 
     @Test
-    public void testValueUUID()
-    {
+    public void testValueUUID() {
         ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
         String parsed = mapper.indexValue("test", UUID.fromString("550e8400-e29b-41d4-a716-446655440000"));
         Assert.assertEquals("550e8400-e29b-41d4-a716-446655440000", parsed);
     }
 
     @Test
-    public void testField()
-    {
+    public void testField() {
         ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
         Field field = mapper.field("name", "hello");
         Assert.assertNotNull(field);
@@ -156,15 +138,13 @@ public class ColumnMapperTextTest
     }
 
     @Test
-    public void testExtractAnalyzers()
-    {
+    public void testExtractAnalyzers() {
         ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
         Assert.assertEquals("org.apache.lucene.analysis.en.EnglishAnalyzer", mapper.analyzer());
     }
 
     @Test
-    public void testParseJSONWithAnalyzer() throws IOException
-    {
+    public void testParseJSONWithAnalyzer() throws IOException {
         String json = "{fields:{age:{type:\"text\", getAnalyzer:\"org.apache.lucene.analysis.en.EnglishAnalyzer\"}}}";
         Schema schema = Schema.fromJson(json);
         ColumnMapper columnMapper = schema.getMapper("age");
@@ -173,8 +153,7 @@ public class ColumnMapperTextTest
     }
 
     @Test
-    public void testParseJSONWithoutAnalyzer() throws IOException
-    {
+    public void testParseJSONWithoutAnalyzer() throws IOException {
         String json = "{fields:{age:{type:\"text\"}}}";
         Schema schema = Schema.fromJson(json);
         ColumnMapper columnMapper = schema.getMapper("age");
@@ -183,8 +162,7 @@ public class ColumnMapperTextTest
     }
 
     @Test
-    public void testParseJSONEmpty() throws IOException
-    {
+    public void testParseJSONEmpty() throws IOException {
         String json = "{fields:{}}";
         Schema schema = Schema.fromJson(json);
         ColumnMapper columnMapper = schema.getMapper("age");
@@ -192,8 +170,7 @@ public class ColumnMapperTextTest
     }
 
     @Test(expected = IOException.class)
-    public void testParseJSONInvalid() throws IOException
-    {
+    public void testParseJSONInvalid() throws IOException {
         String json = "{fields:{age:{}}";
         Schema.fromJson(json);
     }

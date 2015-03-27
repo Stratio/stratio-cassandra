@@ -15,114 +15,98 @@
  */
 package com.stratio.cassandra.index.schema.mapping;
 
+import com.stratio.cassandra.index.schema.Schema;
+import org.apache.lucene.document.Field;
+import org.junit.Assert;
+import org.junit.Test;
+
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.UUID;
 
-import com.stratio.cassandra.index.schema.Schema;
-import com.stratio.cassandra.index.schema.mapping.ColumnMapper;
-import com.stratio.cassandra.index.schema.mapping.ColumnMapperInet;
-import org.apache.lucene.document.Field;
-import org.junit.Assert;
-import org.junit.Test;
-
-public class ColumnMapperInetTest
-{
+public class ColumnMapperInetTest {
 
     @Test()
-    public void testValueNull()
-    {
+    public void testValueNull() {
         ColumnMapperInet mapper = new ColumnMapperInet();
         String parsed = mapper.indexValue("test", null);
         Assert.assertNull(parsed);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueInteger()
-    {
+    public void testValueInteger() {
         ColumnMapperInet mapper = new ColumnMapperInet();
         mapper.indexValue("test", 3);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueLong()
-    {
+    public void testValueLong() {
         ColumnMapperInet mapper = new ColumnMapperInet();
         mapper.indexValue("test", 3l);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueFloat()
-    {
+    public void testValueFloat() {
         ColumnMapperInet mapper = new ColumnMapperInet();
         mapper.indexValue("test", 3.5f);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueDouble()
-    {
+    public void testValueDouble() {
         ColumnMapperInet mapper = new ColumnMapperInet();
         mapper.indexValue("test", 3.6d);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueUUID()
-    {
+    public void testValueUUID() {
         ColumnMapperInet mapper = new ColumnMapperInet();
         mapper.indexValue("test", UUID.randomUUID());
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueStringInvalid()
-    {
+    public void testValueStringInvalid() {
         ColumnMapperInet mapper = new ColumnMapperInet();
         mapper.indexValue("test", "Hello");
     }
 
     @Test
-    public void testValueStringV4WithoutZeros()
-    {
+    public void testValueStringV4WithoutZeros() {
         ColumnMapperInet mapper = new ColumnMapperInet();
         String parsed = mapper.indexValue("test", "192.168.0.1");
         Assert.assertEquals("192.168.0.1", parsed);
     }
 
     @Test
-    public void testValueStringV4WithZeros()
-    {
+    public void testValueStringV4WithZeros() {
         ColumnMapperInet mapper = new ColumnMapperInet();
         String parsed = mapper.indexValue("test", "192.168.000.001");
         Assert.assertEquals("192.168.0.1", parsed);
     }
 
     @Test
-    public void testValueStringV6WithoutZeros()
-    {
+    public void testValueStringV6WithoutZeros() {
         ColumnMapperInet mapper = new ColumnMapperInet();
         String parsed = mapper.indexValue("test", "2001:db8:2de:0:0:0:0:e13");
         Assert.assertEquals("2001:db8:2de:0:0:0:0:e13", parsed);
     }
 
     @Test
-    public void testValueStringV6WithZeros()
-    {
+    public void testValueStringV6WithZeros() {
         ColumnMapperInet mapper = new ColumnMapperInet();
         String parsed = mapper.indexValue("test", "2001:0db8:02de:0000:0000:0000:0000:0e13");
         Assert.assertEquals("2001:db8:2de:0:0:0:0:e13", parsed);
     }
 
     @Test
-    public void testValueStringV6Compact()
-    {
+    public void testValueStringV6Compact() {
         ColumnMapperInet mapper = new ColumnMapperInet();
         String parsed = mapper.indexValue("test", "2001:DB8:2de::0e13");
         Assert.assertEquals("2001:db8:2de:0:0:0:0:e13", parsed);
     }
 
     @Test
-    public void testValueInetV4() throws UnknownHostException
-    {
+    public void testValueInetV4() throws UnknownHostException {
         ColumnMapperInet mapper = new ColumnMapperInet();
         InetAddress inet = InetAddress.getByName("192.168.0.13");
         String parsed = mapper.indexValue("test", inet);
@@ -130,8 +114,7 @@ public class ColumnMapperInetTest
     }
 
     @Test
-    public void testValueInetV6() throws UnknownHostException
-    {
+    public void testValueInetV6() throws UnknownHostException {
         ColumnMapperInet mapper = new ColumnMapperInet();
         InetAddress inet = InetAddress.getByName("2001:db8:2de:0:0:0:0:e13");
         String parsed = mapper.indexValue("test", inet);
@@ -139,8 +122,7 @@ public class ColumnMapperInetTest
     }
 
     @Test
-    public void testField()
-    {
+    public void testField() {
         ColumnMapperInet mapper = new ColumnMapperInet();
         Field field = mapper.field("name", "192.168.0.13");
         Assert.assertNotNull(field);
@@ -150,16 +132,14 @@ public class ColumnMapperInetTest
     }
 
     @Test
-    public void testExtractAnalyzers()
-    {
+    public void testExtractAnalyzers() {
         ColumnMapperInet mapper = new ColumnMapperInet();
         String analyzer = mapper.analyzer();
         Assert.assertEquals(ColumnMapper.KEYWORD_ANALYZER, analyzer);
     }
 
     @Test
-    public void testParseJSON() throws IOException
-    {
+    public void testParseJSON() throws IOException {
         String json = "{fields:{age:{type:\"inet\"}}}";
         Schema schema = Schema.fromJson(json);
         ColumnMapper columnMapper = schema.getMapper("age");
@@ -168,8 +148,7 @@ public class ColumnMapperInetTest
     }
 
     @Test
-    public void testParseJSONEmpty() throws IOException
-    {
+    public void testParseJSONEmpty() throws IOException {
         String json = "{fields:{}}";
         Schema schema = Schema.fromJson(json);
         ColumnMapper columnMapper = schema.getMapper("age");
@@ -177,8 +156,7 @@ public class ColumnMapperInetTest
     }
 
     @Test(expected = IOException.class)
-    public void testParseJSONInvalid() throws IOException
-    {
+    public void testParseJSONInvalid() throws IOException {
         String json = "{fields:{age:{}}";
         Schema.fromJson(json);
     }

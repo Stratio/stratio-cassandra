@@ -24,108 +24,92 @@ import java.io.IOException;
 import java.util.Date;
 import java.util.UUID;
 
-public class ColumnMapperBigDecimalTest
-{
+public class ColumnMapperBigDecimalTest {
 
     @Test()
-    public void testValueNull()
-    {
+    public void testValueNull() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(10, 10);
         String parsed = mapper.indexValue("test", null);
         Assert.assertNull(parsed);
     }
 
     @Test
-    public void testValueIntegerDigitsNull()
-    {
+    public void testValueIntegerDigitsNull() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(null, 10);
         Assert.assertEquals(ColumnMapperBigDecimal.DEFAULT_INTEGER_DIGITS, mapper.getIntegerDigits());
         Assert.assertEquals(10, mapper.getDecimalDigits());
     }
 
     @Test
-    public void testValueDecimalDigitsNull()
-    {
+    public void testValueDecimalDigitsNull() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(10, null);
         Assert.assertEquals(10, mapper.getIntegerDigits());
         Assert.assertEquals(ColumnMapperBigDecimal.DEFAULT_DECIMAL_DIGITS, mapper.getDecimalDigits());
     }
 
     @Test
-    public void testValueBothDigitsNull()
-    {
+    public void testValueBothDigitsNull() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(null, null);
         Assert.assertEquals(ColumnMapperBigDecimal.DEFAULT_INTEGER_DIGITS, mapper.getIntegerDigits());
         Assert.assertEquals(ColumnMapperBigDecimal.DEFAULT_DECIMAL_DIGITS, mapper.getDecimalDigits());
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueIntegerDigitsZero()
-    {
+    public void testValueIntegerDigitsZero() {
         new ColumnMapperBigDecimal(0, 10);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueDecimalDigitsZero()
-    {
+    public void testValueDecimalDigitsZero() {
         new ColumnMapperBigDecimal(10, 0);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueBothDigitsZero()
-    {
+    public void testValueBothDigitsZero() {
         new ColumnMapperBigDecimal(0, 0);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueIntegerDigitsNegative()
-    {
+    public void testValueIntegerDigitsNegative() {
         new ColumnMapperBigDecimal(-1, 10);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueDecimalDigitsNegative()
-    {
+    public void testValueDecimalDigitsNegative() {
         new ColumnMapperBigDecimal(10, -1);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueBothDigitsNegative()
-    {
+    public void testValueBothDigitsNegative() {
         new ColumnMapperBigDecimal(-1, -1);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueBooleanTrue()
-    {
+    public void testValueBooleanTrue() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(100, 100);
         mapper.indexValue("test", true);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueBooleanFalse()
-    {
+    public void testValueBooleanFalse() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(100, 100);
         mapper.indexValue("test", false);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueUUID()
-    {
+    public void testValueUUID() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(100, 100);
         mapper.indexValue("test", UUID.fromString("550e8400-e29b-41d4-a716-446655440000"));
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueDate()
-    {
+    public void testValueDate() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(100, 100);
         mapper.indexValue("test", new Date());
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueStringInvalid()
-    {
+    public void testValueStringInvalid() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(100, 100);
         mapper.indexValue("test", "0s0");
     }
@@ -133,48 +117,42 @@ public class ColumnMapperBigDecimalTest
     // /////////////
 
     @Test
-    public void testValueStringMinPositive()
-    {
+    public void testValueStringMinPositive() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
         String parsed = mapper.indexValue("test", "1");
         Assert.assertEquals("10000.9999", parsed);
     }
 
     @Test
-    public void testValueStringMaxPositive()
-    {
+    public void testValueStringMaxPositive() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
         String parsed = mapper.indexValue("test", "9999.9999");
         Assert.assertEquals("19999.9998", parsed);
     }
 
     @Test
-    public void testValueStringMinNegative()
-    {
+    public void testValueStringMinNegative() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
         String parsed = mapper.indexValue("test", "-1");
         Assert.assertEquals("09998.9999", parsed);
     }
 
     @Test
-    public void testValueStringMaxNegative()
-    {
+    public void testValueStringMaxNegative() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
         String parsed = mapper.indexValue("test", "-9999.9999");
         Assert.assertEquals("00000.0000", parsed);
     }
 
     @Test
-    public void testValueStringZero()
-    {
+    public void testValueStringZero() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
         String parsed = mapper.indexValue("test", "0");
         Assert.assertEquals("09999.9999", parsed);
     }
 
     @Test
-    public void testValueStringLeadingZeros()
-    {
+    public void testValueStringLeadingZeros() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
         String parsed = mapper.indexValue("test", "000.042");
         Assert.assertEquals("10000.0419", parsed);
@@ -183,40 +161,35 @@ public class ColumnMapperBigDecimalTest
     // // ///
 
     @Test
-    public void testValueIntegerMinPositive()
-    {
+    public void testValueIntegerMinPositive() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
         String parsed = mapper.indexValue("test", 1);
         Assert.assertEquals("10000.9999", parsed);
     }
 
     @Test
-    public void testValueIntegerMaxPositive()
-    {
+    public void testValueIntegerMaxPositive() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
         String parsed = mapper.indexValue("test", 9999.9999);
         Assert.assertEquals("19999.9998", parsed);
     }
 
     @Test
-    public void testValueIntegerMinNegative()
-    {
+    public void testValueIntegerMinNegative() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
         String parsed = mapper.indexValue("test", -1);
         Assert.assertEquals("09998.9999", parsed);
     }
 
     @Test
-    public void testValueIntegerMaxNegative()
-    {
+    public void testValueIntegerMaxNegative() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
         String parsed = mapper.indexValue("test", -9999.9999);
         Assert.assertEquals("00000.0000", parsed);
     }
 
     @Test
-    public void testValueIntegerZero()
-    {
+    public void testValueIntegerZero() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
         String parsed = mapper.indexValue("test", 0);
         Assert.assertEquals("09999.9999", parsed);
@@ -225,29 +198,25 @@ public class ColumnMapperBigDecimalTest
     // //////
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueTooBigInteger()
-    {
+    public void testValueTooBigInteger() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
         mapper.indexValue("test", 10000);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueTooBigDecimal()
-    {
+    public void testValueTooBigDecimal() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
         mapper.indexValue("test", 42.00001);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueTooSmallInteger()
-    {
+    public void testValueTooSmallInteger() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
         mapper.indexValue("test", -10000);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueTooSmallDecimal()
-    {
+    public void testValueTooSmallDecimal() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
         mapper.indexValue("test", -0.00001);
     }
@@ -255,8 +224,7 @@ public class ColumnMapperBigDecimalTest
     // /////
 
     @Test
-    public void testValueIntegerNegativeMaxSort()
-    {
+    public void testValueIntegerNegativeMaxSort() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(8, 100);
         String lower = mapper.indexValue("test", -99999999);
         String upper = mapper.indexValue("test", -99999998);
@@ -265,8 +233,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testValueIntegerNegativeMinSort()
-    {
+    public void testValueIntegerNegativeMinSort() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(8, 100);
         String lower = mapper.indexValue("test", -2);
         String upper = mapper.indexValue("test", -1);
@@ -275,8 +242,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testValueIntegerPositiveMaxSort()
-    {
+    public void testValueIntegerPositiveMaxSort() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(8, 100);
         String lower = mapper.indexValue("test", 99999998);
         String upper = mapper.indexValue("test", 99999999);
@@ -285,8 +251,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testValueIntegerPositiveMinSort()
-    {
+    public void testValueIntegerPositiveMinSort() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(8, 100);
         String lower = mapper.indexValue("test", 1);
         String upper = mapper.indexValue("test", 2);
@@ -295,8 +260,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testValueIntegerNegativeZeroSort()
-    {
+    public void testValueIntegerNegativeZeroSort() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(8, 100);
         String lower = mapper.indexValue("test", -1);
         String upper = mapper.indexValue("test", 0);
@@ -305,8 +269,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testValueIntegerPositiveZeroSort()
-    {
+    public void testValueIntegerPositiveZeroSort() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(8, 100);
         String lower = mapper.indexValue("test", 0);
         String upper = mapper.indexValue("test", 1);
@@ -315,8 +278,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testValueIntegerExtremeSort()
-    {
+    public void testValueIntegerExtremeSort() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(8, 100);
         String lower = mapper.indexValue("test", -99999999);
         String upper = mapper.indexValue("test", 99999999);
@@ -325,8 +287,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testValueIntegerNegativePositiveSort()
-    {
+    public void testValueIntegerNegativePositiveSort() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(8, 100);
         String lower = mapper.indexValue("test", -1);
         String upper = mapper.indexValue("test", 1);
@@ -335,8 +296,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testValueDecimalNegativeMaxSort()
-    {
+    public void testValueDecimalNegativeMaxSort() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(2, 8);
         String lower = mapper.indexValue("test", -0.99999999);
         String upper = mapper.indexValue("test", -0.99999998);
@@ -345,8 +305,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testValueDecimalNegativeMinSort()
-    {
+    public void testValueDecimalNegativeMinSort() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(2, 8);
         String lower = mapper.indexValue("test", -0.2);
         String upper = mapper.indexValue("test", -0.1);
@@ -355,8 +314,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testValueDecimalPositiveMaxSort()
-    {
+    public void testValueDecimalPositiveMaxSort() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(2, 8);
         String lower = mapper.indexValue("test", 0.99999998);
         String upper = mapper.indexValue("test", 0.99999999);
@@ -365,8 +323,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testValueDecimalPositiveMinSort()
-    {
+    public void testValueDecimalPositiveMinSort() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(2, 8);
         String lower = mapper.indexValue("test", 0.1);
         String upper = mapper.indexValue("test", 0.2);
@@ -375,8 +332,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testValueDecimalNegativeZeroSort()
-    {
+    public void testValueDecimalNegativeZeroSort() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(2, 8);
         String lower = mapper.indexValue("test", -0.1);
         String upper = mapper.indexValue("test", 0.0);
@@ -385,8 +341,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testValueDecimalPositiveZeroSort()
-    {
+    public void testValueDecimalPositiveZeroSort() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(2, 8);
         String lower = mapper.indexValue("test", 0.0);
         String upper = mapper.indexValue("test", 0.1);
@@ -395,8 +350,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testValueDecimalExtremeSort()
-    {
+    public void testValueDecimalExtremeSort() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(2, 8);
         String lower = mapper.indexValue("test", -0.99999999);
         String upper = mapper.indexValue("test", 0.99999999);
@@ -405,8 +359,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testValueDecimalNegativePositiveSort()
-    {
+    public void testValueDecimalNegativePositiveSort() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(2, 8);
         String lower = mapper.indexValue("test", -0.1);
         String upper = mapper.indexValue("test", 0.1);
@@ -417,8 +370,7 @@ public class ColumnMapperBigDecimalTest
     // ////
 
     @Test
-    public void testValueNegativeMaxSort()
-    {
+    public void testValueNegativeMaxSort() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
         String lower = mapper.indexValue("test", -9999.9999);
         String upper = mapper.indexValue("test", -9999.9998);
@@ -427,8 +379,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testValueNegativeMinSort()
-    {
+    public void testValueNegativeMinSort() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
         String lower = mapper.indexValue("test", -0.0002);
         String upper = mapper.indexValue("test", -0.0001);
@@ -437,8 +388,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testValuePositiveMaxSort()
-    {
+    public void testValuePositiveMaxSort() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
         String lower = mapper.indexValue("test", 9999.9998);
         String upper = mapper.indexValue("test", 9999.9999);
@@ -447,8 +397,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testValuePositiveMinSort()
-    {
+    public void testValuePositiveMinSort() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
         String lower = mapper.indexValue("test", 0.0001);
         String upper = mapper.indexValue("test", 0.0002);
@@ -457,8 +406,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testValueNegativeZeroSort()
-    {
+    public void testValueNegativeZeroSort() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
         String lower = mapper.indexValue("test", -0.0001);
         String upper = mapper.indexValue("test", 0.0);
@@ -467,8 +415,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testValuePositiveZeroSort()
-    {
+    public void testValuePositiveZeroSort() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
         String lower = mapper.indexValue("test", 0.0);
         String upper = mapper.indexValue("test", 0.0001);
@@ -477,8 +424,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testValueExtremeSort()
-    {
+    public void testValueExtremeSort() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
         String lower = mapper.indexValue("test", -9999.9999);
         String upper = mapper.indexValue("test", 9999.9999);
@@ -487,8 +433,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testValueNegativePositiveSort()
-    {
+    public void testValueNegativePositiveSort() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
         String lower = mapper.indexValue("test", -2.4);
         String upper = mapper.indexValue("test", 2.4);
@@ -497,8 +442,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testValuePositivePositionsSort()
-    {
+    public void testValuePositivePositionsSort() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
         String lower = mapper.indexValue("test", 1.9);
         String upper = mapper.indexValue("test", 1.99);
@@ -507,8 +451,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testValueNegativePositionsSort()
-    {
+    public void testValueNegativePositionsSort() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
         String lower = mapper.indexValue("test", -1.9999);
         String upper = mapper.indexValue("test", -1.9);
@@ -517,8 +460,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testField()
-    {
+    public void testField() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(4, 4);
         Field field = mapper.field("name", 42.43);
         Assert.assertNotNull(field);
@@ -528,16 +470,14 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testExtractAnalyzers()
-    {
+    public void testExtractAnalyzers() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(10, 10);
         String analyzer = mapper.analyzer();
         Assert.assertEquals(ColumnMapper.KEYWORD_ANALYZER, analyzer);
     }
 
     @Test
-    public void testParseJSONWithoutDigits() throws IOException
-    {
+    public void testParseJSONWithoutDigits() throws IOException {
         String json = "{fields:{age:{type:\"bigdec\"}}}";
         Schema schema = Schema.fromJson(json);
         ColumnMapper columnMapper = schema.getMapper("age");
@@ -546,8 +486,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testParseJSONWithIntegerDigits() throws IOException
-    {
+    public void testParseJSONWithIntegerDigits() throws IOException {
         String json = "{fields:{age:{type:\"bigdec\", integer_digits:20}}}";
         Schema schema = Schema.fromJson(json);
         ColumnMapper columnMapper = schema.getMapper("age");
@@ -559,8 +498,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testParseJSONWithDecimalDigits() throws IOException
-    {
+    public void testParseJSONWithDecimalDigits() throws IOException {
         String json = "{fields:{age:{type:\"bigdec\", decimal_digits:20}}}";
         Schema schema = Schema.fromJson(json);
         ColumnMapper columnMapper = schema.getMapper("age");
@@ -572,8 +510,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testParseJSONWithBothDigits() throws IOException
-    {
+    public void testParseJSONWithBothDigits() throws IOException {
         String json = "{fields:{age:{type:\"bigdec\", integer_digits:20, decimal_digits:30}}}";
         Schema schema = Schema.fromJson(json);
         ColumnMapper columnMapper = schema.getMapper("age");
@@ -584,8 +521,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test
-    public void testParseJSONEmpty() throws IOException
-    {
+    public void testParseJSONEmpty() throws IOException {
         String json = "{fields:{}}";
         Schema schema = Schema.fromJson(json);
         ColumnMapper columnMapper = schema.getMapper("age");
@@ -593,8 +529,7 @@ public class ColumnMapperBigDecimalTest
     }
 
     @Test(expected = IOException.class)
-    public void testParseJSONInvalid() throws IOException
-    {
+    public void testParseJSONInvalid() throws IOException {
         String json = "{fields:{age:{}}";
         Schema.fromJson(json);
     }

@@ -15,36 +15,30 @@
  */
 package com.stratio.cassandra.index.schema.mapping;
 
+import com.stratio.cassandra.index.schema.Schema;
+import org.apache.lucene.document.Field;
+import org.junit.Assert;
+import org.junit.Test;
+
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import com.stratio.cassandra.index.schema.Schema;
-import com.stratio.cassandra.index.schema.mapping.ColumnMapper;
-import com.stratio.cassandra.index.schema.mapping.ColumnMapperDate;
-import org.apache.lucene.document.Field;
-import org.junit.Assert;
-import org.junit.Test;
-
-
-public class ColumnMapperDateTest
-{
+public class ColumnMapperDateTest {
 
     private static final String PATTERN = "yyyy-MM-dd";
     private static final SimpleDateFormat sdf = new SimpleDateFormat(PATTERN);
 
     @Test()
-    public void testValueNull()
-    {
+    public void testValueNull() {
         ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
         Long parsed = mapper.indexValue("test", null);
         Assert.assertNull(parsed);
     }
 
     @Test
-    public void testValueDate()
-    {
+    public void testValueDate() {
         ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
         Date date = new Date();
         long parsed = mapper.indexValue("test", date);
@@ -52,32 +46,28 @@ public class ColumnMapperDateTest
     }
 
     @Test
-    public void testValueInteger()
-    {
+    public void testValueInteger() {
         ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
         Long parsed = mapper.indexValue("test", 3);
         Assert.assertEquals(Long.valueOf(3), parsed);
     }
 
     @Test
-    public void testValueLong()
-    {
+    public void testValueLong() {
         ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
         Long parsed = mapper.indexValue("test", 3l);
         Assert.assertEquals(Long.valueOf(3), parsed);
     }
 
     @Test
-    public void testValueFloatWithoutDecimal()
-    {
+    public void testValueFloatWithoutDecimal() {
         ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
         Long parsed = mapper.indexValue("test", 3f);
         Assert.assertEquals(Long.valueOf(3), parsed);
     }
 
     @Test
-    public void testValueFloatWithDecimalFloor()
-    {
+    public void testValueFloatWithDecimalFloor() {
         ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
         Long parsed = mapper.indexValue("test", 3.5f);
         Assert.assertEquals(Long.valueOf(3), parsed);
@@ -85,8 +75,7 @@ public class ColumnMapperDateTest
     }
 
     @Test
-    public void testValueFloatWithDecimalCeil()
-    {
+    public void testValueFloatWithDecimalCeil() {
         ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
         Long parsed = mapper.indexValue("test", 3.6f);
         Assert.assertEquals(Long.valueOf(3), parsed);
@@ -94,16 +83,14 @@ public class ColumnMapperDateTest
     }
 
     @Test
-    public void testValueDoubleWithoutDecimal()
-    {
+    public void testValueDoubleWithoutDecimal() {
         ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
         Long parsed = mapper.indexValue("test", 3d);
         Assert.assertEquals(Long.valueOf(3), parsed);
     }
 
     @Test
-    public void testValueDoubleWithDecimalFloor()
-    {
+    public void testValueDoubleWithDecimalFloor() {
         ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
         Long parsed = mapper.indexValue("test", 3.5d);
         Assert.assertEquals(Long.valueOf(3), parsed);
@@ -111,8 +98,7 @@ public class ColumnMapperDateTest
     }
 
     @Test
-    public void testValueDoubleWithDecimalCeil()
-    {
+    public void testValueDoubleWithDecimalCeil() {
         ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
         Long parsed = mapper.indexValue("test", 3.6d);
         Assert.assertEquals(Long.valueOf(3), parsed);
@@ -120,38 +106,33 @@ public class ColumnMapperDateTest
     }
 
     @Test
-    public void testValueStringWithPattern() throws ParseException
-    {
+    public void testValueStringWithPattern() throws ParseException {
         ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
         long parsed = mapper.indexValue("test", "2014-03-19");
         Assert.assertEquals(sdf.parse("2014-03-19").getTime(), parsed);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueStringWithPatternInvalid()
-    {
+    public void testValueStringWithPatternInvalid() {
         ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
         mapper.indexValue("test", "2014/03/19");
     }
 
     @Test
-    public void testValueStringWithoutPattern() throws ParseException
-    {
+    public void testValueStringWithoutPattern() throws ParseException {
         ColumnMapperDate mapper = new ColumnMapperDate(null);
         long parsed = mapper.indexValue("test", "2014/03/19 00:00:00.000");
         Assert.assertEquals(sdf.parse("2014-03-19").getTime(), parsed);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testValueStringWithoutPatternInvalid() throws ParseException
-    {
+    public void testValueStringWithoutPatternInvalid() throws ParseException {
         ColumnMapperDate mapper = new ColumnMapperDate(null);
         mapper.indexValue("test", "2014-03-19");
     }
 
     @Test
-    public void testField() throws ParseException
-    {
+    public void testField() throws ParseException {
         ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
         Field field = mapper.field("name", "2014-03-19");
         Assert.assertNotNull(field);
@@ -161,16 +142,14 @@ public class ColumnMapperDateTest
     }
 
     @Test
-    public void testExtractAnalyzers()
-    {
+    public void testExtractAnalyzers() {
         ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
         String analyzer = mapper.analyzer();
         Assert.assertEquals(ColumnMapper.KEYWORD_ANALYZER, analyzer);
     }
 
     @Test
-    public void testParseJSON() throws IOException
-    {
+    public void testParseJSON() throws IOException {
         String json = "{fields:{age:{type:\"date\"}}}";
         Schema schema = Schema.fromJson(json);
         ColumnMapper columnMapper = schema.getMapper("age");
@@ -179,8 +158,7 @@ public class ColumnMapperDateTest
     }
 
     @Test
-    public void testParseJSONEmpty() throws IOException
-    {
+    public void testParseJSONEmpty() throws IOException {
         String json = "{fields:{}}";
         Schema schema = Schema.fromJson(json);
         ColumnMapper columnMapper = schema.getMapper("age");
@@ -188,8 +166,7 @@ public class ColumnMapperDateTest
     }
 
     @Test(expected = IOException.class)
-    public void testParseJSONInvalid() throws IOException
-    {
+    public void testParseJSONInvalid() throws IOException {
         String json = "{fields:{age:{}}";
         Schema.fromJson(json);
     }

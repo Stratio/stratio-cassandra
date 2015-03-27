@@ -34,12 +34,10 @@ import static com.stratio.cassandra.index.query.builder.SearchBuilders.wildcard;
 /**
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class WildcardConditionTest extends AbstractConditionTest
-{
+public class WildcardConditionTest extends AbstractConditionTest {
 
     @Test
-    public void testString()
-    {
+    public void testString() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperString());
@@ -57,8 +55,7 @@ public class WildcardConditionTest extends AbstractConditionTest
     }
 
     @Test(expected = UnsupportedOperationException.class)
-    public void testInteger()
-    {
+    public void testInteger() {
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInteger(1f));
         Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
@@ -68,8 +65,7 @@ public class WildcardConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testInetV4()
-    {
+    public void testInetV4() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInet());
@@ -87,8 +83,7 @@ public class WildcardConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testInetV6()
-    {
+    public void testInetV6() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInet());
@@ -106,8 +101,7 @@ public class WildcardConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testJson()
-    {
+    public void testJson() {
         testJsonCondition(query(wildcard("name", "aaa*").boost(0.5f)));
     }
 

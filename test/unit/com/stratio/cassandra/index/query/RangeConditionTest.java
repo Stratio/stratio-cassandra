@@ -17,7 +17,7 @@ package com.stratio.cassandra.index.query;
 
 import com.stratio.cassandra.index.query.builder.RangeConditionBuilder;
 import com.stratio.cassandra.index.query.builder.SearchBuilder;
-import com.stratio.cassandra.index.schema.*;
+import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.index.schema.mapping.*;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.search.NumericRangeQuery;
@@ -34,12 +34,10 @@ import static com.stratio.cassandra.index.query.builder.SearchBuilders.*;
 /**
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class RangeConditionTest extends AbstractConditionTest
-{
+public class RangeConditionTest extends AbstractConditionTest {
 
     @Test
-    public void testStringClose()
-    {
+    public void testStringClose() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperBoolean());
@@ -59,8 +57,7 @@ public class RangeConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testStringOpen()
-    {
+    public void testStringOpen() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperBoolean());
@@ -81,8 +78,7 @@ public class RangeConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testIntegerClose()
-    {
+    public void testIntegerClose() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInteger(1f));
@@ -102,8 +98,7 @@ public class RangeConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testIntegerOpen()
-    {
+    public void testIntegerOpen() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInteger(1f));
@@ -123,8 +118,7 @@ public class RangeConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testLongClose()
-    {
+    public void testLongClose() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperLong(1f));
@@ -144,8 +138,7 @@ public class RangeConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testLongOpen()
-    {
+    public void testLongOpen() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperLong(1f));
@@ -165,8 +158,7 @@ public class RangeConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testFloatClose()
-    {
+    public void testFloatClose() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperFloat(1f));
@@ -186,8 +178,7 @@ public class RangeConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testFloatOpen()
-    {
+    public void testFloatOpen() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperFloat(1f));
@@ -207,8 +198,7 @@ public class RangeConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testDoubleClose()
-    {
+    public void testDoubleClose() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperDouble(1f));
@@ -228,8 +218,7 @@ public class RangeConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testDoubleOpen()
-    {
+    public void testDoubleOpen() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperDouble(1f));
@@ -249,8 +238,7 @@ public class RangeConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testInetV4()
-    {
+    public void testInetV4() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInet());
@@ -270,8 +258,7 @@ public class RangeConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testInetV6()
-    {
+    public void testInetV6() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInet());
@@ -296,8 +283,7 @@ public class RangeConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testJsonInteger()
-    {
+    public void testJsonInteger() {
         RangeConditionBuilder rangeCondition = range("name").lower(1)
                                                             .upper(2)
                                                             .includeLower(true)
@@ -309,8 +295,7 @@ public class RangeConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testJsonDouble()
-    {
+    public void testJsonDouble() {
         testJsonCondition(query(range("name").lower(1.6)
                                              .upper(2.5)
                                              .includeLower(true)
@@ -319,17 +304,14 @@ public class RangeConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testJsonString()
-    {
+    public void testJsonString() {
         testJsonCondition(query(range("name").lower("a")
                                              .upper("b")
                                              .includeLower(true)
                                              .includeUpper(false)
-                                             .boost(0.5f))
-                                  .filter(bool().must(match("", "").boost(2),
-                                                      match("", ""))
-                                                .should(match("", "")).boost(0.5))
-                                  .build());
+                                             .boost(0.5f)).filter(bool().must(match("", "").boost(2), match("", ""))
+                                                                        .should(match("", ""))
+                                                                        .boost(0.5)).build());
     }
 
 }

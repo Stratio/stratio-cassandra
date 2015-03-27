@@ -22,44 +22,38 @@ import org.junit.Test;
 
 import java.io.IOException;
 
-public class ColumnMapperLongTest
-{
+public class ColumnMapperLongTest {
 
     @Test
-    public void testValueNull()
-    {
+    public void testValueNull() {
         ColumnMapperLong mapper = new ColumnMapperLong(1f);
         Long parsed = mapper.indexValue("test", null);
         Assert.assertNull(parsed);
     }
 
     @Test
-    public void testValueInteger()
-    {
+    public void testValueInteger() {
         ColumnMapperLong mapper = new ColumnMapperLong(1f);
         Long parsed = mapper.indexValue("test", 3);
         Assert.assertEquals(Long.valueOf(3), parsed);
     }
 
     @Test
-    public void testValueLong()
-    {
+    public void testValueLong() {
         ColumnMapperLong mapper = new ColumnMapperLong(1f);
         Long parsed = mapper.indexValue("test", 3l);
         Assert.assertEquals(Long.valueOf(3), parsed);
     }
 
     @Test
-    public void testValueFloatWithoutDecimal()
-    {
+    public void testValueFloatWithoutDecimal() {
         ColumnMapperLong mapper = new ColumnMapperLong(1f);
         Long parsed = mapper.indexValue("test", 3f);
         Assert.assertEquals(Long.valueOf(3), parsed);
     }
 
     @Test
-    public void testValueFloatWithDecimalFloor()
-    {
+    public void testValueFloatWithDecimalFloor() {
         ColumnMapperLong mapper = new ColumnMapperLong(1f);
         Long parsed = mapper.indexValue("test", 3.5f);
         Assert.assertEquals(Long.valueOf(3), parsed);
@@ -67,8 +61,7 @@ public class ColumnMapperLongTest
     }
 
     @Test
-    public void testValueFloatWithDecimalCeil()
-    {
+    public void testValueFloatWithDecimalCeil() {
         ColumnMapperLong mapper = new ColumnMapperLong(1f);
         Long parsed = mapper.indexValue("test", 3.6f);
         Assert.assertEquals(Long.valueOf(3), parsed);
@@ -76,16 +69,14 @@ public class ColumnMapperLongTest
     }
 
     @Test
-    public void testValueDoubleWithoutDecimal()
-    {
+    public void testValueDoubleWithoutDecimal() {
         ColumnMapperLong mapper = new ColumnMapperLong(1f);
         Long parsed = mapper.indexValue("test", 3d);
         Assert.assertEquals(Long.valueOf(3), parsed);
     }
 
     @Test
-    public void testValueDoubleWithDecimalFloor()
-    {
+    public void testValueDoubleWithDecimalFloor() {
         ColumnMapperLong mapper = new ColumnMapperLong(1f);
         Long parsed = mapper.indexValue("test", 3.5d);
         Assert.assertEquals(Long.valueOf(3), parsed);
@@ -93,8 +84,7 @@ public class ColumnMapperLongTest
     }
 
     @Test
-    public void testValueDoubleWithDecimalCeil()
-    {
+    public void testValueDoubleWithDecimalCeil() {
         ColumnMapperLong mapper = new ColumnMapperLong(1f);
         Long parsed = mapper.indexValue("test", 3.6d);
         Assert.assertEquals(Long.valueOf(3), parsed);
@@ -102,16 +92,14 @@ public class ColumnMapperLongTest
     }
 
     @Test
-    public void testValueStringWithoutDecimal()
-    {
+    public void testValueStringWithoutDecimal() {
         ColumnMapperLong mapper = new ColumnMapperLong(1f);
         Long parsed = mapper.indexValue("test", "3");
         Assert.assertEquals(Long.valueOf(3), parsed);
     }
 
     @Test
-    public void testValueStringWithDecimalFloor()
-    {
+    public void testValueStringWithDecimalFloor() {
         ColumnMapperLong mapper = new ColumnMapperLong(1f);
         Long parsed = mapper.indexValue("test", "3.2");
         Assert.assertEquals(Long.valueOf(3), parsed);
@@ -119,8 +107,7 @@ public class ColumnMapperLongTest
     }
 
     @Test
-    public void testValueStringWithDecimalCeil()
-    {
+    public void testValueStringWithDecimalCeil() {
         ColumnMapperLong mapper = new ColumnMapperLong(1f);
         Long parsed = mapper.indexValue("test", "3.2");
         Assert.assertEquals(Long.valueOf(3), parsed);
@@ -128,8 +115,7 @@ public class ColumnMapperLongTest
     }
 
     @Test
-    public void testField()
-    {
+    public void testField() {
         ColumnMapperLong mapper = new ColumnMapperLong(1f);
         Field field = mapper.field("name", "3.2");
         Assert.assertNotNull(field);
@@ -139,16 +125,14 @@ public class ColumnMapperLongTest
     }
 
     @Test
-    public void testExtractAnalyzers()
-    {
+    public void testExtractAnalyzers() {
         ColumnMapperLong mapper = new ColumnMapperLong(1f);
         String analyzer = mapper.analyzer();
         Assert.assertEquals(ColumnMapper.KEYWORD_ANALYZER, analyzer);
     }
 
     @Test
-    public void testParseJSON() throws IOException
-    {
+    public void testParseJSON() throws IOException {
         String json = "{fields:{age:{type:\"long\"}}}";
         Schema schema = Schema.fromJson(json);
         ColumnMapper columnMapper = schema.getMapper("age");
@@ -157,8 +141,7 @@ public class ColumnMapperLongTest
     }
 
     @Test
-    public void testParseJSONEmpty() throws IOException
-    {
+    public void testParseJSONEmpty() throws IOException {
         String json = "{fields:{}}";
         Schema schema = Schema.fromJson(json);
         ColumnMapper columnMapper = schema.getMapper("age");
@@ -166,8 +149,7 @@ public class ColumnMapperLongTest
     }
 
     @Test(expected = IOException.class)
-    public void testParseJSONInvalid() throws IOException
-    {
+    public void testParseJSONInvalid() throws IOException {
         String json = "{fields:{age:{}}";
         Schema.fromJson(json);
     }

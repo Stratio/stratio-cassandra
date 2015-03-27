@@ -15,10 +15,9 @@
  */
 package com.stratio.cassandra.index.query;
 
-
+import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.index.schema.mapping.ColumnMapper;
 import com.stratio.cassandra.index.schema.mapping.ColumnMapperBoolean;
-import com.stratio.cassandra.index.schema.Schema;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.search.Query;
 import org.junit.Assert;
@@ -35,12 +34,10 @@ import static com.stratio.cassandra.index.query.builder.SearchBuilders.phrase;
 /**
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class PhraseConditionTest extends AbstractConditionTest
-{
+public class PhraseConditionTest extends AbstractConditionTest {
 
     @Test
-    public void testPhraseQuery()
-    {
+    public void testPhraseQuery() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperBoolean());
@@ -61,8 +58,7 @@ public class PhraseConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testJson()
-    {
+    public void testJson() {
         testJsonCondition(filter(phrase("name", "hola", "adios").slop(1).boost(0.5f)));
     }
 

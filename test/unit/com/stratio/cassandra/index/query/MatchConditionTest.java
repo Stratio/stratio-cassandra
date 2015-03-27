@@ -15,7 +15,7 @@
  */
 package com.stratio.cassandra.index.query;
 
-import com.stratio.cassandra.index.schema.*;
+import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.index.schema.mapping.*;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.search.NumericRangeQuery;
@@ -33,12 +33,10 @@ import static com.stratio.cassandra.index.query.builder.SearchBuilders.match;
 /**
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class MatchConditionTest extends AbstractConditionTest
-{
+public class MatchConditionTest extends AbstractConditionTest {
 
     @Test
-    public void testString()
-    {
+    public void testString() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperString());
@@ -54,8 +52,7 @@ public class MatchConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testInteger()
-    {
+    public void testInteger() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInteger(1f));
@@ -74,8 +71,7 @@ public class MatchConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testLong()
-    {
+    public void testLong() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperLong(1f));
@@ -94,8 +90,7 @@ public class MatchConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testFloat()
-    {
+    public void testFloat() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperFloat(1f));
@@ -114,8 +109,7 @@ public class MatchConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testDouble()
-    {
+    public void testDouble() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperDouble(1f));
@@ -134,8 +128,7 @@ public class MatchConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testBlob()
-    {
+    public void testBlob() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperBlob());
@@ -151,8 +144,7 @@ public class MatchConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testInetV4()
-    {
+    public void testInetV4() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInet());
@@ -168,8 +160,7 @@ public class MatchConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testInetV6()
-    {
+    public void testInetV6() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInet());
@@ -185,8 +176,7 @@ public class MatchConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testJson()
-    {
+    public void testJson() {
         testJsonCondition(filter(match("name", 42).boost(0.5f)));
     }
 
