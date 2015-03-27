@@ -5,3 +5,17 @@ artifact.remoteRepository.apache:      https://repository.apache.org/content/rep
 artifact.remoteRepository.jclouds:     http://jclouds.googlecode.com/svn/repo
 artifact.remoteRepository.oauth:       http://oauth.googlecode.com/svn/code/maven
 
+# Stratio Nexus Locations
+nexus-snapshots-repository-url:https://oss.sonatype.org/content/repositories/snapshots/
+nexus-snapshots-repository-id:sonatype-nexus-snapshots
+nexus-releases-repository-url:https://oss.sonatype.org/service/local/staging/deploy/maven2/
+nexus-releases-repository-id:sonatype-nexus-staging
+
+
+
+
+
+
+
+
+
