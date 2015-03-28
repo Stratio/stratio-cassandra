@@ -65,7 +65,7 @@ public class Mapping {
 
             AbstractType<?> type = columnDefinition.type;
             if (!columnMapper.supports(type)) {
-                throw new RuntimeException("Not supported type for mapper " + name);
+                throw new RuntimeException(String.format("Type '%s' is not supported by mapper '%s'", type, name));
             }
         }
     }

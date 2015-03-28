@@ -21,6 +21,7 @@ import com.stratio.cassandra.index.schema.analysis.PreBuiltAnalyzers;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.ListType;
 import org.apache.cassandra.db.marshal.MapType;
+import org.apache.cassandra.db.marshal.ReversedType;
 import org.apache.cassandra.db.marshal.SetType;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
@@ -82,10 +83,12 @@ public abstract class ColumnMapper {
     }
 
     /**
-     * Returns the Lucene {@link Field}s resulting from the mapping of the specified {@link com.stratio.cassandra.index.schema.Column}.
+     * Returns the Lucene {@link Field}s resulting from the mapping of the specified {@link
+     * com.stratio.cassandra.index.schema.Column}.
      *
      * @param column The name of the {@link com.stratio.cassandra.index.schema.Column}.
-     * @return The Lucene {@link Field}s resulting from the mapping of the specified {@link com.stratio.cassandra.index.schema.Column}.
+     * @return The Lucene {@link Field}s resulting from the mapping of the specified {@link
+     * com.stratio.cassandra.index.schema.Column}.
      */
     public abstract Set<IndexableField> fields(Column column);
 
@@ -114,6 +117,11 @@ public abstract class ColumnMapper {
             } else if (type instanceof SetType) {
                 checkedType = ((SetType<?>) type).getElementsType();
             }
+        }
+
+        if (type instanceof ReversedType) {
+            ReversedType reversedType = (ReversedType) type;
+            checkedType = reversedType.baseType;
         }
 
         for (AbstractType<?> n : supportedTypes) {
