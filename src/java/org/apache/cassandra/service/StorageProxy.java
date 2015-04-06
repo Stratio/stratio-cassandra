@@ -1813,15 +1813,6 @@ public class StorageProxy implements StorageProxyMBean
         return command.combine(rows);
     }
 
-    private static List<Row> trim(AbstractRangeCommand command, List<Row> rows)
-    {
-        // for CQL3 queries, let the caller trim the results
-        if (command.countCQL3Rows() || command.ignoredTombstonedPartitions())
-            return rows;
-        else
-            return rows.size() > command.limit() ? rows.subList(0, command.limit()) : rows;
-    }
-
     public Map<String, List<String>> getSchemaVersions()
     {
         return describeSchemaVersions();
