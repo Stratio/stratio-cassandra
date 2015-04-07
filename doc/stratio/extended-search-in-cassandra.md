@@ -1,15 +1,14 @@
----
-title: Extended Search in Cassandra
----
+Extended Search in Cassandra
+============================
 
-[Cassandra](http://cassandra.apache.org/ "Apache Cassandra project") index functionality has been extended to provide near
-real time search such as [ElasticSearch](http://www.elasticsearch.org/ "ElasticSearch project")
-or [Solr](https://lucene.apache.org/solr/ "Apache Solr project"), including full text search capabilities and free
-multivariable search. It is achieved through a Lucene based implementation of Cassandra secondary indexes, where each
-node of the cluster indexes its own data.
+[Cassandra](http://cassandra.apache.org/ "Apache Cassandra project") index functionality has been extended to provide near real time search such as [ElasticSearch](http://www.elasticsearch.org/ "ElasticSearch project") or [Solr](https://lucene.apache.org/solr/ "Apache Solr project"), including full text search capabilities and free multivariable search.
+
+It is also fully compatible with [Apache Spark](https://spark.apache.org/) and [Apache Hadoop](https://hadoop.apache.org/), allowing you to filter data at database level. This speeds up jobs reducing the amount of data to be collected and processed.
+
+Indexing is achieved through a Lucene based implementation of Cassandra secondary indexes, where each node of the cluster indexes its own data. Stratio Cassandra is one of the core modules on which Stratio's BigData platform (SDS) is based.
 
 Table of Contents
-=================
+-----------------
 
 -   [Overview](#overview)
 -   [Index creation](#index-creation)
@@ -22,7 +21,7 @@ Table of Contents
     -   [Range](#range-query)
     -   [Regexp](#regexp-query)
     -   [Wildcard](#wildcard-query)
--   [Other interesting queries](#other-interesting-queries)
+-   [Spark and Hadoop Integration](#spark-and-hadoop-integration)
     -   [Token Function](#token-function)
     -   [Server Side Filtering](#server-side-filtering)
 -   [Datatypes Mapping](#datatypes-mapping)
@@ -30,7 +29,7 @@ Table of Contents
     -   [Field type to CQL](#field-type-to-cql)
 
 Overview
-========
+--------
 
 Lucene search technology integration into Cassandra provides:
 
@@ -39,30 +38,33 @@ Lucene search technology integration into Cassandra provides:
 -   General top-k queries
 -   Complex boolean queries (and, or, not)
 -   Near real-time search
+-   Custom analyzers
 -   CQL3 support
 -   Wide rows support
 -   Partition and cluster composite keys support
 -   Support for indexing columns part of primary key
--   Stratio Deep Hadoop support compatibility
--   Self contained distribution
+-   Third-party drivers compatibility
+-   Spark compatibility
+-   Hadoop compatibility
 
 Not yet supported:
 
 -   Thrift API
 -   Legacy compact storage option
--   Type "counter"
+-   Indexing `counter` columns
 -   Columns with TTL
+-   CQL user defined types
+-   Static columns
 
 Index Creation
-==============
+--------------
 
-Syntax
-------
+###Syntax
 
 ```sql
 CREATE CUSTOM INDEX (IF NOT EXISTS)? <index_name>
                                   ON <table_name> ( <magic_column> )
-                               USING 'org.apache.cassandra.db.index.stratio.RowIndex'
+                               USING 'com.stratio.cassandra.index.RowIndex'
                         WITH OPTIONS = <options>
 ```
 
@@ -83,17 +85,18 @@ where:
 
 Options, except “schema”, take a positive integer value enclosed in single quotes:
 
--   **refresh_seconds**: number of seconds before refreshing the index (between writers and readers). Defaults to ’60′.
--   **ram_buffer_mb**: size of the write buffer. Its content will be committed to disk when full. Defaults to ’64′.
--   **max_merge_mb**: defaults to ’5′.
--   **max_cached_mb**: defaults to ’30′.
--   **indexing_threads**: number of asynchronous indexing threads. ’0′ means synchronous indexing. Defaults to ’0′.
--   **indexing_queues_size**: max number of queued documents per asynchronous indexing thread. Defaults to ’50′.
+-   **refresh_seconds**: number of seconds before refreshing the index (between writers and readers). Defaults to ’60’.
+-   **ram_buffer_mb**: size of the write buffer. Its content will be committed to disk when full. Defaults to ’64’.
+-   **max_merge_mb**: defaults to ’5’.
+-   **max_cached_mb**: defaults to ’30’.
+-   **indexing_threads**: number of asynchronous indexing threads. ’0’ means synchronous indexing. Defaults to ’0’.
+-   **indexing_queues_size**: max number of queued documents per asynchronous indexing thread. Defaults to ’50’.
 -   **schema**: see below
 
 ```sql
 <schema_definition> := {
-    (default_analyzer : "<analyzer_class_name>",)?
+    (analyzers : { <analyzer_definition> (, <analyzer_definition>)* } ,)?
+    (default_analyzer : "<analyzer_name>",)?
     fields : { <field_definition> (, <field_definition>)* }
 }
 ```
@@ -101,7 +104,46 @@ Options, except “schema”, take a positive integer value enclosed in single q
 Where default_analyzer defaults to ‘org.apache.lucene.analysis.standard.StandardAnalyzer’.
 
 ```sql
-<field_definition> := {
+<analyzer_definition> := <analyzer_name> : {
+    type : "<analyzer_type>" (, <option> : "<value>")*
+}
+```
+
+Analyzer definition options depend on the analyzer type. Details and default values are listed in the table below.
+
+<table>
+    <thead>
+    <tr>
+        <th>Analyzer type</th>
+        <th>Option</th>
+        <th>Value type</th>
+        <th>Default value</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>classpath</td>
+        <td>class</td>
+        <td>string</td>
+        <td>null</td>
+    </tr>
+    <tr>
+        <td>snowball</td>
+        <td>language</td>
+        <td>string</td>
+        <td>null</td>
+    </tr>
+    <tr>
+        <td></td>
+        <td>stopwords</td>
+        <td>string</td>
+        <td>null</td>
+    </tr>
+    </tbody>
+</table>
+
+```sql
+<field_definition> := <column_name> : {
     type : "<field_type>" (, <option> : "<value>")*
 }
 ```
@@ -160,8 +202,7 @@ Field definition options depend on the field type. Details and default values ar
 Note that Cassandra allows one custom index per table. On the other hand, Cassandra does not allow a modify 
 operation on indexes. To modify an index it needs to be deleted first and created again.
 
-Example
--------
+###Example
 
 This code below and the one for creating the corresponding keyspace and table is available in a CQL script that 
 can be sourced from the Cassandra shell: 
@@ -170,7 +211,7 @@ can be sourced from the Cassandra shell:
 ```sql
 CREATE CUSTOM INDEX IF NOT EXISTS users_index
 ON test.users (stratio_col)
-USING 'org.apache.cassandra.db.index.stratio.RowIndex'
+USING 'com.stratio.cassandra.index.RowIndex'
 WITH OPTIONS = {
     'refresh_seconds'      : '1',
     'ram_buffer_mb'        : '64',
@@ -179,7 +220,13 @@ WITH OPTIONS = {
     'indexing_threads'     : '4',
     'indexing_queues_size' : '50',
     'schema' : '{
-        default_analyzer : "org.apache.lucene.analysis.standard.StandardAnalyzer",
+        analyzers : {
+              my_custom_analyzer : {
+                  type:"snowball",
+                  language:"Spanish",
+                  stopwords : "el,la,lo,loas,las,a,ante,bajo,cabe,con,contra"}
+        },
+        default_analyzer : "english",
         fields : {
             name   : {type     : "string"},
             gender : {type     : "string"},
@@ -194,16 +241,16 @@ WITH OPTIONS = {
             setz   : {type     : "string"},
             listz  : {type     : "string"},
             phrase : {type     : "text",
-                      analyzer : "org.apache.lucene.analysis.es.SpanishAnalyzer"}
+                      analyzer : "my_custom_analyzer"}
         }
     }'
 };
 ```
 
 Queries
-=======
+-------
 
-Syntax:
+###Syntax:
 
 ```sql
 SELECT ( <fields> | * )
@@ -261,6 +308,14 @@ In addition to the options described in the table, all query types have a “**b
 </ul></td>
 </tr>
 <tr class="even">
+<td align="left"><a href="#contains-query" title="Contains query details">Contains</a></td>
+<td align="left">All</td>
+<td align="left"><ul>
+<li><strong>field</strong>: the field name.</li>
+<li><strong>values</strong>: the matched field values.</li>
+</ul></td>
+</tr>
+<tr class="odd">
 <td align="left"><a href="#fuzzy-query">Fuzzy</a></td>
 <td align="left">bytes<br /> inet<br /> string<br /> text</td>
 <td align="left"><ul>
@@ -272,7 +327,7 @@ In addition to the options described in the table, all query types have a “**b
 <li><strong>transpositions</strong> (default = true): if transpositions should be treated as a primitive edit operation (<a href="http://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance" title="Wikipedia article on Damerau-Levenshtein Distance">Damerau-Levenshtein distance</a>). When false, comparisons will implement the classic <a href="http://en.wikipedia.org/wiki/Levenshtein_distance" title="Wikipedia article on Levenshtein Distance">Levenshtein distance</a>.</li>
 </ul></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left"><a href="#match-query">Match</a></td>
 <td align="left">All</td>
 <td align="left"><ul>
@@ -280,7 +335,7 @@ In addition to the options described in the table, all query types have a “**b
 <li><strong>value</strong>: the field value.</li>
 </ul></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left"><a href="#phrase-query">Phrase</a></td>
 <td align="left">bytes<br /> inet<br /> text</td>
 <td align="left"><ul>
@@ -289,7 +344,7 @@ In addition to the options described in the table, all query types have a “**b
 <li><strong>slop</strong> (default = 0): number of other words permitted between words.</li>
 </ul></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left"><a href="#prefix-query">Prefix</a></td>
 <td align="left">bytes<br /> inet<br /> string<br /> text</td>
 <td align="left"><ul>
@@ -297,7 +352,7 @@ In addition to the options described in the table, all query types have a “**b
 <li><strong>value</strong>: fieldvalue.</li>
 </ul></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left"><a href="#range-query">Range</a></td>
 <td align="left">All</td>
 <td align="left"><ul>
@@ -308,7 +363,7 @@ In addition to the options described in the table, all query types have a “**b
 <li><strong>include_upper</strong> (default = false): if the right value is included in the results (&lt;=).</li>
 </ul></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left"><a href="#regexp-query">Regexp</a></td>
 <td align="left">bytes<br /> inet<br /> string<br /> text</td>
 <td align="left"><ul>
@@ -316,7 +371,7 @@ In addition to the options described in the table, all query types have a “**b
 <li><strong>value</strong>: regular expression.</li>
 </ul></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left"><a href="#wildcard-query">Wildcard</a></td>
 <td align="left">bytes<br /> inet<br /> string<br /> text</td>
 <td align="left"><ul>
@@ -327,8 +382,7 @@ In addition to the options described in the table, all query types have a “**b
 </tbody>
 </table>
 
-Boolean query
--------------
+###Boolean query
 
 Syntax:
 
@@ -336,16 +390,17 @@ Syntax:
 SELECT ( <fields> | * )
 FROM <table>
 WHERE <magic_column> = '{ query : {
-                           type : "boolean",
-                           ( not: <query_list> , )?
-                           ( must | should ) : <query_list> }}';
+                           type     : "boolean",
+                           ( must   : [(query,)?] , )?
+                           ( should : [(query,)?] , )?
+                           ( not    : [(query,)?] , )? } }';
 ```
 
 where:
 
--   **must**: returns the conjunction of queries: $(q_1 \\land q_2 \\land … \\land q_n)$
--   **should**: returns the disjunction of queries: $(q_1 \\lor q_2 \\lor … \\lor q_n)$
--   **not**: returns the negation of the disjunction of queries: $\\lnot(q_1 \\lor q_2 \\lor … \\lor q_n)$.
+-   **must**: represents the conjunction of queries: query<sub>1</sub> AND query<sub>2</sub> AND … AND query<sub>n</sub>
+-   **should**: represents the disjunction of queries: query<sub>1</sub> OR query<sub>12</sub> OR … OR query<sub>n</sub>
+-   **not**: represents the negation of the disjunction of queries: NOT(query<sub>1</sub> OR query<sub>2</sub> OR … OR query<sub>n</sub>)
 
 Since "not" will be applied to the results of a "must" or "should" condition, it can not be used in isolation.
 
@@ -379,8 +434,40 @@ WHERE stratio_col = '{query : {
                                   {type : "wildcard", field : "food", value : "tu*"}]}}';
 ```
 
-Fuzzy query
------------
+###Contains query
+
+Syntax:
+
+```sql
+SELECT ( <fields> | * )
+FROM <table>
+WHERE <magic_column> = '{ query : {
+                            type  : "contains",
+                            field : <fieldname> ,
+                            values : <value_list> }}';
+```
+
+Example 1: will return rows where name matches “Alicia” or “mancha”
+
+```sql
+SELECT * FROM test.users
+WHERE stratio_col = '{query : {
+                        type   : "contains",
+                        field  : "name",
+                        values : ["Alicia","mancha"] }}';
+```
+
+Example 2: will return rows where date matches “2014/01/01″, “2014/01/02″ or “2014/01/03″
+
+```sql
+SELECT * FROM test.users
+WHERE stratio_col = '{query : {
+                        type   : "contains",
+                        field  : "date",
+                        values : ["2014/01/01", "2014/01/02", "2014/01/03"] }}';
+```
+
+###Fuzzy query
 
 Syntax:
 
@@ -426,8 +513,7 @@ WHERE stratio_col = '{query : { type          : "fuzzy",
                                 prefix_length : 2 }}';
 ```
 
-Match query
------------
+###Match query
 
 Syntax:
 
@@ -470,8 +556,7 @@ WHERE stratio_col = '{query : {
                         value : "2014/01/01" }}';
 ```
 
-Phrase query
-------------
+###Phrase query
 
 Syntax:
 
@@ -512,8 +597,7 @@ WHERE stratio_col = '{query : {
                         slop   : 2 }}';
 ```
 
-Prefix query
-------------
+###Prefix query
 
 Syntax:
 
@@ -536,8 +620,7 @@ WHERE stratio_col = '{query : {
                         value         : "lu" }}';
 ```
 
-Range query
------------
+###Range query
 
 Syntax:
 
@@ -564,7 +647,7 @@ are specified. If only “lower” is specified, all rows with values from “lo
 If only “upper” is specified then all rows with field values up to “upper” will be returned. If 
 both are omitted than all rows will be returned.
 
-Example 1: will return rows where $age \\in [1,+\\infty)$
+Example 1: will return rows where *age* is in [1, ∞)
 
 ```sql
 SELECT * FROM test.users
@@ -575,7 +658,7 @@ WHERE stratio_col = '{query : {
                         include_lower : true }}';
 ```
 
-Example 2: will return rows where $age \\in (-\\infty,0]$
+Example 2: will return rows where *age* is in (-∞, 0]
 
 ```sql
 SELECT * FROM test.users
@@ -586,7 +669,7 @@ WHERE stratio_col = '{query : {
                         include_upper : true }}';
 ```
 
-Example 3: will return rows where $age \\in [-1,1]$
+Example 3: will return rows where *age* is in [-1, 1]
 
 ```sql
 SELECT * FROM test.users
@@ -599,7 +682,7 @@ WHERE stratio_col = '{query : {
                         include_upper : true }}';
 ```
 
-Example 4: will return rows where $date \\ge \\text"2014/01/01" \\land date \\le \\text"2014/01/02"$
+Example 4: will return rows where *date* is in [2014/01/01, 2014/01/02]
 
 ```sql
 SELECT * FROM test.users
@@ -612,8 +695,7 @@ WHERE stratio_col = '{query : {
                         include_upper : true }}';
 ```
 
-Regexp query
-------------
+###Regexp query
 
 Syntax:
 
@@ -640,8 +722,7 @@ WHERE stratio_col = '{query : {
                         value : "[J][aeiou]{2}.*" }}';
 ```
 
-Wildcard query
---------------
+###Wildcard query
 
 Syntax:
 
@@ -669,12 +750,11 @@ WHERE stratio_col = '{query : {
 ```
 
 Spark and Hadoop Integration
-============================
+----------------------------
 
 Spark and Hadoop integrations are fully supported because Lucene queries can be combined with token range queries and pagination, which are the basis of MapReduce frameworks support.
 
-Token Range Queries
--------------------
+###Token Range Queries
 
 The token function allows computing the token for a given partition key. The primary key of the example table “users” is ((name, gender), animal, age) where (name, gender) is the partition key. When combining the token function and a Lucene-based filter in a where clause, the filter on tokens is applied first and then the condition of the filter clause.
 
@@ -687,8 +767,7 @@ SELECT name,gender
    AND token(name, gender) > token('Alicia', 'female');
 ```
 
-Pagination
-----------
+###Pagination
 
 Pagination over filtered results is fully supported. You can retrieve the rows starting from a certain key. For example, if the primary key is (userid, createdAt), you can query:
 
@@ -702,10 +781,9 @@ SELECT *
 ```
 
 Datatypes Mapping
-=================
-
-CQL to Field type
 -----------------
+
+###CQL to Field type
 
 <table>
     <thead>
@@ -713,7 +791,7 @@ CQL to Field type
         <th>CQL type</th>
         <th>Description</th>
         <th>Field type</th>
-        <th>Supported in query types</th>
+        <th>Query types</th>
     </tr>
     </thead>
     <tbody>
@@ -728,6 +806,7 @@ CQL to Field type
         <td>64-bit signed long</td>
         <td>long</td>
         <td>boolean<br />
+            contains<br />
             match<br />
             range</td>
     </tr>
@@ -760,6 +839,7 @@ CQL to Field type
         <td>64-bit IEEE-754 floating point</td>
         <td>double</td>
         <td>boolean<br />
+            contains<br />
             match<br />
             range</td>
     </tr>
@@ -768,6 +848,7 @@ CQL to Field type
         <td>32-bit IEEE-754 floating point</td>
         <td>float</td>
         <td>boolean<br />
+            contains<br />
             match<br />
             range</td>
     </tr>
@@ -782,6 +863,7 @@ CQL to Field type
         <td>32-bit signed integer</td>
         <td>integer</td>
         <td>boolean<br />
+            contains<br />
             match<br />
             range</td>
     </tr>
@@ -814,6 +896,7 @@ CQL to Field type
         <td>Date plus time, encoded as 8 bytes since epoch</td>
         <td>date</td>
         <td>boolean<br />
+            contains<br />
             match<br />
             range</td>
     </tr>
@@ -844,8 +927,7 @@ CQL to Field type
     </tbody>
 </table>
 
-Field type to CQL
------------------
+###Field type to CQL
 
 <table>
     <thead>

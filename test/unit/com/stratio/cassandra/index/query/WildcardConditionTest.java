@@ -15,7 +15,11 @@
  */
 package com.stratio.cassandra.index.query;
 
-import com.stratio.cassandra.index.schema.*;
+import com.stratio.cassandra.index.schema.Schema;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapper;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperInet;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperInteger;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperString;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.search.Query;
 import org.junit.Assert;
@@ -30,16 +34,14 @@ import static com.stratio.cassandra.index.query.builder.SearchBuilders.wildcard;
 /**
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class WildcardConditionTest extends AbstractConditionTest
-{
+public class WildcardConditionTest extends AbstractConditionTest {
 
     @Test
-    public void testString()
-    {
+    public void testString() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperString());
-        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         WildcardCondition wildcardCondition = new WildcardCondition(0.5f, "name", "tr*");
         Query query = wildcardCondition.query(mappers);
@@ -53,24 +55,21 @@ public class WildcardConditionTest extends AbstractConditionTest
     }
 
     @Test(expected = UnsupportedOperationException.class)
-    public void testInteger()
-    {
-
+    public void testInteger() {
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInteger(1f));
-        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         WildcardCondition wildcardCondition = new WildcardCondition(0.5f, "name", "22*");
         wildcardCondition.query(mappers);
     }
 
     @Test
-    public void testInetV4()
-    {
+    public void testInetV4() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInet());
-        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         WildcardCondition wildcardCondition = new WildcardCondition(0.5f, "name", "192.168.*");
         Query query = wildcardCondition.query(mappers);
@@ -84,12 +83,11 @@ public class WildcardConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testInetV6()
-    {
+    public void testInetV6() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
         map.put("name", new ColumnMapperInet());
-        Schema mappers = new Schema(EnglishAnalyzer.class.getName(), map);
+        Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         WildcardCondition wildcardCondition = new WildcardCondition(0.5f, "name", "2001:db8:2de:0:0:0:0:e*");
         Query query = wildcardCondition.query(mappers);
@@ -103,8 +101,7 @@ public class WildcardConditionTest extends AbstractConditionTest
     }
 
     @Test
-    public void testJson()
-    {
+    public void testJson() {
         testJsonCondition(query(wildcard("name", "aaa*").boost(0.5f)));
     }
 

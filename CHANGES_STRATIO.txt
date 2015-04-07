@@ -1,3 +1,9 @@
+2.1.4.0
+ * Upgrade to Apache Cassandra 2.1.4 (issue#16)
+ * Fix reverse clustering order (issue#14)
+ * Support for snowball and possibly other analyzers (issue#11)
+ * Fix mapping in column-based clustering key mapper (issue#7)
+
 2.1.3.1
  * Fix mapping bug in column-based clustering key mapper
  * Upgrade to Lucene 4.10.4

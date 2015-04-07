@@ -19,22 +19,17 @@ import com.stratio.cassandra.index.geospatial.GeoBBoxCondition;
 import com.stratio.cassandra.index.geospatial.GeoDistanceCondition;
 import com.stratio.cassandra.index.geospatial.GeoDistanceRangeCondition;
 import com.stratio.cassandra.index.geospatial.GeoShapeCondition;
-import com.stratio.cassandra.index.schema.ColumnMapper;
 import com.stratio.cassandra.index.schema.Schema;
+import com.stratio.cassandra.index.schema.analysis.Analysis;
+import com.stratio.cassandra.index.schema.analysis.AnalysisUtils;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryWrapperFilter;
-import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.IOUtils;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonSubTypes;
 import org.codehaus.jackson.annotate.JsonTypeInfo;
-
-import java.io.IOException;
 
 /**
  * The abstract base class for queries.
@@ -100,30 +95,9 @@ public abstract class Condition {
         return new QueryWrapperFilter(query(schema));
     }
 
-    protected String analyze(String field, String value, ColumnMapper columnMapper) {
-        TokenStream source = null;
-        try {
-            Analyzer analyzer = columnMapper.analyzer();
-            source = analyzer.tokenStream(field, value);
-            source.reset();
-
-            TermToBytesRefAttribute termAtt = source.getAttribute(TermToBytesRefAttribute.class);
-            BytesRef bytes = termAtt.getBytesRef();
-
-            if (!source.incrementToken()) {
-                return null;
-            }
-            termAtt.fillBytesRef();
-            if (source.incrementToken()) {
-                throw new IllegalArgumentException("analyzer returned too many terms for multiTerm term: " + value);
-            }
-            source.end();
-            return BytesRef.deepCopyOf(bytes).utf8ToString();
-        } catch (IOException e) {
-            throw new RuntimeException("Error analyzing multiTerm term: " + value, e);
-        } finally {
-            IOUtils.closeWhileHandlingException(source);
-        }
+    protected String analyze(String field, String value, Schema schema) {
+        Analyzer analyzer = schema.getAnalyzer();
+        return AnalysisUtils.analyzeAsText(field, value, analyzer);
     }
 
 }

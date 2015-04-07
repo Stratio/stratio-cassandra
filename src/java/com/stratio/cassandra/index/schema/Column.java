@@ -15,8 +15,8 @@
  */
 package com.stratio.cassandra.index.schema;
 
+import com.google.common.base.Objects;
 import org.apache.cassandra.db.marshal.AbstractType;
-import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import java.nio.ByteBuffer;
 
@@ -25,45 +25,37 @@ import java.nio.ByteBuffer;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class Column {
+public class Column<T> {
 
     /** The column's name. */
-    private String name;
+    private final String name;
 
     /** The column's name sufix used for maps. */
-    private String nameSufix;
+    private final String nameSufix;
 
     /** The column's value as {@link ByteBuffer}. */
-    private ByteBuffer value;
+    private final T composedValue;
+
+    /** The column's value as {@link ByteBuffer}. */
+    private final ByteBuffer decomposedValue;
 
     /** The column's Cassandra type. */
-    private AbstractType<?> type;
-
-    /**
-     * Builds a new {@link Column} with the specified name, value, and type.
-     *
-     * @param name  The name of the column to be created.
-     * @param value The value of the column to be created.
-     * @param type  The type of the column to be created.
-     */
-    public Column(String name, ByteBuffer value, AbstractType<?> type) {
-        this.name = name;
-        this.value = value;
-        this.type = type;
-    }
+    private final AbstractType<T> type;
 
     /**
      * Builds a new {@link Column} with the specified name, name sufix, value, and type.
      *
-     * @param name      The name of the column to be created.
-     * @param nameSufix The name sufix of the column to be created.
-     * @param value     The value of the column to be created.
-     * @param type      The type of the column to be created.
+     * @param name            The name of the column to be created.
+     * @param nameSufix       The name sufix of the column to be created.
+     * @param decomposedValue The decomposed value of the column to be created.
+     * @param composedValue   The composed value of the column to be created.
+     * @param type            The type/marshaller of the column to be created.
      */
-    public Column(String name, String nameSufix, ByteBuffer value, AbstractType<?> type) {
+    private Column(String name, String nameSufix, ByteBuffer decomposedValue, T composedValue, AbstractType<T> type) {
         this.name = name;
         this.nameSufix = nameSufix;
-        this.value = value;
+        this.composedValue = composedValue;
+        this.decomposedValue = decomposedValue;
         this.type = type;
     }
 
@@ -77,11 +69,11 @@ public class Column {
     }
 
     /**
-     * Returns the Lucene field name, which is formed by the column name and sufix.
+     * Returns the full name, which is formed by the column name and sufix.
      *
-     * @return The Lucene field name, which is formed by the column name and sufix.
+     * @return The full name, which is formed by the column name and sufix.
      */
-    public String getFieldName() {
+    public String getFullName() {
         return nameSufix == null ? name : name + "." + nameSufix;
     }
 
@@ -90,8 +82,8 @@ public class Column {
      *
      * @return the {@link ByteBuffer} serialized value.
      */
-    public ByteBuffer getRawValue() {
-        return value;
+    public ByteBuffer getDecomposedValue() {
+        return decomposedValue;
     }
 
     /**
@@ -99,8 +91,8 @@ public class Column {
      *
      * @return The Java column value.
      */
-    public Object getValue() {
-        return type.compose(value);
+    public T getComposedValue() {
+        return composedValue;
     }
 
     /**
@@ -108,18 +100,73 @@ public class Column {
      *
      * @return The Cassandra column type.
      */
-    public AbstractType<?> getType() {
+    public AbstractType<T> getType() {
         return type;
     }
 
-    /** {@inheritDoc} */
-    @Override
-    public String toString() {
-        return new ToStringBuilder(this).append("name", name)
-                                        .append("nameSufix", nameSufix)
-                                        .append("value", value)
-                                        .append("type", type)
-                                        .toString();
+    /**
+     * Returns the {@link Column} defined by the specified name, raw value and type.
+     *
+     * @param name            The column name.
+     * @param decomposedValue The column raw value.
+     * @param type            The column type/marshaller.
+     * @return A {@link Column}.
+     */
+    public static <T> Column<T> fromDecomposed(String name, ByteBuffer decomposedValue, AbstractType<T> type) {
+        T composedValue = type.compose(decomposedValue);
+        return new Column<>(name, null, decomposedValue, composedValue, type);
     }
 
+    /**
+     * Returns the {@link Column} defined by the specified name, raw value and type.
+     *
+     * @param name            The column name.
+     * @param nameSufix       The column name sufix.
+     * @param decomposedValue The column raw value.
+     * @param type            The column type/marshaller.
+     * @return A {@link Column}.
+     */
+    public static <T> Column<T> fromDecomposed(String name,
+                                               String nameSufix,
+                                               ByteBuffer decomposedValue,
+                                               AbstractType<T> type) {
+        T composedValue = type.compose(decomposedValue);
+        return new Column<>(name, nameSufix, decomposedValue, composedValue, type);
+    }
+
+    /**
+     * Returns the {@link Column} defined by the specified name, value and type.
+     *
+     * @param name          The column name.
+     * @param composedValue The column composed value.
+     * @param type          The column type/marshaller.
+     * @return A {@link Column}.
+     */
+    public static <T> Column<T> fromComposed(String name, T composedValue, AbstractType<T> type) {
+        ByteBuffer decomposedValue = type.decompose(composedValue);
+        return new Column<>(name, null, decomposedValue, composedValue, type);
+    }
+
+    /**
+     * Returns the {@link Column} defined by the specified name, value and type.
+     *
+     * @param name          The column name.
+     * @param nameSufix     The column name sufix.
+     * @param composedValue The column composed value.
+     * @param type          The column type/marshaller.
+     * @return A {@link Column}.
+     */
+    public static <T> Column<T> fromComposed(String name, String nameSufix, T composedValue, AbstractType<T> type) {
+        ByteBuffer decomposedValue = type.decompose(composedValue);
+        return new Column<>(name, nameSufix, decomposedValue, composedValue, type);
+    }
+
+    @Override
+    public String toString() {
+        return Objects.toStringHelper(this)
+                      .add("fullName", getFullName())
+                      .add("composedValue", getComposedValue())
+                      .add("type", type.getClass().getSimpleName())
+                      .toString();
+    }
 }

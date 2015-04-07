@@ -22,19 +22,14 @@ import static com.stratio.cassandra.index.query.builder.SearchBuilders.*;
 /**
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class BooleanConditionTest extends AbstractConditionTest
-{
+public class BooleanConditionTest extends AbstractConditionTest {
 
     @Test
-    public void testJson()
-    {
-        testJsonCondition(query(bool().must(match("name", "jonathan"),
-                                            range("age").lower(18).includeLower(true))
-                                      .should(match("color", "green"),
-                                              match("color", "blue"))
+    public void testJson() {
+        testJsonCondition(query(bool().must(match("name", "jonathan"), range("age").lower(18).includeLower(true))
+                                      .should(match("color", "green"), match("color", "blue"))
                                       .not(match("country", "england"))
-                                      .boost(0.5f))
-                                  .filter(match("section", "customers")));
+                                      .boost(0.5f)).filter(match("section", "customers")));
     }
 
 }

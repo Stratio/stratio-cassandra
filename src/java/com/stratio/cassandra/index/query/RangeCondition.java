@@ -15,7 +15,7 @@
  */
 package com.stratio.cassandra.index.query;
 
-import com.stratio.cassandra.index.schema.ColumnMapperSingle;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperSingle;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.search.NumericRangeQuery;
@@ -106,10 +106,10 @@ public class RangeCondition extends SingleFieldCondition {
             String lower = (String) columnMapper.queryValue(field, this.lower);
             String upper = (String) columnMapper.queryValue(field, this.upper);
             if (lower != null) {
-                lower = analyze(field, lower, columnMapper);
+                lower = analyze(field, lower, schema);
             }
             if (upper != null) {
-                upper = analyze(field, upper, columnMapper);
+                upper = analyze(field, upper, schema);
             }
             query = TermRangeQuery.newStringRange(field, lower, upper, includeLower, includeUpper);
         } else if (clazz == Integer.class) {

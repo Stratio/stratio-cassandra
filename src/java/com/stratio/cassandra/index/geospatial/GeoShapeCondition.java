@@ -17,7 +17,7 @@ package com.stratio.cassandra.index.geospatial;
 
 import com.spatial4j.core.context.SpatialContext;
 import com.stratio.cassandra.index.query.Condition;
-import com.stratio.cassandra.index.schema.ColumnMapper;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapper;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.search.Query;

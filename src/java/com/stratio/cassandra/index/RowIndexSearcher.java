@@ -17,6 +17,7 @@ package com.stratio.cassandra.index;
 
 import com.stratio.cassandra.index.query.Search;
 import com.stratio.cassandra.index.schema.Schema;
+import com.stratio.cassandra.index.service.RowService;
 import com.stratio.cassandra.util.Log;
 import org.apache.cassandra.db.DataRange;
 import org.apache.cassandra.db.IndexExpression;

@@ -24,7 +24,7 @@ import java.io.File;
 import java.util.Map;
 
 /**
- * Class for building {@link RowService} instances.
+ * Class for building {@link com.stratio.cassandra.index.service.RowService} instances.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */

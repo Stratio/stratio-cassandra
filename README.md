@@ -12,51 +12,46 @@ Any cell in the tables can be indexed, including those in the primary key as wel
 More detailed information is available at [Stratio Cassandra documentation](doc/stratio/extended-search-in-cassandra.md) .
 
 Features
-========
+--------
 
 Stratio Cassandra and its integration with Lucene search technology provides:
 
-  * Big data full text search
-  * Relevance scoring and sorting
-  * Top-k queries
-  * Complex boolean queries (and, or, not)
-  * Near real time search
-  * CQL3 support
-  * Wide rows support
-  * Partition and cluster composite keys support
-  * Support for indexing columns part of primary key
-  * Support for searching with key/token clauses
-  * Support for searching with clauses with `ALLOW FILTERING`
-  * Apache Spark compatibility
-  * Apache Hadoop compatibility
-  * [Stratio Deep](https://github.com/Stratio/stratio-deep) support compatibility
-  * Self contained distribution
-  
+-   Big data full text search
+-   Relevance scoring and sorting
+-   General top-k queries
+-   Complex boolean queries (and, or, not)
+-   Near real-time search
+-   Custom analyzers
+-   CQL3 support
+-   Wide rows support
+-   Partition and cluster composite keys support
+-   Support for indexing columns part of primary key
+-   Third-party drivers compatibility
+-   Spark compatibility
+-   Hadoop compatibility
+
 Not yet supported:
 
-  * Thrift API
-  * Legacy compact storage option
-  * Indexing `counter` columns
-  * Columns with TTL
-  * CQL user defined types.
+-   Thrift API
+-   Legacy compact storage option
+-   Indexing `counter` columns
+-   Columns with TTL
+-   CQL user defined types
+-   Static columns
 
 Requirements
-============
+------------
 
   * Java >= 1.7 (OpenJDK and Sun have been tested)
   * Ant >= 1.8
 
 Building and running
-====================
+--------------------
 
 Stratio Cassandra is distributed as a fork of Apache Cassandra, so its building, installation, operation and maintenance is overall identical. To build and run type:
 
 ```
-ant
-sudo mkdir -p /var/log/cassandra
-sudo chown -R `whoami` /var/log/cassandra
-sudo mkdir -p /var/lib/cassandra
-sudo chown -R `whoami` /var/lib/cassandra
+ant build
 bin/cassandra -f
 ```
 
@@ -68,14 +63,17 @@ bin/cqlsh
 
 The Lucene's index files will be stored in the same directories where the Cassandra's will be. The default data directory is `/var/lib/cassandra/data`, and each index is placed next to the SSTables of its indexed column family. 
 
-For more details about Cassandra please see its [documentation](http://cassandra.apache.org/).
+For more details about Apache Cassandra please see its [documentation](http://cassandra.apache.org/).
 
 Example
-=======
+-------
 
 We will create the following table to store tweets:
 
 ```
+CREATE KEYSPACE demo
+WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor': 1};
+USE demo;
 CREATE TABLE tweets (
     id INT PRIMARY KEY,
     user TEXT,
@@ -89,14 +87,14 @@ We have created a column called *lucene* to link the index queries. This column 
 
 ```
 CREATE CUSTOM INDEX tweets_index ON tweets (lucene) 
-USING 'org.apache.cassandra.db.index.stratio.RowIndex'
+USING 'com.stratio.cassandra.index.RowIndex'
 WITH OPTIONS = {
-    'refresh_seconds'    : '1',
+    'refresh_seconds' : '1',
     'schema' : '{
         fields : {
             id   : {type : "integer"},
             user : {type : "string"},
-            body : {type : "text",  analyzer : "org.apache.lucene.analysis.en.EnglishAnalyzer"},
+            body : {type : "text",  analyzer : "english"},
             time : {type : "date", pattern  : "yyyy/MM/dd"}
         }
     }'

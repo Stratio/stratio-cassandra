@@ -16,7 +16,7 @@
 package com.stratio.cassandra.index.query;
 
 import com.stratio.cassandra.index.schema.Column;
-import com.stratio.cassandra.index.schema.ColumnMapper;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapper;
 import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.cassandra.db.marshal.AbstractType;
@@ -102,8 +102,8 @@ public class SortField {
                 }
 
                 AbstractType<?> type = column1.getType();
-                ByteBuffer value1 = column1.getRawValue();
-                ByteBuffer value2 = column2.getRawValue();
+                ByteBuffer value1 = column1.getDecomposedValue();
+                ByteBuffer value2 = column2.getDecomposedValue();
                 return reverse ? type.compare(value2, value1) : type.compare(value1, value2);
             }
         };

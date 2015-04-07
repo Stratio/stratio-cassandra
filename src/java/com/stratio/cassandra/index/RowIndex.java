@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index;
 
+import com.stratio.cassandra.index.service.RowService;
 import com.stratio.cassandra.util.Log;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
@@ -114,7 +115,12 @@ public class RowIndex extends PerRowSecondaryIndex {
 
     @Override
     public void validate(CFMetaData metadata, Map<String, String> indexOptions) {
-        new RowIndexConfig(metadata, indexOptions);
+        try {
+            new RowIndexConfig(metadata, indexOptions);
+        } catch (RuntimeException e) {
+            Log.error(e, "Error validating index config");
+            throw e;
+        }
     }
 
     private void setup() {
