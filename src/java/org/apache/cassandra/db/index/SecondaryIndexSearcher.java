@@ -133,7 +133,7 @@ public abstract class SecondaryIndexSearcher
      *            The partial results to be combined.
      * @return The combination of the partial results.
      */
-    public List<Row> sort(List<IndexExpression> clause, List<Row> rows)
+    public List<Row> postReconciliationProcessing(List<IndexExpression> clause, List<Row> rows)
     {
         return rows;
     }

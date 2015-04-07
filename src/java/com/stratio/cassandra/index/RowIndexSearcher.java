@@ -180,7 +180,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
     }
 
     @Override
-    public List<Row> sort(List<IndexExpression> clause, List<Row> rows) {
+    public List<Row> postReconciliationProcessing(List<IndexExpression> clause, List<Row> rows) {
         int startSize = rows.size();
         long startTime = System.currentTimeMillis();
 

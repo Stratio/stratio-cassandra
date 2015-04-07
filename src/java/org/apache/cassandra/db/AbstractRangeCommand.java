@@ -55,7 +55,7 @@ public abstract class AbstractRangeCommand implements IReadCommand
 
     public List<Row> combine(List<Row> rows)
     {
-        return searcher == null ? trim(rows) : trim(searcher.sort(rowFilter, rows));
+        return searcher == null ? trim(rows) : trim(searcher.postReconciliationProcessing(rowFilter, rows));
     }
 
     private List<Row> trim(List<Row> rows)
