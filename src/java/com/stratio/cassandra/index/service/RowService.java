@@ -335,7 +335,7 @@ public abstract class RowService {
             return false;
         }
 
-        ByteBuffer actualValue = column.getRawValue();
+        ByteBuffer actualValue = column.getDecomposedValue();
         if (actualValue == null) {
             return false;
         }

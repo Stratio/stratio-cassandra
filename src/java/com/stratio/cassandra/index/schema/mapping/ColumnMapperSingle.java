@@ -64,7 +64,7 @@ public abstract class ColumnMapperSingle<BASE> extends ColumnMapper {
     }
 
     public Set<IndexableField> fields(Column column) {
-        Field field = field(column.getFieldName(), column.getValue());
+        Field field = field(column.getFullName(), column.getComposedValue());
         Set<IndexableField> set = new HashSet<>();
         set.add(field);
         return set;

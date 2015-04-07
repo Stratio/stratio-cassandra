@@ -61,9 +61,9 @@ public class GeoShapeMapper extends ColumnMapper {
     }
 
     public Set<IndexableField> fields(Column column) {
-        String fieldName = column.getFieldName();
+        String fieldName = column.getFullName();
         SpatialStrategy strategy = getStrategy(fieldName);
-        GeoShape geoShape = GeoShape.fromJson((String) column.getValue());
+        GeoShape geoShape = GeoShape.fromJson((String) column.getComposedValue());
         Shape shape = geoShape.toSpatial4j(spatialContext);
         Set<IndexableField> fields = new HashSet<>();
         Collections.addAll(fields, strategy.createIndexableFields(shape));

@@ -102,8 +102,8 @@ public class SortField {
                 }
 
                 AbstractType<?> type = column1.getType();
-                ByteBuffer value1 = column1.getRawValue();
-                ByteBuffer value2 = column2.getRawValue();
+                ByteBuffer value1 = column1.getDecomposedValue();
+                ByteBuffer value2 = column2.getDecomposedValue();
                 return reverse ? type.compare(value2, value1) : type.compare(value1, value2);
             }
         };

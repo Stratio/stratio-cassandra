@@ -258,7 +258,7 @@ public abstract class ClusteringKeyMapper {
                     ColumnDefinition columnDefinition = metadata.clusteringColumns().get(i);
                     String name = columnDefinition.name.toString();
                     AbstractType<?> valueType = columnDefinition.type;
-                    columns.add(new Column(name, value, valueType));
+                    columns.add(Column.fromDecomposed(name, value, valueType));
                 }
             }
         }
