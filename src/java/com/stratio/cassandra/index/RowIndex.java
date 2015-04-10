@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index;
 
+import com.google.common.base.Objects;
 import com.stratio.cassandra.index.service.RowService;
 import com.stratio.cassandra.util.Log;
 import org.apache.cassandra.config.CFMetaData;
@@ -309,13 +310,14 @@ public class RowIndex extends PerRowSecondaryIndex {
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString() {
-        return String.format("RowIndex [index=%s, keyspace=%s, table=%s, column=%s",
-                             indexName,
-                             keyspaceName,
-                             tableName,
-                             columnName);
+        return Objects.toStringHelper(this)
+                      .add("indexName", indexName)
+                      .add("keyspaceName", keyspaceName)
+                      .add("tableName", tableName)
+                      .add("columnName", columnName)
+                      .toString();
     }
-
 }

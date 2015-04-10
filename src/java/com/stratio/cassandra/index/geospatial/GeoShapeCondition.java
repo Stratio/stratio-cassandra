@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.geospatial;
 
+import com.google.common.base.Objects;
 import com.spatial4j.core.context.SpatialContext;
 import com.stratio.cassandra.index.query.Condition;
 import com.stratio.cassandra.index.schema.mapping.ColumnMapper;
@@ -93,9 +94,10 @@ public class GeoShapeCondition extends Condition {
     /** {@inheritDoc} */
     @Override
     public String toString() {
-        return new ToStringBuilder(this).append("field", field)
-                                        .append("operator", operator)
-                                        .append("shape", shape)
-                                        .toString();
+        return Objects.toStringHelper(this)
+                      .add("field", field)
+                      .add("operator", operator)
+                      .add("shape", shape)
+                      .toString();
     }
 }

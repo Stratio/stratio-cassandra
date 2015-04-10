@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.schema;
 
+import com.google.common.base.Objects;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import java.util.Collection;
@@ -109,6 +110,6 @@ public class Columns implements Iterable<Column> {
     /** {@inheritDoc} */
     @Override
     public String toString() {
-        return new ToStringBuilder(this).append("columns", columns).toString();
+        return Objects.toStringHelper(this).add("columns", columns).toString();
     }
 }

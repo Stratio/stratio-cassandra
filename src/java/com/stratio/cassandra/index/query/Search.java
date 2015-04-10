@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.query;
 
+import com.google.common.base.Objects;
 import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.util.JsonSerializer;
 import com.stratio.cassandra.util.Log;
@@ -192,10 +193,10 @@ public class Search {
     /** {@inheritDoc} */
     @Override
     public String toString() {
-        return new ToStringBuilder(this).append("queryCondition", queryCondition)
-                                        .append("filterCondition", filterCondition)
-                                        .append("sorting", sort)
-                                        .toString();
+        return Objects.toStringHelper(this)
+                      .add("queryCondition", queryCondition)
+                      .add("filterCondition", filterCondition)
+                      .add("sort", sort)
+                      .toString();
     }
-
 }

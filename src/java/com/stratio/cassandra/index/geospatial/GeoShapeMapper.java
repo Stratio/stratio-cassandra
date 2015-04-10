@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.geospatial;
 
+import com.google.common.base.Objects;
 import com.spatial4j.core.context.SpatialContext;
 import com.spatial4j.core.shape.Shape;
 import com.stratio.cassandra.index.schema.Column;
@@ -22,7 +23,6 @@ import com.stratio.cassandra.index.schema.mapping.ColumnMapper;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.UTF8Type;
-import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
@@ -33,7 +33,11 @@ import org.apache.lucene.spatial.prefix.tree.SpatialPrefixTree;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * A {@link ColumnMapper} to map geographical shapes.
@@ -91,9 +95,10 @@ public class GeoShapeMapper extends ColumnMapper {
 
     @Override
     public String toString() {
-        return new ToStringBuilder(this).append("maxLevels", maxLevels)
-                                        .append("grid", grid)
-                                        .append("strategies", strategies)
-                                        .toString();
+        return Objects.toStringHelper(this)
+                      .add("maxLevels", maxLevels)
+                      .add("grid", grid)
+                      .add("strategies", strategies)
+                      .toString();
     }
 }

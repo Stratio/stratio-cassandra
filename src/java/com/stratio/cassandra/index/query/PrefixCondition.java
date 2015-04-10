@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.query;
 
+import com.google.common.base.Objects;
 import com.stratio.cassandra.index.schema.mapping.ColumnMapperSingle;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -86,6 +87,6 @@ public class PrefixCondition extends SingleFieldCondition {
     /** {@inheritDoc} */
     @Override
     public String toString() {
-        return new ToStringBuilder(this).append("field", field).append("value", value).toString();
+        return Objects.toStringHelper(this).add("field", field).add("value", value).toString();
     }
 }

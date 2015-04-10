@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.geospatial;
 
+import com.google.common.base.Objects;
 import com.stratio.cassandra.index.query.Condition;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -68,11 +69,12 @@ public class GeoBBoxCondition extends Condition {
     /** {@inheritDoc} */
     @Override
     public String toString() {
-        return new ToStringBuilder(this).append("field", field)
-                                        .append("minLongitude", minLongitude)
-                                        .append("maxLongitude", maxLongitude)
-                                        .append("minLatitude", minLatitude)
-                                        .append("maxLatitude", maxLatitude)
-                                        .toString();
+        return Objects.toStringHelper(this)
+                      .add("field", field)
+                      .add("minLongitude", minLongitude)
+                      .add("maxLongitude", maxLongitude)
+                      .add("minLatitude", minLatitude)
+                      .add("maxLatitude", maxLatitude)
+                      .toString();
     }
 }

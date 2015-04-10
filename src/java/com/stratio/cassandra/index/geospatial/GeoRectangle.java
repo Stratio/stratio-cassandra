@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.geospatial;
 
+import com.google.common.base.Objects;
 import com.spatial4j.core.context.SpatialContext;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.codehaus.jackson.annotate.JsonCreator;
@@ -64,10 +65,11 @@ public class GeoRectangle extends GeoShape {
     /** {@inheritDoc} */
     @Override
     public String toString() {
-        return new ToStringBuilder(this).append("minLongitude", minLongitude)
-                                        .append("maxLongitude", maxLongitude)
-                                        .append("minLatitude", minLatitude)
-                                        .append("maxLatitude", maxLatitude)
-                                        .toString();
+        return Objects.toStringHelper(this)
+                      .add("minLongitude", minLongitude)
+                      .add("maxLongitude", maxLongitude)
+                      .add("minLatitude", minLatitude)
+                      .add("maxLatitude", maxLatitude)
+                      .toString();
     }
 }

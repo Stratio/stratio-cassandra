@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index;
 
+import com.google.common.base.Objects;
 import com.stratio.cassandra.index.query.Search;
 import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.index.service.RowService;
@@ -31,7 +32,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 
 import static org.apache.cassandra.cql3.Operator.EQ;
 
@@ -170,15 +176,14 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
         return filteredExpressions;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public boolean requiresScanningAllRanges(List<IndexExpression> clause) {
         Search search = search(clause);
         return search.usesRelevanceOrSorting();
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<Row> postReconciliationProcessing(List<IndexExpression> clause, List<Row> rows) {
         int startSize = rows.size();
@@ -203,16 +208,14 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
         return result;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public String toString() {
-        return String.format("RowIndexSearcher [index=%s, keyspace=%s, table=%s, column=%s]",
-                             index.getIndexName(),
-                             index.getKeyspaceName(),
-                             index.getTableName(),
-                             index.getColumnName());
+        return Objects.toStringHelper(this)
+                      .add("index", index.getIndexName())
+                      .add("keyspace", index.getKeyspaceName())
+                      .add("table", index.getTableName())
+                      .add("column", index.getColumnName())
+                      .toString();
     }
-
 }

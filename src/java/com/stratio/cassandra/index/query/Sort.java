@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.query;
 
+import com.google.common.base.Objects;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.codehaus.jackson.annotate.JsonCreator;
@@ -75,6 +76,6 @@ public class Sort implements Iterable<SortField> {
     /** {@inheritDoc} */
     @Override
     public String toString() {
-        return new ToStringBuilder(this).append("sortFields", sortFields).toString();
+        return Objects.toStringHelper(this).add("sortFields", sortFields).toString();
     }
 }
