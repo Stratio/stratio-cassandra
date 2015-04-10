@@ -1616,7 +1616,7 @@ public class StorageProxy implements StorageProxyMBean
             // determine the number of rows to be fetched and the concurrency factor
             int rowsToBeFetched = command.limit();
             int concurrencyFactor;
-            if (command.requiresFullScan()) { // all ranges must be queried
+            if (command.requiresScanningAllRanges()) { // all nodes must be queried
                 rowsToBeFetched *= ranges.size();
                 concurrencyFactor = ranges.size();
                 logger.debug("Requested rows: {}, ranges.size(): {}; concurrent range requests: {}", command.limit(), ranges.size(), concurrencyFactor);
@@ -1789,7 +1789,7 @@ public class StorageProxy implements StorageProxyMBean
                     throw new ReadTimeoutException(consistency_level, blockFor-1, blockFor, true);
                 }
 
-                if (haveSufficientRows) return command.combine(rows);
+                if (haveSufficientRows) return command.postReconciliationProcessing(rows);
 
                 // we didn't get enough rows in our concurrent fetch; recalculate our concurrency factor
                 // based on the results we've seen so far (as long as we still have ranges left to query)
@@ -1820,7 +1820,7 @@ public class StorageProxy implements StorageProxyMBean
             rangeMetrics.addNano(latency);
             Keyspace.open(command.keyspace).getColumnFamilyStore(command.columnFamily).metric.coordinatorScanLatency.update(latency, TimeUnit.NANOSECONDS);
         }
-        return command.combine(rows);
+        return command.postReconciliationProcessing(rows);
     }
 
     public Map<String, List<String>> getSchemaVersions()

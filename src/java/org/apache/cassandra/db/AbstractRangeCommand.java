@@ -49,11 +49,11 @@ public abstract class AbstractRangeCommand implements IReadCommand
         this.searcher = Keyspace.open(keyspace).getColumnFamilyStore(columnFamily).indexManager.searcher(rowFilter);
     }
 
-    public boolean requiresFullScan() {
-        return searcher == null ? false : searcher.requiresFullScan(rowFilter);
+    public boolean requiresScanningAllRanges() {
+        return searcher == null ? false : searcher.requiresScanningAllRanges(rowFilter);
     }
 
-    public List<Row> combine(List<Row> rows)
+    public List<Row> postReconciliationProcessing(List<Row> rows)
     {
         return searcher == null ? trim(rows) : trim(searcher.postReconciliationProcessing(rowFilter, rows));
     }

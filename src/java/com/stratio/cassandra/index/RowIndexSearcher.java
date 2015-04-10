@@ -126,15 +126,6 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
     }
 
     /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean requiresFullScan(List<IndexExpression> clause) {
-        Search search = search(clause);
-        return search.usesRelevanceOrSorting();
-    }
-
-    /**
      * Returns the {@link Search} contained in the specified list of {@link IndexExpression}s.
      *
      * @param clause A list of {@link IndexExpression}s.
@@ -177,6 +168,15 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
             }
         }
         return filteredExpressions;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean requiresScanningAllRanges(List<IndexExpression> clause) {
+        Search search = search(clause);
+        return search.usesRelevanceOrSorting();
     }
 
     @Override

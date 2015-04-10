@@ -119,7 +119,7 @@ public abstract class SecondaryIndexSearcher
      *            An {@link IndexExpression}.
      * @return {@code true} if the {@code command} requires a full scan, {@code false} otherwise.
      */
-    public boolean requiresFullScan(List<IndexExpression> clause)
+    public boolean requiresScanningAllRanges(List<IndexExpression> clause)
     {
         return false;
     }
