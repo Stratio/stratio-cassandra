@@ -17,11 +17,13 @@ package com.stratio.cassandra.index.schema.mapping;
 
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.index.DocValuesType;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 public class ColumnMapperBooleanTest {
@@ -134,11 +136,16 @@ public class ColumnMapperBooleanTest {
     @Test
     public void testField() {
         ColumnMapperBoolean mapper = new ColumnMapperBoolean();
-        Field field = mapper.field("name", "true");
+        List<Field> fields = mapper.fields("name", "true");
+        Assert.assertNotNull(fields);
+        Assert.assertEquals(2, fields.size());
+        Field field = fields.get(0);
         Assert.assertNotNull(field);
         Assert.assertEquals("true", field.stringValue());
         Assert.assertEquals("name", field.name());
         Assert.assertFalse(field.fieldType().stored());
+        field = fields.get(1);
+        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
     }
 
     @Test

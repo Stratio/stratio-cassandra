@@ -16,14 +16,28 @@
 package com.stratio.cassandra.index.schema.mapping;
 
 import com.google.common.base.Objects;
-import org.apache.cassandra.db.marshal.*;
-import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.marshal.AsciiType;
+import org.apache.cassandra.db.marshal.DecimalType;
+import org.apache.cassandra.db.marshal.DoubleType;
+import org.apache.cassandra.db.marshal.FloatType;
+import org.apache.cassandra.db.marshal.Int32Type;
+import org.apache.cassandra.db.marshal.IntegerType;
+import org.apache.cassandra.db.marshal.LongType;
+import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.LongField;
+import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A {@link ColumnMapper} to map a long field.
@@ -34,6 +48,16 @@ public class ColumnMapperLong extends ColumnMapperSingle<Long> {
 
     /** The default boost. */
     public static final Float DEFAULT_BOOST = 1.0f;
+
+    private static final FieldType FIELD_TYPE = new FieldType();
+    static {
+        FIELD_TYPE.setTokenized(true);
+        FIELD_TYPE.setOmitNorms(true);
+        FIELD_TYPE.setIndexOptions(IndexOptions.DOCS);
+        FIELD_TYPE.setNumericType(FieldType.NumericType.LONG);
+        FIELD_TYPE.setDocValuesType(DocValuesType.NUMERIC);
+        FIELD_TYPE.freeze();
+    }
 
     /** The boost. */
     private final Float boost;
@@ -58,7 +82,7 @@ public class ColumnMapperLong extends ColumnMapperSingle<Long> {
 
     /** {@inheritDoc} */
     @Override
-    public Long indexValue(String name, Object value) {
+    public Long baseValue(String name, Object value, boolean checkValidity) {
         if (value == null) {
             return null;
         } else if (value instanceof Number) {
@@ -79,17 +103,11 @@ public class ColumnMapperLong extends ColumnMapperSingle<Long> {
 
     /** {@inheritDoc} */
     @Override
-    public Long queryValue(String name, Object value) {
-        return indexValue(name, value);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Field field(String name, Object value) {
-        Long number = indexValue(name, value);
-        Field field = new LongField(name, number, STORE);
-        field.setBoost(boost);
-        return field;
+    public List<Field> fieldsFromBase(String name, Long value) {
+        List<Field> fields = new ArrayList<>();
+        fields.add(new LongField(name, value, STORE));
+        fields.add(new NumericDocValuesField(name, value));
+        return fields;
     }
 
     /** {@inheritDoc} */

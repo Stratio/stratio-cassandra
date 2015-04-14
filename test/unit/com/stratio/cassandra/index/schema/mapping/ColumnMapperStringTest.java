@@ -15,12 +15,16 @@
  */
 package com.stratio.cassandra.index.schema.mapping;
 
+import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.Schema;
+import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.index.DocValuesType;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 
 public class ColumnMapperStringTest {
@@ -123,17 +127,25 @@ public class ColumnMapperStringTest {
     @Test
     public void testField() {
         ColumnMapperString mapper = new ColumnMapperString();
-        Field field = mapper.field("name", "hello");
+        List<Field> fields = mapper.fields("name", "hello");
+        Assert.assertNotNull(fields);
+        Assert.assertEquals(2, fields.size());
+        Field field = fields.get(0);
         Assert.assertNotNull(field);
         Assert.assertEquals("hello", field.stringValue());
         Assert.assertEquals("name", field.name());
         Assert.assertEquals(false, field.fieldType().stored());
+        field = fields.get(1);
+        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
     }
 
     @Test
     public void testCaseSensitiveNull() {
         ColumnMapperString mapper = new ColumnMapperString(null);
-        Field field = mapper.field("name", "Hello");
+        List<Field> fields = mapper.fields("name", "Hello");
+        Assert.assertNotNull(fields);
+        Assert.assertEquals(2, fields.size());
+        Field field = fields.get(0);
         Assert.assertNotNull(field);
         Assert.assertEquals("Hello", field.stringValue());
     }
@@ -141,25 +153,42 @@ public class ColumnMapperStringTest {
     @Test
     public void testCaseSensitiveTrue() {
         ColumnMapperString mapper = new ColumnMapperString(true);
-        Field field = mapper.field("name", "Hello");
+        List<Field> fields = mapper.fields("name", "Hello");
+        Assert.assertNotNull(fields);
+        Assert.assertEquals(2, fields.size());
+        Field field = fields.get(0);
         Assert.assertNotNull(field);
         Assert.assertEquals("Hello", field.stringValue());
+        field = fields.get(1);
+        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
     }
 
     @Test
     public void testCaseSensitiveDefault() {
         ColumnMapperString mapper = new ColumnMapperString();
-        Field field = mapper.field("name", "Hello");
+        List<Field> fields = mapper.fields("name", "Hello");
+        Assert.assertNotNull(fields);
+        Assert.assertEquals(2, fields.size());
+        Field field = fields.get(0);
+        Assert.assertNotNull(fields);
+        Assert.assertEquals(2, fields.size());
         Assert.assertNotNull(field);
         Assert.assertEquals("Hello", field.stringValue());
+        field = fields.get(1);
+        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
     }
 
     @Test
     public void testCaseSensitiveFalse() {
         ColumnMapperString mapper = new ColumnMapperString(false);
-        Field field = mapper.field("name", "Hello");
+        List<Field> fields = mapper.fields("name", "Hello");
+        Assert.assertNotNull(fields);
+        Assert.assertEquals(2, fields.size());
+        Field field = fields.get(0);
         Assert.assertNotNull(field);
         Assert.assertEquals("hello", field.stringValue());
+        field = fields.get(1);
+        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
     }
 
     @Test

@@ -20,11 +20,6 @@ import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.BooleanType;
 import org.apache.cassandra.db.marshal.UTF8Type;
-import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.StringField;
-import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
 
 /**
@@ -32,7 +27,7 @@ import org.codehaus.jackson.annotate.JsonCreator;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ColumnMapperBoolean extends ColumnMapperSingle<String> {
+public class ColumnMapperBoolean extends ColumnMapperKeyword {
 
     /** The {@code String} representation of a true value. */
     private static final String TRUE = "true";
@@ -50,7 +45,7 @@ public class ColumnMapperBoolean extends ColumnMapperSingle<String> {
 
     /** {@inheritDoc} */
     @Override
-    public String indexValue(String name, Object value) {
+    public String baseValue(String name, Object value, boolean checkValidity) {
         if (value == null) {
             return null;
         } else if (value instanceof Boolean) {
@@ -61,39 +56,11 @@ public class ColumnMapperBoolean extends ColumnMapperSingle<String> {
                 return TRUE;
             } else if (s.equalsIgnoreCase(FALSE)) {
                 return FALSE;
+            } else if (!checkValidity) {
+                return s;
             }
         }
         throw new IllegalArgumentException();
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public String queryValue(String name, Object value) {
-        if (value == null) {
-            return null;
-        } else if (value instanceof Boolean) {
-            return (Boolean) value ? TRUE : FALSE;
-        } else {
-            return value.toString();
-        }
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Field field(String name, Object value) {
-        return new StringField(name, indexValue(name, value), STORE);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public SortField sortField(String field, boolean reverse) {
-        return new SortField(field, Type.STRING, reverse);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Class<String> baseClass() {
-        return String.class;
     }
 
     /** {@inheritDoc} */

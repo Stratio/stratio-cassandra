@@ -22,11 +22,6 @@ import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.BytesType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.utils.Hex;
-import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.StringField;
-import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
 
 import java.nio.ByteBuffer;
@@ -36,7 +31,7 @@ import java.nio.ByteBuffer;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ColumnMapperBlob extends ColumnMapperSingle<String> {
+public class ColumnMapperBlob extends ColumnMapperKeyword {
 
     /**
      * Builds a new {@link ColumnMapperBlob}.
@@ -48,9 +43,11 @@ public class ColumnMapperBlob extends ColumnMapperSingle<String> {
 
     /** {@inheritDoc} */
     @Override
-    public String indexValue(String name, Object value) {
+    public String baseValue(String name, Object value, boolean checkValidity) {
         if (value == null) {
             return null;
+        } else if (!checkValidity) {
+            return value.toString().toLowerCase().replaceFirst("0x", "");
         } else if (value instanceof ByteBuffer) {
             ByteBuffer bb = (ByteBuffer) value;
             return ByteBufferUtils.toHex(bb);
@@ -65,35 +62,6 @@ public class ColumnMapperBlob extends ColumnMapperSingle<String> {
         } else {
             throw new IllegalArgumentException(String.format("Value '%s' cannot be cast to byte array", value));
         }
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public String queryValue(String name, Object value) {
-        if (value == null) {
-            return null;
-        } else {
-            return value.toString().toLowerCase().replaceFirst("0x", "");
-        }
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Field field(String name, Object value) {
-        String string = indexValue(name, value);
-        return new StringField(name, string, STORE);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public SortField sortField(String field, boolean reverse) {
-        return new SortField(field, Type.STRING, reverse);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Class<String> baseClass() {
-        return String.class;
     }
 
     /** {@inheritDoc} */

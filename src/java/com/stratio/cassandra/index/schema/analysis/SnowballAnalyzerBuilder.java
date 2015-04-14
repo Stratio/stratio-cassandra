@@ -37,6 +37,7 @@ import org.apache.lucene.analysis.pt.PortugueseAnalyzer;
 import org.apache.lucene.analysis.ro.RomanianAnalyzer;
 import org.apache.lucene.analysis.ru.RussianAnalyzer;
 import org.apache.lucene.analysis.snowball.SnowballFilter;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.analysis.standard.StandardFilter;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.apache.lucene.analysis.sv.SwedishAnalyzer;
@@ -104,8 +105,8 @@ public class SnowballAnalyzerBuilder extends AnalyzerBuilder {
      */
     private static Analyzer buildAnalyzer(final String language, final CharArraySet stopwords) {
         return new Analyzer() {
-            protected TokenStreamComponents createComponents(String field, Reader reader) {
-                final Tokenizer source = new StandardTokenizer(reader);
+            protected TokenStreamComponents createComponents(String fieldName) {
+                final Tokenizer source = new StandardTokenizer();
                 TokenStream result = new StandardFilter(source);
                 result = new LowerCaseFilter(result);
                 result = new StopFilter(result, stopwords);

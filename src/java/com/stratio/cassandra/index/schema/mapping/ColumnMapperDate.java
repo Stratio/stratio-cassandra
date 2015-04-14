@@ -17,9 +17,12 @@ package com.stratio.cassandra.index.schema.mapping;
 
 import com.google.common.base.Objects;
 import org.apache.cassandra.db.marshal.*;
-import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.LongField;
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
@@ -28,7 +31,11 @@ import org.codehaus.jackson.annotate.JsonProperty;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * A {@link ColumnMapper} to map a date field.
@@ -39,6 +46,16 @@ public class ColumnMapperDate extends ColumnMapperSingle<Long> {
 
     /** The default {@link SimpleDateFormat} pattern. */
     public static final String DEFAULT_PATTERN = "yyyy/MM/dd HH:mm:ss.SSS";
+
+    private static final FieldType FIELD_TYPE = new FieldType();
+    static {
+        FIELD_TYPE.setTokenized(true);
+        FIELD_TYPE.setOmitNorms(true);
+        FIELD_TYPE.setIndexOptions(IndexOptions.DOCS);
+        FIELD_TYPE.setNumericType(FieldType.NumericType.LONG);
+        FIELD_TYPE.setDocValuesType(DocValuesType.NUMERIC);
+        FIELD_TYPE.freeze();
+    }
 
     /** The {@link SimpleDateFormat} pattern. */
     private final String pattern;
@@ -74,7 +91,7 @@ public class ColumnMapperDate extends ColumnMapperSingle<Long> {
 
     /** {@inheritDoc} */
     @Override
-    public Long indexValue(String name, Object value) {
+    public Long baseValue(String name, Object value, boolean checkValidity) {
         if (value == null) {
             return null;
         } else if (value instanceof Date) {
@@ -94,14 +111,10 @@ public class ColumnMapperDate extends ColumnMapperSingle<Long> {
 
     /** {@inheritDoc} */
     @Override
-    public Long queryValue(String name, Object value) {
-        return indexValue(name, value);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Field field(String name, Object value) {
-        return new LongField(name, indexValue(name, value), STORE);
+    public List<Field> fieldsFromBase(String name, Long value) {
+        List<Field> fields = new ArrayList<>();
+        fields.add(new LongField(name, value, FIELD_TYPE));
+        return fields;
     }
 
     /** {@inheritDoc} */

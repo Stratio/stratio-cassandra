@@ -17,11 +17,9 @@ package com.stratio.cassandra.index.schema.mapping;
 
 import com.google.common.base.Objects;
 import org.apache.cassandra.db.marshal.*;
-import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.StringField;
-import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.SortField.Type;
+import org.apache.lucene.document.FieldType;
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.IndexOptions;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
@@ -30,10 +28,20 @@ import org.codehaus.jackson.annotate.JsonProperty;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ColumnMapperString extends ColumnMapperSingle<String> {
+public class ColumnMapperString extends ColumnMapperKeyword {
 
     /** The default case sensitive option. */
     public static final boolean DEFAULT_CASE_SENSITIVE = true;
+
+    public static final FieldType FIELD_TYPE = new FieldType();
+    static {
+        FIELD_TYPE.setOmitNorms(true);
+        FIELD_TYPE.setIndexOptions(IndexOptions.DOCS);
+        FIELD_TYPE.setTokenized(false);
+        FIELD_TYPE.setDocValuesType(DocValuesType.BINARY);
+        FIELD_TYPE.setStored(true);
+        FIELD_TYPE.freeze();
+    }
 
     /** If it must be case sensitive. */
     private final boolean caseSensitive;
@@ -70,38 +78,13 @@ public class ColumnMapperString extends ColumnMapperSingle<String> {
 
     /** {@inheritDoc} */
     @Override
-    public String indexValue(String name, Object value) {
+    public String baseValue(String name, Object value, boolean checkValidity) {
         if (value == null) {
             return null;
         } else {
             String string = value.toString();
             return caseSensitive ? string : string.toLowerCase();
         }
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public String queryValue(String name, Object value) {
-        return indexValue(name, value);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Field field(String name, Object value) {
-        String string = indexValue(name, value);
-        return new StringField(name, string, STORE);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public SortField sortField(String field, boolean reverse) {
-        return new SortField(field, Type.STRING, reverse);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Class<String> baseClass() {
-        return String.class;
     }
 
     /** {@inheritDoc} */

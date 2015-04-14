@@ -31,6 +31,7 @@ import org.apache.lucene.search.SortField;
 import org.codehaus.jackson.annotate.JsonSubTypes;
 import org.codehaus.jackson.annotate.JsonTypeInfo;
 
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -83,14 +84,18 @@ public abstract class ColumnMapper {
     }
 
     /**
-     * Returns the Lucene {@link Field}s resulting from the mapping of the specified {@link
-     * com.stratio.cassandra.index.schema.Column}.
+     * Returns the Lucene {@link Field}s resulting from the mapping of the specified {@link Column}.
      *
-     * @param column The name of the {@link com.stratio.cassandra.index.schema.Column}.
-     * @return The Lucene {@link Field}s resulting from the mapping of the specified {@link
-     * com.stratio.cassandra.index.schema.Column}.
+     * @param column The name of the {@link Column}.
+     * @return The Lucene {@link Field}s resulting from the mapping of the specified {@link Column}.
      */
-    public abstract Set<IndexableField> fields(Column column);
+    public final List<Field> fields(Column column) {
+        String name = column.getFullName();
+        Object value = column.getComposedValue();
+        return fields(name, value);
+    }
+
+    public abstract List<Field> fields(String name, Object value);
 
     /**
      * Returns the {@link SortField} resulting from the mapping of the specified object.

@@ -17,13 +17,22 @@ package com.stratio.cassandra.index.schema.mapping;
 
 import com.google.common.base.Objects;
 import org.apache.cassandra.db.marshal.*;
-import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.FloatField;
+import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * A {@link ColumnMapper} to map a float field.
@@ -34,6 +43,16 @@ public class ColumnMapperFloat extends ColumnMapperSingle<Float> {
 
     /** The default boost. */
     public static final Float DEFAULT_BOOST = 1.0f;
+
+    private static final FieldType FIELD_TYPE = new FieldType();
+    static {
+        FIELD_TYPE.setTokenized(true);
+        FIELD_TYPE.setOmitNorms(true);
+        FIELD_TYPE.setIndexOptions(IndexOptions.DOCS);
+        FIELD_TYPE.setNumericType(FieldType.NumericType.FLOAT);
+        FIELD_TYPE.setDocValuesType(DocValuesType.NUMERIC);
+        FIELD_TYPE.freeze();
+    }
 
     /** The boost. */
     private final Float boost;
@@ -58,7 +77,7 @@ public class ColumnMapperFloat extends ColumnMapperSingle<Float> {
 
     /** {@inheritDoc} */
     @Override
-    public Float indexValue(String name, Object value) {
+    public Float baseValue(String name, Object value, boolean checkValidity) {
         if (value == null) {
             return null;
         } else if (value instanceof Number) {
@@ -79,17 +98,11 @@ public class ColumnMapperFloat extends ColumnMapperSingle<Float> {
 
     /** {@inheritDoc} */
     @Override
-    public Float queryValue(String name, Object value) {
-        return indexValue(name, value);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Field field(String name, Object value) {
-        Float number = indexValue(name, value);
-        Field field = new FloatField(name, number, STORE);
-        field.setBoost(boost);
-        return field;
+    public List<Field> fieldsFromBase(String name, Float value) {
+        List<Field> fields = new ArrayList<>();
+        fields.add(new FloatField(name, value, STORE));
+        fields.add(new NumericDocValuesField(name, Float.floatToIntBits(value)));
+        return fields;
     }
 
     /** {@inheritDoc} */

@@ -19,11 +19,13 @@ import com.stratio.cassandra.index.schema.Schema;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.Hex;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.index.DocValuesType;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.UUID;
 
 public class ColumnMapperBlobTest {
@@ -138,11 +140,16 @@ public class ColumnMapperBlobTest {
     @Test
     public void testField() {
         ColumnMapperBlob mapper = new ColumnMapperBlob();
-        Field field = mapper.field("name", "f1B2");
+        List<Field> fields = mapper.fields("name", "f1B2");
+        Assert.assertNotNull(fields);
+        Assert.assertEquals(2, fields.size());
+        Field field = fields.get(0);
         Assert.assertNotNull(field);
         Assert.assertEquals("f1b2", field.stringValue());
         Assert.assertEquals("name", field.name());
         Assert.assertEquals(false, field.fieldType().stored());
+        field = fields.get(1);
+        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
     }
 
     @Test

@@ -15,14 +15,18 @@
  */
 package com.stratio.cassandra.index.schema.mapping;
 
+import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.Schema;
+import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.index.DocValuesType;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.List;
 import java.util.UUID;
 
 public class ColumnMapperInetTest {
@@ -124,11 +128,16 @@ public class ColumnMapperInetTest {
     @Test
     public void testField() {
         ColumnMapperInet mapper = new ColumnMapperInet();
-        Field field = mapper.field("name", "192.168.0.13");
+        List<Field> fields = mapper.fields("name", "192.168.0.13");
+        Assert.assertNotNull(fields);
+        Assert.assertEquals(2, fields.size());
+        Field field = fields.get(0);
         Assert.assertNotNull(field);
         Assert.assertEquals("192.168.0.13", field.stringValue());
         Assert.assertEquals("name", field.name());
         Assert.assertEquals(false, field.fieldType().stored());
+        field = fields.get(1);
+        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
     }
 
     @Test

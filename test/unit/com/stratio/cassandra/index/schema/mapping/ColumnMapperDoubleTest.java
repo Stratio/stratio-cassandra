@@ -15,12 +15,17 @@
  */
 package com.stratio.cassandra.index.schema.mapping;
 
+import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.Schema;
+import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.FieldType;
+import org.apache.lucene.index.DocValuesType;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.List;
 
 public class ColumnMapperDoubleTest {
 
@@ -115,11 +120,16 @@ public class ColumnMapperDoubleTest {
     @Test
     public void testField() {
         ColumnMapperDouble mapper = new ColumnMapperDouble(1f);
-        Field field = mapper.field("name", "3.2");
+        List<Field> fields = mapper.fields("name", "3.2");
+        Assert.assertNotNull(fields);
+        Assert.assertEquals(1, fields.size());
+        Field field = fields.get(0);
         Assert.assertNotNull(field);
         Assert.assertEquals(3.2d, field.numericValue());
         Assert.assertEquals("name", field.name());
         Assert.assertEquals(false, field.fieldType().stored());
+        Assert.assertEquals(FieldType.NumericType.DOUBLE, field.fieldType().numericType());
+        Assert.assertEquals(DocValuesType.NUMERIC, field.fieldType().docValuesType());
     }
 
     @Test

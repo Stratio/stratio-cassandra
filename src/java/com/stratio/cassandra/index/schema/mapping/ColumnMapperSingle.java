@@ -18,11 +18,9 @@ package com.stratio.cassandra.index.schema.mapping;
 import com.stratio.cassandra.index.schema.Column;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.search.SortField;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.List;
 
 /**
  * Class for mapping between Cassandra's columns and Lucene documents.
@@ -62,13 +60,11 @@ public abstract class ColumnMapperSingle<BASE> extends ColumnMapper {
         }
         return false;
     }
-
-    public Set<IndexableField> fields(Column column) {
-        Field field = field(column.getFullName(), column.getComposedValue());
-        Set<IndexableField> set = new HashSet<>();
-        set.add(field);
-        return set;
-    }
+    
+    public final List<Field> fields(String name, Object value) {
+        BASE indexValue = indexValue(name, value);
+        return fieldsFromBase(name, indexValue);
+    } 
 
     /**
      * Returns the Lucene {@link Field} resulting from the mapping of {@code value}, using {@code name} as field's
@@ -78,7 +74,7 @@ public abstract class ColumnMapperSingle<BASE> extends ColumnMapper {
      * @param value The value of the Lucene {@link Field}.
      * @return The Lucene {@link Field} resulting from the mapping of {@code value}, using {@code name} as field's name.
      */
-    public abstract Field field(String name, Object value);
+    public abstract List<Field> fieldsFromBase(String name, BASE value);
 
     /**
      * Returns the Lucene type for this mapper.
@@ -88,33 +84,49 @@ public abstract class ColumnMapperSingle<BASE> extends ColumnMapper {
     public abstract Class<BASE> baseClass();
 
     /**
-     * Returns the {@link com.stratio.cassandra.index.schema.Column} index value resulting from the mapping of the
+     * Returns the {@link Column} index value resulting from the mapping of the
      * specified object.
      *
      * @param field The field name.
      * @param value The object to be mapped.
-     * @return The {@link com.stratio.cassandra.index.schema.Column} index value resulting from the mapping of the
+     * @return The {@link Column} index value resulting from the mapping of the
      * specified object.
      */
-    public abstract BASE indexValue(String field, Object value);
+    public final BASE indexValue(String field, Object value) {
+        return baseValue(field, value, true);
+    }
 
     /**
-     * Returns the {@link com.stratio.cassandra.index.schema.Column} query value resulting from the mapping of the
+     * Returns the {@link Column} query value resulting from the mapping of the
      * specified object.
      *
      * @param field The field name.
      * @param value The object to be mapped.
-     * @return The {@link com.stratio.cassandra.index.schema.Column} index value resulting from the mapping of the
+     * @return The {@link Column} index value resulting from the mapping of the
      * specified object.
      */
-    public abstract BASE queryValue(String field, Object value);
+    public final BASE queryValue(String field, Object value) {
+        return baseValue(field, value, false);
+    }
 
     /**
-     * Returns the {@link org.apache.lucene.search.SortField} resulting from the mapping of the specified object.
+     * Returns the {@link Column} query value resulting from the mapping of the
+     * specified object.
+     *
+     * @param field The field name.
+     * @param value The object to be mapped.
+     * @param checkValidity {@code true} if value validity must be checked.
+     * @return The {@link Column} index value resulting from the mapping of the
+     * specified object.
+     */
+    public abstract BASE baseValue(String field, Object value, boolean checkValidity);
+
+    /**
+     * Returns the {@link SortField} resulting from the mapping of the specified object.
      *
      * @param field   The field name.
      * @param reverse If the sort must be reversed.
-     * @return The {@link org.apache.lucene.search.SortField} resulting from the mapping of the specified object.
+     * @return The {@link SortField} resulting from the mapping of the specified object.
      */
     public abstract SortField sortField(String field, boolean reverse);
 

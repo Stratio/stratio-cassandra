@@ -35,6 +35,7 @@ import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SortField;
@@ -102,8 +103,9 @@ public abstract class ClusteringKeyMapper {
      */
     public final void addFields(Document document, CellName cellName) {
         String serializedKey = ByteBufferUtils.toString(cellName.toByteBuffer());
-        Field field = new StringField(FIELD_NAME, serializedKey, Field.Store.YES);
-        document.add(field);
+        BytesRef bytesRef = new BytesRef(serializedKey);
+        document.add(new StringField(FIELD_NAME, serializedKey, Field.Store.YES));
+        document.add(new SortedDocValuesField(FIELD_NAME, bytesRef));
     }
 
     /**

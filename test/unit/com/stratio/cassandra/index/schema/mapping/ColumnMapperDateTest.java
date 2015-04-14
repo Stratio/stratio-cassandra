@@ -15,8 +15,12 @@
  */
 package com.stratio.cassandra.index.schema.mapping;
 
+import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.Schema;
+import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.FieldType;
+import org.apache.lucene.index.DocValuesType;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -24,6 +28,7 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 
 public class ColumnMapperDateTest {
 
@@ -134,11 +139,16 @@ public class ColumnMapperDateTest {
     @Test
     public void testField() throws ParseException {
         ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
-        Field field = mapper.field("name", "2014-03-19");
+        List<Field> fields = mapper.fields("name", "2014-03-19");
+        Assert.assertNotNull(fields);
+        Assert.assertEquals(1, fields.size());
+        Field field = fields.get(0);
         Assert.assertNotNull(field);
         Assert.assertEquals(sdf.parse("2014-03-19").getTime(), field.numericValue().longValue());
         Assert.assertEquals("name", field.name());
         Assert.assertEquals(false, field.fieldType().stored());
+        Assert.assertEquals(FieldType.NumericType.LONG, field.fieldType().numericType());
+        Assert.assertEquals(DocValuesType.NUMERIC, field.fieldType().docValuesType());
     }
 
     @Test

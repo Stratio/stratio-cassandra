@@ -23,6 +23,7 @@ import com.stratio.cassandra.index.schema.mapping.ColumnMapper;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.UTF8Type;
+import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
@@ -33,9 +34,11 @@ import org.apache.lucene.spatial.prefix.tree.SpatialPrefixTree;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -64,12 +67,11 @@ public class GeoShapeMapper extends ColumnMapper {
         this.grid = new GeohashPrefixTree(spatialContext, this.maxLevels);
     }
 
-    public Set<IndexableField> fields(Column column) {
-        String fieldName = column.getFullName();
-        SpatialStrategy strategy = getStrategy(fieldName);
-        GeoShape geoShape = GeoShape.fromJson((String) column.getComposedValue());
+    public List<Field> fields(String name, Object value) {
+        SpatialStrategy strategy = getStrategy(name);
+        GeoShape geoShape = GeoShape.fromJson((String) value);
         Shape shape = geoShape.toSpatial4j(spatialContext);
-        Set<IndexableField> fields = new HashSet<>();
+        List<Field> fields = new ArrayList<>();
         Collections.addAll(fields, strategy.createIndexableFields(shape));
         return fields;
     }

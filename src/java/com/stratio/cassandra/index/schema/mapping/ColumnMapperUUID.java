@@ -19,11 +19,6 @@ import com.google.common.base.Objects;
 import com.google.common.primitives.Longs;
 import com.stratio.cassandra.util.ByteBufferUtils;
 import org.apache.cassandra.db.marshal.*;
-import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.StringField;
-import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
 
 import java.nio.ByteBuffer;
@@ -34,7 +29,7 @@ import java.util.UUID;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ColumnMapperUUID extends ColumnMapperSingle<String> {
+public class ColumnMapperUUID extends ColumnMapperKeyword {
 
     /**
      * Builds a new {@link ColumnMapperUUID}.
@@ -47,43 +42,27 @@ public class ColumnMapperUUID extends ColumnMapperSingle<String> {
 
     /** {@inheritDoc} */
     @Override
-    public String indexValue(String name, Object value) {
+    public String baseValue(String name, Object value, boolean checkValidity) {
         if (value == null) {
             return null;
         } else if (value instanceof UUID) {
             UUID uuid = (UUID) value;
             return serialize(uuid);
         } else if (value instanceof String) {
-            UUID uuid = UUID.fromString((String) value);
-            return serialize(uuid);
+            String string = (String) value;
+//            try {
+                UUID uuid = UUID.fromString(string);
+                return serialize(uuid);
+//            } catch (IllegalArgumentException e) {
+//                if (checkValidity) {
+//                    throw e;
+//                } else {
+//                    return string;
+//                }
+//            }
         } else {
             throw new IllegalArgumentException();
         }
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public String queryValue(String name, Object value) {
-        return indexValue(name, value);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Field field(String name, Object value) {
-        String uuid = indexValue(name, value);
-        return new StringField(name, uuid, STORE);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public SortField sortField(String field, boolean reverse) {
-        return new SortField(field, Type.STRING, reverse);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Class<String> baseClass() {
-        return String.class;
     }
 
     /** {@inheritDoc} */

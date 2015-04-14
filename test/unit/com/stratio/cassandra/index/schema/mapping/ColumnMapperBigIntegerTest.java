@@ -17,12 +17,14 @@ package com.stratio.cassandra.index.schema.mapping;
 
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.index.DocValuesType;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 public class ColumnMapperBigIntegerTest {
@@ -386,11 +388,16 @@ public class ColumnMapperBigIntegerTest {
     @Test
     public void testField() {
         ColumnMapperBigInteger mapper = new ColumnMapperBigInteger(10);
-        Field field = mapper.field("name", 42);
+        List<Field> fields = mapper.fields("name", "42");
+        Assert.assertNotNull(fields);
+        Assert.assertEquals(2, fields.size());
+        Field field = fields.get(0);
         Assert.assertNotNull(field);
         Assert.assertEquals("04ldqpex", field.stringValue());
         Assert.assertEquals("name", field.name());
         Assert.assertFalse(field.fieldType().stored());
+        field = fields.get(1);
+        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
     }
 
     @Test

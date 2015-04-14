@@ -16,13 +16,16 @@
 package com.stratio.cassandra.index.schema.mapping;
 
 import com.google.common.base.Objects;
-import org.apache.cassandra.db.marshal.*;
+import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.marshal.AsciiType;
+import org.apache.cassandra.db.marshal.DecimalType;
+import org.apache.cassandra.db.marshal.DoubleType;
+import org.apache.cassandra.db.marshal.FloatType;
+import org.apache.cassandra.db.marshal.Int32Type;
+import org.apache.cassandra.db.marshal.IntegerType;
+import org.apache.cassandra.db.marshal.LongType;
+import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.StringField;
-import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
@@ -34,7 +37,7 @@ import java.math.BigDecimal;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ColumnMapperBigDecimal extends ColumnMapperSingle<String> {
+public class ColumnMapperBigDecimal extends ColumnMapperKeyword {
 
     /** The default max number of digits for the integer part. */
     public static final int DEFAULT_INTEGER_DIGITS = 32;
@@ -109,7 +112,7 @@ public class ColumnMapperBigDecimal extends ColumnMapperSingle<String> {
 
     /** {@inheritDoc} */
     @Override
-    public String indexValue(String name, Object value) {
+    public String baseValue(String name, Object value, boolean checkValidity) {
 
         // Check not null
         if (value == null) {
@@ -146,31 +149,6 @@ public class ColumnMapperBigDecimal extends ColumnMapperSingle<String> {
         integerPart = StringUtils.leftPad(integerPart, integerDigits + 1, '0');
 
         return integerPart + "." + decimalPart;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public String queryValue(String name, Object value) {
-        return indexValue(name, value);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Field field(String name, Object value) {
-        String string = indexValue(name, value);
-        return new StringField(name, string, STORE);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public SortField sortField(String field, boolean reverse) {
-        return new SortField(field, Type.STRING, reverse);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Class<String> baseClass() {
-        return String.class;
     }
 
     /** {@inheritDoc} */

@@ -71,10 +71,10 @@ public class Mapping {
     }
 
     /**
-     * Adds to the specified {@link org.apache.lucene.document.Document} the Lucene fields representing the specified
-     * {@link com.stratio.cassandra.index.schema.Columns}.
+     * Adds to the specified {@link Document} the Lucene fields representing the specified {@link
+     * com.stratio.cassandra.index.schema.Columns}.
      *
-     * @param document The Lucene {@link org.apache.lucene.document.Document} where the fields are going to be added.
+     * @param document The Lucene {@link Document} where the fields are going to be added.
      * @param columns  The {@link com.stratio.cassandra.index.schema.Columns} to be added.
      */
     public void addFields(Document document, Columns columns) {
@@ -110,12 +110,10 @@ public class Mapping {
     }
 
     /**
-     * Returns the {@link com.stratio.cassandra.index.schema.mapping.ColumnMapperSingle} identified by the specified
-     * field name, or {@code null} if not found.
+     * Returns the {@link ColumnMapperSingle} identified by the specified field name, or {@code null} if not found.
      *
      * @param field A field name.
-     * @return The {@link com.stratio.cassandra.index.schema.mapping.ColumnMapperSingle} identified by the specified
-     * field name, or {@code null} if not found.
+     * @return The {@link ColumnMapperSingle} identified by the specified field name, or {@code null} if not found.
      */
     public ColumnMapperSingle<?> getMapperSingle(String field) {
         ColumnMapper columnMapper = getMapper(field);

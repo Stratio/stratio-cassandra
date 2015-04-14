@@ -15,11 +15,13 @@
  */
 package com.stratio.cassandra.index.schema.mapping;
 
+import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.TimeUUIDType;
 import org.apache.cassandra.db.marshal.UUIDType;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.index.DocValuesType;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -102,22 +104,32 @@ public class ColumnMapperUUIDTest {
     public void testFieldRandom() {
         ColumnMapperUUID mapper = new ColumnMapperUUID();
         UUID uuid = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
-        Field field = mapper.field("name", uuid);
+        List<Field> fields = mapper.fields("name", uuid);
+        Assert.assertNotNull(fields);
+        Assert.assertEquals(2, fields.size());
+        Field field = fields.get(0);
         Assert.assertNotNull(field);
         Assert.assertEquals("name", field.name());
         Assert.assertEquals("04550e8400e29b41d4a716446655440000", field.stringValue());
         Assert.assertFalse(field.fieldType().stored());
+        field = fields.get(1);
+        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
     }
 
     @Test
     public void testFieldTimeBased() {
         ColumnMapperUUID mapper = new ColumnMapperUUID();
         UUID uuid = UUID.fromString("c4c61dc4-89d7-11e4-b116-123b93f75cba");
-        Field field = mapper.field("name", uuid);
+        List<Field> fields = mapper.fields("name", uuid);
+        Assert.assertNotNull(fields);
+        Assert.assertEquals(2, fields.size());
+        Field field = fields.get(0);
         Assert.assertNotNull(field);
         Assert.assertEquals("name", field.name());
         Assert.assertEquals("0101e489d7c4c61dc4c4c61dc489d711e4b116123b93f75cba", field.stringValue());
         Assert.assertFalse(field.fieldType().stored());
+        field = fields.get(1);
+        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
     }
 
     @Test

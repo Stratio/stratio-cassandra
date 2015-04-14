@@ -18,14 +18,19 @@ package com.stratio.cassandra.index.schema.mapping;
 import com.google.common.base.Objects;
 import com.stratio.cassandra.index.schema.analysis.PreBuiltAnalyzers;
 import org.apache.cassandra.db.marshal.*;
-import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.SortedDocValuesField;
+import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
+import org.apache.lucene.util.BytesRef;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A {@link ColumnMapper} to map a string, tokenized field.
@@ -69,7 +74,7 @@ public class ColumnMapperText extends ColumnMapperSingle<String> {
 
     /** {@inheritDoc} */
     @Override
-    public String indexValue(String name, Object value) {
+    public String baseValue(String name, Object value, boolean checkValidity) {
         if (value == null) {
             return null;
         } else {
@@ -79,15 +84,12 @@ public class ColumnMapperText extends ColumnMapperSingle<String> {
 
     /** {@inheritDoc} */
     @Override
-    public String queryValue(String name, Object value) {
-        return indexValue(name, value);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Field field(String name, Object value) {
-        String text = indexValue(name, value);
-        return new TextField(name, text, STORE);
+    public List<Field> fieldsFromBase(String name, String value) {
+        List<Field> fields = new ArrayList<>();
+        BytesRef bytes = new BytesRef(value);
+        fields.add(new TextField(name, value, STORE));
+        fields.add(new SortedSetDocValuesField(name, bytes));
+        return fields;
     }
 
     /** {@inheritDoc} */
