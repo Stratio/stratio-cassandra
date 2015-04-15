@@ -1795,7 +1795,8 @@ public class StorageProxy implements StorageProxyMBean
                     throw new ReadTimeoutException(consistency_level, blockFor-1, blockFor, true);
                 }
 
-                if (haveSufficientRows) return command.postReconciliationProcessing(rows);
+                if (haveSufficientRows)
+                    return command.postReconciliationProcessing(rows);
 
                 // we didn't get enough rows in our concurrent fetch; recalculate our concurrency factor
                 // based on the results we've seen so far (as long as we still have ranges left to query)
@@ -1812,7 +1813,7 @@ public class StorageProxy implements StorageProxyMBean
                     }
                     else
                     {
-                        actualRowsPerRange = i / fetchedRows;
+                        actualRowsPerRange = fetchedRows / i;
                         concurrencyFactor = Math.max(1, Math.min(ranges.size() - i, Math.round(remainingRows / actualRowsPerRange)));
                     }
                     logger.debug("Didn't get enough response rows; actual rows per range: {}; remaining rows: {}, new concurrent requests: {}",
