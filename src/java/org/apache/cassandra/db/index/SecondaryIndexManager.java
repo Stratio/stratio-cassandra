@@ -831,26 +831,26 @@ public class SecondaryIndexManager
 
     }
 
-    public SecondaryIndexSearcher searcher(List<IndexExpression> clause) {
+    public SecondaryIndexSearcher getHighestSelectiveIndexSearcher(List<IndexExpression> clause)
+    {
         List<SecondaryIndexSearcher> indexSearchers = getIndexSearchersForQuery(clause);
 
         if (indexSearchers.isEmpty())
             return null;
 
-        List<SecondaryIndexSearcher> customIndexSearchers = new ArrayList<>(indexSearchers.size());
-        for (SecondaryIndexSearcher searcher : indexSearchers) {
-            ByteBuffer name = searcher.columns.iterator().next();
-            ColumnDefinition cDef = baseCfs.metadata.getColumnDefinition(name);
-            if (cDef.getIndexType() == IndexType.CUSTOM) {
-                customIndexSearchers.add(searcher);
+        SecondaryIndexSearcher mostSelective = null;
+        long bestEstimate = Long.MAX_VALUE;
+        for (SecondaryIndexSearcher searcher : indexSearchers)
+        {
+            SecondaryIndex highestSelectivityIndex = searcher.highestSelectivityIndex(clause);
+            long estimate = highestSelectivityIndex.estimateResultRows();
+            if (estimate <= bestEstimate)
+            {
+                bestEstimate = estimate;
+                mostSelective = searcher;
             }
         }
-        if (!customIndexSearchers.isEmpty()) {
-            if (customIndexSearchers.size() > 1)
-                throw new RuntimeException("Unable to search across multiple custom secondary index types");
-            indexSearchers = customIndexSearchers;
-        }
 
-        return indexSearchers.get(0);
+        return mostSelective;
     }
 }
