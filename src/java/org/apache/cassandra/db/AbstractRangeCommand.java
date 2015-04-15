@@ -51,7 +51,7 @@ public abstract class AbstractRangeCommand implements IReadCommand
     }
 
     public boolean requiresScanningAllRanges() {
-        return searcher == null ? false : searcher.requiresScanningAllRanges(rowFilter);
+        return searcher != null && searcher.requiresScanningAllRanges(rowFilter);
     }
 
     public List<Row> postReconciliationProcessing(List<Row> rows)
