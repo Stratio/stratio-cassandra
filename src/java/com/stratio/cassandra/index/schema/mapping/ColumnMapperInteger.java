@@ -26,12 +26,8 @@ import org.apache.cassandra.db.marshal.IntegerType;
 import org.apache.cassandra.db.marshal.LongType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.IntField;
 import org.apache.lucene.document.NumericDocValuesField;
-import org.apache.lucene.document.SortedNumericDocValuesField;
-import org.apache.lucene.index.DocValuesType;
-import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
@@ -49,16 +45,6 @@ public class ColumnMapperInteger extends ColumnMapperSingle<Integer> {
 
     /** The default boost. */
     public static final Float DEFAULT_BOOST = 1.0f;
-
-    private static final FieldType FIELD_TYPE = new FieldType();
-    static {
-        FIELD_TYPE.setTokenized(true);
-        FIELD_TYPE.setOmitNorms(true);
-        FIELD_TYPE.setIndexOptions(IndexOptions.DOCS);
-        FIELD_TYPE.setNumericType(FieldType.NumericType.INT);
-        FIELD_TYPE.setDocValuesType(DocValuesType.NUMERIC);
-        FIELD_TYPE.freeze();
-    }
 
     /** The boost. */
     private final Float boost;
@@ -83,23 +69,20 @@ public class ColumnMapperInteger extends ColumnMapperSingle<Integer> {
 
     /** {@inheritDoc} */
     @Override
-    public Integer baseValue(String name, Object value, boolean checkValidity) {
+    public Integer toLucene(String name, Object value, boolean checkValidity) {
         if (value == null) {
             return null;
         } else if (value instanceof Number) {
             return ((Number) value).intValue();
         } else if (value instanceof String) {
-            String svalue = (String) value;
             try {
-                return Double.valueOf(svalue).intValue();
+                return Double.valueOf((String) value).intValue();
             } catch (NumberFormatException e) {
-                String message = String.format("Field %s requires a base 10 integer, but found \"%s\"", name, svalue);
-                throw new IllegalArgumentException(message);
+                // Ignore to fail below
             }
-        } else {
-            String message = String.format("Field %s requires a base 10 integer, but found \"%s\"", name, value);
-            throw new IllegalArgumentException(message);
         }
+        String message = String.format("Field \"%s\" requires an integer, but found \"%s\"", name, value);
+        throw new IllegalArgumentException(message);
     }
 
     /** {@inheritDoc} */

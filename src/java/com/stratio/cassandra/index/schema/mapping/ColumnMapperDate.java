@@ -91,7 +91,7 @@ public class ColumnMapperDate extends ColumnMapperSingle<Long> {
 
     /** {@inheritDoc} */
     @Override
-    public Long baseValue(String name, Object value, boolean checkValidity) {
+    public Long toLucene(String name, Object value, boolean checkValidity) {
         if (value == null) {
             return null;
         } else if (value instanceof Date) {

@@ -112,7 +112,7 @@ public class ColumnMapperBigDecimal extends ColumnMapperKeyword {
 
     /** {@inheritDoc} */
     @Override
-    public String baseValue(String name, Object value, boolean checkValidity) {
+    public String toLucene(String name, Object value, boolean checkValidity) {
 
         // Check not null
         if (value == null) {

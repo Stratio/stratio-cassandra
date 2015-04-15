@@ -16,23 +16,25 @@
 package com.stratio.cassandra.index.schema.mapping;
 
 import com.google.common.base.Objects;
-import org.apache.cassandra.db.marshal.*;
+import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.marshal.AsciiType;
+import org.apache.cassandra.db.marshal.DecimalType;
+import org.apache.cassandra.db.marshal.DoubleType;
+import org.apache.cassandra.db.marshal.FloatType;
+import org.apache.cassandra.db.marshal.Int32Type;
+import org.apache.cassandra.db.marshal.IntegerType;
+import org.apache.cassandra.db.marshal.LongType;
+import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.FloatField;
 import org.apache.lucene.document.NumericDocValuesField;
-import org.apache.lucene.index.DocValuesType;
-import org.apache.lucene.index.IndexOptions;
-import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * A {@link ColumnMapper} to map a float field.
@@ -43,16 +45,6 @@ public class ColumnMapperFloat extends ColumnMapperSingle<Float> {
 
     /** The default boost. */
     public static final Float DEFAULT_BOOST = 1.0f;
-
-    private static final FieldType FIELD_TYPE = new FieldType();
-    static {
-        FIELD_TYPE.setTokenized(true);
-        FIELD_TYPE.setOmitNorms(true);
-        FIELD_TYPE.setIndexOptions(IndexOptions.DOCS);
-        FIELD_TYPE.setNumericType(FieldType.NumericType.FLOAT);
-        FIELD_TYPE.setDocValuesType(DocValuesType.NUMERIC);
-        FIELD_TYPE.freeze();
-    }
 
     /** The boost. */
     private final Float boost;
@@ -77,23 +69,20 @@ public class ColumnMapperFloat extends ColumnMapperSingle<Float> {
 
     /** {@inheritDoc} */
     @Override
-    public Float baseValue(String name, Object value, boolean checkValidity) {
+    public Float toLucene(String name, Object value, boolean checkValidity) {
         if (value == null) {
             return null;
         } else if (value instanceof Number) {
             return ((Number) value).floatValue();
         } else if (value instanceof String) {
-            String svalue = (String) value;
             try {
-                return Double.valueOf(svalue).floatValue();
+                return Double.valueOf((String) value).floatValue();
             } catch (NumberFormatException e) {
-                String message = String.format("Field %s requires a base 10 float, but found \"%s\"", name, svalue);
-                throw new IllegalArgumentException(message);
+                // Ignore to fail below
             }
-        } else {
-            String message = String.format("Field %s requires a base 10 float, but found \"%s\"", name, value);
-            throw new IllegalArgumentException(message);
         }
+        String message = String.format("Field \"%s\" requires a float, but found \"%s\"", name, value);
+        throw new IllegalArgumentException(message);
     }
 
     /** {@inheritDoc} */

@@ -33,8 +33,7 @@ public abstract class ColumnMapperSingle<BASE> extends ColumnMapper {
     private final AbstractType<?>[] supportedClusteringTypes;
 
     /**
-     * Builds a new {@link ColumnMapperSingle} supporting the specified types for
-     * indexing and clustering.
+     * Builds a new {@link ColumnMapperSingle} supporting the specified types for indexing and clustering.
      *
      * @param supportedTypes           The supported Cassandra types for indexing.
      * @param supportedClusteringTypes The supported Cassandra types as clustering key.
@@ -60,11 +59,11 @@ public abstract class ColumnMapperSingle<BASE> extends ColumnMapper {
         }
         return false;
     }
-    
+
     public final List<Field> fields(String name, Object value) {
         BASE indexValue = indexValue(name, value);
         return fieldsFromBase(name, indexValue);
-    } 
+    }
 
     /**
      * Returns the Lucene {@link Field} resulting from the mapping of {@code value}, using {@code name} as field's
@@ -84,42 +83,36 @@ public abstract class ColumnMapperSingle<BASE> extends ColumnMapper {
     public abstract Class<BASE> baseClass();
 
     /**
-     * Returns the {@link Column} index value resulting from the mapping of the
-     * specified object.
+     * Returns the {@link Column} index value resulting from the mapping of the specified object.
      *
      * @param field The field name.
      * @param value The object to be mapped.
-     * @return The {@link Column} index value resulting from the mapping of the
-     * specified object.
+     * @return The {@link Column} index value resulting from the mapping of the specified object.
      */
     public final BASE indexValue(String field, Object value) {
-        return baseValue(field, value, true);
+        return toLucene(field, value, true);
     }
 
     /**
-     * Returns the {@link Column} query value resulting from the mapping of the
-     * specified object.
+     * Returns the {@link Column} query value resulting from the mapping of the specified object.
      *
      * @param field The field name.
      * @param value The object to be mapped.
-     * @return The {@link Column} index value resulting from the mapping of the
-     * specified object.
+     * @return The {@link Column} index value resulting from the mapping of the specified object.
      */
     public final BASE queryValue(String field, Object value) {
-        return baseValue(field, value, false);
+        return toLucene(field, value, false);
     }
 
     /**
-     * Returns the {@link Column} query value resulting from the mapping of the
-     * specified object.
+     * Returns the {@link Column} query value resulting from the mapping of the specified object.
      *
-     * @param field The field name.
-     * @param value The object to be mapped.
+     * @param field         The field name.
+     * @param value         The object to be mapped.
      * @param checkValidity {@code true} if value validity must be checked.
-     * @return The {@link Column} index value resulting from the mapping of the
-     * specified object.
+     * @return The {@link Column} index value resulting from the mapping of the specified object.
      */
-    public abstract BASE baseValue(String field, Object value, boolean checkValidity);
+    public abstract BASE toLucene(String field, Object value, boolean checkValidity);
 
     /**
      * Returns the {@link SortField} resulting from the mapping of the specified object.

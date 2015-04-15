@@ -43,7 +43,7 @@ public class ColumnMapperBlob extends ColumnMapperKeyword {
 
     /** {@inheritDoc} */
     @Override
-    public String baseValue(String name, Object value, boolean checkValidity) {
+    public String toLucene(String name, Object value, boolean checkValidity) {
         if (value == null) {
             return null;
         } else if (!checkValidity) {
