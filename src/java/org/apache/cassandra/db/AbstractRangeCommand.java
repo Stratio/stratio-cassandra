@@ -47,7 +47,7 @@ public abstract class AbstractRangeCommand implements IReadCommand
         this.predicate = predicate;
         this.rowFilter = rowFilter;
         SecondaryIndexManager indexManager = Keyspace.open(keyspace).getColumnFamilyStore(columnFamily).indexManager;
-        this.searcher = indexManager.getHighestSelectiveIndexSearcher(rowFilter);
+        this.searcher = indexManager.getHighestSelectivityIndexSearcher(rowFilter);
     }
 
     public boolean requiresScanningAllRanges() {

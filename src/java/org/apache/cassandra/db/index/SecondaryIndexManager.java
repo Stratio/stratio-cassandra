@@ -831,7 +831,7 @@ public class SecondaryIndexManager
 
     }
 
-    public SecondaryIndexSearcher getHighestSelectiveIndexSearcher(List<IndexExpression> clause)
+    public SecondaryIndexSearcher getHighestSelectivityIndexSearcher(List<IndexExpression> clause)
     {
         List<SecondaryIndexSearcher> indexSearchers = getIndexSearchersForQuery(clause);
 
