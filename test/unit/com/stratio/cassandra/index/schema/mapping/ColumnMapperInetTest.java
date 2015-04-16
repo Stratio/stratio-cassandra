@@ -15,9 +15,7 @@
  */
 package com.stratio.cassandra.index.schema.mapping;
 
-import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.Schema;
-import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DocValuesType;
 import org.junit.Assert;
@@ -137,7 +135,7 @@ public class ColumnMapperInetTest {
         Assert.assertEquals("name", field.name());
         Assert.assertEquals(false, field.fieldType().stored());
         field = fields.get(1);
-        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
+        Assert.assertEquals(DocValuesType.SORTED_SET, field.fieldType().docValuesType());
     }
 
     @Test

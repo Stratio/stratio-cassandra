@@ -149,7 +149,7 @@ public class ColumnMapperBlobTest {
         Assert.assertEquals("name", field.name());
         Assert.assertEquals(false, field.fieldType().stored());
         field = fields.get(1);
-        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
+        Assert.assertEquals(DocValuesType.SORTED_SET, field.fieldType().docValuesType());
     }
 
     @Test

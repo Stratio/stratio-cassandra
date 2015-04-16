@@ -15,9 +15,7 @@
  */
 package com.stratio.cassandra.index.schema.mapping;
 
-import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.Schema;
-import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.document.Field;
 import org.junit.Assert;
 import org.junit.Test;

@@ -18,14 +18,12 @@ package com.stratio.cassandra.index.schema.mapping;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DocValuesType;
-import org.apache.lucene.index.IndexableField;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.util.Date;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 public class ColumnMapperBigDecimalTest {
@@ -474,7 +472,7 @@ public class ColumnMapperBigDecimalTest {
         Assert.assertEquals("name", field.name());
         Assert.assertFalse(field.fieldType().stored());
         field = fields.get(1);
-        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
+        Assert.assertEquals(DocValuesType.SORTED_SET, field.fieldType().docValuesType());
     }
 
     @Test

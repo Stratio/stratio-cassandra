@@ -15,7 +15,6 @@
  */
 package com.stratio.cassandra.index.schema.mapping;
 
-import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.TimeUUIDType;
@@ -27,7 +26,11 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.UUID;
 
 public class ColumnMapperUUIDTest {
 
@@ -113,7 +116,7 @@ public class ColumnMapperUUIDTest {
         Assert.assertEquals("04550e8400e29b41d4a716446655440000", field.stringValue());
         Assert.assertFalse(field.fieldType().stored());
         field = fields.get(1);
-        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
+        Assert.assertEquals(DocValuesType.SORTED_SET, field.fieldType().docValuesType());
     }
 
     @Test
@@ -129,7 +132,7 @@ public class ColumnMapperUUIDTest {
         Assert.assertEquals("0101e489d7c4c61dc4c4c61dc489d711e4b116123b93f75cba", field.stringValue());
         Assert.assertFalse(field.fieldType().stored());
         field = fields.get(1);
-        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
+        Assert.assertEquals(DocValuesType.SORTED_SET, field.fieldType().docValuesType());
     }
 
     @Test
