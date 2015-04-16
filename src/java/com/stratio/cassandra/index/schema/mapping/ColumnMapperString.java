@@ -33,16 +33,6 @@ public class ColumnMapperString extends ColumnMapperKeyword {
     /** The default case sensitive option. */
     public static final boolean DEFAULT_CASE_SENSITIVE = true;
 
-    public static final FieldType FIELD_TYPE = new FieldType();
-    static {
-        FIELD_TYPE.setOmitNorms(true);
-        FIELD_TYPE.setIndexOptions(IndexOptions.DOCS);
-        FIELD_TYPE.setTokenized(false);
-        FIELD_TYPE.setDocValuesType(DocValuesType.BINARY);
-        FIELD_TYPE.setStored(true);
-        FIELD_TYPE.freeze();
-    }
-
     /** If it must be case sensitive. */
     private final boolean caseSensitive;
 

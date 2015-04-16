@@ -20,6 +20,7 @@ import org.apache.cassandra.db.marshal.*;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.LongField;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableField;
@@ -46,16 +47,6 @@ public class ColumnMapperDate extends ColumnMapperSingle<Long> {
 
     /** The default {@link SimpleDateFormat} pattern. */
     public static final String DEFAULT_PATTERN = "yyyy/MM/dd HH:mm:ss.SSS";
-
-    private static final FieldType FIELD_TYPE = new FieldType();
-    static {
-        FIELD_TYPE.setTokenized(true);
-        FIELD_TYPE.setOmitNorms(true);
-        FIELD_TYPE.setIndexOptions(IndexOptions.DOCS);
-        FIELD_TYPE.setNumericType(FieldType.NumericType.LONG);
-        FIELD_TYPE.setDocValuesType(DocValuesType.NUMERIC);
-        FIELD_TYPE.freeze();
-    }
 
     /** The {@link SimpleDateFormat} pattern. */
     private final String pattern;
@@ -102,18 +93,19 @@ public class ColumnMapperDate extends ColumnMapperSingle<Long> {
             try {
                 return concurrentDateFormat.get().parse(value.toString()).getTime();
             } catch (ParseException e) {
-                throw new IllegalArgumentException(e);
+                // Ignore to fail below
             }
-        } else {
-            throw new IllegalArgumentException();
         }
+        String message = String.format("Field \"%s\" requires a date, but found \"%s\"", name, pattern, value);
+        throw new IllegalArgumentException(message);
     }
 
     /** {@inheritDoc} */
     @Override
     public List<Field> fieldsFromBase(String name, Long value) {
         List<Field> fields = new ArrayList<>();
-        fields.add(new LongField(name, value, FIELD_TYPE));
+        fields.add(new LongField(name, value, STORE));
+        fields.add(new NumericDocValuesField(name, value));
         return fields;
     }
 
