@@ -25,6 +25,7 @@ import org.apache.cassandra.dht.Token.TokenFactory;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.*;
@@ -57,8 +58,9 @@ public class TokenMapperGeneric extends TokenMapper {
     public void addFields(Document document, DecoratedKey partitionKey) {
         ByteBuffer bb = factory.toByteArray(partitionKey.getToken());
         String serialized = ByteBufferUtils.toString(bb);
-        Field field = new StringField(FIELD_NAME, serialized, Store.YES);
-        document.add(field);
+        BytesRef bytesRef = new BytesRef(serialized);
+        document.add(new StringField(FIELD_NAME, serialized, Store.NO));
+        document.add(new SortedDocValuesField(FIELD_NAME, bytesRef));
     }
 
     /** {@inheritDoc} */

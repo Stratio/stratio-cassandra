@@ -24,7 +24,7 @@ import org.apache.lucene.util.BytesRef;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class TokenMapperGenericSorter extends FieldComparator.TermValComparator {
+public class TokenMapperGenericSorter extends FieldComparator.TermOrdValComparator {
 
     /** The PartitionKeyComparator to be used. */
     private final TokenMapperGeneric tokenMapperGeneric;
