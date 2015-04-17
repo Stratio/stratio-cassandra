@@ -20,8 +20,6 @@ import org.apache.cassandra.io.util.FileUtils;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.*;
-//import org.apache.lucene.index.sorter.EarlyTerminatingSortingCollector;
-//import org.apache.lucene.index.sorter.SortingMergePolicy;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -29,8 +27,6 @@ import org.apache.lucene.store.NRTCachingDirectory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileSystems;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
