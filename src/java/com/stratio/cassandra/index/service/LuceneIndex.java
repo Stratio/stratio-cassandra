@@ -296,7 +296,7 @@ public class LuceneIndex {
                 FieldDoc start = after == null ? null : (FieldDoc) after;
                 TopFieldCollector tfc = TopFieldCollector.create(this.sort, count, start, true, false, false);
                 Collector collector = new EarlyTerminatingSortingCollector(tfc, this.sort, count, sortingMergePolicy);
-                searcher.search(query, tfc);
+                searcher.search(query, collector);
                 return tfc.topDocs();
             } else {
                 return searcher.searchAfter(after, query, count);
