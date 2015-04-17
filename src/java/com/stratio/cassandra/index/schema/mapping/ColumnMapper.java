@@ -26,13 +26,11 @@ import org.apache.cassandra.db.marshal.SetType;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
-import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.search.SortField;
 import org.codehaus.jackson.annotate.JsonSubTypes;
 import org.codehaus.jackson.annotate.JsonTypeInfo;
 
 import java.util.List;
-import java.util.Set;
 
 /**
  * Class for mapping between Cassandra's columns and Lucene documents.
