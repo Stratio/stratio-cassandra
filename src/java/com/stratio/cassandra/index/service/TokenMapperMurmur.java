@@ -20,7 +20,6 @@ import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.dht.Murmur3Partitioner;
 import org.apache.cassandra.dht.Token;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.LongField;
 import org.apache.lucene.index.DocValuesType;
@@ -61,8 +60,7 @@ public class TokenMapperMurmur extends TokenMapper {
     @Override
     public void addFields(Document document, DecoratedKey partitionKey) {
         Long value = (Long) partitionKey.getToken().getTokenValue();
-        Field field = new LongField(FIELD_NAME, value, FIELD_TYPE);
-        document.add(field);
+        document.add(new LongField(FIELD_NAME, value, FIELD_TYPE));
     }
 
     /** {@inheritDoc} */
