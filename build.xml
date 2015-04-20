@@ -104,7 +104,7 @@
     <property name="cobertura.datafile" value="${cobertura.build.dir}/cobertura.ser"/>
 
     <!-- Apache Lucene-->
-    <property name="lucene.version" value="5.0.0"/>
+    <property name="lucene.version" value="5.1.0"/>
     <property name="spatial4j.version" value="0.4.1"/>
 
     <condition property="maven-ant-tasks.jar.exists">
