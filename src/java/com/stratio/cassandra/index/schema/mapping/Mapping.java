@@ -67,6 +67,8 @@ public class Mapping {
             if (!columnMapper.supports(type)) {
                 throw new RuntimeException(String.format("Type '%s' is not supported by mapper '%s'", type, name));
             }
+
+            columnMapper.setType(columnDefinition.type);
         }
     }
 

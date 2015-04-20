@@ -32,20 +32,20 @@ public class ClusteringKeyMapperColumns extends ClusteringKeyMapper {
     private final Schema schema;
     private final String[] names;
     private final ColumnMapperSingle[] columnMappers;
-    private final AbstractType[] types;
     private final int numClusteringColumns;
 
     private ClusteringKeyMapperColumns(Schema schema,
                                        CFMetaData metadata,
                                        String[] names,
-                                       ColumnMapperSingle[] columnMappers,
-                                       AbstractType[] types) {
+                                       ColumnMapperSingle[] columnMappers) {
         super(metadata);
         this.schema = schema;
         this.names = names;
         this.columnMappers = columnMappers;
-        this.types = types;
         this.numClusteringColumns = metadata.clusteringColumns().size();
+        for (ColumnMapper columnMapper : columnMappers) {
+            columnMapper.setSorted(true);
+        }
     }
 
     /**
@@ -66,16 +66,13 @@ public class ClusteringKeyMapperColumns extends ClusteringKeyMapper {
         }
         String[] names = new String[numClusteringColumns];
         ColumnMapperSingle[] columnMappers = new ColumnMapperSingle[numClusteringColumns];
-        AbstractType[] types = new AbstractType[numClusteringColumns];
         for (int i = 0; i < numClusteringColumns; i++) {
             ColumnDefinition columnDefinition = clusteringColumns.get(i);
             String name = columnDefinition.name.toString();
             ColumnMapperSingle columnMapper = schema.getMapperSingle(name);
             if (columnMapper != null) {
-                AbstractType type = columnDefinition.type;
-                if (columnMapper.supportsClustering(type)) {
+                if (columnMapper.supportsClustering()) {
                     names[i] = name;
-                    types[i] = type;
                     columnMappers[i] = columnMapper;
                 } else {
                     return null;
@@ -84,7 +81,7 @@ public class ClusteringKeyMapperColumns extends ClusteringKeyMapper {
                 return null;
             }
         }
-        return new ClusteringKeyMapperColumns(schema, metadata, names, columnMappers, types);
+        return new ClusteringKeyMapperColumns(schema, metadata, names, columnMappers);
     }
 
     @Override
@@ -107,7 +104,8 @@ public class ClusteringKeyMapperColumns extends ClusteringKeyMapper {
      */
     private Object getComposedComponent(Composite composite, int i) {
         ByteBuffer component = composite.get(i);
-        AbstractType<?> type = types[i];
+        ColumnMapper columnMapper = columnMappers[i];
+        AbstractType<?> type = columnMapper.getType();
         return type.compose(component);
     }
 

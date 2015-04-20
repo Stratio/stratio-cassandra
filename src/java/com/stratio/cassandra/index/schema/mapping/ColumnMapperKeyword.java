@@ -44,7 +44,8 @@ public abstract class ColumnMapperKeyword extends ColumnMapperSingle<String> {
         List<Field> set = new ArrayList<>(2);
         BytesRef bytes = new BytesRef(value);
         set.add(new StringField(name, value, STORE));
-        set.add(new SortedSetDocValuesField(name, bytes));
+        if (sorted)
+            set.add(new SortedDocValuesField(name, bytes));
         return set;
     }
 

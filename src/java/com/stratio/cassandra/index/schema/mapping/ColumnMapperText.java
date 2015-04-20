@@ -88,7 +88,8 @@ public class ColumnMapperText extends ColumnMapperSingle<String> {
         List<Field> fields = new ArrayList<>();
         BytesRef bytes = new BytesRef(value);
         fields.add(new TextField(name, value, STORE));
-        fields.add(new SortedSetDocValuesField(name, bytes));
+        if (sorted)
+            fields.add(new SortedSetDocValuesField(name, bytes));
         return fields;
     }
 

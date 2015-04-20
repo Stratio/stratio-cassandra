@@ -90,7 +90,8 @@ public class ColumnMapperFloat extends ColumnMapperSingle<Float> {
     public List<Field> fieldsFromBase(String name, Float value) {
         List<Field> fields = new ArrayList<>();
         fields.add(new FloatField(name, value, STORE));
-        fields.add(new NumericDocValuesField(name, Float.floatToIntBits(value)));
+        if (sorted)
+            fields.add(new NumericDocValuesField(name, Float.floatToIntBits(value)));
         return fields;
     }
 

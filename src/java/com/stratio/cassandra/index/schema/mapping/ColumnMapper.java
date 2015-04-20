@@ -63,6 +63,10 @@ public abstract class ColumnMapper {
     /** The supported Cassandra types for indexing. */
     private final AbstractType<?>[] supportedTypes;
 
+    protected boolean sorted = false;
+
+    protected AbstractType<?> type;
+
     /**
      * Builds a new {@link ColumnMapper} supporting the specified types for indexing.
      *
@@ -70,6 +74,22 @@ public abstract class ColumnMapper {
      */
     protected ColumnMapper(AbstractType<?>[] supportedTypes) {
         this.supportedTypes = supportedTypes;
+    }
+
+    public boolean isSorted() {
+        return sorted;
+    }
+
+    public void setSorted(boolean sorted) {
+        this.sorted = sorted;
+    }
+
+    public AbstractType<?> getType() {
+        return type;
+    }
+
+    public void setType(AbstractType<?> type) {
+        this.type = type;
     }
 
     /**

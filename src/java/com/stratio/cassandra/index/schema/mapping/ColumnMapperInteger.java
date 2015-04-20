@@ -90,7 +90,8 @@ public class ColumnMapperInteger extends ColumnMapperSingle<Integer> {
     public List<Field> fieldsFromBase(String name, Integer value) {
         List<Field> fields = new ArrayList<>();
         fields.add(new IntField(name, value, STORE));
-        fields.add(new NumericDocValuesField(name, value));
+        if (sorted)
+            fields.add(new NumericDocValuesField(name, value));
         return fields;
     }
 

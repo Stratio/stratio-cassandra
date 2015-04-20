@@ -105,7 +105,8 @@ public class ColumnMapperDate extends ColumnMapperSingle<Long> {
     public List<Field> fieldsFromBase(String name, Long value) {
         List<Field> fields = new ArrayList<>();
         fields.add(new LongField(name, value, STORE));
-        fields.add(new NumericDocValuesField(name, value));
+        if (sorted)
+            fields.add(new NumericDocValuesField(name, value));
         return fields;
     }
 

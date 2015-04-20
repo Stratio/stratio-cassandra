@@ -47,11 +47,10 @@ public abstract class ColumnMapperSingle<BASE> extends ColumnMapper {
      * Returns {@code true} if the specified Cassandra type/marshaller can be used as clustering key, {@code false}.
      * otherwise.
      *
-     * @param type A Cassandra type/marshaller.
      * @return {@code true} if the specified Cassandra type/marshaller can be used as clustering key, {@code false}.
      * otherwise.
      */
-    public boolean supportsClustering(final AbstractType<?> type) {
+    public boolean supportsClustering() {
         for (AbstractType<?> supportedClusteringType : supportedClusteringTypes) {
             if (type.getClass() == supportedClusteringType.getClass()) {
                 return true;
