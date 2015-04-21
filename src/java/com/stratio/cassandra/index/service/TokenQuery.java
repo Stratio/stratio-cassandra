@@ -31,7 +31,7 @@ import java.io.IOException;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class TokenRangeQuery extends MultiTermQuery {
+public class TokenQuery extends MultiTermQuery {
 
     private final TokenMapperGeneric tokenMapper; // The token mapper
     private final Token lower; // The lower accepted token
@@ -40,7 +40,7 @@ public class TokenRangeQuery extends MultiTermQuery {
     private final boolean includeUpper; // If the upper token must be included if not null
 
     /**
-     * Builds a new {@link TokenRangeQuery}.
+     * Builds a new {@link TokenQuery}.
      *
      * @param lower        The lower accepted {@link Token}. Maybe null meaning no lower limit.
      * @param upper        The upper accepted {@link Token}. Maybe null meaning no lower limit.
@@ -48,11 +48,11 @@ public class TokenRangeQuery extends MultiTermQuery {
      * @param includeUpper If the {@code upperValue} is included in the range.
      * @param tokenMapper  The used {@link TokenMapperGeneric}.
      */
-    public TokenRangeQuery(Token lower,
-                           Token upper,
-                           boolean includeLower,
-                           boolean includeUpper,
-                           TokenMapperGeneric tokenMapper) {
+    public TokenQuery(Token lower,
+                      Token upper,
+                      boolean includeLower,
+                      boolean includeUpper,
+                      TokenMapperGeneric tokenMapper) {
         super(TokenMapperGeneric.FIELD_NAME);
         this.tokenMapper = tokenMapper;
         this.lower = lower;
