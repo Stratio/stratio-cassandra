@@ -1616,20 +1616,26 @@ public class StorageProxy implements StorageProxyMBean
             // determine the number of rows to be fetched and the concurrency factor
             int rowsToBeFetched = command.limit();
             int concurrencyFactor;
-            if (command.requiresScanningAllRanges()) { // all nodes must be queried
+            if (command.requiresScanningAllRanges())
+            {
+                // all nodes must be queried
                 rowsToBeFetched *= ranges.size();
                 concurrencyFactor = ranges.size();
-                logger.debug("Requested rows: {}, ranges.size(): {}; concurrent range requests: {}", command.limit(), ranges.size(), concurrencyFactor);
-                Tracing.trace("Submitting range requests on {} ranges with a concurrency of {}", new Object[]{ ranges.size(), concurrencyFactor});
-            } else {
+                logger.debug("Requested rows: {}, ranges.size(): {}; concurrent range requests: {}",
+                             command.limit(), ranges.size(), concurrencyFactor);
+                Tracing.trace("Submitting range requests on {} ranges with a concurrency of {}",
+                              new Object[]{ ranges.size(), concurrencyFactor});
+            }
+            else
+            {
                 // our estimate of how many result rows there will be per-range
                 float resultRowsPerRange = estimateResultRowsPerRange(command, keyspace);
                 // underestimate how many rows we will get per-range in order to increase the likelihood that we'll
                 // fetch enough rows in the first round
                 resultRowsPerRange -= resultRowsPerRange * CONCURRENT_SUBREQUESTS_MARGIN;
                 concurrencyFactor = resultRowsPerRange == 0.0
-                                    ? 1
-                                    : Math.max(1, Math.min(ranges.size(), (int) Math.ceil(command.limit() / resultRowsPerRange)));
+                                  ? 1
+                                  : Math.max(1, Math.min(ranges.size(), (int) Math.ceil(command.limit() / resultRowsPerRange)));
                 logger.debug("Estimated result rows per range: {}; requested rows: {}, ranges.size(): {}; concurrent range requests: {}",
                              resultRowsPerRange, command.limit(), ranges.size(), concurrencyFactor);
                 Tracing.trace("Submitting range requests on {} ranges with a concurrency of {} ({} rows per range expected)",
@@ -1789,7 +1795,8 @@ public class StorageProxy implements StorageProxyMBean
                     throw new ReadTimeoutException(consistency_level, blockFor-1, blockFor, true);
                 }
 
-                if (haveSufficientRows) return command.postReconciliationProcessing(rows);
+                if (haveSufficientRows)
+                    return command.postReconciliationProcessing(rows);
 
                 // we didn't get enough rows in our concurrent fetch; recalculate our concurrency factor
                 // based on the results we've seen so far (as long as we still have ranges left to query)
@@ -1806,7 +1813,7 @@ public class StorageProxy implements StorageProxyMBean
                     }
                     else
                     {
-                        actualRowsPerRange = i / fetchedRows;
+                        actualRowsPerRange = fetchedRows / i;
                         concurrencyFactor = Math.max(1, Math.min(ranges.size() - i, Math.round(remainingRows / actualRowsPerRange)));
                     }
                     logger.debug("Didn't get enough response rows; actual rows per range: {}; remaining rows: {}, new concurrent requests: {}",

@@ -46,11 +46,12 @@ public abstract class AbstractRangeCommand implements IReadCommand
         this.keyRange = keyRange;
         this.predicate = predicate;
         this.rowFilter = rowFilter;
-        this.searcher = Keyspace.open(keyspace).getColumnFamilyStore(columnFamily).indexManager.searcher(rowFilter);
+        SecondaryIndexManager indexManager = Keyspace.open(keyspace).getColumnFamilyStore(columnFamily).indexManager;
+        this.searcher = indexManager.getHighestSelectivityIndexSearcher(rowFilter);
     }
 
     public boolean requiresScanningAllRanges() {
-        return searcher == null ? false : searcher.requiresScanningAllRanges(rowFilter);
+        return searcher != null && searcher.requiresScanningAllRanges(rowFilter);
     }
 
     public List<Row> postReconciliationProcessing(List<Row> rows)
