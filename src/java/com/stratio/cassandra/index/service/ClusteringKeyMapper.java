@@ -17,7 +17,6 @@ package com.stratio.cassandra.index.service;
 
 import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.Columns;
-import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.util.ByteBufferUtils;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
@@ -36,12 +35,21 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.search.FieldComparator;
+import org.apache.lucene.search.FieldComparatorSource;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.util.BytesRef;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Class for several clustering key mappings between Cassandra and Lucene. This class only be used in column families
@@ -49,7 +57,7 @@ import java.util.*;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public abstract class ClusteringKeyMapper {
+public class ClusteringKeyMapper {
 
     /** The Lucene field name */
     public static final String FIELD_NAME = "_clustering_key";
@@ -80,9 +88,8 @@ public abstract class ClusteringKeyMapper {
      * @param metadata The column family meta data.
      * @return A new {@code ClusteringKeyMapper} according to the specified column family meta data.
      */
-    public static ClusteringKeyMapper instance(CFMetaData metadata, Schema schema) {
-        ClusteringKeyMapperColumns mapper = ClusteringKeyMapperColumns.instance(metadata, schema);
-        return mapper == null ? ClusteringKeyMapperGeneric.instance(metadata) : mapper;
+    public static ClusteringKeyMapper instance(CFMetaData metadata) {
+        return new ClusteringKeyMapper(metadata);
     }
 
     /**
@@ -316,7 +323,17 @@ public abstract class ClusteringKeyMapper {
      *
      * @return A Lucene {@link SortField} array for sorting documents/rows according to the column family name.
      */
-    public abstract SortField[] sortFields();
+    public SortField[] sortFields() {
+        return new SortField[]{new SortField(FIELD_NAME, new FieldComparatorSource() {
+            @Override
+            public FieldComparator<?> newComparator(String field,
+                                                    int hits,
+                                                    int sort,
+                                                    boolean reversed) throws IOException {
+                return new ClusteringKeySorter(ClusteringKeyMapper.this, hits, field);
+            }
+        })};
+    }
 
     /**
      * Returns a Lucene {@link Query} array to retrieving documents/rows whose clustering key is between the two
@@ -325,7 +342,9 @@ public abstract class ClusteringKeyMapper {
      * @return A Lucene {@link Query} array to retrieving documents/rows whose clustering key is between the two
      * specified column name prefixes.
      */
-    public abstract Query query(Composite start, Composite stop);
+    public Query query(Composite start, Composite stop) {
+        return new ClusteringKeyQuery(start, stop, this);
+    }
 
     /**
      * Returns the {@code String} human-readable representation of the specified cell name.

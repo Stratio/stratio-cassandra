@@ -26,7 +26,7 @@ import org.apache.lucene.util.BytesRef;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-class ClusteringKeySorter extends FieldComparator.TermValComparator {
+class ClusteringKeySorter extends FieldComparator.TermOrdValComparator {
 
     /** The ClusteringKeyMapper to be used. */
     private final ClusteringKeyMapper clusteringKeyMapper;
