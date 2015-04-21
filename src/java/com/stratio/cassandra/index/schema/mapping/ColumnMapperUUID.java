@@ -18,8 +18,12 @@ package com.stratio.cassandra.index.schema.mapping;
 import com.google.common.base.Objects;
 import com.google.common.primitives.Longs;
 import com.stratio.cassandra.util.ByteBufferUtils;
-import org.apache.cassandra.db.marshal.*;
+import org.apache.cassandra.db.marshal.AsciiType;
+import org.apache.cassandra.db.marshal.TimeUUIDType;
+import org.apache.cassandra.db.marshal.UTF8Type;
+import org.apache.cassandra.db.marshal.UUIDType;
 import org.codehaus.jackson.annotate.JsonCreator;
+import org.codehaus.jackson.annotate.JsonProperty;
 
 import java.nio.ByteBuffer;
 import java.util.UUID;
@@ -33,11 +37,13 @@ public class ColumnMapperUUID extends ColumnMapperKeyword {
 
     /**
      * Builds a new {@link ColumnMapperUUID}.
+     *
+     * @param indexed        If the field supports searching.
+     * @param sorted         If the field supports sorting.
      */
     @JsonCreator
-    public ColumnMapperUUID() {
-        super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, UUIDType.instance, TimeUUIDType.instance},
-              new AbstractType[]{UUIDType.instance, TimeUUIDType.instance});
+    public ColumnMapperUUID(@JsonProperty("indexed") Boolean indexed, @JsonProperty("sorted") Boolean sorted) {
+        super(indexed, sorted, AsciiType.instance, UTF8Type.instance, UUIDType.instance, TimeUUIDType.instance);
     }
 
     /** {@inheritDoc} */
@@ -51,8 +57,8 @@ public class ColumnMapperUUID extends ColumnMapperKeyword {
         } else if (value instanceof String) {
             String string = (String) value;
 //            try {
-                UUID uuid = UUID.fromString(string);
-                return serialize(uuid);
+            UUID uuid = UUID.fromString(string);
+            return serialize(uuid);
 //            } catch (IllegalArgumentException e) {
 //                if (checkValidity) {
 //                    throw e;

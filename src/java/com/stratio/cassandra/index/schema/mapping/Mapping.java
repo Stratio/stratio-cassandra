@@ -20,7 +20,6 @@ import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.schema.analysis.Analysis;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
@@ -63,21 +62,15 @@ public class Mapping {
                 throw new RuntimeException("Lucene indexes are not allowed on static columns as " + name);
             }
 
-            AbstractType<?> type = columnDefinition.type;
-            if (!columnMapper.supports(type)) {
-                throw new RuntimeException(String.format("Type '%s' is not supported by mapper '%s'", type, name));
-            }
-
-            columnMapper.setType(columnDefinition.type);
+            columnMapper.init(columnDefinition);
         }
     }
 
     /**
-     * Adds to the specified {@link Document} the Lucene fields representing the specified {@link
-     * com.stratio.cassandra.index.schema.Columns}.
+     * Adds to the specified {@link Document} the Lucene fields representing the specified {@link Columns}.
      *
      * @param document The Lucene {@link Document} where the fields are going to be added.
-     * @param columns  The {@link com.stratio.cassandra.index.schema.Columns} to be added.
+     * @param columns  The {@link Columns} to be added.
      */
     public void addFields(Document document, Columns columns) {
         for (Column column : columns) {

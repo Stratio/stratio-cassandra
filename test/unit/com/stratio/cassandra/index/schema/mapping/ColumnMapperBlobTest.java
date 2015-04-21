@@ -32,98 +32,98 @@ public class ColumnMapperBlobTest {
 
     @Test()
     public void testValueNull() {
-        ColumnMapperBlob mapper = new ColumnMapperBlob();
+        ColumnMapperBlob mapper = new ColumnMapperBlob(null, null);
         String parsed = mapper.indexValue("test", null);
         Assert.assertNull(parsed);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testValueInteger() {
-        ColumnMapperBlob mapper = new ColumnMapperBlob();
+        ColumnMapperBlob mapper = new ColumnMapperBlob(null, null);
         mapper.indexValue("test", 3);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testValueLong() {
-        ColumnMapperBlob mapper = new ColumnMapperBlob();
+        ColumnMapperBlob mapper = new ColumnMapperBlob(null, null);
         mapper.indexValue("test", 3l);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testValueFloat() {
-        ColumnMapperBlob mapper = new ColumnMapperBlob();
+        ColumnMapperBlob mapper = new ColumnMapperBlob(null, null);
         mapper.indexValue("test", 3.5f);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testValueDouble() {
-        ColumnMapperBlob mapper = new ColumnMapperBlob();
+        ColumnMapperBlob mapper = new ColumnMapperBlob(null, null);
         mapper.indexValue("test", 3.6d);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testValueUUID() {
-        ColumnMapperBlob mapper = new ColumnMapperBlob();
+        ColumnMapperBlob mapper = new ColumnMapperBlob(null, null);
         mapper.indexValue("test", UUID.randomUUID());
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testValueStringInvalid() {
-        ColumnMapperBlob mapper = new ColumnMapperBlob();
+        ColumnMapperBlob mapper = new ColumnMapperBlob(null, null);
         mapper.indexValue("test", "Hello");
     }
 
     @Test
     public void testValueStringLowerCaseWithoutPrefix() {
-        ColumnMapperBlob mapper = new ColumnMapperBlob();
+        ColumnMapperBlob mapper = new ColumnMapperBlob(null, null);
         String parsed = mapper.indexValue("test", "f1");
         Assert.assertEquals("f1", parsed);
     }
 
     @Test
     public void testValueStringUpperCaseWithoutPrefix() {
-        ColumnMapperBlob mapper = new ColumnMapperBlob();
+        ColumnMapperBlob mapper = new ColumnMapperBlob(null, null);
         String parsed = mapper.indexValue("test", "F1");
         Assert.assertEquals("f1", parsed);
     }
 
     @Test
     public void testValueStringMixedCaseWithoutPrefix() {
-        ColumnMapperBlob mapper = new ColumnMapperBlob();
+        ColumnMapperBlob mapper = new ColumnMapperBlob(null, null);
         String parsed = mapper.indexValue("test", "F1a2B3");
         Assert.assertEquals("f1a2b3", parsed);
     }
 
     @Test
     public void testValueStringLowerCaseWithPrefix() {
-        ColumnMapperBlob mapper = new ColumnMapperBlob();
+        ColumnMapperBlob mapper = new ColumnMapperBlob(null, null);
         String parsed = mapper.indexValue("test", "0xf1");
         Assert.assertEquals("f1", parsed);
     }
 
     @Test
     public void testValueStringUpperCaseWithPrefix() {
-        ColumnMapperBlob mapper = new ColumnMapperBlob();
+        ColumnMapperBlob mapper = new ColumnMapperBlob(null, null);
         String parsed = mapper.indexValue("test", "0xF1");
         Assert.assertEquals("f1", parsed);
     }
 
     @Test
     public void testValueStringMixedCaseWithPrefix() {
-        ColumnMapperBlob mapper = new ColumnMapperBlob();
+        ColumnMapperBlob mapper = new ColumnMapperBlob(null, null);
         String parsed = mapper.indexValue("test", "0xF1a2B3");
         Assert.assertEquals("f1a2b3", parsed);
     }
 
     @Test(expected = NumberFormatException.class)
     public void testValueStringOdd() {
-        ColumnMapperBlob mapper = new ColumnMapperBlob();
+        ColumnMapperBlob mapper = new ColumnMapperBlob(null, null);
         mapper.indexValue("test", "f");
     }
 
     @Test
     public void testValueByteBuffer() {
-        ColumnMapperBlob mapper = new ColumnMapperBlob();
+        ColumnMapperBlob mapper = new ColumnMapperBlob(null, null);
         ByteBuffer bb = ByteBufferUtil.hexToBytes("f1");
         String parsed = mapper.indexValue("test", bb);
         Assert.assertEquals("f1", parsed);
@@ -131,7 +131,7 @@ public class ColumnMapperBlobTest {
 
     @Test
     public void testValueBytes() {
-        ColumnMapperBlob mapper = new ColumnMapperBlob();
+        ColumnMapperBlob mapper = new ColumnMapperBlob(null, null);
         byte[] bytes = Hex.hexToBytes("f1");
         String parsed = mapper.indexValue("test", bytes);
         Assert.assertEquals("f1", parsed);
@@ -139,7 +139,7 @@ public class ColumnMapperBlobTest {
 
     @Test
     public void testField() {
-        ColumnMapperBlob mapper = new ColumnMapperBlob();
+        ColumnMapperBlob mapper = new ColumnMapperBlob(null, null);
         List<Field> fields = mapper.fields("name", "f1B2");
         Assert.assertNotNull(fields);
         Assert.assertEquals(2, fields.size());
@@ -149,12 +149,12 @@ public class ColumnMapperBlobTest {
         Assert.assertEquals("name", field.name());
         Assert.assertEquals(false, field.fieldType().stored());
         field = fields.get(1);
-        Assert.assertEquals(DocValuesType.SORTED_SET, field.fieldType().docValuesType());
+        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
     }
 
     @Test
     public void testExtractAnalyzers() {
-        ColumnMapperBlob mapper = new ColumnMapperBlob();
+        ColumnMapperBlob mapper = new ColumnMapperBlob(null, null);
         String analyzer = mapper.analyzer();
         Assert.assertEquals(ColumnMapper.KEYWORD_ANALYZER, analyzer);
     }

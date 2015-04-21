@@ -28,35 +28,35 @@ public class ColumnMapperFloatTest {
 
     @Test()
     public void testValueNull() {
-        ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
+        ColumnMapperFloat mapper = new ColumnMapperFloat(null, null, 1f);
         Float parsed = mapper.indexValue("test", null);
         Assert.assertNull(parsed);
     }
 
     @Test
     public void testValueInteger() {
-        ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
+        ColumnMapperFloat mapper = new ColumnMapperFloat(null, null, 1f);
         Float parsed = mapper.indexValue("test", 3);
         Assert.assertEquals(Float.valueOf(3), parsed);
     }
 
     @Test
     public void testValueLong() {
-        ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
+        ColumnMapperFloat mapper = new ColumnMapperFloat(null, null, 1f);
         Float parsed = mapper.indexValue("test", 3l);
         Assert.assertEquals(Float.valueOf(3), parsed);
     }
 
     @Test
     public void testValueFloatWithoutDecimal() {
-        ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
+        ColumnMapperFloat mapper = new ColumnMapperFloat(null, null, 1f);
         Float parsed = mapper.indexValue("test", 3f);
         Assert.assertEquals(Float.valueOf(3), parsed);
     }
 
     @Test
     public void testValueFloatWithDecimalFloor() {
-        ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
+        ColumnMapperFloat mapper = new ColumnMapperFloat(null, null, 1f);
         Float parsed = mapper.indexValue("test", 3.5f);
         Assert.assertEquals(Float.valueOf(3.5f), parsed);
 
@@ -64,7 +64,7 @@ public class ColumnMapperFloatTest {
 
     @Test
     public void testValueFloatWithDecimalCeil() {
-        ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
+        ColumnMapperFloat mapper = new ColumnMapperFloat(null, null, 1f);
         Float parsed = mapper.indexValue("test", 3.6f);
         Assert.assertEquals(Float.valueOf(3.6f), parsed);
 
@@ -72,14 +72,14 @@ public class ColumnMapperFloatTest {
 
     @Test
     public void testValueDoubleWithoutDecimal() {
-        ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
+        ColumnMapperFloat mapper = new ColumnMapperFloat(null, null, 1f);
         Float parsed = mapper.indexValue("test", 3d);
         Assert.assertEquals(Float.valueOf(3), parsed);
     }
 
     @Test
     public void testValueDoubleWithDecimalFloor() {
-        ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
+        ColumnMapperFloat mapper = new ColumnMapperFloat(null, null, 1f);
         Float parsed = mapper.indexValue("test", 3.5d);
         Assert.assertEquals(Float.valueOf(3.5f), parsed);
 
@@ -87,7 +87,7 @@ public class ColumnMapperFloatTest {
 
     @Test
     public void testValueDoubleWithDecimalCeil() {
-        ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
+        ColumnMapperFloat mapper = new ColumnMapperFloat(null, null, 1f);
         Float parsed = mapper.indexValue("test", 3.6d);
         Assert.assertEquals(Float.valueOf(3.6f), parsed);
 
@@ -95,21 +95,21 @@ public class ColumnMapperFloatTest {
 
     @Test
     public void testValueStringWithoutDecimal() {
-        ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
+        ColumnMapperFloat mapper = new ColumnMapperFloat(null, null, 1f);
         Float parsed = mapper.indexValue("test", "3");
         Assert.assertEquals(Float.valueOf(3), parsed);
     }
 
     @Test
     public void testValueStringWithDecimalFloor() {
-        ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
+        ColumnMapperFloat mapper = new ColumnMapperFloat(null, null, 1f);
         Float parsed = mapper.indexValue("test", "3.2");
         Assert.assertEquals(Float.valueOf(3.2f), parsed);
     }
 
     @Test
     public void testValueStringWithDecimalCeil() {
-        ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
+        ColumnMapperFloat mapper = new ColumnMapperFloat(null, null, 1f);
         Float parsed = mapper.indexValue("test", "3.6");
         Assert.assertEquals(Float.valueOf(3.6f), parsed);
 
@@ -117,7 +117,7 @@ public class ColumnMapperFloatTest {
 
     @Test
     public void testField() {
-        ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
+        ColumnMapperFloat mapper = new ColumnMapperFloat(null, null, 1f);
         List<Field> fields = mapper.fields("name", "3.2");
         Assert.assertNotNull(fields);
         Assert.assertEquals(2, fields.size());
@@ -132,7 +132,7 @@ public class ColumnMapperFloatTest {
 
     @Test
     public void testExtractAnalyzers() {
-        ColumnMapperFloat mapper = new ColumnMapperFloat(1f);
+        ColumnMapperFloat mapper = new ColumnMapperFloat(null, null, 1f);
         String analyzer = mapper.analyzer();
         Assert.assertEquals(ColumnMapper.KEYWORD_ANALYZER, analyzer);
     }

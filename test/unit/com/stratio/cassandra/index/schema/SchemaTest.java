@@ -27,9 +27,9 @@ public class SchemaTest {
 
         Map<String, ColumnMapper> columnMappers = new HashMap<>();
 
-        ColumnMapperString columnMapper1 = new ColumnMapperString();
-        ColumnMapperString columnMapper2 = new ColumnMapperString();
-        ColumnMapperString columnMapper3 = new ColumnMapperString();
+        ColumnMapperString columnMapper1 = new ColumnMapperString(true, true, null);
+        ColumnMapperString columnMapper2 = new ColumnMapperString(true, true, null);
+        ColumnMapperString columnMapper3 = new ColumnMapperString(true, true, null);
 
         columnMappers.put("a", columnMapper1);
         columnMappers.put("a.b", columnMapper2);

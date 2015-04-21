@@ -20,7 +20,6 @@ import com.stratio.cassandra.index.schema.analysis.PreBuiltAnalyzers;
 import org.apache.cassandra.db.marshal.*;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.search.SortField;
@@ -45,23 +44,29 @@ public class ColumnMapperText extends ColumnMapperSingle<String> {
     /**
      * Builds a new {@link ColumnMapperText} using the specified Lucene {@link Analyzer}.
      *
+     * @param indexed        If the field supports searching.
+     * @param sorted         If the field supports sorting.
      * @param analyzer The Lucene {@link Analyzer} to be used.
      */
     @JsonCreator
-    public ColumnMapperText(@JsonProperty("analyzer") String analyzer) {
-        super(new AbstractType<?>[]{AsciiType.instance,
-                                    UTF8Type.instance,
-                                    Int32Type.instance,
-                                    LongType.instance,
-                                    IntegerType.instance,
-                                    FloatType.instance,
-                                    DoubleType.instance,
-                                    BooleanType.instance,
-                                    UUIDType.instance,
-                                    TimeUUIDType.instance,
-                                    TimestampType.instance,
-                                    BytesType.instance,
-                                    InetAddressType.instance}, new AbstractType[]{});
+    public ColumnMapperText(@JsonProperty("indexed") Boolean indexed,
+                            @JsonProperty("sorted") Boolean sorted,
+                            @JsonProperty("analyzer") String analyzer) {
+        super(indexed,
+              sorted,
+              AsciiType.instance,
+              UTF8Type.instance,
+              Int32Type.instance,
+              LongType.instance,
+              IntegerType.instance,
+              FloatType.instance,
+              DoubleType.instance,
+              BooleanType.instance,
+              UUIDType.instance,
+              TimeUUIDType.instance,
+              TimestampType.instance,
+              BytesType.instance,
+              InetAddressType.instance);
         this.analyzer = analyzer == null ? PreBuiltAnalyzers.DEFAULT.name() : analyzer;
 
     }
@@ -87,9 +92,8 @@ public class ColumnMapperText extends ColumnMapperSingle<String> {
     public List<Field> fieldsFromBase(String name, String value) {
         List<Field> fields = new ArrayList<>();
         BytesRef bytes = new BytesRef(value);
-        fields.add(new TextField(name, value, STORE));
-        if (sorted)
-            fields.add(new SortedSetDocValuesField(name, bytes));
+        if (indexed) fields.add(new TextField(name, value, STORE));
+        if (sorted) fields.add(new SortedSetDocValuesField(name, bytes));
         return fields;
     }
 

@@ -34,14 +34,14 @@ public class ColumnMapperDateTest {
 
     @Test()
     public void testValueNull() {
-        ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
+        ColumnMapperDate mapper = new ColumnMapperDate(null, null, PATTERN);
         Long parsed = mapper.indexValue("test", null);
         Assert.assertNull(parsed);
     }
 
     @Test
     public void testValueDate() {
-        ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
+        ColumnMapperDate mapper = new ColumnMapperDate(null, null, PATTERN);
         Date date = new Date();
         long parsed = mapper.indexValue("test", date);
         Assert.assertEquals(date.getTime(), parsed);
@@ -49,28 +49,28 @@ public class ColumnMapperDateTest {
 
     @Test
     public void testValueInteger() {
-        ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
+        ColumnMapperDate mapper = new ColumnMapperDate(null, null, PATTERN);
         Long parsed = mapper.indexValue("test", 3);
         Assert.assertEquals(Long.valueOf(3), parsed);
     }
 
     @Test
     public void testValueLong() {
-        ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
+        ColumnMapperDate mapper = new ColumnMapperDate(null, null, PATTERN);
         Long parsed = mapper.indexValue("test", 3l);
         Assert.assertEquals(Long.valueOf(3), parsed);
     }
 
     @Test
     public void testValueFloatWithoutDecimal() {
-        ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
+        ColumnMapperDate mapper = new ColumnMapperDate(null, null, PATTERN);
         Long parsed = mapper.indexValue("test", 3f);
         Assert.assertEquals(Long.valueOf(3), parsed);
     }
 
     @Test
     public void testValueFloatWithDecimalFloor() {
-        ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
+        ColumnMapperDate mapper = new ColumnMapperDate(null, null, PATTERN);
         Long parsed = mapper.indexValue("test", 3.5f);
         Assert.assertEquals(Long.valueOf(3), parsed);
 
@@ -78,7 +78,7 @@ public class ColumnMapperDateTest {
 
     @Test
     public void testValueFloatWithDecimalCeil() {
-        ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
+        ColumnMapperDate mapper = new ColumnMapperDate(null, null, PATTERN);
         Long parsed = mapper.indexValue("test", 3.6f);
         Assert.assertEquals(Long.valueOf(3), parsed);
 
@@ -86,14 +86,14 @@ public class ColumnMapperDateTest {
 
     @Test
     public void testValueDoubleWithoutDecimal() {
-        ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
+        ColumnMapperDate mapper = new ColumnMapperDate(null, null, PATTERN);
         Long parsed = mapper.indexValue("test", 3d);
         Assert.assertEquals(Long.valueOf(3), parsed);
     }
 
     @Test
     public void testValueDoubleWithDecimalFloor() {
-        ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
+        ColumnMapperDate mapper = new ColumnMapperDate(null, null, PATTERN);
         Long parsed = mapper.indexValue("test", 3.5d);
         Assert.assertEquals(Long.valueOf(3), parsed);
 
@@ -101,7 +101,7 @@ public class ColumnMapperDateTest {
 
     @Test
     public void testValueDoubleWithDecimalCeil() {
-        ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
+        ColumnMapperDate mapper = new ColumnMapperDate(null, null, PATTERN);
         Long parsed = mapper.indexValue("test", 3.6d);
         Assert.assertEquals(Long.valueOf(3), parsed);
 
@@ -109,33 +109,33 @@ public class ColumnMapperDateTest {
 
     @Test
     public void testValueStringWithPattern() throws ParseException {
-        ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
+        ColumnMapperDate mapper = new ColumnMapperDate(null, null, PATTERN);
         long parsed = mapper.indexValue("test", "2014-03-19");
         Assert.assertEquals(sdf.parse("2014-03-19").getTime(), parsed);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testValueStringWithPatternInvalid() {
-        ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
+        ColumnMapperDate mapper = new ColumnMapperDate(null, null, PATTERN);
         mapper.indexValue("test", "2014/03/19");
     }
 
     @Test
     public void testValueStringWithoutPattern() throws ParseException {
-        ColumnMapperDate mapper = new ColumnMapperDate(null);
+        ColumnMapperDate mapper = new ColumnMapperDate(null, null, null);
         long parsed = mapper.indexValue("test", "2014/03/19 00:00:00.000");
         Assert.assertEquals(sdf.parse("2014-03-19").getTime(), parsed);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testValueStringWithoutPatternInvalid() throws ParseException {
-        ColumnMapperDate mapper = new ColumnMapperDate(null);
+        ColumnMapperDate mapper = new ColumnMapperDate(null, null, null);
         mapper.indexValue("test", "2014-03-19");
     }
 
     @Test
     public void testField() throws ParseException {
-        ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
+        ColumnMapperDate mapper = new ColumnMapperDate(null, null, PATTERN);
         List<Field> fields = mapper.fields("name", "2014-03-19");
         Assert.assertNotNull(fields);
         Assert.assertEquals(2, fields.size());
@@ -150,7 +150,7 @@ public class ColumnMapperDateTest {
 
     @Test
     public void testExtractAnalyzers() {
-        ColumnMapperDate mapper = new ColumnMapperDate(PATTERN);
+        ColumnMapperDate mapper = new ColumnMapperDate(null, null, PATTERN);
         String analyzer = mapper.analyzer();
         Assert.assertEquals(ColumnMapper.KEYWORD_ANALYZER, analyzer);
     }

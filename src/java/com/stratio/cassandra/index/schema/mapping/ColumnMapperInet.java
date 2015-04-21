@@ -17,11 +17,11 @@ package com.stratio.cassandra.index.schema.mapping;
 
 import com.google.common.base.Objects;
 import com.stratio.cassandra.util.Log;
-import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.InetAddressType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.codehaus.jackson.annotate.JsonCreator;
+import org.codehaus.jackson.annotate.JsonProperty;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -44,11 +44,13 @@ public class ColumnMapperInet extends ColumnMapperKeyword {
 
     /**
      * Builds a new {@link ColumnMapperInet}.
+     *
+     * @param indexed        If the field supports searching.
+     * @param sorted         If the field supports sorting.
      */
     @JsonCreator
-    public ColumnMapperInet() {
-        super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, InetAddressType.instance},
-              new AbstractType[]{});
+    public ColumnMapperInet(@JsonProperty("indexed") Boolean indexed, @JsonProperty("sorted") Boolean sorted) {
+        super(indexed, sorted, AsciiType.instance, UTF8Type.instance, InetAddressType.instance);
     }
 
     /** {@inheritDoc} */

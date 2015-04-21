@@ -23,7 +23,6 @@ import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.dht.Token.TokenFactory;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
@@ -66,7 +65,7 @@ public class TokenMapperGeneric extends TokenMapper {
     /** {@inheritDoc} */
     @Override
     protected Query makeQuery(Token lower, Token upper, boolean includeLower, boolean includeUpper) {
-        return new TokenRangeQuery(lower, upper, includeLower, includeUpper, this);
+        return new TokenQuery(lower, upper, includeLower, includeUpper, this);
     }
 
     /** {@inheritDoc} */
@@ -86,7 +85,12 @@ public class TokenMapperGeneric extends TokenMapper {
                                                     int hits,
                                                     int sort,
                                                     boolean reversed) throws IOException {
-                return new TokenMapperGenericSorter(TokenMapperGeneric.this, hits, field);
+                return new FieldComparator.TermOrdValComparator(hits, field, false) {
+                    @Override
+                    public int compareValues(BytesRef val1, BytesRef val2) {
+                        return token(val1).compareTo(token(val2));
+                    }
+                };
             }
         })};
     }

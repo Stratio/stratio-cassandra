@@ -18,6 +18,7 @@ package com.stratio.cassandra.index.schema.mapping;
 import com.stratio.cassandra.index.geospatial.GeoShapeMapper;
 import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.analysis.PreBuiltAnalyzers;
+import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.ListType;
 import org.apache.cassandra.db.marshal.MapType;
@@ -60,36 +61,44 @@ public abstract class ColumnMapper {
     /** The store field in Lucene default option. */
     static final Store STORE = Store.NO;
 
+    static final boolean INDEXED = true;
+
+    static final boolean SORTED = true;
+
     /** The supported Cassandra types for indexing. */
     private final AbstractType<?>[] supportedTypes;
 
-    protected boolean sorted = false;
+    protected boolean indexed;
 
-    protected AbstractType<?> type;
+    protected boolean sorted;
+
+    protected ColumnDefinition columnDefinition;
 
     /**
      * Builds a new {@link ColumnMapper} supporting the specified types for indexing.
      *
+     * @param indexed        If the field supports searching.
+     * @param sorted         If the field supports sorting.
      * @param supportedTypes The supported Cassandra types for indexing.
      */
-    protected ColumnMapper(AbstractType<?>[] supportedTypes) {
+    protected ColumnMapper(Boolean indexed, Boolean sorted, AbstractType<?>... supportedTypes) {
+        this.indexed = indexed == null ? INDEXED : indexed;
+        this.sorted = sorted == null ? SORTED : sorted;
         this.supportedTypes = supportedTypes;
     }
 
-    public boolean isSorted() {
-        return sorted;
+    public ColumnDefinition getColumnDefinition() {
+        return columnDefinition;
     }
 
-    public void setSorted(boolean sorted) {
-        this.sorted = sorted;
-    }
-
-    public AbstractType<?> getType() {
-        return type;
-    }
-
-    public void setType(AbstractType<?> type) {
-        this.type = type;
+    public void init(ColumnDefinition columnDefinition) {
+        AbstractType<?> type = columnDefinition.type;
+        String name = columnDefinition.name.toString();
+        if (!supports(type)) {
+            throw new RuntimeException(String.format("Type '%s' is not supported by mapper '%s'", type, name));
+        } else {
+            this.columnDefinition = columnDefinition;
+        }
     }
 
     /**

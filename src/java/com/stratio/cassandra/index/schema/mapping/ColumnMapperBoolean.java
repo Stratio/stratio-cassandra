@@ -16,11 +16,11 @@
 package com.stratio.cassandra.index.schema.mapping;
 
 import com.google.common.base.Objects;
-import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.BooleanType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.codehaus.jackson.annotate.JsonCreator;
+import org.codehaus.jackson.annotate.JsonProperty;
 
 /**
  * A {@link ColumnMapper} to map a boolean field.
@@ -37,10 +37,13 @@ public class ColumnMapperBoolean extends ColumnMapperKeyword {
 
     /**
      * Builds a new {@link ColumnMapperBlob}.
+     *
+     * @param indexed        If the field supports searching.
+     * @param sorted         If the field supports sorting.
      */
     @JsonCreator
-    public ColumnMapperBoolean() {
-        super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, BooleanType.instance}, new AbstractType[]{});
+    public ColumnMapperBoolean(@JsonProperty("indexed") Boolean indexed, @JsonProperty("sorted") Boolean sorted) {
+        super(indexed, sorted, AsciiType.instance, UTF8Type.instance, BooleanType.instance);
     }
 
     /** {@inheritDoc} */

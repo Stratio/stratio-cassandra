@@ -17,9 +17,6 @@ package com.stratio.cassandra.index.schema.mapping;
 
 import com.google.common.base.Objects;
 import org.apache.cassandra.db.marshal.*;
-import org.apache.lucene.document.FieldType;
-import org.apache.lucene.index.DocValuesType;
-import org.apache.lucene.index.IndexOptions;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
@@ -39,31 +36,30 @@ public class ColumnMapperString extends ColumnMapperKeyword {
     /**
      * Builds a new {@link ColumnMapperString}.
      *
+     * @param indexed        If the field supports searching.
+     * @param sorted         If the field supports sorting.
      * @param caseSensitive If the getAnalyzer must be case sensitive.
      */
     @JsonCreator
-    public ColumnMapperString(@JsonProperty("case_sensitive") Boolean caseSensitive) {
-        super(new AbstractType<?>[]{AsciiType.instance,
-                                    UTF8Type.instance,
-                                    Int32Type.instance,
-                                    LongType.instance,
-                                    IntegerType.instance,
-                                    FloatType.instance,
-                                    DoubleType.instance,
-                                    BooleanType.instance,
-                                    UUIDType.instance,
-                                    TimeUUIDType.instance,
-                                    TimestampType.instance,
-                                    BytesType.instance,
-                                    InetAddressType.instance}, new AbstractType[]{UTF8Type.instance});
+    public ColumnMapperString(@JsonProperty("indexed") Boolean indexed,
+                              @JsonProperty("sorted") Boolean sorted,
+                              @JsonProperty("case_sensitive") Boolean caseSensitive) {
+        super(indexed,
+              sorted,
+              AsciiType.instance,
+              UTF8Type.instance,
+              Int32Type.instance,
+              LongType.instance,
+              IntegerType.instance,
+              FloatType.instance,
+              DoubleType.instance,
+              BooleanType.instance,
+              UUIDType.instance,
+              TimeUUIDType.instance,
+              TimestampType.instance,
+              BytesType.instance,
+              InetAddressType.instance);
         this.caseSensitive = caseSensitive == null ? DEFAULT_CASE_SENSITIVE : caseSensitive;
-    }
-
-    /**
-     * Builds a new {@link ColumnMapperString} using {@link #DEFAULT_CASE_SENSITIVE}.
-     */
-    public ColumnMapperString() {
-        this(DEFAULT_CASE_SENSITIVE);
     }
 
     /** {@inheritDoc} */

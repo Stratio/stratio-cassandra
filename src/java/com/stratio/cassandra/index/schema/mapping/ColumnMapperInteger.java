@@ -16,7 +16,6 @@
 package com.stratio.cassandra.index.schema.mapping;
 
 import com.google.common.base.Objects;
-import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.DecimalType;
 import org.apache.cassandra.db.marshal.DoubleType;
@@ -52,18 +51,24 @@ public class ColumnMapperInteger extends ColumnMapperSingle<Integer> {
     /**
      * Builds a new {@link ColumnMapperInteger} using the specified boost.
      *
-     * @param boost The boost to be used.
+     * @param indexed        If the field supports searching.
+     * @param sorted         If the field supports sorting.
+     * @param boost   The boost to be used.
      */
     @JsonCreator
-    public ColumnMapperInteger(@JsonProperty("boost") Float boost) {
-        super(new AbstractType<?>[]{AsciiType.instance,
-                                    UTF8Type.instance,
-                                    Int32Type.instance,
-                                    LongType.instance,
-                                    IntegerType.instance,
-                                    FloatType.instance,
-                                    DoubleType.instance,
-                                    DecimalType.instance}, new AbstractType[]{Int32Type.instance});
+    public ColumnMapperInteger(@JsonProperty("indexed") Boolean indexed,
+                               @JsonProperty("sorted") Boolean sorted,
+                               @JsonProperty("boost") Float boost) {
+        super(indexed,
+              sorted,
+              AsciiType.instance,
+              UTF8Type.instance,
+              Int32Type.instance,
+              LongType.instance,
+              IntegerType.instance,
+              FloatType.instance,
+              DoubleType.instance,
+              DecimalType.instance);
         this.boost = boost == null ? DEFAULT_BOOST : boost;
     }
 
@@ -89,9 +94,8 @@ public class ColumnMapperInteger extends ColumnMapperSingle<Integer> {
     @Override
     public List<Field> fieldsFromBase(String name, Integer value) {
         List<Field> fields = new ArrayList<>();
-        fields.add(new IntField(name, value, STORE));
-        if (sorted)
-            fields.add(new NumericDocValuesField(name, value));
+        if (indexed) fields.add(new IntField(name, value, STORE));
+        if (sorted) fields.add(new NumericDocValuesField(name, value));
         return fields;
     }
 

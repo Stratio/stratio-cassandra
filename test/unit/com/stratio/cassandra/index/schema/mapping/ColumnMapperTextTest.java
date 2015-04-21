@@ -28,42 +28,42 @@ public class ColumnMapperTextTest {
 
     @Test()
     public void testAnalyzerNull() {
-        ColumnMapperText mapper = new ColumnMapperText(null);
+        ColumnMapperText mapper = new ColumnMapperText(true, true, null);
         String parsed = mapper.indexValue("test", null);
         Assert.assertNull(parsed);
     }
 
     @Test()
     public void testValueNull() {
-        ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
+        ColumnMapperText mapper = new ColumnMapperText(true, true, "org.apache.lucene.analysis.en.EnglishAnalyzer");
         String parsed = mapper.indexValue("test", null);
         Assert.assertNull(parsed);
     }
 
     @Test
     public void testValueInteger() {
-        ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
+        ColumnMapperText mapper = new ColumnMapperText(true, true, "org.apache.lucene.analysis.en.EnglishAnalyzer");
         String parsed = mapper.indexValue("test", 3);
         Assert.assertEquals("3", parsed);
     }
 
     @Test
     public void testValueLong() {
-        ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
+        ColumnMapperText mapper = new ColumnMapperText(true, true, "org.apache.lucene.analysis.en.EnglishAnalyzer");
         String parsed = mapper.indexValue("test", 3l);
         Assert.assertEquals("3", parsed);
     }
 
     @Test
     public void testValueFloatWithoutDecimal() {
-        ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
+        ColumnMapperText mapper = new ColumnMapperText(true, true, "org.apache.lucene.analysis.en.EnglishAnalyzer");
         String parsed = mapper.indexValue("test", 3f);
         Assert.assertEquals("3.0", parsed);
     }
 
     @Test
     public void testValueFloatWithDecimalFloor() {
-        ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
+        ColumnMapperText mapper = new ColumnMapperText(true, true, "org.apache.lucene.analysis.en.EnglishAnalyzer");
         String parsed = mapper.indexValue("test", 3.5f);
         Assert.assertEquals("3.5", parsed);
 
@@ -71,21 +71,21 @@ public class ColumnMapperTextTest {
 
     @Test
     public void testValueFloatWithDecimalCeil() {
-        ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
+        ColumnMapperText mapper = new ColumnMapperText(true, true, "org.apache.lucene.analysis.en.EnglishAnalyzer");
         String parsed = mapper.indexValue("test", 3.6f);
         Assert.assertEquals("3.6", parsed);
     }
 
     @Test
     public void testValueDoubleWithoutDecimal() {
-        ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
+        ColumnMapperText mapper = new ColumnMapperText(true, true, "org.apache.lucene.analysis.en.EnglishAnalyzer");
         String parsed = mapper.indexValue("test", 3d);
         Assert.assertEquals("3.0", parsed);
     }
 
     @Test
     public void testValueDoubleWithDecimalFloor() {
-        ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
+        ColumnMapperText mapper = new ColumnMapperText(true, true, "org.apache.lucene.analysis.en.EnglishAnalyzer");
         String parsed = mapper.indexValue("test", 3.5d);
         Assert.assertEquals("3.5", parsed);
 
@@ -93,7 +93,7 @@ public class ColumnMapperTextTest {
 
     @Test
     public void testValueDoubleWithDecimalCeil() {
-        ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
+        ColumnMapperText mapper = new ColumnMapperText(true, true, "org.apache.lucene.analysis.en.EnglishAnalyzer");
         String parsed = mapper.indexValue("test", 3.6d);
         Assert.assertEquals("3.6", parsed);
 
@@ -101,21 +101,21 @@ public class ColumnMapperTextTest {
 
     @Test
     public void testValueStringWithoutDecimal() {
-        ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
+        ColumnMapperText mapper = new ColumnMapperText(true, true, "org.apache.lucene.analysis.en.EnglishAnalyzer");
         String parsed = mapper.indexValue("test", "3");
         Assert.assertEquals("3", parsed);
     }
 
     @Test
     public void testValueStringWithDecimalFloor() {
-        ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
+        ColumnMapperText mapper = new ColumnMapperText(true, true, "org.apache.lucene.analysis.en.EnglishAnalyzer");
         String parsed = mapper.indexValue("test", "3.2");
         Assert.assertEquals("3.2", parsed);
     }
 
     @Test
     public void testValueStringWithDecimalCeil() {
-        ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
+        ColumnMapperText mapper = new ColumnMapperText(true, true, "org.apache.lucene.analysis.en.EnglishAnalyzer");
         String parsed = mapper.indexValue("test", "3.6");
         Assert.assertEquals("3.6", parsed);
 
@@ -123,14 +123,14 @@ public class ColumnMapperTextTest {
 
     @Test
     public void testValueUUID() {
-        ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
+        ColumnMapperText mapper = new ColumnMapperText(true, true, "org.apache.lucene.analysis.en.EnglishAnalyzer");
         String parsed = mapper.indexValue("test", UUID.fromString("550e8400-e29b-41d4-a716-446655440000"));
         Assert.assertEquals("550e8400-e29b-41d4-a716-446655440000", parsed);
     }
 
     @Test
     public void testField() {
-        ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
+        ColumnMapperText mapper = new ColumnMapperText(true, true, "org.apache.lucene.analysis.en.EnglishAnalyzer");
         List<Field> fields = mapper.fields("name", "hello");
         Assert.assertNotNull(fields);
         Assert.assertEquals(2, fields.size());
@@ -143,7 +143,7 @@ public class ColumnMapperTextTest {
 
     @Test
     public void testExtractAnalyzers() {
-        ColumnMapperText mapper = new ColumnMapperText("org.apache.lucene.analysis.en.EnglishAnalyzer");
+        ColumnMapperText mapper = new ColumnMapperText(true, true, "org.apache.lucene.analysis.en.EnglishAnalyzer");
         Assert.assertEquals("org.apache.lucene.analysis.en.EnglishAnalyzer", mapper.analyzer());
     }
 

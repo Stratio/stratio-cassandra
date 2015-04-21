@@ -18,7 +18,6 @@ package com.stratio.cassandra.index.schema.mapping;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.SortedDocValuesField;
-import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
@@ -34,19 +33,24 @@ import java.util.List;
  */
 public abstract class ColumnMapperKeyword extends ColumnMapperSingle<String> {
 
-    protected ColumnMapperKeyword(AbstractType<?>[] supportedTypes, AbstractType<?>[] supportedClusteringTypes) {
-        super(supportedTypes, supportedClusteringTypes);
+    /**
+     *
+     * @param indexed        If the field supports searching.
+     * @param sorted         If the field supports sorting.
+     * @param supportedTypes The supported Cassandra types for indexing.
+     */
+    protected ColumnMapperKeyword(Boolean indexed, Boolean sorted, AbstractType<?>... supportedTypes) {
+        super(indexed, sorted, supportedTypes);
     }
 
     /** {@inheritDoc} */
     @Override
     public final List<Field> fieldsFromBase(String name, String value) {
-        List<Field> set = new ArrayList<>(2);
+        List<Field> fields = new ArrayList<>(2);
         BytesRef bytes = new BytesRef(value);
-        set.add(new StringField(name, value, STORE));
-        if (sorted)
-            set.add(new SortedDocValuesField(name, bytes));
-        return set;
+        if (indexed) fields.add(new StringField(name, value, STORE));
+        if (sorted) fields.add(new SortedDocValuesField(name, bytes));
+        return fields;
     }
 
     /** {@inheritDoc} */

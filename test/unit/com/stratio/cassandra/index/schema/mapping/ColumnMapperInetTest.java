@@ -31,85 +31,85 @@ public class ColumnMapperInetTest {
 
     @Test()
     public void testValueNull() {
-        ColumnMapperInet mapper = new ColumnMapperInet();
+        ColumnMapperInet mapper = new ColumnMapperInet(null, null);
         String parsed = mapper.indexValue("test", null);
         Assert.assertNull(parsed);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testValueInteger() {
-        ColumnMapperInet mapper = new ColumnMapperInet();
+        ColumnMapperInet mapper = new ColumnMapperInet(null, null);
         mapper.indexValue("test", 3);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testValueLong() {
-        ColumnMapperInet mapper = new ColumnMapperInet();
+        ColumnMapperInet mapper = new ColumnMapperInet(null, null);
         mapper.indexValue("test", 3l);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testValueFloat() {
-        ColumnMapperInet mapper = new ColumnMapperInet();
+        ColumnMapperInet mapper = new ColumnMapperInet(null, null);
         mapper.indexValue("test", 3.5f);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testValueDouble() {
-        ColumnMapperInet mapper = new ColumnMapperInet();
+        ColumnMapperInet mapper = new ColumnMapperInet(null, null);
         mapper.indexValue("test", 3.6d);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testValueUUID() {
-        ColumnMapperInet mapper = new ColumnMapperInet();
+        ColumnMapperInet mapper = new ColumnMapperInet(null, null);
         mapper.indexValue("test", UUID.randomUUID());
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testValueStringInvalid() {
-        ColumnMapperInet mapper = new ColumnMapperInet();
+        ColumnMapperInet mapper = new ColumnMapperInet(null, null);
         mapper.indexValue("test", "Hello");
     }
 
     @Test
     public void testValueStringV4WithoutZeros() {
-        ColumnMapperInet mapper = new ColumnMapperInet();
+        ColumnMapperInet mapper = new ColumnMapperInet(null, null);
         String parsed = mapper.indexValue("test", "192.168.0.1");
         Assert.assertEquals("192.168.0.1", parsed);
     }
 
     @Test
     public void testValueStringV4WithZeros() {
-        ColumnMapperInet mapper = new ColumnMapperInet();
+        ColumnMapperInet mapper = new ColumnMapperInet(null, null);
         String parsed = mapper.indexValue("test", "192.168.000.001");
         Assert.assertEquals("192.168.0.1", parsed);
     }
 
     @Test
     public void testValueStringV6WithoutZeros() {
-        ColumnMapperInet mapper = new ColumnMapperInet();
+        ColumnMapperInet mapper = new ColumnMapperInet(null, null);
         String parsed = mapper.indexValue("test", "2001:db8:2de:0:0:0:0:e13");
         Assert.assertEquals("2001:db8:2de:0:0:0:0:e13", parsed);
     }
 
     @Test
     public void testValueStringV6WithZeros() {
-        ColumnMapperInet mapper = new ColumnMapperInet();
+        ColumnMapperInet mapper = new ColumnMapperInet(null, null);
         String parsed = mapper.indexValue("test", "2001:0db8:02de:0000:0000:0000:0000:0e13");
         Assert.assertEquals("2001:db8:2de:0:0:0:0:e13", parsed);
     }
 
     @Test
     public void testValueStringV6Compact() {
-        ColumnMapperInet mapper = new ColumnMapperInet();
+        ColumnMapperInet mapper = new ColumnMapperInet(null, null);
         String parsed = mapper.indexValue("test", "2001:DB8:2de::0e13");
         Assert.assertEquals("2001:db8:2de:0:0:0:0:e13", parsed);
     }
 
     @Test
     public void testValueInetV4() throws UnknownHostException {
-        ColumnMapperInet mapper = new ColumnMapperInet();
+        ColumnMapperInet mapper = new ColumnMapperInet(null, null);
         InetAddress inet = InetAddress.getByName("192.168.0.13");
         String parsed = mapper.indexValue("test", inet);
         Assert.assertEquals("192.168.0.13", parsed);
@@ -117,7 +117,7 @@ public class ColumnMapperInetTest {
 
     @Test
     public void testValueInetV6() throws UnknownHostException {
-        ColumnMapperInet mapper = new ColumnMapperInet();
+        ColumnMapperInet mapper = new ColumnMapperInet(null, null);
         InetAddress inet = InetAddress.getByName("2001:db8:2de:0:0:0:0:e13");
         String parsed = mapper.indexValue("test", inet);
         Assert.assertEquals("2001:db8:2de:0:0:0:0:e13", parsed);
@@ -125,7 +125,7 @@ public class ColumnMapperInetTest {
 
     @Test
     public void testField() {
-        ColumnMapperInet mapper = new ColumnMapperInet();
+        ColumnMapperInet mapper = new ColumnMapperInet(null, null);
         List<Field> fields = mapper.fields("name", "192.168.0.13");
         Assert.assertNotNull(fields);
         Assert.assertEquals(2, fields.size());
@@ -135,12 +135,12 @@ public class ColumnMapperInetTest {
         Assert.assertEquals("name", field.name());
         Assert.assertEquals(false, field.fieldType().stored());
         field = fields.get(1);
-        Assert.assertEquals(DocValuesType.SORTED_SET, field.fieldType().docValuesType());
+        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
     }
 
     @Test
     public void testExtractAnalyzers() {
-        ColumnMapperInet mapper = new ColumnMapperInet();
+        ColumnMapperInet mapper = new ColumnMapperInet(null, null);
         String analyzer = mapper.analyzer();
         Assert.assertEquals(ColumnMapper.KEYWORD_ANALYZER, analyzer);
     }

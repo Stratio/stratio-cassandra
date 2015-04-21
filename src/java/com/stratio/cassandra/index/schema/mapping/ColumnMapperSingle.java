@@ -29,34 +29,15 @@ import java.util.List;
  */
 public abstract class ColumnMapperSingle<BASE> extends ColumnMapper {
 
-    /** The supported Cassandra types as clustering key. */
-    private final AbstractType<?>[] supportedClusteringTypes;
-
     /**
      * Builds a new {@link ColumnMapperSingle} supporting the specified types for indexing and clustering.
      *
-     * @param supportedTypes           The supported Cassandra types for indexing.
-     * @param supportedClusteringTypes The supported Cassandra types as clustering key.
+     * @param indexed        If the field supports searching.
+     * @param sorted         If the field supports sorting.
+     * @param supportedTypes The supported Cassandra types for indexing.
      */
-    ColumnMapperSingle(AbstractType<?>[] supportedTypes, AbstractType<?>[] supportedClusteringTypes) {
-        super(supportedTypes);
-        this.supportedClusteringTypes = supportedClusteringTypes;
-    }
-
-    /**
-     * Returns {@code true} if the specified Cassandra type/marshaller can be used as clustering key, {@code false}.
-     * otherwise.
-     *
-     * @return {@code true} if the specified Cassandra type/marshaller can be used as clustering key, {@code false}.
-     * otherwise.
-     */
-    public boolean supportsClustering() {
-        for (AbstractType<?> supportedClusteringType : supportedClusteringTypes) {
-            if (type.getClass() == supportedClusteringType.getClass()) {
-                return true;
-            }
-        }
-        return false;
+    ColumnMapperSingle(Boolean indexed, Boolean sorted, AbstractType<?>... supportedTypes) {
+        super(indexed, sorted, supportedTypes);
     }
 
     public final List<Field> fields(String name, Object value) {

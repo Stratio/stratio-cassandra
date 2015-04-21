@@ -16,14 +16,18 @@
 package com.stratio.cassandra.index.schema.mapping;
 
 import com.google.common.base.Objects;
-import org.apache.cassandra.db.marshal.*;
+import org.apache.cassandra.db.marshal.AsciiType;
+import org.apache.cassandra.db.marshal.DecimalType;
+import org.apache.cassandra.db.marshal.DoubleType;
+import org.apache.cassandra.db.marshal.FloatType;
+import org.apache.cassandra.db.marshal.Int32Type;
+import org.apache.cassandra.db.marshal.IntegerType;
+import org.apache.cassandra.db.marshal.LongType;
+import org.apache.cassandra.db.marshal.TimestampType;
+import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.LongField;
 import org.apache.lucene.document.NumericDocValuesField;
-import org.apache.lucene.index.DocValuesType;
-import org.apache.lucene.index.IndexOptions;
-import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
@@ -34,9 +38,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * A {@link ColumnMapper} to map a date field.
@@ -57,20 +59,25 @@ public class ColumnMapperDate extends ColumnMapperSingle<Long> {
     /**
      * Builds a new {@link ColumnMapperDate} using the specified pattern.
      *
+     * @param indexed        If the field supports searching.
+     * @param sorted         If the field supports sorting.
      * @param pattern The {@link SimpleDateFormat} pattern to be used.
      */
     @JsonCreator
-    public ColumnMapperDate(@JsonProperty("pattern") String pattern) {
-        super(new AbstractType<?>[]{AsciiType.instance,
-                                    UTF8Type.instance,
-                                    Int32Type.instance,
-                                    LongType.instance,
-                                    IntegerType.instance,
-                                    FloatType.instance,
-                                    DoubleType.instance,
-                                    DecimalType.instance,
-                                    TimestampType.instance},
-              new AbstractType[]{LongType.instance, TimestampType.instance});
+    public ColumnMapperDate(@JsonProperty("indexed") Boolean indexed,
+                            @JsonProperty("sorted") Boolean sorted,
+                            @JsonProperty("pattern") String pattern) {
+        super(indexed,
+              sorted,
+              AsciiType.instance,
+              UTF8Type.instance,
+              Int32Type.instance,
+              LongType.instance,
+              IntegerType.instance,
+              FloatType.instance,
+              DoubleType.instance,
+              DecimalType.instance,
+              TimestampType.instance);
         this.pattern = pattern == null ? DEFAULT_PATTERN : pattern;
         concurrentDateFormat = new ThreadLocal<DateFormat>() {
             @Override
@@ -96,7 +103,7 @@ public class ColumnMapperDate extends ColumnMapperSingle<Long> {
                 // Ignore to fail below
             }
         }
-        String message = String.format("Field \"%s\" requires a date, but found \"%s\"", name, pattern, value);
+        String message = String.format("Field \"%s\" requires a date, but found \"%s\"", name, value);
         throw new IllegalArgumentException(message);
     }
 
@@ -104,9 +111,8 @@ public class ColumnMapperDate extends ColumnMapperSingle<Long> {
     @Override
     public List<Field> fieldsFromBase(String name, Long value) {
         List<Field> fields = new ArrayList<>();
-        fields.add(new LongField(name, value, STORE));
-        if (sorted)
-            fields.add(new NumericDocValuesField(name, value));
+        if (indexed) fields.add(new LongField(name, value, STORE));
+        if (sorted) fields.add(new NumericDocValuesField(name, value));
         return fields;
     }
 

@@ -16,7 +16,6 @@
 package com.stratio.cassandra.index.schema.mapping;
 
 import com.google.common.base.Objects;
-import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.db.marshal.IntegerType;
@@ -47,15 +46,21 @@ public class ColumnMapperBigInteger extends ColumnMapperKeyword {
     /**
      * Builds a new {@link ColumnMapperBigDecimal} using the specified max number of digits.
      *
-     * @param digits The max number of digits. If {@code null}, the {@link #DEFAULT_DIGITS} will be used.
+     * @param indexed        If the field supports searching.
+     * @param sorted         If the field supports sorting.
+     * @param digits  The max number of digits. If {@code null}, the {@link #DEFAULT_DIGITS} will be used.
      */
     @JsonCreator
-    public ColumnMapperBigInteger(@JsonProperty("digits") Integer digits) {
-        super(new AbstractType<?>[]{AsciiType.instance,
-                                    UTF8Type.instance,
-                                    Int32Type.instance,
-                                    LongType.instance,
-                                    IntegerType.instance}, new AbstractType[]{});
+    public ColumnMapperBigInteger(@JsonProperty("indexed") Boolean indexed,
+                                  @JsonProperty("sorted") Boolean sorted,
+                                  @JsonProperty("digits") Integer digits) {
+        super(indexed,
+              sorted,
+              AsciiType.instance,
+              UTF8Type.instance,
+              Int32Type.instance,
+              LongType.instance,
+              IntegerType.instance);
 
         if (digits != null && digits <= 0) {
             throw new IllegalArgumentException("Positive digits required");

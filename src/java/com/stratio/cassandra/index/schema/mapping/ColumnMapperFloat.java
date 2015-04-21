@@ -16,7 +16,6 @@
 package com.stratio.cassandra.index.schema.mapping;
 
 import com.google.common.base.Objects;
-import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.DecimalType;
 import org.apache.cassandra.db.marshal.DoubleType;
@@ -52,18 +51,24 @@ public class ColumnMapperFloat extends ColumnMapperSingle<Float> {
     /**
      * Builds a new {@link ColumnMapperFloat} using the specified boost.
      *
-     * @param boost The boost to be used.
+     * @param indexed        If the field supports searching.
+     * @param sorted         If the field supports sorting.
+     * @param boost   The boost to be used.
      */
     @JsonCreator
-    public ColumnMapperFloat(@JsonProperty("boost") Float boost) {
-        super(new AbstractType<?>[]{AsciiType.instance,
-                                    UTF8Type.instance,
-                                    Int32Type.instance,
-                                    LongType.instance,
-                                    IntegerType.instance,
-                                    FloatType.instance,
-                                    DoubleType.instance,
-                                    DecimalType.instance}, new AbstractType[]{FloatType.instance});
+    public ColumnMapperFloat(@JsonProperty("indexed") Boolean indexed,
+                             @JsonProperty("sorted") Boolean sorted,
+                             @JsonProperty("boost") Float boost) {
+        super(indexed,
+              sorted,
+              AsciiType.instance,
+              UTF8Type.instance,
+              Int32Type.instance,
+              LongType.instance,
+              IntegerType.instance,
+              FloatType.instance,
+              DoubleType.instance,
+              DecimalType.instance);
         this.boost = boost == null ? DEFAULT_BOOST : boost;
     }
 
@@ -89,9 +94,8 @@ public class ColumnMapperFloat extends ColumnMapperSingle<Float> {
     @Override
     public List<Field> fieldsFromBase(String name, Float value) {
         List<Field> fields = new ArrayList<>();
-        fields.add(new FloatField(name, value, STORE));
-        if (sorted)
-            fields.add(new NumericDocValuesField(name, Float.floatToIntBits(value)));
+        if (indexed) fields.add(new FloatField(name, value, STORE));
+        if (sorted) fields.add(new NumericDocValuesField(name, Float.floatToIntBits(value)));
         return fields;
     }
 

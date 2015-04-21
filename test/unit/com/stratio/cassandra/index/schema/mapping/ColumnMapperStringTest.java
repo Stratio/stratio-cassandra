@@ -29,35 +29,35 @@ public class ColumnMapperStringTest {
 
     @Test()
     public void testValueNull() {
-        ColumnMapperString mapper = new ColumnMapperString();
+        ColumnMapperString mapper = new ColumnMapperString(true, true, true);
         String parsed = mapper.indexValue("test", null);
         Assert.assertNull(parsed);
     }
 
     @Test
     public void testValueInteger() {
-        ColumnMapperString mapper = new ColumnMapperString();
+        ColumnMapperString mapper = new ColumnMapperString(true, true, true);
         String parsed = mapper.indexValue("test", 3);
         Assert.assertEquals("3", parsed);
     }
 
     @Test
     public void testValueLong() {
-        ColumnMapperString mapper = new ColumnMapperString();
+        ColumnMapperString mapper = new ColumnMapperString(true, true, true);
         String parsed = mapper.indexValue("test", 3l);
         Assert.assertEquals("3", parsed);
     }
 
     @Test
     public void testValueFloatWithoutDecimal() {
-        ColumnMapperString mapper = new ColumnMapperString();
+        ColumnMapperString mapper = new ColumnMapperString(true, true, true);
         String parsed = mapper.indexValue("test", 3f);
         Assert.assertEquals("3.0", parsed);
     }
 
     @Test
     public void testValueFloatWithDecimalFloor() {
-        ColumnMapperString mapper = new ColumnMapperString();
+        ColumnMapperString mapper = new ColumnMapperString(true, true, true);
         String parsed = mapper.indexValue("test", 3.5f);
         Assert.assertEquals("3.5", parsed);
 
@@ -65,21 +65,21 @@ public class ColumnMapperStringTest {
 
     @Test
     public void testValueFloatWithDecimalCeil() {
-        ColumnMapperString mapper = new ColumnMapperString();
+        ColumnMapperString mapper = new ColumnMapperString(true, true, true);
         String parsed = mapper.indexValue("test", 3.6f);
         Assert.assertEquals("3.6", parsed);
     }
 
     @Test
     public void testValueDoubleWithoutDecimal() {
-        ColumnMapperString mapper = new ColumnMapperString();
+        ColumnMapperString mapper = new ColumnMapperString(true, true, true);
         String parsed = mapper.indexValue("test", 3d);
         Assert.assertEquals("3.0", parsed);
     }
 
     @Test
     public void testValueDoubleWithDecimalFloor() {
-        ColumnMapperString mapper = new ColumnMapperString();
+        ColumnMapperString mapper = new ColumnMapperString(true, true, true);
         String parsed = mapper.indexValue("test", 3.5d);
         Assert.assertEquals("3.5", parsed);
 
@@ -87,7 +87,7 @@ public class ColumnMapperStringTest {
 
     @Test
     public void testValueDoubleWithDecimalCeil() {
-        ColumnMapperString mapper = new ColumnMapperString();
+        ColumnMapperString mapper = new ColumnMapperString(true, true, true);
         String parsed = mapper.indexValue("test", 3.6d);
         Assert.assertEquals("3.6", parsed);
 
@@ -95,21 +95,21 @@ public class ColumnMapperStringTest {
 
     @Test
     public void testValueStringWithoutDecimal() {
-        ColumnMapperString mapper = new ColumnMapperString();
+        ColumnMapperString mapper = new ColumnMapperString(true, true, true);
         String parsed = mapper.indexValue("test", "3");
         Assert.assertEquals("3", parsed);
     }
 
     @Test
     public void testValueStringWithDecimalFloor() {
-        ColumnMapperString mapper = new ColumnMapperString();
+        ColumnMapperString mapper = new ColumnMapperString(true, true, true);
         String parsed = mapper.indexValue("test", "3.2");
         Assert.assertEquals("3.2", parsed);
     }
 
     @Test
     public void testValueStringWithDecimalCeil() {
-        ColumnMapperString mapper = new ColumnMapperString();
+        ColumnMapperString mapper = new ColumnMapperString(true, true, true);
         String parsed = mapper.indexValue("test", "3.6");
         Assert.assertEquals("3.6", parsed);
 
@@ -117,14 +117,14 @@ public class ColumnMapperStringTest {
 
     @Test
     public void testValueUUID() {
-        ColumnMapperString mapper = new ColumnMapperString();
+        ColumnMapperString mapper = new ColumnMapperString(true, true, true);
         String parsed = mapper.indexValue("test", UUID.fromString("550e8400-e29b-41d4-a716-446655440000"));
         Assert.assertEquals("550e8400-e29b-41d4-a716-446655440000", parsed);
     }
 
     @Test
     public void testField() {
-        ColumnMapperString mapper = new ColumnMapperString();
+        ColumnMapperString mapper = new ColumnMapperString(true, true, true);
         List<Field> fields = mapper.fields("name", "hello");
         Assert.assertNotNull(fields);
         Assert.assertEquals(2, fields.size());
@@ -134,12 +134,12 @@ public class ColumnMapperStringTest {
         Assert.assertEquals("name", field.name());
         Assert.assertEquals(false, field.fieldType().stored());
         field = fields.get(1);
-        Assert.assertEquals(DocValuesType.SORTED_SET, field.fieldType().docValuesType());
+        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
     }
 
     @Test
     public void testCaseSensitiveNull() {
-        ColumnMapperString mapper = new ColumnMapperString(null);
+        ColumnMapperString mapper = new ColumnMapperString(true, true, null);
         List<Field> fields = mapper.fields("name", "Hello");
         Assert.assertNotNull(fields);
         Assert.assertEquals(2, fields.size());
@@ -150,7 +150,7 @@ public class ColumnMapperStringTest {
 
     @Test
     public void testCaseSensitiveTrue() {
-        ColumnMapperString mapper = new ColumnMapperString(true);
+        ColumnMapperString mapper = new ColumnMapperString(true, true, true);
         List<Field> fields = mapper.fields("name", "Hello");
         Assert.assertNotNull(fields);
         Assert.assertEquals(2, fields.size());
@@ -158,12 +158,12 @@ public class ColumnMapperStringTest {
         Assert.assertNotNull(field);
         Assert.assertEquals("Hello", field.stringValue());
         field = fields.get(1);
-        Assert.assertEquals(DocValuesType.SORTED_SET, field.fieldType().docValuesType());
+        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
     }
 
     @Test
     public void testCaseSensitiveDefault() {
-        ColumnMapperString mapper = new ColumnMapperString();
+        ColumnMapperString mapper = new ColumnMapperString(true, true, true);
         List<Field> fields = mapper.fields("name", "Hello");
         Assert.assertNotNull(fields);
         Assert.assertEquals(2, fields.size());
@@ -173,12 +173,12 @@ public class ColumnMapperStringTest {
         Assert.assertNotNull(field);
         Assert.assertEquals("Hello", field.stringValue());
         field = fields.get(1);
-        Assert.assertEquals(DocValuesType.SORTED_SET, field.fieldType().docValuesType());
+        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
     }
 
     @Test
     public void testCaseSensitiveFalse() {
-        ColumnMapperString mapper = new ColumnMapperString(false);
+        ColumnMapperString mapper = new ColumnMapperString(true, true, false);
         List<Field> fields = mapper.fields("name", "Hello");
         Assert.assertNotNull(fields);
         Assert.assertEquals(2, fields.size());
@@ -186,12 +186,12 @@ public class ColumnMapperStringTest {
         Assert.assertNotNull(field);
         Assert.assertEquals("hello", field.stringValue());
         field = fields.get(1);
-        Assert.assertEquals(DocValuesType.SORTED_SET, field.fieldType().docValuesType());
+        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
     }
 
     @Test
     public void testExtractAnalyzers() {
-        ColumnMapperString mapper = new ColumnMapperString();
+        ColumnMapperString mapper = new ColumnMapperString(true, true, true);
         String analyzer = mapper.analyzer();
         Assert.assertEquals(ColumnMapper.KEYWORD_ANALYZER, analyzer);
     }

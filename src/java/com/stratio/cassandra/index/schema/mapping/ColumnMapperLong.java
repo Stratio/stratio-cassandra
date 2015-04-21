@@ -16,7 +16,6 @@
 package com.stratio.cassandra.index.schema.mapping;
 
 import com.google.common.base.Objects;
-import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.DecimalType;
 import org.apache.cassandra.db.marshal.DoubleType;
@@ -52,18 +51,24 @@ public class ColumnMapperLong extends ColumnMapperSingle<Long> {
     /**
      * Builds a new {@link ColumnMapperLong} using the specified boost.
      *
-     * @param boost The boost to be used.
+     * @param indexed        If the field supports searching.
+     * @param sorted         If the field supports sorting.
+     * @param boost   The boost to be used.
      */
     @JsonCreator
-    public ColumnMapperLong(@JsonProperty("boost") Float boost) {
-        super(new AbstractType<?>[]{AsciiType.instance,
-                                    UTF8Type.instance,
-                                    Int32Type.instance,
-                                    LongType.instance,
-                                    IntegerType.instance,
-                                    FloatType.instance,
-                                    DoubleType.instance,
-                                    DecimalType.instance}, new AbstractType[]{LongType.instance});
+    public ColumnMapperLong(@JsonProperty("indexed") Boolean indexed,
+                            @JsonProperty("sorted") Boolean sorted,
+                            @JsonProperty("boost") Float boost) {
+        super(indexed,
+              sorted,
+              AsciiType.instance,
+              UTF8Type.instance,
+              Int32Type.instance,
+              LongType.instance,
+              IntegerType.instance,
+              FloatType.instance,
+              DoubleType.instance,
+              DecimalType.instance);
         this.boost = boost == null ? DEFAULT_BOOST : boost;
     }
 
@@ -76,7 +81,7 @@ public class ColumnMapperLong extends ColumnMapperSingle<Long> {
             return ((Number) value).longValue();
         } else if (value instanceof String) {
             try {
-                return Double.valueOf( (String) value).longValue();
+                return Double.valueOf((String) value).longValue();
             } catch (NumberFormatException e) {
                 // Ignore to fail below
             }
@@ -89,9 +94,8 @@ public class ColumnMapperLong extends ColumnMapperSingle<Long> {
     @Override
     public List<Field> fieldsFromBase(String name, Long value) {
         List<Field> fields = new ArrayList<>();
-        fields.add(new LongField(name, value, STORE));
-        if (sorted)
-            fields.add(new NumericDocValuesField(name, value));
+        if (indexed) fields.add(new LongField(name, value, STORE));
+        if (sorted) fields.add(new NumericDocValuesField(name, value));
         return fields;
     }
 

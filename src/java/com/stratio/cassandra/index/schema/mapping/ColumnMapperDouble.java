@@ -16,7 +16,6 @@
 package com.stratio.cassandra.index.schema.mapping;
 
 import com.google.common.base.Objects;
-import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.DecimalType;
 import org.apache.cassandra.db.marshal.DoubleType;
@@ -52,18 +51,24 @@ public class ColumnMapperDouble extends ColumnMapperSingle<Double> {
     /**
      * Builds a new {@link ColumnMapperDouble} using the specified boost.
      *
-     * @param boost The boost to be used.
+     * @param indexed        If the field supports searching.
+     * @param sorted         If the field supports sorting.
+     * @param boost   The boost to be used.
      */
     @JsonCreator
-    public ColumnMapperDouble(@JsonProperty("boost") Float boost) {
-        super(new AbstractType<?>[]{AsciiType.instance,
-                                    UTF8Type.instance,
-                                    Int32Type.instance,
-                                    LongType.instance,
-                                    IntegerType.instance,
-                                    FloatType.instance,
-                                    DoubleType.instance,
-                                    DecimalType.instance}, new AbstractType[]{DoubleType.instance});
+    public ColumnMapperDouble(@JsonProperty("indexed") Boolean indexed,
+                              @JsonProperty("sorted") Boolean sorted,
+                              @JsonProperty("boost") Float boost) {
+        super(indexed,
+              sorted,
+              AsciiType.instance,
+              UTF8Type.instance,
+              Int32Type.instance,
+              LongType.instance,
+              IntegerType.instance,
+              FloatType.instance,
+              DoubleType.instance,
+              DecimalType.instance);
         this.boost = boost == null ? DEFAULT_BOOST : boost;
     }
 
@@ -76,7 +81,7 @@ public class ColumnMapperDouble extends ColumnMapperSingle<Double> {
             return ((Number) value).doubleValue();
         } else if (value instanceof String) {
             try {
-                return Double.valueOf( (String) value);
+                return Double.valueOf((String) value);
             } catch (NumberFormatException e) {
                 // Ignore to fail below
             }
@@ -89,8 +94,8 @@ public class ColumnMapperDouble extends ColumnMapperSingle<Double> {
     @Override
     public List<Field> fieldsFromBase(String name, Double value) {
         List<Field> fields = new ArrayList<>();
-        fields.add(new DoubleField(name, value, STORE));
-        fields.add(new NumericDocValuesField(name, Double.doubleToLongBits(value)));
+        if (indexed) fields.add(new DoubleField(name, value, STORE));
+        if (sorted) fields.add(new NumericDocValuesField(name, Double.doubleToLongBits(value)));
         return fields;
     }
 
