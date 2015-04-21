@@ -1,3 +1,7 @@
+2.1.4.1
+ * Improve top-k (CASSANDRA-8717)
+ * Fix build.xml
+
 2.1.4.0
  * Upgrade to Apache Cassandra 2.1.4 (issue#16)
  * Fix reverse clustering order (issue#14)
