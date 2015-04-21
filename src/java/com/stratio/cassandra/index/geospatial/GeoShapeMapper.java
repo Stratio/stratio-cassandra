@@ -61,8 +61,10 @@ public class GeoShapeMapper extends ColumnMapper {
      * Builds a new {@link GeoShapeMapper}.
      */
     @JsonCreator
-    public GeoShapeMapper(@JsonProperty("max_levels") Integer maxLevels) {
-        super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance});
+    public GeoShapeMapper(@JsonProperty("indexed") Boolean indexed,
+                          @JsonProperty("sorted") Boolean sorted,
+                          @JsonProperty("max_levels") Integer maxLevels) {
+        super(indexed, sorted, new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance});
         this.maxLevels = maxLevels == null ? DEFAULT_MAX_LEVELS : maxLevels;
         this.grid = new GeohashPrefixTree(spatialContext, this.maxLevels);
     }
