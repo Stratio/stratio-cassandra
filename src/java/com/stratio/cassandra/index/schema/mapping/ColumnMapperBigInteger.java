@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.schema.mapping;
 
+import com.google.common.base.Objects;
 import org.apache.cassandra.db.marshal.*;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -143,6 +144,6 @@ public class ColumnMapperBigInteger extends ColumnMapperSingle<String> {
     /** {@inheritDoc} */
     @Override
     public String toString() {
-        return new ToStringBuilder(this).append("digits", digits).toString();
+        return Objects.toStringHelper(this).add("digits", digits).toString();
     }
 }

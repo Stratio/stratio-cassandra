@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.schema.mapping;
 
+import com.google.common.base.Objects;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.BooleanType;
@@ -98,7 +99,7 @@ public class ColumnMapperBoolean extends ColumnMapperSingle<String> {
     /** {@inheritDoc} */
     @Override
     public String toString() {
-        return new ToStringBuilder(this).toString();
+        return Objects.toStringHelper(this).toString();
     }
 
 }

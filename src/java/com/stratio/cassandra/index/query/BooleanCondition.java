@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.query;
 
+import com.google.common.base.Objects;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.search.BooleanClause.Occur;
@@ -87,6 +88,6 @@ public class BooleanCondition extends Condition {
     /** {@inheritDoc} */
     @Override
     public String toString() {
-        return new ToStringBuilder(this).append("must", must).append("should", should).append("not", not).toString();
+        return Objects.toStringHelper(this).add("must", must).add("should", should).add("not", not).toString();
     }
 }

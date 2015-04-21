@@ -161,6 +161,7 @@ public class Column<T> {
         return new Column<>(name, nameSufix, decomposedValue, composedValue, type);
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString() {
         return Objects.toStringHelper(this)

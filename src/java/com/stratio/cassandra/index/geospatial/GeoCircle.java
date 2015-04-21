@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.geospatial;
 
+import com.google.common.base.Objects;
 import com.spatial4j.core.context.SpatialContext;
 import com.spatial4j.core.distance.DistanceUtils;
 import com.spatial4j.core.shape.Shape;
@@ -67,9 +68,10 @@ public class GeoCircle extends GeoShape {
      */
     @Override
     public String toString() {
-        return new ToStringBuilder(this).append("longitude", longitude)
-                                        .append("latitude", latitude)
-                                        .append("distance", distance)
-                                        .toString();
+        return Objects.toStringHelper(this)
+                      .add("longitude", longitude)
+                      .add("latitude", latitude)
+                      .add("distance", distance)
+                      .toString();
     }
 }

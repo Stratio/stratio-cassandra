@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.geospatial;
 
+import com.google.common.base.Objects;
 import com.spatial4j.core.context.SpatialContext;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.codehaus.jackson.annotate.JsonCreator;
@@ -53,6 +54,6 @@ public class GeoPoint extends GeoShape {
     /** {@inheritDoc} */
     @Override
     public String toString() {
-        return new ToStringBuilder(this).append("longitude", longitude).append("latitude", latitude).toString();
+        return Objects.toStringHelper(this).add("longitude", longitude).add("latitude", latitude).toString();
     }
 }

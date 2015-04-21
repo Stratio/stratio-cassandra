@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.geospatial;
 
+import com.google.common.base.Objects;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.codehaus.jackson.annotate.JsonCreator;
 
@@ -79,6 +80,6 @@ public class GeoDistance {
      */
     @Override
     public String toString() {
-        return new ToStringBuilder(this).append("value", value).append("unit", unit).toString();
+        return Objects.toStringHelper(this).add("value", value).add("unit", unit).toString();
     }
 }

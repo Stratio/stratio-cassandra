@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.query;
 
+import com.google.common.base.Objects;
 import com.stratio.cassandra.index.schema.mapping.ColumnMapperSingle;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -141,11 +142,12 @@ public class RangeCondition extends SingleFieldCondition {
      */
     @Override
     public String toString() {
-        return new ToStringBuilder(this).append("field", field)
-                                        .append("lower", lower)
-                                        .append("upper", upper)
-                                        .append("includeLower", includeLower)
-                                        .append("includeUpper", includeUpper)
-                                        .toString();
+        return Objects.toStringHelper(this)
+                      .add("field", field)
+                      .add("lower", lower)
+                      .add("upper", upper)
+                      .add("includeLower", includeLower)
+                      .add("includeUpper", includeUpper)
+                      .toString();
     }
 }

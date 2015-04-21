@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index;
 
+import com.google.common.base.Objects;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -230,4 +231,18 @@ public class RowIndexConfig {
         return indexingQueuesSize;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public String toString() {
+        return Objects.toStringHelper(this)
+                      .add("schema", schema)
+                      .add("refreshSeconds", refreshSeconds)
+                      .add("path", path)
+                      .add("ramBufferMB", ramBufferMB)
+                      .add("maxMergeMB", maxMergeMB)
+                      .add("maxCachedMB", maxCachedMB)
+                      .add("indexingThreads", indexingThreads)
+                      .add("indexingQueuesSize", indexingQueuesSize)
+                      .toString();
+    }
 }

@@ -112,28 +112,24 @@ public abstract class SecondaryIndexSearcher
     }
 
     /**
-     * Returns {@code true} if the specified {@link AbstractRangeCommand} requires a full scan of all the nodes,
-     * {@code false} otherwise.
+     * Returns {@code true} if the specified list of {@link IndexExpression}s require a full scan of all the nodes
      *
-     * @param clause
-     *            An {@link IndexExpression}.
-     * @return {@code true} if the {@code command} requires a full scan, {@code false} otherwise.
+     * @param clause A list of {@link IndexExpression}s
+     * @return {@code true} if the {@code IndexExpression}s require a full scan, {@code false} otherwise
      */
-    public boolean requiresFullScan(List<IndexExpression> clause)
+    public boolean requiresScanningAllRanges(List<IndexExpression> clause)
     {
         return false;
     }
 
     /**
-     * Combines the partial results of several local index queries.
+     * Combines the partial results of several local index queries
      *
-     * @param clause
-     *            An {@link IndexExpression}.
-     * @param rows
-     *            The partial results to be combined.
-     * @return The combination of the partial results.
+     * @param clause A list of {@link IndexExpression}s
+     * @param rows The partial results to be combined
+     * @return The combination of the partial results
      */
-    public List<Row> sort(List<IndexExpression> clause, List<Row> rows)
+    public List<Row> postReconciliationProcessing(List<IndexExpression> clause, List<Row> rows)
     {
         return rows;
     }

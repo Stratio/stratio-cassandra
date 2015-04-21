@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.schema.mapping;
 
+import com.google.common.base.Objects;
 import com.stratio.cassandra.util.Log;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
@@ -123,7 +124,6 @@ public class ColumnMapperInet extends ColumnMapperSingle<String> {
     /** {@inheritDoc} */
     @Override
     public String toString() {
-        return new ToStringBuilder(this).toString();
+        return Objects.toStringHelper(this).toString();
     }
-
 }

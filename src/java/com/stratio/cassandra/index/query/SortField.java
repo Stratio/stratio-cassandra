@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.query;
 
+import com.google.common.base.Objects;
 import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.mapping.ColumnMapper;
 import com.stratio.cassandra.index.schema.Columns;
@@ -112,6 +113,6 @@ public class SortField {
     /** {@inheritDoc} */
     @Override
     public String toString() {
-        return new ToStringBuilder(this).append("field", field).append("reverse", reverse).toString();
+        return Objects.toStringHelper(this).add("field", field).add("reverse", reverse).toString();
     }
 }

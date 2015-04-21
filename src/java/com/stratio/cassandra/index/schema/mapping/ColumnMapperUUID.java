@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.schema.mapping;
 
+import com.google.common.base.Objects;
 import com.google.common.primitives.Longs;
 import com.stratio.cassandra.util.ByteBufferUtils;
 import org.apache.cassandra.db.marshal.*;
@@ -88,7 +89,7 @@ public class ColumnMapperUUID extends ColumnMapperSingle<String> {
     /** {@inheritDoc} */
     @Override
     public String toString() {
-        return new ToStringBuilder(this).toString();
+        return Objects.toStringHelper(this).toString();
     }
 
     /**

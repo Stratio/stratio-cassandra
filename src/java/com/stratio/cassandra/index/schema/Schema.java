@@ -15,31 +15,22 @@
  */
 package com.stratio.cassandra.index.schema;
 
+import com.google.common.base.Objects;
 import com.stratio.cassandra.index.schema.analysis.Analysis;
 import com.stratio.cassandra.index.schema.analysis.AnalyzerBuilder;
-import com.stratio.cassandra.index.schema.analysis.PreBuiltAnalyzers;
 import com.stratio.cassandra.index.schema.mapping.ColumnMapper;
 import com.stratio.cassandra.index.schema.mapping.ColumnMapperSingle;
 import com.stratio.cassandra.index.schema.mapping.Mapping;
 import com.stratio.cassandra.util.JsonSerializer;
 import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.db.marshal.AbstractType;
-import org.apache.cassandra.db.marshal.UTF8Type;
-import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.index.IndexableField;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Map.Entry;
 
 /**
  * Class for several columns mappings between Cassandra and Lucene.
@@ -150,11 +141,14 @@ public class Schema implements Closeable {
         analyzer.close();
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString() {
-        return new ToStringBuilder(this).append("analysis", analysis)
-                                        .append("mapping", mapping)
-                                        .append("analyzer", analyzer)
-                                        .toString();
+        return Objects.toStringHelper(this)
+                      .add("analysis", analysis)
+                      .add("mapping", mapping)
+                      .add("defaultAnalyzer", defaultAnalyzer)
+                      .add("analyzer", analyzer)
+                      .toString();
     }
 }

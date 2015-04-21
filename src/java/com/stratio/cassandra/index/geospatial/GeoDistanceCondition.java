@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.geospatial;
 
+import com.google.common.base.Objects;
 import com.stratio.cassandra.index.query.Condition;
 import com.stratio.cassandra.index.schema.Schema;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -67,10 +68,11 @@ public class GeoDistanceCondition extends Condition {
     /** {@inheritDoc} */
     @Override
     public String toString() {
-        return new ToStringBuilder(this).append("field", field)
-                                        .append("longitude", longitude)
-                                        .append("latitude", latitude)
-                                        .append("distance", distance)
-                                        .toString();
+        return Objects.toStringHelper(this)
+                      .add("field", field)
+                      .add("longitude", longitude)
+                      .add("latitude", latitude)
+                      .add("distance", distance)
+                      .toString();
     }
 }

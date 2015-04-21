@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.schema.mapping;
 
+import com.google.common.base.Objects;
 import com.stratio.cassandra.index.schema.analysis.PreBuiltAnalyzers;
 import org.apache.cassandra.db.marshal.*;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -104,6 +105,6 @@ public class ColumnMapperText extends ColumnMapperSingle<String> {
     /** {@inheritDoc} */
     @Override
     public String toString() {
-        return new ToStringBuilder(this).append("get", analyzer).toString();
+        return Objects.toStringHelper(this).add("analyzer", analyzer).toString();
     }
 }

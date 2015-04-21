@@ -25,10 +25,10 @@
     <property name="debuglevel" value="source,lines,vars"/>
 
     <!-- default version and SCM information -->
-    <property name="base.version" value="2.1.4.0"/>
-    <property name="scm.connection" value="scm:git:git@github.com:Stratio/stratio-cassandra.git"/>
-    <property name="scm.developerConnection" value="scm:git:git@github.com:Stratio/stratio-cassandra.git"/>
-    <property name="scm.url" value="scm:git:git@github.com:Stratio/stratio-cassandra.git"/>
+    <property name="base.version" value="2.1.4.1"/>
+    <property name="scm.connection" value="scm:git://git.apache.org/cassandra.git"/>
+    <property name="scm.developerConnection" value="scm:git://git.apache.org/cassandra.git"/>
+    <property name="scm.url" value="http://git-wip-us.apache.org/repos/asf?p=cassandra.git;a=tree"/>
 
     <!-- directory details -->
     <property name="basedir" value="."/>
@@ -309,6 +309,27 @@
         </sequential>
       </macrodef>
 
+      <macrodef name="deploy">
+        <attribute name="pomFile"/>
+        <attribute name="file"/>
+        <attribute name="classifier" default=""/>
+        <attribute name="packaging" default="jar"/>
+        <sequential>
+          <artifact:mvn mavenVersion="${maven.version}" fork="true" failonerror="true">
+            <jvmarg value="-Xmx512m"/>
+            <arg value="org.apache.maven.plugins:maven-gpg-plugin:1.4:sign-and-deploy-file" />
+            <arg value="-DretryFailedDeploymentCount=5" />
+            <arg value="-Durl=${maven-repository-url}" />
+            <arg value="-DrepositoryId=${maven-repository-id}" />
+            <arg value="-DpomFile=@{pomFile}" />
+            <arg value="-Dfile=@{file}" />
+            <arg value="-Dclassifier=@{classifier}" />
+            <arg value="-Dpackaging=@{packaging}" />
+            <arg value="-Papache-release" />
+          </artifact:mvn>
+        </sequential>
+      </macrodef>
+
       <property name="maven-ant-tasks.initialized" value="true"/>
     </target>
 
@@ -361,6 +382,9 @@
 
           <dependency groupId="junit" artifactId="junit" version="4.6" />
           <dependency groupId="commons-logging" artifactId="commons-logging" version="1.1.1"/>
+          <dependency groupId="org.apache.rat" artifactId="apache-rat" version="0.10">
+             <exclusion groupId="commons-lang" artifactId="commons-lang"/>
+          </dependency>
           <dependency groupId="org.apache.hadoop" artifactId="hadoop-core" version="1.0.3">
           	<exclusion groupId="org.mortbay.jetty" artifactId="servlet-api"/>
           </dependency>
@@ -420,6 +444,7 @@
                 version="${version}"/>
         <dependency groupId="junit" artifactId="junit"/>
         <dependency groupId="commons-logging" artifactId="commons-logging"/>
+        <dependency groupId="org.apache.rat" artifactId="apache-rat"/>
         <dependency groupId="org.apache.hadoop" artifactId="hadoop-core"/>
       	<dependency groupId="org.apache.hadoop" artifactId="hadoop-minicluster"/>
         <dependency groupId="org.apache.pig" artifactId="pig"/>
@@ -535,7 +560,7 @@
       </artifact:pom>
       
       <artifact:pom id="dist-pom"
-                    artifactId="stratio-cassandra"
+                    artifactId="apache-cassandra"
                     packaging="pom"
                     url="http://cassandra.apache.org"
                     name="com.stratio.cassandra">
@@ -628,6 +653,21 @@
         <arg line="-o ${interface.thrift.dir}" />
         <arg line="cassandra.thrift" />
       </exec>
+      <antcall target="write-java-license-headers" />
+    </target>
+
+    <target name="_write-java-license-headers" depends="rat-init">
+      <java classname="org.apache.rat.Report" fork="true"
+            output="${build.dir}/rat-report.log">
+        <classpath refid="rat.classpath" />
+        <arg value="-a" />
+        <arg value="--force" />
+        <arg value="interface/thrift" />
+      </java>
+    </target>
+
+    <target name="write-java-license-headers" unless="without.rat" description="Add missing java license headers">
+      <antcall target="_write-java-license-headers" />
     </target>
 
     <target name="gen-thrift-py" description="Generate Thrift Python artifacts">
@@ -1006,7 +1046,7 @@
       </tar>
     </target>
 
-    <target name="release" depends="artifacts"
+    <target name="release" depends="artifacts,rat-init"
             description="Create and QC release artifacts">
       <checksum forceOverwrite="yes" todir="${build.dir}" fileext=".md5"
                 algorithm="MD5">
@@ -1020,6 +1060,24 @@
           <include name="*.tar.gz" />
         </fileset>
       </checksum>
+
+      <rat:report xmlns:rat="antlib:org.apache.rat.anttasks"
+                  reportFile="${build.dir}/${final.name}-bin.rat.txt">
+        <tarfileset>
+          <gzipresource>
+            <file file="${build.dir}/${final.name}-bin.tar.gz" />
+          </gzipresource>
+        </tarfileset>
+      </rat:report>
+
+      <rat:report xmlns:rat="antlib:org.apache.rat.anttasks"
+                  reportFile="${build.dir}/${final.name}-src.rat.txt">
+        <tarfileset>
+          <gzipresource>
+            <file file="${build.dir}/${final.name}-src.tar.gz" />
+          </gzipresource>
+        </tarfileset>
+      </rat:report>
     </target>
 
   <target name="build-test" depends="build" description="Compile test classes">
@@ -1070,7 +1128,6 @@
         <jvmarg value="-Xss256k"/>
         <jvmarg value="-Dcassandra.memtable_row_overhead_computation_step=100"/>
         <jvmarg value="-Dcassandra.test.use_prepared=${cassandra.test.use_prepared}"/>
-	<jvmarg value="-Dcassandra.jmx.local.port=7199" />
 	<jvmarg value="-Dcassandra.test.offsetseed=@{poffset}"/>        
 	<optjvmargs/>
         <classpath>
@@ -1388,24 +1445,32 @@
     </cobertura-instrument>
   </target>
 
-  <target name="cobertura-instrument-stratio" depends="build,build-test">
-    <taskdef resource="tasks.properties">
-      <classpath refid="cobertura.classpath"/>
-      <classpath refid="cassandra.classpath"/>
-    </taskdef>
-    <delete file="${cobertura.datafile}"/>
-    <cobertura-instrument todir="${cobertura.classes.dir}" datafile="${cobertura.datafile}">
-      <ignore regex="org.apache.log4j.*"/>
-      <fileset dir="${build.classes.main}/com/stratio/cassandra/index">
-        <include name="**/*.class"/>
-        <exclude name="**/*Test.class"/>
-        <exclude name="**/*TestCase.class"/>
-        <exclude name="**/test/*.class"/>
-        <exclude name="**/*Token.class"/>
-        <exclude name="${cobertura.excludes}"/>
-      </fileset>
-    </cobertura-instrument>
-  </target>
+
+    <target name="cobertura-instrument-stratio" depends="build,build-test">
+        <taskdef resource="tasks.properties">
+            <classpath refid="cobertura.classpath"/>
+            <classpath refid="cassandra.classpath"/>
+        </taskdef>
+
+        <delete file="${cobertura.datafile}"/>
+
+        <cobertura-instrument todir="${cobertura.classes.dir}" datafile="${cobertura.datafile}">
+            <ignore regex="org.apache.log4j.*"/>
+
+            <fileset dir="${build.classes.main}/com/stratio/cassandra/index">
+                <include name="**/*.class"/>
+                <exclude name="**/*Test.class"/>
+                <exclude name="**/*TestCase.class"/>
+                <exclude name="**/test/*.class"/>
+                <!-- cobertura modifies the serialVersionUID of classes. Some of our unit tests rely on backward
+                wire compatability of these classes.  It was easier to exlude them from instrumentation than to
+                force their serialVersinUIDs. -->
+                <exclude name="**/*Token.class"/>
+                <exclude name="${cobertura.excludes}"/>
+            </fileset>
+
+        </cobertura-instrument>
+    </target>
 
   <!-- create both html and xml code coverage reports -->
   <target name="cobertura-report">
@@ -1415,11 +1480,45 @@
       datafile="${cobertura.datafile}"/>
   </target>
 
-  <target name="cobertura-report-stratio">
-    <cobertura-report format="html" destdir="${cobertura.report.dir}"
-                      srcdir="${build.src.java}/com/stratio/cassandra/index" datafile="${cobertura.datafile}"/>
-    <cobertura-report format="xml" destdir="${cobertura.report.dir}"
-                      srcdir="${build.src.java}/com/stratio/cassandra/index" datafile="${cobertura.datafile}"/>
+    <target name="cobertura-report-stratio">
+        <cobertura-report format="html" destdir="${cobertura.report.dir}" srcdir="${build.src.java}/com/stratio/cassandra/index"
+                          datafile="${cobertura.datafile}"/>
+        <cobertura-report format="xml" destdir="${cobertura.report.dir}" srcdir="${build.src.java}/com/stratio/cassandra/index"
+                          datafile="${cobertura.datafile}"/>
+    </target>
+
+  <!--
+    License audit tool
+  -->
+  <target name="rat-init" depends="maven-ant-tasks-init">
+    <artifact:dependencies pathId="rat.classpath">
+      <dependency groupId="org.apache.rat" artifactId="apache-rat-tasks" version="0.6" />
+    </artifact:dependencies>
+    <typedef uri="antlib:org.apache.rat.anttasks" classpathref="rat.classpath"/>
+  </target>
+
+  <target name="rat-check" depends="rat-init">
+    <rat:report xmlns:rat="antlib:org.apache.rat.anttasks"  
+                reportFile="${build.dir}/rat-report.log">
+      <fileset dir="."  excludesfile=".rat-excludes" />
+    </rat:report>
+    <condition property="rat.passed">
+      <isfileselected file="${build.dir}/rat-report.log">
+        <containsregexp expression="^0 Unknown Licenses"/>
+      </isfileselected>
+    </condition>
+    <fail unless="rat.passed">Unknown licenses: See build/rat-report.log.</fail>
+  </target>
+
+  <target name="rat-write" depends="rat-init">
+    <echo>RAT: invoking addLicense to write missing headers</echo>
+    <java classname="org.apache.rat.Report" fork="true"
+          output="${build.dir}/rat-report.log">
+      <classpath refid="rat.classpath" />
+      <arg value="-a" />
+      <arg value="--force" />
+      <arg value="." />
+    </java>
   </target>
 
   <target name="javadoc" depends="init" description="Create javadoc">
@@ -1634,134 +1733,56 @@
              classifier="javadoc"/>
   </target>
 
-  <!-- Publish the artifacts to the Nexus repository -->
-  <target name="publish" depends="mvn-install" description="Publishes the artifacts to the Nexus repository">
-
-    <condition property="nexus-repository-id"
-               value="${nexus-releases-repository-id}"
-               else="${nexus-snapshots-repository-id}">
-      <isset property="release" />
-    </condition>
-
-    <condition property="nexus-repository-url"
-               value="${nexus-releases-repository-url}"
-               else="${nexus-snapshots-repository-url}">
-      <isset property="release" />
-    </condition>
-
-    <macrodef name="deploy-nexus">
-      <attribute name="pomFile" />
-      <attribute name="file" />
-      <attribute name="classifier" default="" />
-      <attribute name="packaging" default="jar" />
-      <sequential>
-        <artifact:mvn mavenVersion="${maven.version}" fork="true" failonerror="true">
-          <jvmarg value="-Xmx512m" />
-          <arg value="deploy:deploy-file" />
-          <arg value="-DretryFailedDeploymentCount=5" />
-          <arg value="-Durl=${nexus-repository-url}" />
-          <arg value="-DrepositoryId=${nexus-repository-id}" />
-          <arg value="-DpomFile=@{pomFile}" />
-          <arg value="-Dclassifier=@{classifier}" />
-          <arg value="-Dfile=@{file}" />
-        </artifact:mvn>
-      </sequential>
-    </macrodef>
-
+  <target name="publish"
+          depends="mvn-install"
+          if="release"
+          description="Publishes the artifacts to the Maven repository">
+          
     <!-- the parent -->
-    <artifact:mvn>
-      <arg value="org.apache.maven.plugins:maven-gpg-plugin:1.3:sign-and-deploy-file" />
-      <arg value="-Durl=${nexus-releases-repository-url}" />
-      <arg value="-DrepositoryId=${nexus-releases-repository-id}" />
-      <arg value="-DpomFile=${build.dir}/${final.name}-parent.pom" />
-      <arg value="-Dfile=${build.dir}/${final.name}-parent.pom" />
-      <arg value="-Dpackaging=pom" />
-      <arg value="-Dgpg.passphrase=${passphrase}" />
-    </artifact:mvn>
+    <deploy pomFile="${build.dir}/${final.name}-parent.pom"
+            file="${build.dir}/${final.name}-parent.pom"
+            packaging="pom"/>
 
-    <!-- the cassandra-thrift jar -->
-    <artifact:mvn>
-      <arg value="org.apache.maven.plugins:maven-gpg-plugin:1.3:sign-and-deploy-file" />
-      <arg value="-Durl=${nexus-releases-repository-url}" />
-      <arg value="-DrepositoryId=${nexus-releases-repository-id}" />
-      <arg value="-DpomFile=${build.dir}/${ant.project.name}-thrift-${version}.pom" />
-      <arg value="-Dfile=${build.dir}/${ant.project.name}-thrift-${version}.jar" />
-      <arg value="-Dgpg.passphrase=${passphrase}" />
-    </artifact:mvn>
-    <artifact:mvn>
-      <arg value="org.apache.maven.plugins:maven-gpg-plugin:1.3:sign-and-deploy-file" />
-      <arg value="-Durl=${nexus-releases-repository-url}" />
-      <arg value="-DrepositoryId=${nexus-releases-repository-id}" />
-      <arg value="-DpomFile=${build.dir}/${ant.project.name}-thrift-${version}.pom" />
-      <arg value="-Dfile=${build.dir}/${ant.project.name}-thrift-${version}-sources.jar" />
-      <arg value="-Dclassifier=sources" />
-      <arg value="-Dgpg.passphrase=${passphrase}" />
-    </artifact:mvn>
-    <artifact:mvn>
-      <arg value="org.apache.maven.plugins:maven-gpg-plugin:1.3:sign-and-deploy-file" />
-      <arg value="-Durl=${nexus-releases-repository-url}" />
-      <arg value="-DrepositoryId=${nexus-releases-repository-id}" />
-      <arg value="-DpomFile=${build.dir}/${ant.project.name}-thrift-${version}.pom" />
-      <arg value="-Dfile=${build.dir}/${ant.project.name}-thrift-${version}-javadoc.jar" />
-      <arg value="-Dclassifier=javadoc" />
-      <arg value="-Dgpg.passphrase=${passphrase}" />
-    </artifact:mvn>
+    <!-- the distribution -->
+    <deploy pomFile="${build.dir}/${final.name}-dist.pom"
+            file="${build.dir}/${final.name}-dist.pom"
+            packaging="pom"/>
+    <deploy pomFile="${build.dir}/${final.name}-dist.pom"
+            file="${build.dir}/${final.name}-bin.tar.gz"
+            packaging="tar.gz"
+            classifier="bin"/>
+    <deploy pomFile="${build.dir}/${final.name}-dist.pom"
+            file="${build.dir}/${final.name}-src.tar.gz"
+            packaging="tar.gz"
+            classifier="src"/>
+          
+    <!-- the cassandra-thrift jar -->  
+    <deploy pomFile="${build.dir}/${ant.project.name}-thrift-${version}.pom"
+            file="${build.dir}/${ant.project.name}-thrift-${version}.jar"/>
+    <deploy pomFile="${build.dir}/${ant.project.name}-thrift-${version}.pom"
+            file="${build.dir}/${ant.project.name}-thrift-${version}-sources.jar"
+            classifier="sources"/>
+    <deploy pomFile="${build.dir}/${ant.project.name}-thrift-${version}.pom"
+            file="${build.dir}/${ant.project.name}-thrift-${version}-javadoc.jar"
+            classifier="javadoc"/>
 
-    <!-- the cassandra-clientutil jar -->
-    <artifact:mvn>
-      <arg value="org.apache.maven.plugins:maven-gpg-plugin:1.3:sign-and-deploy-file" />
-      <arg value="-Durl=${nexus-releases-repository-url}" />
-      <arg value="-DrepositoryId=${nexus-releases-repository-id}" />
-      <arg value="-DpomFile=${build.dir}/${ant.project.name}-clientutil-${version}.pom" />
-      <arg value="-Dfile=${build.dir}/${ant.project.name}-clientutil-${version}.jar" />
-      <arg value="-Dgpg.passphrase=${passphrase}" />
-    </artifact:mvn>
-    <artifact:mvn>
-      <arg value="org.apache.maven.plugins:maven-gpg-plugin:1.3:sign-and-deploy-file" />
-      <arg value="-Durl=${nexus-releases-repository-url}" />
-      <arg value="-DrepositoryId=${nexus-releases-repository-id}" />
-      <arg value="-DpomFile=${build.dir}/${ant.project.name}-clientutil-${version}.pom" />
-      <arg value="-Dfile=${build.dir}/${ant.project.name}-clientutil-${version}-sources.jar" />
-      <arg value="-Dclassifier=sources" />
-      <arg value="-Dgpg.passphrase=${passphrase}" />
-    </artifact:mvn>
-    <artifact:mvn>
-      <arg value="org.apache.maven.plugins:maven-gpg-plugin:1.3:sign-and-deploy-file" />
-      <arg value="-Durl=${nexus-releases-repository-url}" />
-      <arg value="-DrepositoryId=${nexus-releases-repository-id}" />
-      <arg value="-DpomFile=${build.dir}/${ant.project.name}-clientutil-${version}.pom" />
-      <arg value="-Dfile=${build.dir}/${ant.project.name}-clientutil-${version}-javadoc.jar" />
-      <arg value="-Dclassifier=javadoc" />
-      <arg value="-Dgpg.passphrase=${passphrase}" />
-    </artifact:mvn>
-
+    <!-- the cassandra-clientutil jar -->  
+    <deploy pomFile="${build.dir}/${ant.project.name}-clientutil-${version}.pom"
+            file="${build.dir}/${ant.project.name}-clientutil-${version}.jar"/>
+    <deploy pomFile="${build.dir}/${ant.project.name}-clientutil-${version}.pom"
+             file="${build.dir}/${ant.project.name}-clientutil-${version}-sources.jar"
+             classifier="sources"/>
+    <deploy pomFile="${build.dir}/${ant.project.name}-clientutil-${version}.pom"
+             file="${build.dir}/${ant.project.name}-clientutil-${version}-javadoc.jar"
+             classifier="javadoc"/>
     <!-- the cassandra-all jar -->
-    <artifact:mvn>
-      <arg value="org.apache.maven.plugins:maven-gpg-plugin:1.3:sign-and-deploy-file" />
-      <arg value="-Durl=${nexus-releases-repository-url}" />
-      <arg value="-DrepositoryId=${nexus-releases-repository-id}" />
-      <arg value="-DpomFile=${build.dir}/${final.name}.pom" />
-      <arg value="-Dfile=${build.dir}/${final.name}.jar" />
-      <arg value="-Dgpg.passphrase=${passphrase}" />
-    </artifact:mvn>
-    <artifact:mvn>
-      <arg value="org.apache.maven.plugins:maven-gpg-plugin:1.3:sign-and-deploy-file" />
-      <arg value="-Durl=${nexus-releases-repository-url}" />
-      <arg value="-DrepositoryId=${nexus-releases-repository-id}" />
-      <arg value="-DpomFile=${build.dir}/${final.name}.pom" />
-      <arg value="-Dfile=${build.dir}/${final.name}-sources.jar" />
-      <arg value="-Dclassifier=sources" />
-      <arg value="-Dgpg.passphrase=${passphrase}" />
-    </artifact:mvn>
-    <artifact:mvn>
-      <arg value="org.apache.maven.plugins:maven-gpg-plugin:1.3:sign-and-deploy-file" />
-      <arg value="-Durl=${nexus-releases-repository-url}" />
-      <arg value="-DrepositoryId=${nexus-releases-repository-id}" />
-      <arg value="-DpomFile=${build.dir}/${final.name}.pom" />
-      <arg value="-Dfile=${build.dir}/${final.name}-javadoc.jar" />
-      <arg value="-Dclassifier=javadoc" />
-      <arg value="-Dgpg.passphrase=${passphrase}" />
-    </artifact:mvn>
+    <deploy pomFile="${build.dir}/${final.name}.pom"
+            file="${build.dir}/${final.name}.jar"/>
+    <deploy pomFile="${build.dir}/${final.name}.pom"
+            file="${build.dir}/${final.name}-sources.jar"
+            classifier="sources"/>
+    <deploy pomFile="${build.dir}/${final.name}.pom"
+            file="${build.dir}/${final.name}-javadoc.jar"
+            classifier="javadoc"/>
   </target>
-
 </project>

@@ -15,6 +15,7 @@
  */
 package com.stratio.cassandra.index.schema.mapping;
 
+import com.google.common.base.Objects;
 import org.apache.cassandra.db.marshal.*;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.document.Field;
@@ -118,6 +119,6 @@ public class ColumnMapperDate extends ColumnMapperSingle<Long> {
     /** {@inheritDoc} */
     @Override
     public String toString() {
-        return new ToStringBuilder(this).append("pattern", pattern).toString();
+        return Objects.toStringHelper(this).add("pattern", pattern).toString();
     }
 }
