@@ -26,38 +26,54 @@ import java.util.List;
 
 public class ColumnMapperDoubleTest {
 
+    @Test
+    public void testConstructorWithoutArgs() {
+        ColumnMapperDouble mapper = new ColumnMapperDouble(null, null, null);
+        Assert.assertEquals(ColumnMapper.INDEXED, mapper.isIndexed());
+        Assert.assertEquals(ColumnMapper.SORTED, mapper.isSorted());
+        Assert.assertEquals(ColumnMapperDouble.DEFAULT_BOOST, mapper.getBoost(), 1);
+    }
+
+    @Test
+    public void testConstructorWithAllArgs() {
+        ColumnMapperDouble mapper = new ColumnMapperDouble(false, true, 2.3f);
+        Assert.assertFalse(mapper.isIndexed());
+        Assert.assertTrue(mapper.isSorted());
+        Assert.assertEquals(2.3f, mapper.getBoost(), 1);
+    }
+
     @Test()
     public void testValueNull() {
         ColumnMapperDouble mapper = new ColumnMapperDouble(null, null, 1f);
-        Double parsed = mapper.indexValue("test", null);
+        Double parsed = mapper.base("test", null);
         Assert.assertNull(parsed);
     }
 
     @Test
     public void testValueInteger() {
         ColumnMapperDouble mapper = new ColumnMapperDouble(null, null, 1f);
-        Double parsed = mapper.indexValue("test", 3);
+        Double parsed = mapper.base("test", 3);
         Assert.assertEquals(Double.valueOf(3), parsed);
     }
 
     @Test
     public void testValueLong() {
         ColumnMapperDouble mapper = new ColumnMapperDouble(null, null, 1f);
-        Double parsed = mapper.indexValue("test", 3l);
+        Double parsed = mapper.base("test", 3l);
         Assert.assertEquals(Double.valueOf(3), parsed);
     }
 
     @Test
     public void testValueFloatWithoutDecimal() {
         ColumnMapperDouble mapper = new ColumnMapperDouble(null, null, 1f);
-        Double parsed = mapper.indexValue("test", 3f);
+        Double parsed = mapper.base("test", 3f);
         Assert.assertEquals(Double.valueOf(3), parsed);
     }
 
     @Test
     public void testValueFloatWithDecimalFloor() {
         ColumnMapperDouble mapper = new ColumnMapperDouble(null, null, 1f);
-        Double parsed = mapper.indexValue("test", 3.5f);
+        Double parsed = mapper.base("test", 3.5f);
         Assert.assertEquals(Double.valueOf(3.5d), parsed);
 
     }
@@ -65,21 +81,21 @@ public class ColumnMapperDoubleTest {
     @Test
     public void testValueFloatWithDecimalCeil() {
         ColumnMapperDouble mapper = new ColumnMapperDouble(null, null, 1f);
-        Double parsed = mapper.indexValue("test", 3.6f);
+        Double parsed = mapper.base("test", 3.6f);
         Assert.assertEquals(Double.valueOf(3.6f), parsed);
     }
 
     @Test
     public void testValueDoubleWithoutDecimal() {
         ColumnMapperDouble mapper = new ColumnMapperDouble(null, null, 1f);
-        Double parsed = mapper.indexValue("test", 3d);
+        Double parsed = mapper.base("test", 3d);
         Assert.assertEquals(Double.valueOf(3), parsed);
     }
 
     @Test
     public void testValueDoubleWithDecimalFloor() {
         ColumnMapperDouble mapper = new ColumnMapperDouble(null, null, 1f);
-        Double parsed = mapper.indexValue("test", 3.5d);
+        Double parsed = mapper.base("test", 3.5d);
         Assert.assertEquals(Double.valueOf(3.5d), parsed);
 
     }
@@ -87,7 +103,7 @@ public class ColumnMapperDoubleTest {
     @Test
     public void testValueDoubleWithDecimalCeil() {
         ColumnMapperDouble mapper = new ColumnMapperDouble(null, null, 1f);
-        Double parsed = mapper.indexValue("test", 3.6d);
+        Double parsed = mapper.base("test", 3.6d);
         Assert.assertEquals(Double.valueOf(3.6d), parsed);
 
     }
@@ -95,27 +111,27 @@ public class ColumnMapperDoubleTest {
     @Test
     public void testValueStringWithoutDecimal() {
         ColumnMapperDouble mapper = new ColumnMapperDouble(null, null, 1f);
-        Double parsed = mapper.indexValue("test", "3");
+        Double parsed = mapper.base("test", "3");
         Assert.assertEquals(Double.valueOf(3), parsed);
     }
 
     @Test
     public void testValueStringWithDecimalFloor() {
         ColumnMapperDouble mapper = new ColumnMapperDouble(null, null, 1f);
-        Double parsed = mapper.indexValue("test", "3.2");
+        Double parsed = mapper.base("test", "3.2");
         Assert.assertEquals(Double.valueOf(3.2d), parsed);
     }
 
     @Test
     public void testValueStringWithDecimalCeil() {
         ColumnMapperDouble mapper = new ColumnMapperDouble(null, null, 1f);
-        Double parsed = mapper.indexValue("test", "3.6");
+        Double parsed = mapper.base("test", "3.6");
         Assert.assertEquals(Double.valueOf(3.6d), parsed);
     }
 
     @Test
-    public void testField() {
-        ColumnMapperDouble mapper = new ColumnMapperDouble(null, null, 1f);
+    public void testFieldsIndexedSorted() {
+        ColumnMapperDouble mapper = new ColumnMapperDouble(true, true, 1f);
         List<Field> fields = mapper.fields("name", "3.2");
         Assert.assertNotNull(fields);
         Assert.assertEquals(2, fields.size());
@@ -129,19 +145,65 @@ public class ColumnMapperDoubleTest {
     }
 
     @Test
+    public void testFieldsIndexedUnsorted() {
+        ColumnMapperDouble mapper = new ColumnMapperDouble(true, false, 1f);
+        List<Field> fields = mapper.fields("name", "3.2");
+        Assert.assertNotNull(fields);
+        Assert.assertEquals(1, fields.size());
+        Field field = fields.get(0);
+        Assert.assertNotNull(field);
+        Assert.assertEquals(3.2d, field.numericValue());
+        Assert.assertEquals("name", field.name());
+        Assert.assertEquals(false, field.fieldType().stored());
+    }
+
+    @Test
+    public void testFieldsUnindexedSorted() {
+        ColumnMapperDouble mapper = new ColumnMapperDouble(false, true, 1f);
+        List<Field> fields = mapper.fields("name", "3.2");
+        Assert.assertNotNull(fields);
+        Assert.assertEquals(1, fields.size());
+        Field field = fields.get(0);
+        Assert.assertEquals(DocValuesType.NUMERIC, field.fieldType().docValuesType());
+    }
+
+    @Test
+    public void testFieldsUnindexedUnsorted() {
+        ColumnMapperDouble mapper = new ColumnMapperDouble(false, false, 1f);
+        List<Field> fields = mapper.fields("name", "3.2");
+        Assert.assertNotNull(fields);
+        Assert.assertEquals(0, fields.size());
+    }
+
+    @Test
     public void testExtractAnalyzers() {
         ColumnMapperDouble mapper = new ColumnMapperDouble(null, null, 1f);
-        String analyzer = mapper.analyzer();
+        String analyzer = mapper.getAnalyzer();
         Assert.assertEquals(ColumnMapper.KEYWORD_ANALYZER, analyzer);
     }
 
     @Test
-    public void testParseJSON() throws IOException {
+    public void testParseJSONWithoutArgs() throws IOException {
         String json = "{fields:{age:{type:\"double\"}}}";
         Schema schema = Schema.fromJson(json);
         ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNotNull(columnMapper);
         Assert.assertEquals(ColumnMapperDouble.class, columnMapper.getClass());
+        Assert.assertEquals(ColumnMapper.INDEXED, columnMapper.isIndexed());
+        Assert.assertEquals(ColumnMapper.SORTED, columnMapper.isSorted());
+        Assert.assertEquals(ColumnMapperDouble.DEFAULT_BOOST, ((ColumnMapperDouble) columnMapper).getBoost(), 1);
+    }
+
+    @Test
+    public void testParseJSONWithAllArgs() throws IOException {
+        String json = "{fields:{age:{type:\"double\", indexed:\"false\", sorted:\"true\", boost:\"5\"}}}";
+        Schema schema = Schema.fromJson(json);
+        ColumnMapper columnMapper = schema.getMapper("age");
+        Assert.assertNotNull(columnMapper);
+        Assert.assertEquals(ColumnMapperDouble.class, columnMapper.getClass());
+        Assert.assertFalse(columnMapper.isIndexed());
+        Assert.assertTrue(columnMapper.isSorted());
+        Assert.assertEquals(5, ((ColumnMapperDouble) columnMapper).getBoost(), 1);
     }
 
     @Test

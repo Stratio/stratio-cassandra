@@ -51,8 +51,8 @@ public class ColumnMapperFloat extends ColumnMapperSingle<Float> {
     /**
      * Builds a new {@link ColumnMapperFloat} using the specified boost.
      *
-     * @param indexed        If the field supports searching.
-     * @param sorted         If the field supports sorting.
+     * @param indexed If the field supports searching.
+     * @param sorted  If the field supports sorting.
      * @param boost   The boost to be used.
      */
     @JsonCreator
@@ -72,9 +72,13 @@ public class ColumnMapperFloat extends ColumnMapperSingle<Float> {
         this.boost = boost == null ? DEFAULT_BOOST : boost;
     }
 
+    public Float getBoost() {
+        return boost;
+    }
+
     /** {@inheritDoc} */
     @Override
-    public Float toLucene(String name, Object value, boolean checkValidity) {
+    public Float base(String name, Object value) {
         if (value == null) {
             return null;
         } else if (value instanceof Number) {
@@ -94,7 +98,11 @@ public class ColumnMapperFloat extends ColumnMapperSingle<Float> {
     @Override
     public List<Field> fieldsFromBase(String name, Float value) {
         List<Field> fields = new ArrayList<>();
-        if (indexed) fields.add(new FloatField(name, value, STORE));
+        if (indexed) {
+            FloatField field = new FloatField(name, value, STORE);
+            field.setBoost(boost);
+            fields.add(field);
+        }
         if (sorted) fields.add(new NumericDocValuesField(name, Float.floatToIntBits(value)));
         return fields;
     }

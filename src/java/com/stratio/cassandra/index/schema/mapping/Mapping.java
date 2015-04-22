@@ -20,6 +20,7 @@ import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.schema.analysis.Analysis;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
+import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
@@ -62,7 +63,14 @@ public class Mapping {
                 throw new RuntimeException("Lucene indexes are not allowed on static columns as " + name);
             }
 
-            columnMapper.init(columnDefinition);
+            AbstractType<?> type = columnDefinition.type;
+            if (!columnMapper.supports(columnDefinition.type)) {
+                throw new RuntimeException(String.format("Type '%s' is not supported by mapper '%s'", type, name));
+            }
+
+            if (type.isCollection() && columnMapper.isSorted()) {
+                throw new RuntimeException(String.format("Sorting in collection '%s' is not supported", name));
+            }
         }
     }
 
@@ -119,12 +127,19 @@ public class Mapping {
         }
     }
 
+    /**
+     * Returns the Lucene {@link PerFieldAnalyzerWrapper} used by this.
+     *
+     * @param defaultAnalyzer The default {@link Analyzer}.
+     * @param analysis        The used {@link Analysis}.
+     * @return A Lucene {@link Analyzer}.
+     */
     public Analyzer getAnalyzer(Analyzer defaultAnalyzer, Analysis analysis) {
         Map<String, Analyzer> perFieldAnalyzers = new HashMap<>();
         for (Map.Entry<String, ColumnMapper> entry : columnMappers.entrySet()) {
             String name = entry.getKey();
             ColumnMapper mapper = entry.getValue();
-            String analyzerName = mapper.analyzer();
+            String analyzerName = mapper.getAnalyzer();
             Analyzer analyzer = analysis.getAnalyzer(analyzerName);
             perFieldAnalyzers.put(name, analyzer);
         }

@@ -18,7 +18,6 @@ package com.stratio.cassandra.index.schema.mapping;
 import com.stratio.cassandra.index.geospatial.GeoShapeMapper;
 import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.analysis.PreBuiltAnalyzers;
-import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.ListType;
 import org.apache.cassandra.db.marshal.MapType;
@@ -63,7 +62,7 @@ public abstract class ColumnMapper {
 
     static final boolean INDEXED = true;
 
-    static final boolean SORTED = true;
+    static final boolean SORTED = false;
 
     /** The supported Cassandra types for indexing. */
     private final AbstractType<?>[] supportedTypes;
@@ -71,8 +70,6 @@ public abstract class ColumnMapper {
     protected boolean indexed;
 
     protected boolean sorted;
-
-    protected ColumnDefinition columnDefinition;
 
     /**
      * Builds a new {@link ColumnMapper} supporting the specified types for indexing.
@@ -87,18 +84,12 @@ public abstract class ColumnMapper {
         this.supportedTypes = supportedTypes;
     }
 
-    public ColumnDefinition getColumnDefinition() {
-        return columnDefinition;
+    public boolean isIndexed() {
+        return indexed;
     }
 
-    public void init(ColumnDefinition columnDefinition) {
-        AbstractType<?> type = columnDefinition.type;
-        String name = columnDefinition.name.toString();
-        if (!supports(type)) {
-            throw new RuntimeException(String.format("Type '%s' is not supported by mapper '%s'", type, name));
-        } else {
-            this.columnDefinition = columnDefinition;
-        }
+    public boolean isSorted() {
+        return sorted;
     }
 
     /**
@@ -106,7 +97,7 @@ public abstract class ColumnMapper {
      *
      * @return The name of the used {@link Analyzer}.
      */
-    public String analyzer() {
+    public String getAnalyzer() {
         return KEYWORD_ANALYZER;
     }
 

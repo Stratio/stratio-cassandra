@@ -16,7 +16,6 @@
 package com.stratio.cassandra.index.schema;
 
 import com.google.common.base.Objects;
-import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import java.util.Collection;
 import java.util.Iterator;

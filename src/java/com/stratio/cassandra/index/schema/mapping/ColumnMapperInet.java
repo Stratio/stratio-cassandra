@@ -45,8 +45,8 @@ public class ColumnMapperInet extends ColumnMapperKeyword {
     /**
      * Builds a new {@link ColumnMapperInet}.
      *
-     * @param indexed        If the field supports searching.
-     * @param sorted         If the field supports sorting.
+     * @param indexed If the field supports searching.
+     * @param sorted  If the field supports sorting.
      */
     @JsonCreator
     public ColumnMapperInet(@JsonProperty("indexed") Boolean indexed, @JsonProperty("sorted") Boolean sorted) {
@@ -55,7 +55,7 @@ public class ColumnMapperInet extends ColumnMapperKeyword {
 
     /** {@inheritDoc} */
     @Override
-    public String toLucene(String name, Object value, boolean checkValidity) {
+    public String base(String name, Object value) {
         if (value == null) {
             return null;
         } else if (value instanceof InetAddress) {
@@ -71,8 +71,6 @@ public class ColumnMapperInet extends ColumnMapperKeyword {
                 } catch (UnknownHostException e) {
                     Log.error(e, e.getMessage());
                 }
-            } else if (!checkValidity) {
-                return svalue;
             }
         }
         throw new IllegalArgumentException(String.format("Value '%s' cannot be cast to InetAddress", value));

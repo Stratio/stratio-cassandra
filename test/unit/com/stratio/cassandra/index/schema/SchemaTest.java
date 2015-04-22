@@ -95,11 +95,11 @@ public class SchemaTest {
 
         ColumnMapper spanishMapper = schema.getMapper("spanish_text");
         Assert.assertTrue(spanishMapper instanceof ColumnMapperText);
-        Assert.assertEquals("spanish_analyzer", spanishMapper.analyzer());
+        Assert.assertEquals("spanish_analyzer", spanishMapper.getAnalyzer());
 
         ColumnMapper snowballMapper = schema.getMapper("snowball_text");
         Assert.assertTrue(snowballMapper instanceof ColumnMapperText);
-        Assert.assertEquals("snowball_analyzer", snowballMapper.analyzer());
+        Assert.assertEquals("snowball_analyzer", snowballMapper.getAnalyzer());
 
         schema.close();
     }
@@ -130,11 +130,11 @@ public class SchemaTest {
 
         ColumnMapper spanishMapper = schema.getMapper("spanish_text");
         Assert.assertTrue(spanishMapper instanceof ColumnMapperText);
-        Assert.assertEquals(SpanishAnalyzer.class.getName(), spanishMapper.analyzer());
+        Assert.assertEquals(SpanishAnalyzer.class.getName(), spanishMapper.getAnalyzer());
 
         ColumnMapper snowballMapper = schema.getMapper("snowball_text");
         Assert.assertTrue(snowballMapper instanceof ColumnMapperText);
-        Assert.assertEquals(EnglishAnalyzer.class.getName(), snowballMapper.analyzer());
+        Assert.assertEquals(EnglishAnalyzer.class.getName(), snowballMapper.getAnalyzer());
 
         schema.close();
     }
@@ -164,11 +164,11 @@ public class SchemaTest {
 
         ColumnMapper spanishMapper = schema.getMapper("spanish_text");
         Assert.assertTrue(spanishMapper instanceof ColumnMapperText);
-        Assert.assertEquals(SpanishAnalyzer.class.getName(), spanishMapper.analyzer());
+        Assert.assertEquals(SpanishAnalyzer.class.getName(), spanishMapper.getAnalyzer());
 
         ColumnMapper snowballMapper = schema.getMapper("snowball_text");
         Assert.assertTrue(snowballMapper instanceof ColumnMapperText);
-        Assert.assertEquals(EnglishAnalyzer.class.getName(), snowballMapper.analyzer());
+        Assert.assertEquals(EnglishAnalyzer.class.getName(), snowballMapper.getAnalyzer());
 
         schema.close();
     }

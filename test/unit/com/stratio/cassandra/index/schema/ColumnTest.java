@@ -91,8 +91,7 @@ public class ColumnTest {
         Long composedValue = 5L;
         ByteBuffer decomposedValue = type.decompose(composedValue);
         Column<Long> column = Column.fromDecomposed(name, decomposedValue, type);
-        Assert.assertEquals("Column{fullName=my_column, composedValue=5, type=LongType}",
-                            column.toString());
+        Assert.assertEquals("Column{fullName=my_column, composedValue=5, type=LongType}", column.toString());
     }
 
     @Test
@@ -103,7 +102,6 @@ public class ColumnTest {
         Long composedValue = 5L;
         ByteBuffer decomposedValue = type.decompose(composedValue);
         Column<Long> column = Column.fromDecomposed(name, sufix, decomposedValue, type);
-        Assert.assertEquals("Column{fullName=my.column, composedValue=5, type=LongType}",
-                            column.toString());
+        Assert.assertEquals("Column{fullName=my.column, composedValue=5, type=LongType}", column.toString());
     }
 }

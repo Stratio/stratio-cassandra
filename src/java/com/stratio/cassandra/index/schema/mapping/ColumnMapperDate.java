@@ -59,8 +59,8 @@ public class ColumnMapperDate extends ColumnMapperSingle<Long> {
     /**
      * Builds a new {@link ColumnMapperDate} using the specified pattern.
      *
-     * @param indexed        If the field supports searching.
-     * @param sorted         If the field supports sorting.
+     * @param indexed If the field supports searching.
+     * @param sorted  If the field supports sorting.
      * @param pattern The {@link SimpleDateFormat} pattern to be used.
      */
     @JsonCreator
@@ -79,6 +79,10 @@ public class ColumnMapperDate extends ColumnMapperSingle<Long> {
               DecimalType.instance,
               TimestampType.instance);
         this.pattern = pattern == null ? DEFAULT_PATTERN : pattern;
+
+        // Validate pattern
+        new SimpleDateFormat(this.pattern);
+
         concurrentDateFormat = new ThreadLocal<DateFormat>() {
             @Override
             protected DateFormat initialValue() {
@@ -87,9 +91,13 @@ public class ColumnMapperDate extends ColumnMapperSingle<Long> {
         };
     }
 
+    public String getPattern() {
+        return pattern;
+    }
+
     /** {@inheritDoc} */
     @Override
-    public Long toLucene(String name, Object value, boolean checkValidity) {
+    public Long base(String name, Object value) {
         if (value == null) {
             return null;
         } else if (value instanceof Date) {
@@ -100,7 +108,11 @@ public class ColumnMapperDate extends ColumnMapperSingle<Long> {
             try {
                 return concurrentDateFormat.get().parse(value.toString()).getTime();
             } catch (ParseException e) {
-                // Ignore to fail below
+                throw new IllegalArgumentException(String.format(
+                        "Field \"%s\" requires a date with format \"%s\", but found \"%s\"",
+                        name,
+                        DEFAULT_PATTERN,
+                        value));
             }
         }
         String message = String.format("Field \"%s\" requires a date, but found \"%s\"", name, value);

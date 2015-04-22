@@ -34,7 +34,6 @@ import java.util.List;
 public abstract class ColumnMapperKeyword extends ColumnMapperSingle<String> {
 
     /**
-     *
      * @param indexed        If the field supports searching.
      * @param sorted         If the field supports sorting.
      * @param supportedTypes The supported Cassandra types for indexing.

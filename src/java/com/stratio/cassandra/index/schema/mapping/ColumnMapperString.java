@@ -36,8 +36,8 @@ public class ColumnMapperString extends ColumnMapperKeyword {
     /**
      * Builds a new {@link ColumnMapperString}.
      *
-     * @param indexed        If the field supports searching.
-     * @param sorted         If the field supports sorting.
+     * @param indexed       If the field supports searching.
+     * @param sorted        If the field supports sorting.
      * @param caseSensitive If the getAnalyzer must be case sensitive.
      */
     @JsonCreator
@@ -62,9 +62,13 @@ public class ColumnMapperString extends ColumnMapperKeyword {
         this.caseSensitive = caseSensitive == null ? DEFAULT_CASE_SENSITIVE : caseSensitive;
     }
 
+    public boolean isCaseSensitive() {
+        return caseSensitive;
+    }
+
     /** {@inheritDoc} */
     @Override
-    public String toLucene(String name, Object value, boolean checkValidity) {
+    public String base(String name, Object value) {
         if (value == null) {
             return null;
         } else {

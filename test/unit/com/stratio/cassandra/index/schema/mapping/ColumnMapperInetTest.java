@@ -29,81 +29,95 @@ import java.util.UUID;
 
 public class ColumnMapperInetTest {
 
+    @Test
+    public void testConstructorWithoutArgs() {
+        ColumnMapperInet mapper = new ColumnMapperInet(null, null);
+        Assert.assertEquals(ColumnMapper.INDEXED, mapper.isIndexed());
+        Assert.assertEquals(ColumnMapper.SORTED, mapper.isSorted());
+    }
+
+    @Test
+    public void testConstructorWithAllArgs() {
+        ColumnMapperInet mapper = new ColumnMapperInet(false, true);
+        Assert.assertFalse(mapper.isIndexed());
+        Assert.assertTrue(mapper.isSorted());
+    }
+
     @Test()
     public void testValueNull() {
         ColumnMapperInet mapper = new ColumnMapperInet(null, null);
-        String parsed = mapper.indexValue("test", null);
+        String parsed = mapper.base("test", null);
         Assert.assertNull(parsed);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testValueInteger() {
         ColumnMapperInet mapper = new ColumnMapperInet(null, null);
-        mapper.indexValue("test", 3);
+        mapper.base("test", 3);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testValueLong() {
         ColumnMapperInet mapper = new ColumnMapperInet(null, null);
-        mapper.indexValue("test", 3l);
+        mapper.base("test", 3l);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testValueFloat() {
         ColumnMapperInet mapper = new ColumnMapperInet(null, null);
-        mapper.indexValue("test", 3.5f);
+        mapper.base("test", 3.5f);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testValueDouble() {
         ColumnMapperInet mapper = new ColumnMapperInet(null, null);
-        mapper.indexValue("test", 3.6d);
+        mapper.base("test", 3.6d);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testValueUUID() {
         ColumnMapperInet mapper = new ColumnMapperInet(null, null);
-        mapper.indexValue("test", UUID.randomUUID());
+        mapper.base("test", UUID.randomUUID());
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testValueStringInvalid() {
         ColumnMapperInet mapper = new ColumnMapperInet(null, null);
-        mapper.indexValue("test", "Hello");
+        mapper.base("test", "Hello");
     }
 
     @Test
     public void testValueStringV4WithoutZeros() {
         ColumnMapperInet mapper = new ColumnMapperInet(null, null);
-        String parsed = mapper.indexValue("test", "192.168.0.1");
+        String parsed = mapper.base("test", "192.168.0.1");
         Assert.assertEquals("192.168.0.1", parsed);
     }
 
     @Test
     public void testValueStringV4WithZeros() {
         ColumnMapperInet mapper = new ColumnMapperInet(null, null);
-        String parsed = mapper.indexValue("test", "192.168.000.001");
+        String parsed = mapper.base("test", "192.168.000.001");
         Assert.assertEquals("192.168.0.1", parsed);
     }
 
     @Test
     public void testValueStringV6WithoutZeros() {
         ColumnMapperInet mapper = new ColumnMapperInet(null, null);
-        String parsed = mapper.indexValue("test", "2001:db8:2de:0:0:0:0:e13");
+        String parsed = mapper.base("test", "2001:db8:2de:0:0:0:0:e13");
         Assert.assertEquals("2001:db8:2de:0:0:0:0:e13", parsed);
     }
 
     @Test
     public void testValueStringV6WithZeros() {
         ColumnMapperInet mapper = new ColumnMapperInet(null, null);
-        String parsed = mapper.indexValue("test", "2001:0db8:02de:0000:0000:0000:0000:0e13");
+        String parsed = mapper.base("test", "2001:0db8:02de:0000:0000:0000:0000:0e13");
         Assert.assertEquals("2001:db8:2de:0:0:0:0:e13", parsed);
     }
 
     @Test
     public void testValueStringV6Compact() {
         ColumnMapperInet mapper = new ColumnMapperInet(null, null);
-        String parsed = mapper.indexValue("test", "2001:DB8:2de::0e13");
+        String parsed = mapper.base("test", "2001:DB8:2de::0e13");
         Assert.assertEquals("2001:db8:2de:0:0:0:0:e13", parsed);
     }
 
@@ -111,7 +125,7 @@ public class ColumnMapperInetTest {
     public void testValueInetV4() throws UnknownHostException {
         ColumnMapperInet mapper = new ColumnMapperInet(null, null);
         InetAddress inet = InetAddress.getByName("192.168.0.13");
-        String parsed = mapper.indexValue("test", inet);
+        String parsed = mapper.base("test", inet);
         Assert.assertEquals("192.168.0.13", parsed);
     }
 
@@ -119,13 +133,13 @@ public class ColumnMapperInetTest {
     public void testValueInetV6() throws UnknownHostException {
         ColumnMapperInet mapper = new ColumnMapperInet(null, null);
         InetAddress inet = InetAddress.getByName("2001:db8:2de:0:0:0:0:e13");
-        String parsed = mapper.indexValue("test", inet);
+        String parsed = mapper.base("test", inet);
         Assert.assertEquals("2001:db8:2de:0:0:0:0:e13", parsed);
     }
 
     @Test
-    public void testField() {
-        ColumnMapperInet mapper = new ColumnMapperInet(null, null);
+    public void testFieldsIndexedSorted() {
+        ColumnMapperInet mapper = new ColumnMapperInet(true, true);
         List<Field> fields = mapper.fields("name", "192.168.0.13");
         Assert.assertNotNull(fields);
         Assert.assertEquals(2, fields.size());
@@ -139,19 +153,63 @@ public class ColumnMapperInetTest {
     }
 
     @Test
+    public void testFieldsIndexedUnsorted() {
+        ColumnMapperInet mapper = new ColumnMapperInet(true, false);
+        List<Field> fields = mapper.fields("name", "192.168.0.13");
+        Assert.assertNotNull(fields);
+        Assert.assertEquals(1, fields.size());
+        Field field = fields.get(0);
+        Assert.assertNotNull(field);
+        Assert.assertEquals("192.168.0.13", field.stringValue());
+        Assert.assertEquals("name", field.name());
+        Assert.assertEquals(false, field.fieldType().stored());
+    }
+
+    @Test
+    public void testFieldsUnindexedSorted() {
+        ColumnMapperInet mapper = new ColumnMapperInet(false, true);
+        List<Field> fields = mapper.fields("name", "192.168.0.13");
+        Assert.assertNotNull(fields);
+        Assert.assertEquals(1, fields.size());
+        Field field = fields.get(0);
+        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
+    }
+
+    @Test
+    public void testFieldsUninndexedUnsorted() {
+        ColumnMapperInet mapper = new ColumnMapperInet(false, false);
+        List<Field> fields = mapper.fields("name", "192.168.0.13");
+        Assert.assertNotNull(fields);
+        Assert.assertEquals(0, fields.size());
+    }
+
+    @Test
     public void testExtractAnalyzers() {
         ColumnMapperInet mapper = new ColumnMapperInet(null, null);
-        String analyzer = mapper.analyzer();
+        String analyzer = mapper.getAnalyzer();
         Assert.assertEquals(ColumnMapper.KEYWORD_ANALYZER, analyzer);
     }
 
     @Test
-    public void testParseJSON() throws IOException {
+    public void testParseJSONWithoutArgs() throws IOException {
         String json = "{fields:{age:{type:\"inet\"}}}";
         Schema schema = Schema.fromJson(json);
         ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNotNull(columnMapper);
         Assert.assertEquals(ColumnMapperInet.class, columnMapper.getClass());
+        Assert.assertEquals(ColumnMapper.INDEXED, columnMapper.isIndexed());
+        Assert.assertEquals(ColumnMapper.SORTED, columnMapper.isSorted());
+    }
+
+    @Test
+    public void testParseJSONWithAllArgs() throws IOException {
+        String json = "{fields:{age:{type:\"inet\", indexed:\"false\", sorted:\"true\"}}}";
+        Schema schema = Schema.fromJson(json);
+        ColumnMapper columnMapper = schema.getMapper("age");
+        Assert.assertNotNull(columnMapper);
+        Assert.assertEquals(ColumnMapperInet.class, columnMapper.getClass());
+        Assert.assertFalse(columnMapper.isIndexed());
+        Assert.assertTrue(columnMapper.isSorted());
     }
 
     @Test

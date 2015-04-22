@@ -46,8 +46,8 @@ public class ColumnMapperBigInteger extends ColumnMapperKeyword {
     /**
      * Builds a new {@link ColumnMapperBigDecimal} using the specified max number of digits.
      *
-     * @param indexed        If the field supports searching.
-     * @param sorted         If the field supports sorting.
+     * @param indexed If the field supports searching.
+     * @param sorted  If the field supports sorting.
      * @param digits  The max number of digits. If {@code null}, the {@link #DEFAULT_DIGITS} will be used.
      */
     @JsonCreator
@@ -84,7 +84,7 @@ public class ColumnMapperBigInteger extends ColumnMapperKeyword {
 
     /** {@inheritDoc} */
     @Override
-    public String toLucene(String name, Object value, boolean checkValidity) {
+    public String base(String name, Object value) {
 
         // Check not null
         if (value == null) {

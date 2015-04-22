@@ -20,7 +20,7 @@ import com.stratio.cassandra.index.schema.analysis.PreBuiltAnalyzers;
 import org.apache.cassandra.db.marshal.*;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.SortedSetDocValuesField;
+import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
@@ -38,14 +38,16 @@ import java.util.List;
  */
 public class ColumnMapperText extends ColumnMapperSingle<String> {
 
+    public static final String DEFAULT_ANALYZER = PreBuiltAnalyzers.DEFAULT.name();
+
     /** The Lucene {@link Analyzer} to be used. */
     private final String analyzer;
 
     /**
      * Builds a new {@link ColumnMapperText} using the specified Lucene {@link Analyzer}.
      *
-     * @param indexed        If the field supports searching.
-     * @param sorted         If the field supports sorting.
+     * @param indexed  If the field supports searching.
+     * @param sorted   If the field supports sorting.
      * @param analyzer The Lucene {@link Analyzer} to be used.
      */
     @JsonCreator
@@ -67,19 +69,19 @@ public class ColumnMapperText extends ColumnMapperSingle<String> {
               TimestampType.instance,
               BytesType.instance,
               InetAddressType.instance);
-        this.analyzer = analyzer == null ? PreBuiltAnalyzers.DEFAULT.name() : analyzer;
+        this.analyzer = analyzer == null ? DEFAULT_ANALYZER : analyzer;
 
     }
 
     /** {@inheritDoc} */
     @Override
-    public String analyzer() {
+    public String getAnalyzer() {
         return analyzer;
     }
 
     /** {@inheritDoc} */
     @Override
-    public String toLucene(String name, Object value, boolean checkValidity) {
+    public String base(String name, Object value) {
         if (value == null) {
             return null;
         } else {
@@ -93,7 +95,7 @@ public class ColumnMapperText extends ColumnMapperSingle<String> {
         List<Field> fields = new ArrayList<>();
         BytesRef bytes = new BytesRef(value);
         if (indexed) fields.add(new TextField(name, value, STORE));
-        if (sorted) fields.add(new SortedSetDocValuesField(name, bytes));
+        if (sorted) fields.add(new SortedDocValuesField(name, bytes));
         return fields;
     }
 

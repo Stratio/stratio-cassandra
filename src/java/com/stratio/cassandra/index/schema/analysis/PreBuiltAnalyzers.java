@@ -354,11 +354,10 @@ public enum PreBuiltAnalyzers {
     private Analyzer analyzer;
 
     public synchronized Analyzer get() {
-        if (analyzer == null)
-            analyzer = instantiate();
+        if (analyzer == null) analyzer = instantiate();
         return analyzer;
     }
-    
+
     abstract protected Analyzer instantiate();
 
     public static Analyzer get(String name) {

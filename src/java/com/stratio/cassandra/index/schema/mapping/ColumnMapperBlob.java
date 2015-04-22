@@ -36,8 +36,8 @@ public class ColumnMapperBlob extends ColumnMapperKeyword {
     /**
      * Builds a new {@link ColumnMapperBlob}.
      *
-     * @param indexed        If the field supports searching.
-     * @param sorted         If the field supports sorting.
+     * @param indexed If the field supports searching.
+     * @param sorted  If the field supports sorting.
      */
     @JsonCreator
     public ColumnMapperBlob(@JsonProperty("indexed") Boolean indexed, @JsonProperty("sorted") Boolean sorted) {
@@ -46,11 +46,9 @@ public class ColumnMapperBlob extends ColumnMapperKeyword {
 
     /** {@inheritDoc} */
     @Override
-    public String toLucene(String name, Object value, boolean checkValidity) {
+    public String base(String name, Object value) {
         if (value == null) {
             return null;
-        } else if (!checkValidity) {
-            return value.toString().toLowerCase().replaceFirst("0x", "");
         } else if (value instanceof ByteBuffer) {
             ByteBuffer bb = (ByteBuffer) value;
             return ByteBufferUtils.toHex(bb);

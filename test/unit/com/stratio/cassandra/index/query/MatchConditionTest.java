@@ -16,7 +16,14 @@
 package com.stratio.cassandra.index.query;
 
 import com.stratio.cassandra.index.schema.Schema;
-import com.stratio.cassandra.index.schema.mapping.*;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapper;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperBlob;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperDouble;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperFloat;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperInet;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperInteger;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperLong;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperString;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.search.NumericRangeQuery;
 import org.apache.lucene.search.Query;

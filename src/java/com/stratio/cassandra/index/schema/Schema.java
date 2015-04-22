@@ -52,7 +52,7 @@ public class Schema implements Closeable {
      * Builds a new {@code ColumnsMapper} for the specified getAnalyzer and cell mappers.
      *
      * @param columnMappers   The {@link Column} mappers to be used.
-     * @param analyzers        The {@link AnalyzerBuilder}s to be used.
+     * @param analyzers       The {@link AnalyzerBuilder}s to be used.
      * @param defaultAnalyzer The name of the class of the getAnalyzer to be used.
      */
     @JsonCreator
@@ -94,20 +94,18 @@ public class Schema implements Closeable {
     }
 
     /**
-     * Returns the {@linkColumnMapperSingle} identified by the specified
-     * field name, or {@code null} if not found.
+     * Returns the {@linkColumnMapperSingle} identified by the specified field name, or {@code null} if not found.
      *
      * @param field A field name.
-     * @return The {@link ColumnMapperSingle} identified by the specified
-     * field name, or {@code null} if not found.
+     * @return The {@link ColumnMapperSingle} identified by the specified field name, or {@code null} if not found.
      */
     public ColumnMapperSingle<?> getMapperSingle(String field) {
         return mapping.getMapperSingle(field);
     }
 
     /**
-     * Adds to the specified {@link Document} the Lucene fields representing the specified
-     * {@link com.stratio.cassandra.index.schema.Columns}.
+     * Adds to the specified {@link Document} the Lucene fields representing the specified {@link
+     * com.stratio.cassandra.index.schema.Columns}.
      *
      * @param document The Lucene {@link Document} where the fields are going to be added.
      * @param columns  The {@link Columns} to be added.

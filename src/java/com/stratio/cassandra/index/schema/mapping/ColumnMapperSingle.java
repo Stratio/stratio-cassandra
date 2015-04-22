@@ -70,7 +70,7 @@ public abstract class ColumnMapperSingle<BASE> extends ColumnMapper {
      * @return The {@link Column} index value resulting from the mapping of the specified object.
      */
     public final BASE indexValue(String field, Object value) {
-        return toLucene(field, value, true);
+        return base(field, value);
     }
 
     /**
@@ -80,19 +80,7 @@ public abstract class ColumnMapperSingle<BASE> extends ColumnMapper {
      * @param value The object to be mapped.
      * @return The {@link Column} index value resulting from the mapping of the specified object.
      */
-    public final BASE queryValue(String field, Object value) {
-        return toLucene(field, value, false);
-    }
-
-    /**
-     * Returns the {@link Column} query value resulting from the mapping of the specified object.
-     *
-     * @param field         The field name.
-     * @param value         The object to be mapped.
-     * @param checkValidity {@code true} if value validity must be checked.
-     * @return The {@link Column} index value resulting from the mapping of the specified object.
-     */
-    public abstract BASE toLucene(String field, Object value, boolean checkValidity);
+    public abstract BASE base(String field, Object value);
 
     /**
      * Returns the {@link SortField} resulting from the mapping of the specified object.

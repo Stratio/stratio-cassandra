@@ -16,6 +16,7 @@
 package com.stratio.cassandra.index.schema.mapping;
 
 import com.google.common.base.Objects;
+import com.stratio.cassandra.util.Log;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.DecimalType;
 import org.apache.cassandra.db.marshal.DoubleType;
@@ -43,7 +44,7 @@ import java.util.List;
 public class ColumnMapperDouble extends ColumnMapperSingle<Double> {
 
     /** The default boost. */
-    public static final Float DEFAULT_BOOST = 1.0f;
+    public static final float DEFAULT_BOOST = 1.0f;
 
     /** The boost. */
     private final Float boost;
@@ -51,8 +52,8 @@ public class ColumnMapperDouble extends ColumnMapperSingle<Double> {
     /**
      * Builds a new {@link ColumnMapperDouble} using the specified boost.
      *
-     * @param indexed        If the field supports searching.
-     * @param sorted         If the field supports sorting.
+     * @param indexed If the field supports searching.
+     * @param sorted  If the field supports sorting.
      * @param boost   The boost to be used.
      */
     @JsonCreator
@@ -72,9 +73,13 @@ public class ColumnMapperDouble extends ColumnMapperSingle<Double> {
         this.boost = boost == null ? DEFAULT_BOOST : boost;
     }
 
+    public float getBoost() {
+        return boost;
+    }
+
     /** {@inheritDoc} */
     @Override
-    public Double toLucene(String name, Object value, boolean checkValidity) {
+    public Double base(String name, Object value) {
         if (value == null) {
             return null;
         } else if (value instanceof Number) {
@@ -83,7 +88,7 @@ public class ColumnMapperDouble extends ColumnMapperSingle<Double> {
             try {
                 return Double.valueOf((String) value);
             } catch (NumberFormatException e) {
-                // Ignore to fail below
+                Log.error(e, e.getMessage());
             }
         }
         String message = String.format("Field \"%s\" requires a double, but found \"%s\"", name, value);
@@ -94,7 +99,11 @@ public class ColumnMapperDouble extends ColumnMapperSingle<Double> {
     @Override
     public List<Field> fieldsFromBase(String name, Double value) {
         List<Field> fields = new ArrayList<>();
-        if (indexed) fields.add(new DoubleField(name, value, STORE));
+        if (indexed) {
+            DoubleField field = new DoubleField(name, value, STORE);
+            field.setBoost(boost);
+            fields.add(field);
+        }
         if (sorted) fields.add(new NumericDocValuesField(name, Double.doubleToLongBits(value)));
         return fields;
     }

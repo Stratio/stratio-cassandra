@@ -15,16 +15,9 @@
  */
 package com.stratio.cassandra.index.schema.analysis;
 
-import com.stratio.cassandra.index.schema.mapping.ColumnMapper;
-import org.apache.cassandra.config.CFMetaData;
-import org.apache.cassandra.config.ColumnDefinition;
-import org.apache.cassandra.db.marshal.AbstractType;
-import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.lucene.analysis.Analyzer;
 
-import java.io.Closeable;
-import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -68,7 +61,7 @@ public class Analysis {
     /**
      * Returns the {@link Analyzer} identified by the specified name. If there is no analyzer with the specified name,
      * then it will be interpreted as a class name and it will be instantiated by reflection.
-     *
+     * <p/>
      * {@link IllegalArgumentException} is thrown if there is no {@link Analyzer} with such name.
      *
      * @param name The name of the {@link Analyzer} to be returned.

@@ -16,6 +16,7 @@
 package com.stratio.cassandra.index.schema.mapping;
 
 import com.google.common.base.Objects;
+import com.stratio.cassandra.util.Log;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.DecimalType;
 import org.apache.cassandra.db.marshal.DoubleType;
@@ -51,8 +52,8 @@ public class ColumnMapperLong extends ColumnMapperSingle<Long> {
     /**
      * Builds a new {@link ColumnMapperLong} using the specified boost.
      *
-     * @param indexed        If the field supports searching.
-     * @param sorted         If the field supports sorting.
+     * @param indexed If the field supports searching.
+     * @param sorted  If the field supports sorting.
      * @param boost   The boost to be used.
      */
     @JsonCreator
@@ -72,9 +73,13 @@ public class ColumnMapperLong extends ColumnMapperSingle<Long> {
         this.boost = boost == null ? DEFAULT_BOOST : boost;
     }
 
+    public Float getBoost() {
+        return boost;
+    }
+
     /** {@inheritDoc} */
     @Override
-    public Long toLucene(String name, Object value, boolean checkValidity) {
+    public Long base(String name, Object value) {
         if (value == null) {
             return null;
         } else if (value instanceof Number) {
@@ -83,7 +88,7 @@ public class ColumnMapperLong extends ColumnMapperSingle<Long> {
             try {
                 return Double.valueOf((String) value).longValue();
             } catch (NumberFormatException e) {
-                // Ignore to fail below
+                Log.error(e, e.getMessage());
             }
         }
         String message = String.format("Field \"%s\" requires a long, but found \"%s\"", name, value);
@@ -94,7 +99,11 @@ public class ColumnMapperLong extends ColumnMapperSingle<Long> {
     @Override
     public List<Field> fieldsFromBase(String name, Long value) {
         List<Field> fields = new ArrayList<>();
-        if (indexed) fields.add(new LongField(name, value, STORE));
+        if (indexed) {
+            LongField field = new LongField(name, value, STORE);
+            field.setBoost(boost);
+            fields.add(field);
+        }
         if (sorted) fields.add(new NumericDocValuesField(name, value));
         return fields;
     }

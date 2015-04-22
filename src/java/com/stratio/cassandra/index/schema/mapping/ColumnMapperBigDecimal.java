@@ -56,8 +56,8 @@ public class ColumnMapperBigDecimal extends ColumnMapperKeyword {
      * Builds a new {@link ColumnMapperBigDecimal} using the specified max number of digits for the integer and decimal
      * parts.
      *
-     * @param indexed        If the field supports searching.
-     * @param sorted         If the field supports sorting.
+     * @param indexed       If the field supports searching.
+     * @param sorted        If the field supports sorting.
      * @param integerDigits The max number of digits for the integer part. If {@code null}, the {@link
      *                      #DEFAULT_INTEGER_DIGITS} will be used.
      * @param decimalDigits The max number of digits for the decimal part. If {@code null}, the {@link
@@ -117,7 +117,7 @@ public class ColumnMapperBigDecimal extends ColumnMapperKeyword {
 
     /** {@inheritDoc} */
     @Override
-    public String toLucene(String name, Object value, boolean checkValidity) {
+    public String base(String name, Object value) {
 
         // Check not null
         if (value == null) {
