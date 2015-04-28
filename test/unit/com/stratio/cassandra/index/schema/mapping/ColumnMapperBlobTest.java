@@ -25,7 +25,6 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.List;
 import java.util.UUID;
 
 public class ColumnMapperBlobTest {
@@ -33,8 +32,8 @@ public class ColumnMapperBlobTest {
     @Test
     public void testConstructorWithoutArgs() {
         ColumnMapperBlob mapper = new ColumnMapperBlob(null, null);
-        Assert.assertEquals(ColumnMapper.INDEXED, mapper.isIndexed());
-        Assert.assertEquals(ColumnMapper.SORTED, mapper.isSorted());
+        Assert.assertEquals(ColumnMapper.DEFAULT_INDEXED, mapper.isIndexed());
+        Assert.assertEquals(ColumnMapper.DEFAULT_SORTED, mapper.isSorted());
     }
 
     @Test
@@ -152,49 +151,33 @@ public class ColumnMapperBlobTest {
     }
 
     @Test
-    public void testFieldsIndexedSorted() {
-        ColumnMapperBlob mapper = new ColumnMapperBlob(true, true);
-        List<Field> fields = mapper.fields("name", "f1B2");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(2, fields.size());
-        Field field = fields.get(0);
+    public void testIndexedField() {
+        ColumnMapperBlob mapper = new ColumnMapperBlob(true, null);
+        String base = mapper.base("name", "f1B2");
+        Field field = mapper.indexedField("name", base);
         Assert.assertNotNull(field);
-        Assert.assertEquals("f1b2", field.stringValue());
+        Assert.assertNotNull(field);
+        Assert.assertEquals(base, field.stringValue());
         Assert.assertEquals("name", field.name());
         Assert.assertEquals(false, field.fieldType().stored());
-        field = fields.get(1);
-        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
     }
 
     @Test
-    public void testFieldsIndexedUnsorted() {
+    public void testSortedField() {
         ColumnMapperBlob mapper = new ColumnMapperBlob(true, false);
-        List<Field> fields = mapper.fields("name", "f1B2");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(1, fields.size());
-        Field field = fields.get(0);
+        String base = mapper.base("name", "f1B2");
+        Field field = mapper.sortedField("name", base, false);
         Assert.assertNotNull(field);
-        Assert.assertEquals("f1b2", field.stringValue());
-        Assert.assertEquals("name", field.name());
-        Assert.assertEquals(false, field.fieldType().stored());
-    }
-
-    @Test
-    public void testFieldsUnindexedSorted() {
-        ColumnMapperBlob mapper = new ColumnMapperBlob(false, true);
-        List<Field> fields = mapper.fields("name", "f1B2");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(1, fields.size());
-        Field field = fields.get(0);
         Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
     }
 
     @Test
-    public void testFieldsUnindexedUnsorted() {
-        ColumnMapperBlob mapper = new ColumnMapperBlob(false, false);
-        List<Field> fields = mapper.fields("name", "f1B2");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(0, fields.size());
+    public void testSortedFieldCollection() {
+        ColumnMapperBlob mapper = new ColumnMapperBlob(true, false);
+        String base = mapper.base("name", "f1B2");
+        Field field = mapper.sortedField("name", base, true);
+        Assert.assertNotNull(field);
+        Assert.assertEquals(DocValuesType.SORTED_SET, field.fieldType().docValuesType());
     }
 
     @Test
@@ -211,8 +194,8 @@ public class ColumnMapperBlobTest {
         ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNotNull(columnMapper);
         Assert.assertEquals(ColumnMapperBlob.class, columnMapper.getClass());
-        Assert.assertEquals(ColumnMapper.INDEXED, columnMapper.isIndexed());
-        Assert.assertEquals(ColumnMapper.SORTED, columnMapper.isSorted());
+        Assert.assertEquals(ColumnMapper.DEFAULT_INDEXED, columnMapper.isIndexed());
+        Assert.assertEquals(ColumnMapper.DEFAULT_SORTED, columnMapper.isSorted());
     }
 
     @Test

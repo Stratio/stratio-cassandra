@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.List;
 
 public class ColumnMapperDateTest {
 
@@ -35,8 +34,8 @@ public class ColumnMapperDateTest {
     @Test
     public void testConstructorWithoutArgs() {
         ColumnMapperDate mapper = new ColumnMapperDate(null, null, null);
-        Assert.assertEquals(ColumnMapper.INDEXED, mapper.isIndexed());
-        Assert.assertEquals(ColumnMapper.SORTED, mapper.isSorted());
+        Assert.assertEquals(ColumnMapper.DEFAULT_INDEXED, mapper.isIndexed());
+        Assert.assertEquals(ColumnMapper.DEFAULT_SORTED, mapper.isSorted());
         Assert.assertEquals(ColumnMapperDate.DEFAULT_PATTERN, mapper.getPattern());
     }
 
@@ -50,7 +49,7 @@ public class ColumnMapperDateTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testConstructorWithWrongPattern() {
-        new ColumnMapperDate(!ColumnMapper.INDEXED, !ColumnMapper.SORTED, "hello");
+        new ColumnMapperDate(!ColumnMapper.DEFAULT_INDEXED, !ColumnMapper.DEFAULT_SORTED, "hello");
     }
 
     @Test()
@@ -155,49 +154,32 @@ public class ColumnMapperDateTest {
     }
 
     @Test
-    public void testFieldsIndexedSorted() throws ParseException {
-        ColumnMapperDate mapper = new ColumnMapperDate(true, true, PATTERN);
-        List<Field> fields = mapper.fields("name", "2014-03-19");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(2, fields.size());
-        Field field = fields.get(0);
+    public void testIndexedField() throws ParseException {
+        long time = sdf.parse("2014-03-19").getTime();
+        ColumnMapperDate mapper = new ColumnMapperDate(true, null, PATTERN);
+        Field field = mapper.indexedField("name", time);
         Assert.assertNotNull(field);
-        Assert.assertEquals(sdf.parse("2014-03-19").getTime(), field.numericValue().longValue());
-        Assert.assertEquals("name", field.name());
-        Assert.assertEquals(false, field.fieldType().stored());
-        field = fields.get(1);
-        Assert.assertEquals(DocValuesType.NUMERIC, field.fieldType().docValuesType());
-    }
-
-    @Test
-    public void testFieldsIndexedUnsorted() throws ParseException {
-        ColumnMapperDate mapper = new ColumnMapperDate(true, false, PATTERN);
-        List<Field> fields = mapper.fields("name", "2014-03-19");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(1, fields.size());
-        Field field = fields.get(0);
-        Assert.assertNotNull(field);
-        Assert.assertEquals(sdf.parse("2014-03-19").getTime(), field.numericValue().longValue());
+        Assert.assertEquals(time, field.numericValue().longValue());
         Assert.assertEquals("name", field.name());
         Assert.assertEquals(false, field.fieldType().stored());
     }
 
     @Test
-    public void testFieldsUnindexedSorted() throws ParseException {
-        ColumnMapperDate mapper = new ColumnMapperDate(false, true, PATTERN);
-        List<Field> fields = mapper.fields("name", "2014-03-19");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(1, fields.size());
-        Field field = fields.get(0);
+    public void testSortedField() throws ParseException {
+        long time = sdf.parse("2014-03-19").getTime();
+        ColumnMapperDate mapper = new ColumnMapperDate(null, true, PATTERN);
+        Field field = mapper.sortedField("name", time, false);
+        Assert.assertNotNull(field);
         Assert.assertEquals(DocValuesType.NUMERIC, field.fieldType().docValuesType());
     }
 
     @Test
-    public void testFieldsUnindexedUnsorted() throws ParseException {
-        ColumnMapperDate mapper = new ColumnMapperDate(false, false, PATTERN);
-        List<Field> fields = mapper.fields("name", "2014-03-19");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(0, fields.size());
+    public void testSortedFieldCollection() throws ParseException {
+        long time = sdf.parse("2014-03-19").getTime();
+        ColumnMapperDate mapper = new ColumnMapperDate(null, true, PATTERN);
+        Field field = mapper.sortedField("name", time, true);
+        Assert.assertNotNull(field);
+        Assert.assertEquals(DocValuesType.NUMERIC, field.fieldType().docValuesType());
     }
 
     @Test
@@ -214,8 +196,8 @@ public class ColumnMapperDateTest {
         ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNotNull(columnMapper);
         Assert.assertEquals(ColumnMapperDate.class, columnMapper.getClass());
-        Assert.assertEquals(ColumnMapper.INDEXED, columnMapper.isIndexed());
-        Assert.assertEquals(ColumnMapper.SORTED, columnMapper.isSorted());
+        Assert.assertEquals(ColumnMapper.DEFAULT_INDEXED, columnMapper.isIndexed());
+        Assert.assertEquals(ColumnMapper.DEFAULT_SORTED, columnMapper.isSorted());
         Assert.assertEquals(ColumnMapperDate.DEFAULT_PATTERN, ((ColumnMapperDate) columnMapper).getPattern());
     }
 

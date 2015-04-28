@@ -17,7 +17,6 @@ package com.stratio.cassandra.index.query;
 
 import com.google.common.base.Objects;
 import com.stratio.cassandra.index.schema.Schema;
-import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.codehaus.jackson.annotate.JsonCreator;

@@ -21,15 +21,13 @@ import org.apache.cassandra.db.marshal.*;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.SortedDocValuesField;
+import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
 import org.apache.lucene.util.BytesRef;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * A {@link ColumnMapper} to map a string, tokenized field.
@@ -91,12 +89,19 @@ public class ColumnMapperText extends ColumnMapperSingle<String> {
 
     /** {@inheritDoc} */
     @Override
-    public List<Field> fieldsFromBase(String name, String value) {
-        List<Field> fields = new ArrayList<>();
+    public Field indexedField(String name, String value) {
+        return new TextField(name, value, STORE);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Field sortedField(String name, String value, boolean isCollection) {
         BytesRef bytes = new BytesRef(value);
-        if (indexed) fields.add(new TextField(name, value, STORE));
-        if (sorted) fields.add(new SortedDocValuesField(name, bytes));
-        return fields;
+        if (isCollection) {
+            return new SortedSetDocValuesField(name, bytes);
+        } else {
+            return new SortedDocValuesField(name, bytes);
+        }
     }
 
     /** {@inheritDoc} */

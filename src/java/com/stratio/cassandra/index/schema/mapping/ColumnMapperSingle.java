@@ -17,10 +17,8 @@ package com.stratio.cassandra.index.schema.mapping;
 
 import com.stratio.cassandra.index.schema.Column;
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.search.SortField;
-
-import java.util.List;
 
 /**
  * Class for mapping between Cassandra's columns and Lucene documents.
@@ -40,20 +38,16 @@ public abstract class ColumnMapperSingle<BASE> extends ColumnMapper {
         super(indexed, sorted, supportedTypes);
     }
 
-    public final List<Field> fields(String name, Object value) {
-        BASE indexValue = indexValue(name, value);
-        return fieldsFromBase(name, indexValue);
+    @Override
+    public final void addFields(Document document, String name, Object value, boolean isCollection) {
+        BASE base = base(name, value);
+        if (indexed) document.add(indexedField(name, base));
+        if (sorted) document.add(sortedField(name, base, isCollection));
     }
 
-    /**
-     * Returns the Lucene {@link Field} resulting from the mapping of {@code value}, using {@code name} as field's
-     * name.
-     *
-     * @param name  The name of the Lucene {@link Field}.
-     * @param value The value of the Lucene {@link Field}.
-     * @return The Lucene {@link Field} resulting from the mapping of {@code value}, using {@code name} as field's name.
-     */
-    public abstract List<Field> fieldsFromBase(String name, BASE value);
+    public abstract Field indexedField(String name, BASE value);
+
+    public abstract Field sortedField(String name, BASE value, boolean isCollection);
 
     /**
      * Returns the Lucene type for this mapper.
@@ -63,17 +57,6 @@ public abstract class ColumnMapperSingle<BASE> extends ColumnMapper {
     public abstract Class<BASE> baseClass();
 
     /**
-     * Returns the {@link Column} index value resulting from the mapping of the specified object.
-     *
-     * @param field The field name.
-     * @param value The object to be mapped.
-     * @return The {@link Column} index value resulting from the mapping of the specified object.
-     */
-    public final BASE indexValue(String field, Object value) {
-        return base(field, value);
-    }
-
-    /**
      * Returns the {@link Column} query value resulting from the mapping of the specified object.
      *
      * @param field The field name.
@@ -81,14 +64,5 @@ public abstract class ColumnMapperSingle<BASE> extends ColumnMapper {
      * @return The {@link Column} index value resulting from the mapping of the specified object.
      */
     public abstract BASE base(String field, Object value);
-
-    /**
-     * Returns the {@link SortField} resulting from the mapping of the specified object.
-     *
-     * @param field   The field name.
-     * @param reverse If the sort must be reversed.
-     * @return The {@link SortField} resulting from the mapping of the specified object.
-     */
-    public abstract SortField sortField(String field, boolean reverse);
 
 }

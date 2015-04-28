@@ -18,13 +18,11 @@ package com.stratio.cassandra.index.schema.mapping;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.SortedDocValuesField;
+import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
 import org.apache.lucene.util.BytesRef;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * A {@link com.stratio.cassandra.index.schema.mapping.ColumnMapper} to map a string, not tokenized field.
@@ -44,12 +42,19 @@ public abstract class ColumnMapperKeyword extends ColumnMapperSingle<String> {
 
     /** {@inheritDoc} */
     @Override
-    public final List<Field> fieldsFromBase(String name, String value) {
-        List<Field> fields = new ArrayList<>(2);
+    public Field indexedField(String name, String value) {
+        return new StringField(name, value, STORE);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Field sortedField(String name, String value, boolean isCollection) {
         BytesRef bytes = new BytesRef(value);
-        if (indexed) fields.add(new StringField(name, value, STORE));
-        if (sorted) fields.add(new SortedDocValuesField(name, bytes));
-        return fields;
+        if (isCollection) {
+            return new SortedSetDocValuesField(name, bytes);
+        } else {
+            return new SortedDocValuesField(name, bytes);
+        }
     }
 
     /** {@inheritDoc} */

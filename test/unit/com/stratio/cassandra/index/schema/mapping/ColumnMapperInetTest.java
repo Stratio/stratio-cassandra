@@ -24,7 +24,6 @@ import org.junit.Test;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.List;
 import java.util.UUID;
 
 public class ColumnMapperInetTest {
@@ -32,8 +31,8 @@ public class ColumnMapperInetTest {
     @Test
     public void testConstructorWithoutArgs() {
         ColumnMapperInet mapper = new ColumnMapperInet(null, null);
-        Assert.assertEquals(ColumnMapper.INDEXED, mapper.isIndexed());
-        Assert.assertEquals(ColumnMapper.SORTED, mapper.isSorted());
+        Assert.assertEquals(ColumnMapper.DEFAULT_INDEXED, mapper.isIndexed());
+        Assert.assertEquals(ColumnMapper.DEFAULT_SORTED, mapper.isSorted());
     }
 
     @Test
@@ -138,27 +137,9 @@ public class ColumnMapperInetTest {
     }
 
     @Test
-    public void testFieldsIndexedSorted() {
+    public void testIndexedField() {
         ColumnMapperInet mapper = new ColumnMapperInet(true, true);
-        List<Field> fields = mapper.fields("name", "192.168.0.13");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(2, fields.size());
-        Field field = fields.get(0);
-        Assert.assertNotNull(field);
-        Assert.assertEquals("192.168.0.13", field.stringValue());
-        Assert.assertEquals("name", field.name());
-        Assert.assertEquals(false, field.fieldType().stored());
-        field = fields.get(1);
-        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
-    }
-
-    @Test
-    public void testFieldsIndexedUnsorted() {
-        ColumnMapperInet mapper = new ColumnMapperInet(true, false);
-        List<Field> fields = mapper.fields("name", "192.168.0.13");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(1, fields.size());
-        Field field = fields.get(0);
+        Field field = mapper.indexedField("name", "192.168.0.13");
         Assert.assertNotNull(field);
         Assert.assertEquals("192.168.0.13", field.stringValue());
         Assert.assertEquals("name", field.name());
@@ -166,21 +147,19 @@ public class ColumnMapperInetTest {
     }
 
     @Test
-    public void testFieldsUnindexedSorted() {
-        ColumnMapperInet mapper = new ColumnMapperInet(false, true);
-        List<Field> fields = mapper.fields("name", "192.168.0.13");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(1, fields.size());
-        Field field = fields.get(0);
+    public void testSortedField() {
+        ColumnMapperInet mapper = new ColumnMapperInet(true, true);
+        Field field = mapper.sortedField("name", "192.168.0.13", false);
+        Assert.assertNotNull(field);
         Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
     }
 
     @Test
-    public void testFieldsUninndexedUnsorted() {
-        ColumnMapperInet mapper = new ColumnMapperInet(false, false);
-        List<Field> fields = mapper.fields("name", "192.168.0.13");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(0, fields.size());
+    public void testSortedFieldCollection() {
+        ColumnMapperInet mapper = new ColumnMapperInet(true, true);
+        Field field = mapper.sortedField("name", "192.168.0.13", true);
+        Assert.assertNotNull(field);
+        Assert.assertEquals(DocValuesType.SORTED_SET, field.fieldType().docValuesType());
     }
 
     @Test
@@ -197,8 +176,8 @@ public class ColumnMapperInetTest {
         ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNotNull(columnMapper);
         Assert.assertEquals(ColumnMapperInet.class, columnMapper.getClass());
-        Assert.assertEquals(ColumnMapper.INDEXED, columnMapper.isIndexed());
-        Assert.assertEquals(ColumnMapper.SORTED, columnMapper.isSorted());
+        Assert.assertEquals(ColumnMapper.DEFAULT_INDEXED, columnMapper.isIndexed());
+        Assert.assertEquals(ColumnMapper.DEFAULT_SORTED, columnMapper.isSorted());
     }
 
     @Test

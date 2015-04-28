@@ -32,9 +32,6 @@ import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * A {@link ColumnMapper} to map an integer field.
  *
@@ -96,15 +93,16 @@ public class ColumnMapperInteger extends ColumnMapperSingle<Integer> {
 
     /** {@inheritDoc} */
     @Override
-    public List<Field> fieldsFromBase(String name, Integer value) {
-        List<Field> fields = new ArrayList<>();
-        if (indexed) {
-            IntField field = new IntField(name, value, STORE);
-            field.setBoost(boost);
-            fields.add(field);
-        }
-        if (sorted) fields.add(new NumericDocValuesField(name, value));
-        return fields;
+    public Field indexedField(String name, Integer value) {
+        IntField field = new IntField(name, value, STORE);
+        field.setBoost(boost);
+        return field;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Field sortedField(String name, Integer value, boolean isCollection) {
+        return new NumericDocValuesField(name, value);
     }
 
     /** {@inheritDoc} */

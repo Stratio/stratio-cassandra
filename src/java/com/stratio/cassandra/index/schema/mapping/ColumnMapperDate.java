@@ -36,9 +36,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 
 /**
  * A {@link ColumnMapper} to map a date field.
@@ -121,11 +119,14 @@ public class ColumnMapperDate extends ColumnMapperSingle<Long> {
 
     /** {@inheritDoc} */
     @Override
-    public List<Field> fieldsFromBase(String name, Long value) {
-        List<Field> fields = new ArrayList<>();
-        if (indexed) fields.add(new LongField(name, value, STORE));
-        if (sorted) fields.add(new NumericDocValuesField(name, value));
-        return fields;
+    public Field indexedField(String name, Long value) {
+        return new LongField(name, value, STORE);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Field sortedField(String name, Long value, boolean isCollection) {
+        return new NumericDocValuesField(name, value);
     }
 
     /** {@inheritDoc} */

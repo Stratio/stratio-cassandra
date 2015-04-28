@@ -22,7 +22,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 
 public class ColumnMapperStringTest {
@@ -30,8 +29,8 @@ public class ColumnMapperStringTest {
     @Test
     public void testConstructorWithoutArgs() {
         ColumnMapperString mapper = new ColumnMapperString(null, null, null);
-        Assert.assertEquals(ColumnMapper.INDEXED, mapper.isIndexed());
-        Assert.assertEquals(ColumnMapper.SORTED, mapper.isSorted());
+        Assert.assertEquals(ColumnMapper.DEFAULT_INDEXED, mapper.isIndexed());
+        Assert.assertEquals(ColumnMapper.DEFAULT_SORTED, mapper.isSorted());
         Assert.assertEquals(ColumnMapperString.DEFAULT_CASE_SENSITIVE, mapper.isCaseSensitive());
     }
 
@@ -139,27 +138,9 @@ public class ColumnMapperStringTest {
     }
 
     @Test
-    public void testFieldsIndexedSorted() {
+    public void testIndexedField() {
         ColumnMapperString mapper = new ColumnMapperString(true, true, true);
-        List<Field> fields = mapper.fields("name", "hello");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(2, fields.size());
-        Field field = fields.get(0);
-        Assert.assertNotNull(field);
-        Assert.assertEquals("hello", field.stringValue());
-        Assert.assertEquals("name", field.name());
-        Assert.assertEquals(false, field.fieldType().stored());
-        field = fields.get(1);
-        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
-    }
-
-    @Test
-    public void testFieldsIndexedUnsorted() {
-        ColumnMapperString mapper = new ColumnMapperString(true, false, true);
-        List<Field> fields = mapper.fields("name", "hello");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(1, fields.size());
-        Field field = fields.get(0);
+        Field field = mapper.indexedField("name", "hello");
         Assert.assertNotNull(field);
         Assert.assertEquals("hello", field.stringValue());
         Assert.assertEquals("name", field.name());
@@ -167,73 +148,43 @@ public class ColumnMapperStringTest {
     }
 
     @Test
-    public void testFieldsUnindexedSorted() {
-        ColumnMapperString mapper = new ColumnMapperString(false, true, true);
-        List<Field> fields = mapper.fields("name", "hello");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(1, fields.size());
-        Field field = fields.get(0);
+    public void testSortedField() {
+        ColumnMapperString mapper = new ColumnMapperString(true, true, true);
+        Field field = mapper.sortedField("name", "hello", false);
+        Assert.assertNotNull(field);
         Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
     }
 
     @Test
-    public void testFieldsUnindexedUnsorted() {
-        ColumnMapperString mapper = new ColumnMapperString(false, false, true);
-        List<Field> fields = mapper.fields("name", "hello");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(0, fields.size());
+    public void testSortedFieldCollection() {
+        ColumnMapperString mapper = new ColumnMapperString(true, true, true);
+        Field field = mapper.sortedField("name", "hello", true);
+        Assert.assertNotNull(field);
+        Assert.assertEquals(DocValuesType.SORTED_SET, field.fieldType().docValuesType());
     }
 
     @Test
-    public void testCaseSensitiveNull() {
+    public void testBaseCaseSensitiveDefault() {
         ColumnMapperString mapper = new ColumnMapperString(true, true, null);
-        List<Field> fields = mapper.fields("name", "Hello");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(2, fields.size());
-        Field field = fields.get(0);
-        Assert.assertNotNull(field);
-        Assert.assertEquals("Hello", field.stringValue());
+        String base = mapper.base("name", "Hello");
+        Assert.assertNotNull(base);
+        Assert.assertEquals("Hello", base);
     }
 
     @Test
-    public void testCaseSensitiveTrue() {
+    public void testBaseCaseSensitiveTrue() {
         ColumnMapperString mapper = new ColumnMapperString(true, true, true);
-        List<Field> fields = mapper.fields("name", "Hello");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(2, fields.size());
-        Field field = fields.get(0);
-        Assert.assertNotNull(field);
-        Assert.assertEquals("Hello", field.stringValue());
-        field = fields.get(1);
-        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
+        String base = mapper.base("name", "Hello");
+        Assert.assertNotNull(base);
+        Assert.assertEquals("Hello", base);
     }
 
     @Test
-    public void testCaseSensitiveDefault() {
-        ColumnMapperString mapper = new ColumnMapperString(true, true, true);
-        List<Field> fields = mapper.fields("name", "Hello");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(2, fields.size());
-        Field field = fields.get(0);
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(2, fields.size());
-        Assert.assertNotNull(field);
-        Assert.assertEquals("Hello", field.stringValue());
-        field = fields.get(1);
-        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
-    }
-
-    @Test
-    public void testCaseSensitiveFalse() {
+    public void testBaseaseSensitiveFalse() {
         ColumnMapperString mapper = new ColumnMapperString(true, true, false);
-        List<Field> fields = mapper.fields("name", "Hello");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(2, fields.size());
-        Field field = fields.get(0);
-        Assert.assertNotNull(field);
-        Assert.assertEquals("hello", field.stringValue());
-        field = fields.get(1);
-        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
+        String base = mapper.base("name", "Hello");
+        Assert.assertNotNull(base);
+        Assert.assertEquals("hello", base);
     }
 
     @Test
@@ -250,9 +201,10 @@ public class ColumnMapperStringTest {
         ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNotNull(columnMapper);
         Assert.assertEquals(ColumnMapperString.class, columnMapper.getClass());
-        Assert.assertEquals(ColumnMapper.INDEXED, columnMapper.isIndexed());
-        Assert.assertEquals(ColumnMapper.SORTED, columnMapper.isSorted());
-        Assert.assertEquals(ColumnMapperString.DEFAULT_CASE_SENSITIVE, ((ColumnMapperString)columnMapper).isCaseSensitive());
+        Assert.assertEquals(ColumnMapper.DEFAULT_INDEXED, columnMapper.isIndexed());
+        Assert.assertEquals(ColumnMapper.DEFAULT_SORTED, columnMapper.isSorted());
+        Assert.assertEquals(ColumnMapperString.DEFAULT_CASE_SENSITIVE,
+                            ((ColumnMapperString) columnMapper).isCaseSensitive());
     }
 
     @Test
@@ -264,7 +216,7 @@ public class ColumnMapperStringTest {
         Assert.assertEquals(ColumnMapperString.class, columnMapper.getClass());
         Assert.assertFalse(columnMapper.isIndexed());
         Assert.assertTrue(columnMapper.isSorted());
-        Assert.assertFalse(((ColumnMapperString)columnMapper).isCaseSensitive());
+        Assert.assertFalse(((ColumnMapperString) columnMapper).isCaseSensitive());
     }
 
     @Test

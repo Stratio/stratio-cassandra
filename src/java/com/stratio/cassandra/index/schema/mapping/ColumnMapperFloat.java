@@ -32,9 +32,6 @@ import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * A {@link ColumnMapper} to map a float field.
  *
@@ -96,15 +93,16 @@ public class ColumnMapperFloat extends ColumnMapperSingle<Float> {
 
     /** {@inheritDoc} */
     @Override
-    public List<Field> fieldsFromBase(String name, Float value) {
-        List<Field> fields = new ArrayList<>();
-        if (indexed) {
-            FloatField field = new FloatField(name, value, STORE);
-            field.setBoost(boost);
-            fields.add(field);
-        }
-        if (sorted) fields.add(new NumericDocValuesField(name, Float.floatToIntBits(value)));
-        return fields;
+    public Field indexedField(String name, Float value) {
+        FloatField field = new FloatField(name, value, STORE);
+        field.setBoost(boost);
+        return field;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Field sortedField(String name, Float value, boolean isCollection) {
+        return new NumericDocValuesField(name, Float.floatToIntBits(value));
     }
 
     /** {@inheritDoc} */

@@ -22,7 +22,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 
 public class ColumnMapperTextTest {
@@ -30,8 +29,8 @@ public class ColumnMapperTextTest {
     @Test
     public void testConstructorWithoutArgs() {
         ColumnMapperText mapper = new ColumnMapperText(null, null, null);
-        Assert.assertEquals(ColumnMapper.INDEXED, mapper.isIndexed());
-        Assert.assertEquals(ColumnMapper.SORTED, mapper.isSorted());
+        Assert.assertEquals(ColumnMapper.DEFAULT_INDEXED, mapper.isIndexed());
+        Assert.assertEquals(ColumnMapper.DEFAULT_SORTED, mapper.isSorted());
         Assert.assertEquals(ColumnMapperText.DEFAULT_ANALYZER, mapper.getAnalyzer());
     }
 
@@ -146,27 +145,9 @@ public class ColumnMapperTextTest {
     }
 
     @Test
-    public void testFieldsIndexedSorted() {
+    public void testIndexedField() {
         ColumnMapperText mapper = new ColumnMapperText(true, true, "org.apache.lucene.analysis.en.EnglishAnalyzer");
-        List<Field> fields = mapper.fields("name", "hello");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(2, fields.size());
-        Field field = fields.get(0);
-        Assert.assertNotNull(field);
-        Assert.assertEquals("hello", field.stringValue());
-        Assert.assertEquals("name", field.name());
-        Assert.assertEquals(false, field.fieldType().stored());
-        field = fields.get(1);
-        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
-    }
-
-    @Test
-    public void testFieldsIndexedUnsorted() {
-        ColumnMapperText mapper = new ColumnMapperText(true, false, "org.apache.lucene.analysis.en.EnglishAnalyzer");
-        List<Field> fields = mapper.fields("name", "hello");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(1, fields.size());
-        Field field = fields.get(0);
+        Field field = mapper.indexedField("name", "hello");
         Assert.assertNotNull(field);
         Assert.assertEquals("hello", field.stringValue());
         Assert.assertEquals("name", field.name());
@@ -174,21 +155,19 @@ public class ColumnMapperTextTest {
     }
 
     @Test
-    public void testFieldsUnindexedSorted() {
-        ColumnMapperText mapper = new ColumnMapperText(false, true, "org.apache.lucene.analysis.en.EnglishAnalyzer");
-        List<Field> fields = mapper.fields("name", "hello");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(1, fields.size());
-        Field field = fields.get(0);
+    public void testSortedField() {
+        ColumnMapperText mapper = new ColumnMapperText(null, true, "org.apache.lucene.analysis.en.EnglishAnalyzer");
+        Field field = mapper.sortedField("name", "hello", false);
+        Assert.assertNotNull(field);
         Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
     }
 
     @Test
-    public void testFieldsUnindexedUnsorted() {
-        ColumnMapperText mapper = new ColumnMapperText(false, false, "org.apache.lucene.analysis.en.EnglishAnalyzer");
-        List<Field> fields = mapper.fields("name", "hello");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(0, fields.size());
+    public void testSortedFieldCollection() {
+        ColumnMapperText mapper = new ColumnMapperText(null, true, "org.apache.lucene.analysis.en.EnglishAnalyzer");
+        Field field = mapper.sortedField("name", "hello", true);
+        Assert.assertNotNull(field);
+        Assert.assertEquals(DocValuesType.SORTED_SET, field.fieldType().docValuesType());
     }
 
     @Test
@@ -222,8 +201,8 @@ public class ColumnMapperTextTest {
         ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNotNull(columnMapper);
         Assert.assertEquals(ColumnMapperText.class, columnMapper.getClass());
-        Assert.assertEquals(ColumnMapper.INDEXED, columnMapper.isIndexed());
-        Assert.assertEquals(ColumnMapper.SORTED, columnMapper.isSorted());
+        Assert.assertEquals(ColumnMapper.DEFAULT_INDEXED, columnMapper.isIndexed());
+        Assert.assertEquals(ColumnMapper.DEFAULT_SORTED, columnMapper.isSorted());
         Assert.assertEquals(ColumnMapperText.DEFAULT_ANALYZER, columnMapper.getAnalyzer());
     }
 

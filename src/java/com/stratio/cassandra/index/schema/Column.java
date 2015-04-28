@@ -42,6 +42,8 @@ public class Column<T> {
     /** The column's Cassandra type. */
     private final AbstractType<T> type;
 
+    private final boolean isCollection;
+
     /**
      * Builds a new {@link Column} with the specified name, name sufix, value, and type.
      *
@@ -51,12 +53,18 @@ public class Column<T> {
      * @param composedValue   The composed value of the column to be created.
      * @param type            The type/marshaller of the column to be created.
      */
-    private Column(String name, String nameSufix, ByteBuffer decomposedValue, T composedValue, AbstractType<T> type) {
+    private Column(String name,
+                   String nameSufix,
+                   ByteBuffer decomposedValue,
+                   T composedValue,
+                   AbstractType<T> type,
+                   boolean isCollection) {
         this.name = name;
         this.nameSufix = nameSufix;
         this.composedValue = composedValue;
         this.decomposedValue = decomposedValue;
         this.type = type;
+        this.isCollection = isCollection;
     }
 
     /**
@@ -104,6 +112,10 @@ public class Column<T> {
         return type;
     }
 
+    public boolean isCollection() {
+        return isCollection;
+    }
+
     /**
      * Returns the {@link Column} defined by the specified name, raw value and type.
      *
@@ -112,9 +124,12 @@ public class Column<T> {
      * @param type            The column type/marshaller.
      * @return A {@link Column}.
      */
-    public static <T> Column<T> fromDecomposed(String name, ByteBuffer decomposedValue, AbstractType<T> type) {
+    public static <T> Column<T> fromDecomposed(String name,
+                                               ByteBuffer decomposedValue,
+                                               AbstractType<T> type,
+                                               boolean isCollection) {
         T composedValue = type.compose(decomposedValue);
-        return new Column<>(name, null, decomposedValue, composedValue, type);
+        return new Column<>(name, null, decomposedValue, composedValue, type, isCollection);
     }
 
     /**
@@ -129,9 +144,10 @@ public class Column<T> {
     public static <T> Column<T> fromDecomposed(String name,
                                                String nameSufix,
                                                ByteBuffer decomposedValue,
-                                               AbstractType<T> type) {
+                                               AbstractType<T> type,
+                                               boolean isCollection) {
         T composedValue = type.compose(decomposedValue);
-        return new Column<>(name, nameSufix, decomposedValue, composedValue, type);
+        return new Column<>(name, nameSufix, decomposedValue, composedValue, type, isCollection);
     }
 
     /**
@@ -142,23 +158,9 @@ public class Column<T> {
      * @param type          The column type/marshaller.
      * @return A {@link Column}.
      */
-    public static <T> Column<T> fromComposed(String name, T composedValue, AbstractType<T> type) {
+    public static <T> Column<T> fromComposed(String name, T composedValue, AbstractType<T> type, boolean isCollection) {
         ByteBuffer decomposedValue = type.decompose(composedValue);
-        return new Column<>(name, null, decomposedValue, composedValue, type);
-    }
-
-    /**
-     * Returns the {@link Column} defined by the specified name, value and type.
-     *
-     * @param name          The column name.
-     * @param nameSufix     The column name sufix.
-     * @param composedValue The column composed value.
-     * @param type          The column type/marshaller.
-     * @return A {@link Column}.
-     */
-    public static <T> Column<T> fromComposed(String name, String nameSufix, T composedValue, AbstractType<T> type) {
-        ByteBuffer decomposedValue = type.decompose(composedValue);
-        return new Column<>(name, nameSufix, decomposedValue, composedValue, type);
+        return new Column<>(name, null, decomposedValue, composedValue, type, isCollection);
     }
 
     /** {@inheritDoc} */

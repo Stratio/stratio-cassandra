@@ -18,7 +18,6 @@ package com.stratio.cassandra.index.geospatial;
 import com.google.common.base.Objects;
 import com.stratio.cassandra.index.query.Condition;
 import com.stratio.cassandra.index.schema.Schema;
-import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.search.Query;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
@@ -36,14 +35,13 @@ public class GeoDistanceCondition extends Condition {
     private final GeoDistance distance; // The radius of the circle
 
     /**
-     *
      * @param boost     The boost for this query clause. Documents matching this clause will (in addition to the normal
      *                  weightings) have their score multiplied by {@code boost}. If {@code null}, then {@link
      *                  #DEFAULT_BOOST} is used as default.
      * @param field     The name of the field to be matched.
      * @param longitude The longitude of the circle's center.
-     * @param latitude The latitude of the circle's center.
-     * @param distance The radius of the circle.
+     * @param latitude  The latitude of the circle's center.
+     * @param distance  The radius of the circle.
      */
     @JsonCreator
     public GeoDistanceCondition(@JsonProperty("boost") Float boost,

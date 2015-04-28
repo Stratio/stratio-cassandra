@@ -23,7 +23,6 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.Date;
-import java.util.List;
 import java.util.UUID;
 
 public class ColumnMapperBigDecimalTest {
@@ -31,8 +30,8 @@ public class ColumnMapperBigDecimalTest {
     @Test
     public void testConstructorWithoutArgs() {
         ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(null, null, null, null);
-        Assert.assertEquals(ColumnMapper.INDEXED, mapper.isIndexed());
-        Assert.assertEquals(ColumnMapper.SORTED, mapper.isSorted());
+        Assert.assertEquals(ColumnMapper.DEFAULT_INDEXED, mapper.isIndexed());
+        Assert.assertEquals(ColumnMapper.DEFAULT_SORTED, mapper.isSorted());
         Assert.assertEquals(ColumnMapperBigDecimal.DEFAULT_INTEGER_DIGITS, mapper.getIntegerDigits());
         Assert.assertEquals(ColumnMapperBigDecimal.DEFAULT_DECIMAL_DIGITS, mapper.getDecimalDigits());
     }
@@ -459,47 +458,32 @@ public class ColumnMapperBigDecimalTest {
     }
 
     @Test
-    public void testFieldsIndexedSorted() {
-        ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(true, true, 4, 4);
-        List<Field> fields = mapper.fields("name", "42.43");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(2, fields.size());
-        Field field = fields.get(0);
-        Assert.assertEquals("10042.4299", field.stringValue());
-        Assert.assertEquals("name", field.name());
-        Assert.assertFalse(field.fieldType().stored());
-        field = fields.get(1);
-        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
-    }
-
-    @Test
-    public void testFieldsIndexedUnSorted() {
-        ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(true, false, 4, 4);
-        List<Field> fields = mapper.fields("name", "42.43");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(1, fields.size());
-        Field field = fields.get(0);
+    public void testIndexedField() {
+        ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(true, null, 4, 4);
+        String base = mapper.base("name", "42.43");
+        Field field = mapper.indexedField("name", base);
+        Assert.assertNotNull(field);
         Assert.assertEquals("10042.4299", field.stringValue());
         Assert.assertEquals("name", field.name());
         Assert.assertFalse(field.fieldType().stored());
     }
 
     @Test
-    public void testFieldsUnindexedSorted() {
-        ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(false, true, 4, 4);
-        List<Field> fields = mapper.fields("name", "42.43");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(1, fields.size());
-        Field field = fields.get(0);
+    public void testSortedField() {
+        ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(false, null, 4, 4);
+        String base = mapper.base("name", "42.43");
+        Field field = mapper.sortedField("name", base, false);
+        Assert.assertNotNull(field);
         Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
     }
 
     @Test
-    public void testFieldsUnindexedUnSorted() {
-        ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(false, false, 4, 4);
-        List<Field> fields = mapper.fields("name", "42.43");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(0, fields.size());
+    public void testSortedFieldCollection() {
+        ColumnMapperBigDecimal mapper = new ColumnMapperBigDecimal(false, null, 4, 4);
+        String base = mapper.base("name", "42.43");
+        Field field = mapper.sortedField("name", base, true);
+        Assert.assertNotNull(field);
+        Assert.assertEquals(DocValuesType.SORTED_SET, field.fieldType().docValuesType());
     }
 
     @Test
@@ -516,8 +500,8 @@ public class ColumnMapperBigDecimalTest {
         ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNotNull(columnMapper);
         Assert.assertEquals(ColumnMapperBigDecimal.class, columnMapper.getClass());
-        Assert.assertEquals(ColumnMapper.INDEXED, columnMapper.isIndexed());
-        Assert.assertEquals(ColumnMapper.SORTED, columnMapper.isSorted());
+        Assert.assertEquals(ColumnMapper.DEFAULT_INDEXED, columnMapper.isIndexed());
+        Assert.assertEquals(ColumnMapper.DEFAULT_SORTED, columnMapper.isSorted());
         Assert.assertEquals(ColumnMapperBigDecimal.DEFAULT_DECIMAL_DIGITS,
                             ((ColumnMapperBigDecimal) columnMapper).getDecimalDigits());
         Assert.assertEquals(ColumnMapperBigDecimal.DEFAULT_INTEGER_DIGITS,

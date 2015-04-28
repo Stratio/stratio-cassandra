@@ -16,8 +16,8 @@
 package com.stratio.cassandra.index.query;
 
 import com.google.common.base.Objects;
-import com.stratio.cassandra.index.schema.mapping.ColumnMapperSingle;
 import com.stratio.cassandra.index.schema.Schema;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperSingle;
 import org.apache.lucene.search.NumericRangeQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermRangeQuery;

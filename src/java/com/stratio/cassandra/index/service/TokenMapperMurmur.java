@@ -38,6 +38,7 @@ public class TokenMapperMurmur extends TokenMapper {
 
     private static final String FIELD_NAME = "_token_murmur"; // The Lucene field name
     private static final FieldType FIELD_TYPE = new FieldType();
+
     static {
         FIELD_TYPE.setTokenized(true);
         FIELD_TYPE.setOmitNorms(true);

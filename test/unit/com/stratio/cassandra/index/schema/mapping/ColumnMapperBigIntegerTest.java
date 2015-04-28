@@ -24,7 +24,6 @@ import org.junit.Test;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.Date;
-import java.util.List;
 import java.util.UUID;
 
 public class ColumnMapperBigIntegerTest {
@@ -32,8 +31,8 @@ public class ColumnMapperBigIntegerTest {
     @Test
     public void testConstructorWithoutArgs() {
         ColumnMapperBigInteger mapper = new ColumnMapperBigInteger(null, null, null);
-        Assert.assertEquals(ColumnMapper.INDEXED, mapper.isIndexed());
-        Assert.assertEquals(ColumnMapper.SORTED, mapper.isSorted());
+        Assert.assertEquals(ColumnMapper.DEFAULT_INDEXED, mapper.isIndexed());
+        Assert.assertEquals(ColumnMapper.DEFAULT_SORTED, mapper.isSorted());
         Assert.assertEquals(ColumnMapperBigInteger.DEFAULT_DIGITS, mapper.getDigits());
     }
 
@@ -396,49 +395,33 @@ public class ColumnMapperBigIntegerTest {
     }
 
     @Test
-    public void testFieldsIndexedSorted() {
-        ColumnMapperBigInteger mapper = new ColumnMapperBigInteger(true, true, 10);
-        List<Field> fields = mapper.fields("name", "42");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(2, fields.size());
-        Field field = fields.get(0);
+    public void testIndexedField() {
+        ColumnMapperBigInteger mapper = new ColumnMapperBigInteger(true, null, 10);
+        String base = mapper.base("name", "4243");
+        Field field = mapper.indexedField("name", base);
         Assert.assertNotNull(field);
-        Assert.assertEquals("04ldqpex", field.stringValue());
-        Assert.assertEquals("name", field.name());
-        Assert.assertFalse(field.fieldType().stored());
-        field = fields.get(1);
-        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
-    }
-
-    @Test
-    public void testFieldsIndexedUnsorted() {
-        ColumnMapperBigInteger mapper = new ColumnMapperBigInteger(true, false, 10);
-        List<Field> fields = mapper.fields("name", "42");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(1, fields.size());
-        Field field = fields.get(0);
         Assert.assertNotNull(field);
-        Assert.assertEquals("04ldqpex", field.stringValue());
+        Assert.assertEquals(base, field.stringValue());
         Assert.assertEquals("name", field.name());
         Assert.assertFalse(field.fieldType().stored());
     }
 
     @Test
-    public void testFieldsUnindexedSorted() {
-        ColumnMapperBigInteger mapper = new ColumnMapperBigInteger(false, true, 10);
-        List<Field> fields = mapper.fields("name", "42");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(1, fields.size());
-        Field field = fields.get(0);
+    public void testSortedField() {
+        ColumnMapperBigInteger mapper = new ColumnMapperBigInteger(null, true, 10);
+        String base = mapper.base("name", "4243");
+        Field field = mapper.sortedField("name", base, false);
+        Assert.assertNotNull(field);
         Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
     }
 
     @Test
-    public void testFieldsUnindexedUnsorted() {
-        ColumnMapperBigInteger mapper = new ColumnMapperBigInteger(false, false, 10);
-        List<Field> fields = mapper.fields("name", "42");
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(0, fields.size());
+    public void testSortedFieldCollection() {
+        ColumnMapperBigInteger mapper = new ColumnMapperBigInteger(null, true, 10);
+        String base = mapper.base("name", "4243");
+        Field field = mapper.sortedField("name", base, true);
+        Assert.assertNotNull(field);
+        Assert.assertEquals(DocValuesType.SORTED_SET, field.fieldType().docValuesType());
     }
 
     @Test
@@ -454,8 +437,8 @@ public class ColumnMapperBigIntegerTest {
         Schema schema = Schema.fromJson(json);
         ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNotNull(columnMapper);
-        Assert.assertEquals(ColumnMapper.INDEXED, columnMapper.isIndexed());
-        Assert.assertEquals(ColumnMapper.SORTED, columnMapper.isSorted());
+        Assert.assertEquals(ColumnMapper.DEFAULT_INDEXED, columnMapper.isIndexed());
+        Assert.assertEquals(ColumnMapper.DEFAULT_SORTED, columnMapper.isSorted());
         Assert.assertEquals(ColumnMapperBigInteger.DEFAULT_DIGITS, ((ColumnMapperBigInteger) columnMapper).getDigits());
     }
 

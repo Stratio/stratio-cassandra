@@ -37,8 +37,8 @@ public class ColumnMapperUUIDTest {
     @Test
     public void testConstructorWithoutArgs() {
         ColumnMapperUUID mapper = new ColumnMapperUUID(null, null);
-        Assert.assertEquals(ColumnMapper.INDEXED, mapper.isIndexed());
-        Assert.assertEquals(ColumnMapper.SORTED, mapper.isSorted());
+        Assert.assertEquals(ColumnMapper.DEFAULT_INDEXED, mapper.isIndexed());
+        Assert.assertEquals(ColumnMapper.DEFAULT_SORTED, mapper.isSorted());
     }
 
     @Test
@@ -118,69 +118,31 @@ public class ColumnMapperUUIDTest {
     }
 
     @Test
-    public void testFieldRandomIndexedSorted() {
+    public void testIndexedField() {
         ColumnMapperUUID mapper = new ColumnMapperUUID(true, true);
-        UUID uuid = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
-        List<Field> fields = mapper.fields("name", uuid);
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(2, fields.size());
-        Field field = fields.get(0);
+        String base = mapper.base("name", "550e8400-e29b-41d4-a716-446655440000");
+        Field field = mapper.indexedField("name", base);
         Assert.assertNotNull(field);
         Assert.assertEquals("name", field.name());
-        Assert.assertEquals("04550e8400e29b41d4a716446655440000", field.stringValue());
-        Assert.assertFalse(field.fieldType().stored());
-        field = fields.get(1);
-        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
-    }
-
-    @Test
-    public void testFieldRandomIndexedUnsorted() {
-        ColumnMapperUUID mapper = new ColumnMapperUUID(true, false);
-        UUID uuid = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
-        List<Field> fields = mapper.fields("name", uuid);
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(1, fields.size());
-        Field field = fields.get(0);
-        Assert.assertNotNull(field);
-        Assert.assertEquals("name", field.name());
-        Assert.assertEquals("04550e8400e29b41d4a716446655440000", field.stringValue());
+        Assert.assertEquals(base, field.stringValue());
         Assert.assertFalse(field.fieldType().stored());
     }
 
     @Test
-    public void testFieldRandomUnindexedSorted() {
-        ColumnMapperUUID mapper = new ColumnMapperUUID(false, true);
-        UUID uuid = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
-        List<Field> fields = mapper.fields("name", uuid);
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(1, fields.size());
-        Field field = fields.get(0);
-        Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
-    }
-
-    @Test
-    public void testFieldRandomUnindexedUnsorted() {
-        ColumnMapperUUID mapper = new ColumnMapperUUID(false, false);
-        UUID uuid = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
-        List<Field> fields = mapper.fields("name", uuid);
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(0, fields.size());
-    }
-
-    @Test
-    public void testFieldTimeBased() {
+    public void testSortedField() {
         ColumnMapperUUID mapper = new ColumnMapperUUID(true, true);
-        UUID uuid = UUID.fromString("c4c61dc4-89d7-11e4-b116-123b93f75cba");
-        List<Field> fields = mapper.fields("name", uuid);
-        Assert.assertNotNull(fields);
-        Assert.assertEquals(2, fields.size());
-        Field field = fields.get(0);
+        String base = mapper.base("name", "550e8400-e29b-41d4-a716-446655440000");
+        Field field = mapper.sortedField("name", base, false);
         Assert.assertNotNull(field);
-        Assert.assertEquals("name", field.name());
-        Assert.assertEquals("0101e489d7c4c61dc4c4c61dc489d711e4b116123b93f75cba", field.stringValue());
-        Assert.assertFalse(field.fieldType().stored());
-        field = fields.get(1);
         Assert.assertEquals(DocValuesType.SORTED, field.fieldType().docValuesType());
+    }
+
+    @Test
+    public void testSortedFieldCollection() {
+        ColumnMapperUUID mapper = new ColumnMapperUUID(true, true);
+        Field field = mapper.sortedField("name", "550e8400-e29b-41d4-a716-446655440000", true);
+        Assert.assertNotNull(field);
+        Assert.assertEquals(DocValuesType.SORTED_SET, field.fieldType().docValuesType());
     }
 
     @Test
@@ -197,8 +159,8 @@ public class ColumnMapperUUIDTest {
         ColumnMapper columnMapper = schema.getMapper("age");
         Assert.assertNotNull(columnMapper);
         Assert.assertEquals(ColumnMapperUUID.class, columnMapper.getClass());
-        Assert.assertEquals(ColumnMapper.INDEXED, columnMapper.isIndexed());
-        Assert.assertEquals(ColumnMapper.SORTED, columnMapper.isSorted());
+        Assert.assertEquals(ColumnMapper.DEFAULT_INDEXED, columnMapper.isIndexed());
+        Assert.assertEquals(ColumnMapper.DEFAULT_SORTED, columnMapper.isSorted());
     }
 
     @Test

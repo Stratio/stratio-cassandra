@@ -17,7 +17,6 @@ package com.stratio.cassandra.index.service;
 
 import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.Columns;
-import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.util.ByteBufferUtils;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.ColumnDefinition;
@@ -268,7 +267,7 @@ public class ClusteringKeyMapper {
                     ColumnDefinition columnDefinition = metadata.clusteringColumns().get(i);
                     String name = columnDefinition.name.toString();
                     AbstractType<?> valueType = columnDefinition.type;
-                    columns.add(Column.fromDecomposed(name, value, valueType));
+                    columns.add(Column.fromDecomposed(name, value, valueType, false));
                 }
             }
         }

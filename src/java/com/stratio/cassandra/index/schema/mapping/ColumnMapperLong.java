@@ -33,9 +33,6 @@ import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * A {@link ColumnMapper} to map a long field.
  *
@@ -97,15 +94,16 @@ public class ColumnMapperLong extends ColumnMapperSingle<Long> {
 
     /** {@inheritDoc} */
     @Override
-    public List<Field> fieldsFromBase(String name, Long value) {
-        List<Field> fields = new ArrayList<>();
-        if (indexed) {
-            LongField field = new LongField(name, value, STORE);
-            field.setBoost(boost);
-            fields.add(field);
-        }
-        if (sorted) fields.add(new NumericDocValuesField(name, value));
-        return fields;
+    public Field indexedField(String name, Long value) {
+        LongField field = new LongField(name, value, STORE);
+        field.setBoost(boost);
+        return field;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Field sortedField(String name, Long value, boolean isCollection) {
+        return new NumericDocValuesField(name, value);
     }
 
     /** {@inheritDoc} */

@@ -63,6 +63,27 @@ public class SchemaTest {
         schema.close();
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void testGetAnalyzerNotExistent() {
+        Map<String, ColumnMapper> columnMappers = new HashMap<>();
+        Schema schema = new Schema(columnMappers, null, "English");
+        schema.getAnalyzer("custom");
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testGetAnalyzerNull() {
+        Map<String, ColumnMapper> columnMappers = new HashMap<>();
+        Schema schema = new Schema(columnMappers, null, "English");
+        schema.getAnalyzer(null);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testGetAnalyzerEmpty() {
+        Map<String, ColumnMapper> columnMappers = new HashMap<>();
+        Schema schema = new Schema(columnMappers, null, "English");
+        schema.getAnalyzer(" \t");
+    }
+
     @Test
     public void testParseJSON() throws IOException {
 

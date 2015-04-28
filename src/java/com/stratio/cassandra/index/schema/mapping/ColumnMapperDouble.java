@@ -33,9 +33,6 @@ import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * A {@link ColumnMapper} to map a double field.
  *
@@ -97,15 +94,16 @@ public class ColumnMapperDouble extends ColumnMapperSingle<Double> {
 
     /** {@inheritDoc} */
     @Override
-    public List<Field> fieldsFromBase(String name, Double value) {
-        List<Field> fields = new ArrayList<>();
-        if (indexed) {
-            DoubleField field = new DoubleField(name, value, STORE);
-            field.setBoost(boost);
-            fields.add(field);
-        }
-        if (sorted) fields.add(new NumericDocValuesField(name, Double.doubleToLongBits(value)));
-        return fields;
+    public Field indexedField(String name, Double value) {
+        DoubleField field = new DoubleField(name, value, STORE);
+        field.setBoost(boost);
+        return field;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Field sortedField(String name, Double value, boolean isCollection) {
+        return new NumericDocValuesField(name, Double.doubleToLongBits(value));
     }
 
     /** {@inheritDoc} */
