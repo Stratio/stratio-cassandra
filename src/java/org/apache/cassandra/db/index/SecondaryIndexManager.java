@@ -819,6 +819,9 @@ public class SecondaryIndexManager
 
     public SecondaryIndexSearcher getHighestSelectivityIndexSearcher(List<IndexExpression> clause)
     {
+        if (clause == null)
+            return null;
+
         List<SecondaryIndexSearcher> indexSearchers = getIndexSearchersForQuery(clause);
 
         if (indexSearchers.isEmpty())
