@@ -20,12 +20,30 @@ package org.apache.cassandra.io.util;
 import java.io.File;
 
 import org.apache.cassandra.io.sstable.SSTableWriter;
+import org.apache.cassandra.utils.concurrent.SharedCloseable;
 
 public class BufferedSegmentedFile extends SegmentedFile
 {
     public BufferedSegmentedFile(String path, long length)
     {
-        super(path, length);
+        super(new Cleanup(path), path, length);
+    }
+
+    private BufferedSegmentedFile(BufferedSegmentedFile copy)
+    {
+        super(copy);
+    }
+
+    private static class Cleanup extends SegmentedFile.Cleanup
+    {
+        protected Cleanup(String path)
+        {
+            super(path);
+        }
+        public void tidy() throws Exception
+        {
+
+        }
     }
 
     public static class Builder extends SegmentedFile.Builder
@@ -35,9 +53,10 @@ public class BufferedSegmentedFile extends SegmentedFile
             // only one segment in a standard-io file
         }
 
-        public SegmentedFile complete(String path, SSTableWriter.FinishType finishType)
+        public SegmentedFile complete(String path, long overrideLength, boolean isFinal)
         {
-            long length = new File(path).length();
+            assert !isFinal || overrideLength <= 0;
+            long length = overrideLength > 0 ? overrideLength : new File(path).length();
             return new BufferedSegmentedFile(path, length);
         }
     }
@@ -49,7 +68,8 @@ public class BufferedSegmentedFile extends SegmentedFile
         return reader;
     }
 
-    public void cleanup()
+    public BufferedSegmentedFile sharedCopy()
     {
+        return new BufferedSegmentedFile(this);
     }
 }

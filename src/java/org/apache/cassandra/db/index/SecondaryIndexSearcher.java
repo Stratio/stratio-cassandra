@@ -43,7 +43,7 @@ public abstract class SecondaryIndexSearcher
 
     public SecondaryIndex highestSelectivityIndex(List<IndexExpression> clause)
     {
-        IndexExpression expr = highestSelectivityPredicate(clause);
+        IndexExpression expr = highestSelectivityPredicate(clause, false);
         return expr == null ? null : indexManager.getIndexForColumn(expr.column);
     }
 
@@ -77,7 +77,7 @@ public abstract class SecondaryIndexSearcher
     {
     }
 
-    protected IndexExpression highestSelectivityPredicate(List<IndexExpression> clause)
+    protected IndexExpression highestSelectivityPredicate(List<IndexExpression> clause, boolean trace)
     {
         IndexExpression best = null;
         int bestMeanCount = Integer.MAX_VALUE;
@@ -102,17 +102,20 @@ public abstract class SecondaryIndexSearcher
             }
         }
 
-        if (best == null)
-            Tracing.trace("No applicable indexes found");
-        else
-            Tracing.trace("Candidate index mean cardinalities are {}. Scanning with {}.",
-                          FBUtilities.toString(candidates), indexManager.getIndexForColumn(best.column).getIndexName());
+        if  (trace) {
+            if (best == null)
+                Tracing.trace("No applicable indexes found");
+            else
+                Tracing.trace("Candidate index mean cardinalities are {}. Scanning with {}.",
+                              FBUtilities.toString(candidates),
+                              indexManager.getIndexForColumn(best.column).getIndexName());
+        }
 
         return best;
     }
 
     /**
-     * Returns {@code true} if the specified list of {@link IndexExpression}s require a full scan of all the nodes
+     * Returns {@code true} if the specified list of {@link IndexExpression}s require a full scan of all the nodes.
      *
      * @param clause A list of {@link IndexExpression}s
      * @return {@code true} if the {@code IndexExpression}s require a full scan, {@code false} otherwise
@@ -123,11 +126,12 @@ public abstract class SecondaryIndexSearcher
     }
 
     /**
-     * Combines the partial results of several local index queries
+     * Combines index query results from multiple nodes. This is done by the coordinator node after it has reconciled
+     * the replica responses.
      *
      * @param clause A list of {@link IndexExpression}s
-     * @param rows The partial results to be combined
-     * @return The combination of the partial results
+     * @param rows The index query results to be combined
+     * @return The combination of the index query results
      */
     public List<Row> postReconciliationProcessing(List<IndexExpression> clause, List<Row> rows)
     {

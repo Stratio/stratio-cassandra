@@ -1,3 +1,7 @@
+2.1.5.0
+ * Upgrade to Apache Cassandra 2.1.5 (issue#28)
+ * Removed clustering key mapper columns
+
 2.1.4.1
  * Improve top-k (CASSANDRA-8717)
  * Fix build.xml

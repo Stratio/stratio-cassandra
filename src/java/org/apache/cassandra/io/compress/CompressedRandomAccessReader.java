@@ -37,6 +37,10 @@ import org.apache.cassandra.utils.FBUtilities;
  */
 public class CompressedRandomAccessReader extends RandomAccessReader
 {
+    public static CompressedRandomAccessReader open(String dataFilePath, CompressionMetadata metadata)
+    {
+        return open(dataFilePath, metadata, null);
+    }
     public static CompressedRandomAccessReader open(String path, CompressionMetadata metadata, CompressedPoolingSegmentedFile owner)
     {
         try
@@ -49,17 +53,6 @@ public class CompressedRandomAccessReader extends RandomAccessReader
         }
     }
 
-    public static CompressedRandomAccessReader open(String dataFilePath, CompressionMetadata metadata)
-    {
-        try
-        {
-            return new CompressedRandomAccessReader(dataFilePath, metadata, null);
-        }
-        catch (FileNotFoundException e)
-        {
-            throw new RuntimeException(e);
-        }
-    }
 
     private final CompressionMetadata metadata;
 
@@ -74,7 +67,7 @@ public class CompressedRandomAccessReader extends RandomAccessReader
 
     protected CompressedRandomAccessReader(String dataFilePath, CompressionMetadata metadata, PoolingSegmentedFile owner) throws FileNotFoundException
     {
-        super(new File(dataFilePath), metadata.chunkLength(), owner);
+        super(new File(dataFilePath), metadata.chunkLength(), metadata.compressedFileLength, owner);
         this.metadata = metadata;
         checksum = metadata.hasPostCompressionAdlerChecksums ? new Adler32() : new CRC32();
         compressed = ByteBuffer.wrap(new byte[metadata.compressor().initialCompressedBufferLength(metadata.chunkLength())]);
@@ -144,6 +137,10 @@ public class CompressedRandomAccessReader extends RandomAccessReader
 
         // buffer offset is always aligned
         bufferOffset = current & ~(buffer.length - 1);
+        // the length() can be provided at construction time, to override the true (uncompressed) length of the file;
+        // this is permitted to occur within a compressed segment, so we truncate validBufferBytes if we cross the imposed length
+        if (bufferOffset + validBufferBytes > length())
+            validBufferBytes = (int)(length() - bufferOffset);
     }
 
     private int checksum(CompressionMetadata.Chunk chunk) throws IOException

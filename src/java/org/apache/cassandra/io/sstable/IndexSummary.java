@@ -17,21 +17,19 @@
  */
 package org.apache.cassandra.io.sstable;
 
-import java.io.Closeable;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.apache.cassandra.cache.RefCountedMemory;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.RowPosition;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.io.util.Memory;
 import org.apache.cassandra.io.util.MemoryOutputStream;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.concurrent.WrappedSharedCloseable;
 
 import static org.apache.cassandra.io.sstable.Downsampling.BASE_SAMPLING_LEVEL;
 
@@ -45,10 +43,8 @@ import static org.apache.cassandra.io.sstable.Downsampling.BASE_SAMPLING_LEVEL;
  *     (This is necessary because keys can have different lengths.)
  *  2.  A sequence of (DecoratedKey, position) pairs, where position is the offset into the actual index file.
  */
-public class IndexSummary implements Closeable
+public class IndexSummary extends WrappedSharedCloseable
 {
-    private static final Logger logger = LoggerFactory.getLogger(IndexSummary.class);
-
     public static final IndexSummarySerializer serializer = new IndexSummarySerializer();
 
     /**
@@ -58,9 +54,16 @@ public class IndexSummary implements Closeable
     private final int minIndexInterval;
 
     private final IPartitioner partitioner;
-    private final int summarySize;
     private final int sizeAtFullSampling;
-    private final RefCountedMemory bytes;
+    // we permit the memory to span a range larger than we use,
+    // so we have an accompanying count and length for each part
+    // we split our data into two ranges: offsets (indexing into entries),
+    // and entries containing the summary data
+    private final Memory offsets;
+    private final int offsetCount;
+    // entries is a list of (partition key, index file offset) pairs
+    private final Memory entries;
+    private final long entriesLength;
 
     /**
      * A value between 1 and BASE_SAMPLING_LEVEL that represents how many of the original
@@ -70,22 +73,40 @@ public class IndexSummary implements Closeable
      */
     private final int samplingLevel;
 
-    public IndexSummary(IPartitioner partitioner, RefCountedMemory memory, int summarySize, int sizeAtFullSampling,
-                        int minIndexInterval, int samplingLevel)
+    public IndexSummary(IPartitioner partitioner, Memory offsets, int offsetCount, Memory entries, long entriesLength,
+                        int sizeAtFullSampling, int minIndexInterval, int samplingLevel)
     {
+        super(new Memory[] { offsets, entries });
+        assert offsets.getInt(0) == 0;
         this.partitioner = partitioner;
         this.minIndexInterval = minIndexInterval;
-        this.summarySize = summarySize;
+        this.offsetCount = offsetCount;
+        this.entriesLength = entriesLength;
         this.sizeAtFullSampling = sizeAtFullSampling;
-        this.bytes = memory;
+        this.offsets = offsets;
+        this.entries = entries;
         this.samplingLevel = samplingLevel;
+        assert samplingLevel > 0;
+    }
+
+    private IndexSummary(IndexSummary copy)
+    {
+        super(copy);
+        this.partitioner = copy.partitioner;
+        this.minIndexInterval = copy.minIndexInterval;
+        this.offsetCount = copy.offsetCount;
+        this.entriesLength = copy.entriesLength;
+        this.sizeAtFullSampling = copy.sizeAtFullSampling;
+        this.offsets = copy.offsets;
+        this.entries = copy.entries;
+        this.samplingLevel = copy.samplingLevel;
     }
 
     // binary search is notoriously more difficult to get right than it looks; this is lifted from
     // Harmony's Collections implementation
     public int binarySearch(RowPosition key)
     {
-        int low = 0, mid = summarySize, high = mid - 1, result = -1;
+        int low = 0, mid = offsetCount, high = mid - 1, result = -1;
         while (low <= high)
         {
             mid = (low + high) >> 1;
@@ -115,7 +136,7 @@ public class IndexSummary implements Closeable
     public int getPositionInSummary(int index)
     {
         // The first section of bytes holds a four-byte position for each entry in the summary, so just multiply by 4.
-        return bytes.getInt(index << 2);
+        return offsets.getInt(index << 2);
     }
 
     public byte[] getKey(int index)
@@ -123,27 +144,23 @@ public class IndexSummary implements Closeable
         long start = getPositionInSummary(index);
         int keySize = (int) (calculateEnd(index) - start - 8L);
         byte[] key = new byte[keySize];
-        bytes.getBytes(start, key, 0, keySize);
+        entries.getBytes(start, key, 0, keySize);
         return key;
     }
 
     public long getPosition(int index)
     {
-        return bytes.getLong(calculateEnd(index) - 8);
+        return entries.getLong(calculateEnd(index) - 8);
     }
 
-    public byte[] getEntry(int index)
+    public long getEndInSummary(int index)
     {
-        long start = getPositionInSummary(index);
-        long end = calculateEnd(index);
-        byte[] entry = new byte[(int)(end - start)];
-        bytes.getBytes(start, entry, 0, (int)(end - start));
-        return entry;
+        return calculateEnd(index);
     }
 
     private long calculateEnd(int index)
     {
-        return index == (summarySize - 1) ? bytes.size() : getPositionInSummary(index + 1);
+        return index == (offsetCount - 1) ? entriesLength : getPositionInSummary(index + 1);
     }
 
     public int getMinIndexInterval()
@@ -166,7 +183,7 @@ public class IndexSummary implements Closeable
 
     public int size()
     {
-        return summarySize;
+        return offsetCount;
     }
 
     public int getSamplingLevel()
@@ -184,12 +201,27 @@ public class IndexSummary implements Closeable
     }
 
     /**
-     * Returns the amount of off-heap memory used for this summary.
+     * Returns the amount of off-heap memory used for the entries portion of this summary.
      * @return size in bytes
      */
-    public long getOffHeapSize()
+    long getEntriesLength()
     {
-        return bytes.size();
+        return entriesLength;
+    }
+
+    Memory getOffsets()
+    {
+        return offsets;
+    }
+
+    Memory getEntries()
+    {
+        return entries;
+    }
+
+    long getOffHeapSize()
+    {
+        return offsetCount * 4 + entriesLength;
     }
 
     /**
@@ -206,19 +238,39 @@ public class IndexSummary implements Closeable
         return Downsampling.getEffectiveIndexIntervalAfterIndex(index, samplingLevel, minIndexInterval);
     }
 
+    public IndexSummary sharedCopy()
+    {
+        return new IndexSummary(this);
+    }
+
     public static class IndexSummarySerializer
     {
         public void serialize(IndexSummary t, DataOutputPlus out, boolean withSamplingLevel) throws IOException
         {
             out.writeInt(t.minIndexInterval);
-            out.writeInt(t.summarySize);
-            out.writeLong(t.bytes.size());
+            out.writeInt(t.offsetCount);
+            out.writeLong(t.getOffHeapSize());
             if (withSamplingLevel)
             {
                 out.writeInt(t.samplingLevel);
                 out.writeInt(t.sizeAtFullSampling);
             }
-            out.write(t.bytes);
+            // our on-disk representation treats the offsets and the summary data as one contiguous structure,
+            // in which the offsets are based from the start of the structure. i.e., if the offsets occupy
+            // X bytes, the value of the first offset will be X. In memory we split the two regions up, so that
+            // the summary values are indexed from zero, so we apply a correction to the offsets when de/serializing.
+            // In this case adding X to each of the offsets.
+            int baseOffset = t.offsetCount * 4;
+            for (int i = 0 ; i < t.offsetCount ; i++)
+            {
+                int offset = t.offsets.getInt(i * 4) + baseOffset;
+                // our serialization format for this file uses native byte order, so if this is different to the
+                // default Java serialization order (BIG_ENDIAN) we have to reverse our bytes
+                if (ByteOrder.nativeOrder() != ByteOrder.BIG_ENDIAN)
+                    offset = Integer.reverseBytes(offset);
+                out.writeInt(offset);
+            }
+            out.write(t.entries, 0, t.entriesLength);
         }
 
         public IndexSummary deserialize(DataInputStream in, IPartitioner partitioner, boolean haveSamplingLevel, int expectedMinIndexInterval, int maxIndexInterval) throws IOException
@@ -230,7 +282,7 @@ public class IndexSummary implements Closeable
                                                     minIndexInterval, expectedMinIndexInterval));
             }
 
-            int summarySize = in.readInt();
+            int offsetCount = in.readInt();
             long offheapSize = in.readLong();
             int samplingLevel, fullSamplingSummarySize;
             if (haveSamplingLevel)
@@ -241,7 +293,7 @@ public class IndexSummary implements Closeable
             else
             {
                 samplingLevel = BASE_SAMPLING_LEVEL;
-                fullSamplingSummarySize = summarySize;
+                fullSamplingSummarySize = offsetCount;
             }
 
             int effectiveIndexInterval = (int) Math.ceil((BASE_SAMPLING_LEVEL / (double) samplingLevel) * minIndexInterval);
@@ -251,21 +303,18 @@ public class IndexSummary implements Closeable
                                                     " the current max index interval (%d)", effectiveIndexInterval, maxIndexInterval));
             }
 
-            RefCountedMemory memory = new RefCountedMemory(offheapSize);
-            FBUtilities.copy(in, new MemoryOutputStream(memory), offheapSize);
-            return new IndexSummary(partitioner, memory, summarySize, fullSamplingSummarySize, minIndexInterval, samplingLevel);
+            Memory offsets = Memory.allocate(offsetCount * 4);
+            Memory entries = Memory.allocate(offheapSize - offsets.size());
+            FBUtilities.copy(in, new MemoryOutputStream(offsets), offsets.size());
+            FBUtilities.copy(in, new MemoryOutputStream(entries), entries.size());
+            // our on-disk representation treats the offsets and the summary data as one contiguous structure,
+            // in which the offsets are based from the start of the structure. i.e., if the offsets occupy
+            // X bytes, the value of the first offset will be X. In memory we split the two regions up, so that
+            // the summary values are indexed from zero, so we apply a correction to the offsets when de/serializing.
+            // In this case subtracting X from each of the offsets.
+            for (int i = 0 ; i < offsets.size() ; i += 4)
+                offsets.setInt(i, (int) (offsets.getInt(i) - offsets.size()));
+            return new IndexSummary(partitioner, offsets, offsetCount, entries, entries.size(), fullSamplingSummarySize, minIndexInterval, samplingLevel);
         }
-    }
-
-    @Override
-    public void close()
-    {
-        bytes.unreference();
-    }
-
-    public IndexSummary readOnlyClone()
-    {
-        bytes.reference();
-        return this;
     }
 }

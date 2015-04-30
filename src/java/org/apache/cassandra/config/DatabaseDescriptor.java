@@ -20,6 +20,8 @@ package org.apache.cassandra.config;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
+import java.net.Inet4Address;
+import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
@@ -38,6 +40,7 @@ import java.util.UUID;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.primitives.Longs;
+
 import org.apache.cassandra.thrift.ThriftServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -158,7 +161,7 @@ public class DatabaseDescriptor
         return loader.loadConfig();
     }
 
-    private static InetAddress getNetworkInterfaceAddress(String intf, String configName) throws ConfigurationException
+    private static InetAddress getNetworkInterfaceAddress(String intf, String configName, boolean preferIPv6) throws ConfigurationException
     {
         try
         {
@@ -168,14 +171,120 @@ public class DatabaseDescriptor
             Enumeration<InetAddress> addrs = ni.getInetAddresses();
             if (!addrs.hasMoreElements())
                 throw new ConfigurationException("Configured " + configName + " \"" + intf + "\" was found, but had no addresses");
-            InetAddress retval = listenAddress = addrs.nextElement();
-            if (addrs.hasMoreElements())
-                throw new ConfigurationException("Configured " + configName + " \"" + intf + "\" can't have more than one address");
+
+            /*
+             * Try to return the first address of the preferred type, otherwise return the first address
+             */
+            InetAddress retval = null;
+            while (addrs.hasMoreElements())
+            {
+                InetAddress temp = addrs.nextElement();
+                if (preferIPv6 && temp.getClass() == Inet6Address.class) return temp;
+                if (!preferIPv6 && temp.getClass() == Inet4Address.class) return temp;
+                if (retval == null) retval = temp;
+            }
             return retval;
         }
         catch (SocketException e)
         {
             throw new ConfigurationException("Configured " + configName + " \"" + intf + "\" caused an exception", e);
+        }
+    }
+
+    @VisibleForTesting
+    static void applyAddressConfig(Config config) throws ConfigurationException
+    {
+        listenAddress = null;
+        rpcAddress = null;
+        broadcastAddress = null;
+        broadcastRpcAddress = null;
+
+        /* Local IP, hostname or interface to bind services to */
+        if (config.listen_address != null && config.listen_interface != null)
+        {
+            throw new ConfigurationException("Set listen_address OR listen_interface, not both");
+        }
+        else if (config.listen_address != null)
+        {
+            try
+            {
+                listenAddress = InetAddress.getByName(config.listen_address);
+            }
+            catch (UnknownHostException e)
+            {
+                throw new ConfigurationException("Unknown listen_address '" + config.listen_address + "'");
+            }
+
+            if (listenAddress.isAnyLocalAddress())
+                throw new ConfigurationException("listen_address cannot be a wildcard address (" + config.listen_address + ")!");
+        }
+        else if (config.listen_interface != null)
+        {
+            listenAddress = getNetworkInterfaceAddress(config.listen_interface, "listen_interface", config.listen_interface_prefer_ipv6);
+        }
+
+        /* Gossip Address to broadcast */
+        if (config.broadcast_address != null)
+        {
+            try
+            {
+                broadcastAddress = InetAddress.getByName(config.broadcast_address);
+            }
+            catch (UnknownHostException e)
+            {
+                throw new ConfigurationException("Unknown broadcast_address '" + config.broadcast_address + "'");
+            }
+
+            if (broadcastAddress.isAnyLocalAddress())
+                throw new ConfigurationException("broadcast_address cannot be a wildcard address (" + config.broadcast_address + ")!");
+        }
+
+        /* Local IP, hostname or interface to bind RPC server to */
+        if (config.rpc_address != null && config.rpc_interface != null)
+        {
+            throw new ConfigurationException("Set rpc_address OR rpc_interface, not both");
+        }
+        else if (config.rpc_address != null)
+        {
+            try
+            {
+                rpcAddress = InetAddress.getByName(config.rpc_address);
+            }
+            catch (UnknownHostException e)
+            {
+                throw new ConfigurationException("Unknown host in rpc_address " + config.rpc_address);
+            }
+        }
+        else if (config.rpc_interface != null)
+        {
+            rpcAddress = getNetworkInterfaceAddress(config.rpc_interface, "rpc_interface", config.rpc_interface_prefer_ipv6);
+        }
+        else
+        {
+            rpcAddress = FBUtilities.getLocalAddress();
+        }
+
+        /* RPC address to broadcast */
+        if (config.broadcast_rpc_address != null)
+        {
+            try
+            {
+                broadcastRpcAddress = InetAddress.getByName(config.broadcast_rpc_address);
+            }
+            catch (UnknownHostException e)
+            {
+                throw new ConfigurationException("Unknown broadcast_rpc_address '" + config.broadcast_rpc_address + "'");
+            }
+
+            if (broadcastRpcAddress.isAnyLocalAddress())
+                throw new ConfigurationException("broadcast_rpc_address cannot be a wildcard address (" + config.broadcast_rpc_address + ")!");
+        }
+        else
+        {
+            if (rpcAddress.isAnyLocalAddress())
+                throw new ConfigurationException("If rpc_address is set to a wildcard address (" + config.rpc_address + "), then " +
+                                                 "you must set broadcast_rpc_address to a value other than " + config.rpc_address);
+            broadcastRpcAddress = rpcAddress;
         }
     }
 
@@ -326,93 +435,7 @@ public class DatabaseDescriptor
         else
             logger.info("Global memtable off-heap threshold is enabled at {}MB", conf.memtable_offheap_space_in_mb);
 
-        /* Local IP, hostname or interface to bind services to */
-        if (conf.listen_address != null && conf.listen_interface != null)
-        {
-            throw new ConfigurationException("Set listen_address OR listen_interface, not both");
-        }
-        else if (conf.listen_address != null)
-        {
-            try
-            {
-                listenAddress = InetAddress.getByName(conf.listen_address);
-            }
-            catch (UnknownHostException e)
-            {
-                throw new ConfigurationException("Unknown listen_address '" + conf.listen_address + "'");
-            }
-
-            if (listenAddress.isAnyLocalAddress())
-                throw new ConfigurationException("listen_address cannot be a wildcard address (" + conf.listen_address + ")!");
-        }
-        else if (conf.listen_interface != null)
-        {
-            listenAddress = getNetworkInterfaceAddress(conf.listen_interface, "listen_interface");
-        }
-
-        /* Gossip Address to broadcast */
-        if (conf.broadcast_address != null)
-        {
-            try
-            {
-                broadcastAddress = InetAddress.getByName(conf.broadcast_address);
-            }
-            catch (UnknownHostException e)
-            {
-                throw new ConfigurationException("Unknown broadcast_address '" + conf.broadcast_address + "'");
-            }
-
-            if (broadcastAddress.isAnyLocalAddress())
-                throw new ConfigurationException("broadcast_address cannot be a wildcard address (" + conf.broadcast_address + ")!");
-        }
-
-        /* Local IP, hostname or interface to bind RPC server to */
-        if (conf.rpc_address != null && conf.rpc_interface != null)
-        {
-            throw new ConfigurationException("Set rpc_address OR rpc_interface, not both");
-        }
-        else if (conf.rpc_address != null)
-        {
-            try
-            {
-                rpcAddress = InetAddress.getByName(conf.rpc_address);
-            }
-            catch (UnknownHostException e)
-            {
-                throw new ConfigurationException("Unknown host in rpc_address " + conf.rpc_address);
-            }
-        }
-        else if (conf.rpc_interface != null)
-        {
-            listenAddress = getNetworkInterfaceAddress(conf.rpc_interface, "rpc_interface");
-        }
-        else
-        {
-            rpcAddress = FBUtilities.getLocalAddress();
-        }
-
-        /* RPC address to broadcast */
-        if (conf.broadcast_rpc_address != null)
-        {
-            try
-            {
-                broadcastRpcAddress = InetAddress.getByName(conf.broadcast_rpc_address);
-            }
-            catch (UnknownHostException e)
-            {
-                throw new ConfigurationException("Unknown broadcast_rpc_address '" + conf.broadcast_rpc_address + "'");
-            }
-
-            if (broadcastRpcAddress.isAnyLocalAddress())
-                throw new ConfigurationException("broadcast_rpc_address cannot be a wildcard address (" + conf.broadcast_rpc_address + ")!");
-        }
-        else
-        {
-            if (rpcAddress.isAnyLocalAddress())
-                throw new ConfigurationException("If rpc_address is set to a wildcard address (" + conf.rpc_address + "), then " +
-                                                 "you must set broadcast_rpc_address to a value other than " + conf.rpc_address);
-            broadcastRpcAddress = rpcAddress;
-        }
+        applyAddressConfig(config);
 
         if (conf.thrift_framed_transport_size_in_mb <= 0)
             throw new ConfigurationException("thrift_framed_transport_size_in_mb must be positive");
@@ -714,6 +737,11 @@ public class DatabaseDescriptor
         return conf.permissions_validity_in_ms;
     }
 
+    public static void setPermissionsValidity(int timeout)
+    {
+        conf.permissions_validity_in_ms = timeout;
+    }
+
     public static int getPermissionsCacheMaxEntries()
     {
         return conf.permissions_cache_max_entries;
@@ -724,6 +752,11 @@ public class DatabaseDescriptor
         return conf.permissions_update_interval_in_ms == -1
              ? conf.permissions_validity_in_ms
              : conf.permissions_update_interval_in_ms;
+    }
+
+    public static void setPermissionsUpdateInterval(int updateInterval)
+    {
+        conf.permissions_update_interval_in_ms = updateInterval;
     }
 
     public static int getThriftFramedTransportSize()
@@ -1241,6 +1274,25 @@ public class DatabaseDescriptor
         return conf.native_transport_max_frame_size_in_mb * 1024 * 1024;
     }
 
+    public static Long getNativeTransportMaxConcurrentConnections()
+    {
+        return conf.native_transport_max_concurrent_connections;
+    }
+
+    public static void setNativeTransportMaxConcurrentConnections(long nativeTransportMaxConcurrentConnections)
+    {
+        conf.native_transport_max_concurrent_connections = nativeTransportMaxConcurrentConnections;
+    }
+
+    public static Long getNativeTransportMaxConcurrentConnectionsPerIp() {
+        return conf.native_transport_max_concurrent_connections_per_ip;
+    }
+
+    public static void setNativeTransportMaxConcurrentConnectionsPerIp(long native_transport_max_concurrent_connections_per_ip)
+    {
+        conf.native_transport_max_concurrent_connections_per_ip = native_transport_max_concurrent_connections_per_ip;
+    }
+
     public static double getCommitLogSyncBatchWindow()
     {
         return conf.commitlog_sync_batch_window_in_ms;
@@ -1463,8 +1515,7 @@ public class DatabaseDescriptor
 
     public static int getSSTablePreempiveOpenIntervalInMB()
     {
-        //return conf.sstable_preemptive_open_interval_in_mb;
-        return -1;
+        return conf.sstable_preemptive_open_interval_in_mb;
     }
 
     public static boolean getTrickleFsync()
@@ -1630,5 +1681,15 @@ public class DatabaseDescriptor
         }
         String arch = System.getProperty("os.arch");
         return arch.contains("64") || arch.contains("sparcv9");
+    }
+
+    public static String getOtcCoalescingStrategy()
+    {
+        return conf.otc_coalescing_strategy;
+    }
+
+    public static int getOtcCoalescingWindow()
+    {
+        return conf.otc_coalescing_window_us;
     }
 }

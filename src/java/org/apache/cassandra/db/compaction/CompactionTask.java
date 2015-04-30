@@ -18,10 +18,8 @@
 package org.apache.cassandra.db.compaction;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -31,7 +29,6 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.base.Predicate;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import org.apache.commons.lang3.StringUtils;
@@ -40,7 +37,6 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.RowIndexEntry;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.compaction.CompactionManager.CompactionExecutorStatsCollector;
 import org.apache.cassandra.io.sstable.SSTableReader;
@@ -144,6 +140,7 @@ public class CompactionTask extends AbstractCompactionTask
         logger.info("Compacting {}", sstables);
 
         long start = System.nanoTime();
+
         long totalKeysWritten = 0;
 
         try (CompactionController controller = getCompactionController(sstables);)
@@ -177,6 +174,8 @@ public class CompactionTask extends AbstractCompactionTask
                 SSTableRewriter writer = new SSTableRewriter(cfs, sstables, maxAge, offline);
                 try
                 {
+                    if (!controller.cfs.getCompactionStrategy().isActive)
+                       throw new CompactionInterruptedException(ci.getCompactionInfo());
                     if (!iter.hasNext())
                     {
                         // don't mark compacted in the finally block, since if there _is_ nondeleted data,
