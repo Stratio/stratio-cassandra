@@ -391,7 +391,15 @@ public class StorageProxy implements StorageProxyMBean
                 Commit refreshedInProgress = Commit.newProposal(inProgress.key, ballot, inProgress.update);
                 if (proposePaxos(refreshedInProgress, liveEndpoints, requiredParticipants, false, consistencyForPaxos))
                 {
-                    commitPaxos(refreshedInProgress, consistencyForCommit);
+                    try
+                    {
+                        commitPaxos(refreshedInProgress, consistencyForCommit);
+                    }
+                    catch (WriteTimeoutException e)
+                    {
+                        // We're still doing preparation for the paxos rounds, so we want to use the CAS (see CASSANDRA-8672)
+                        throw new WriteTimeoutException(WriteType.CAS, e.consistency, e.received, e.blockFor);
+                    }
                 }
                 else
                 {
@@ -2301,9 +2309,15 @@ public class StorageProxy implements StorageProxyMBean
 
     public Long getTruncateRpcTimeout() { return DatabaseDescriptor.getTruncateRpcTimeout(); }
     public void setTruncateRpcTimeout(Long timeoutInMillis) { DatabaseDescriptor.setTruncateRpcTimeout(timeoutInMillis); }
+
+    public Long getNativeTransportMaxConcurrentConnections() { return DatabaseDescriptor.getNativeTransportMaxConcurrentConnections(); }
+    public void setNativeTransportMaxConcurrentConnections(Long nativeTransportMaxConcurrentConnections) { DatabaseDescriptor.setNativeTransportMaxConcurrentConnections(nativeTransportMaxConcurrentConnections); }
+
+    public Long getNativeTransportMaxConcurrentConnectionsPerIp() { return DatabaseDescriptor.getNativeTransportMaxConcurrentConnectionsPerIp(); }
+    public void setNativeTransportMaxConcurrentConnectionsPerIp(Long nativeTransportMaxConcurrentConnections) { DatabaseDescriptor.setNativeTransportMaxConcurrentConnectionsPerIp(nativeTransportMaxConcurrentConnections); }
+
     public void reloadTriggerClasses() { TriggerExecutor.instance.reloadClasses(); }
 
-    
     public long getReadRepairAttempted() {
         return ReadRepairMetrics.attempted.count();
     }

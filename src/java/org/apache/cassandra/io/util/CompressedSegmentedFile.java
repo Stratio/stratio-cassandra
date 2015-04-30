@@ -17,8 +17,11 @@
  */
 package org.apache.cassandra.io.util;
 
+import com.google.common.util.concurrent.RateLimiter;
+
 import org.apache.cassandra.io.compress.CompressedRandomAccessReader;
 import org.apache.cassandra.io.compress.CompressedSequentialWriter;
+import org.apache.cassandra.io.compress.CompressedThrottledReader;
 import org.apache.cassandra.io.compress.CompressionMetadata;
 import org.apache.cassandra.io.sstable.SSTableWriter;
 
@@ -28,8 +31,33 @@ public class CompressedSegmentedFile extends SegmentedFile implements ICompresse
 
     public CompressedSegmentedFile(String path, CompressionMetadata metadata)
     {
-        super(path, metadata.dataLength, metadata.compressedFileLength);
+        super(new Cleanup(path, metadata), path, metadata.dataLength, metadata.compressedFileLength);
         this.metadata = metadata;
+    }
+
+    private CompressedSegmentedFile(CompressedSegmentedFile copy)
+    {
+        super(copy);
+        this.metadata = copy.metadata;
+    }
+
+    private static final class Cleanup extends SegmentedFile.Cleanup
+    {
+        final CompressionMetadata metadata;
+        protected Cleanup(String path, CompressionMetadata metadata)
+        {
+            super(path);
+            this.metadata = metadata;
+        }
+        public void tidy() throws Exception
+        {
+            metadata.close();
+        }
+    }
+
+    public CompressedSegmentedFile sharedCopy()
+    {
+        return new CompressedSegmentedFile(this);
     }
 
     public static class Builder extends SegmentedFile.Builder
@@ -45,34 +73,40 @@ public class CompressedSegmentedFile extends SegmentedFile implements ICompresse
             // only one segment in a standard-io file
         }
 
-        protected CompressionMetadata metadata(String path, SSTableWriter.FinishType finishType)
+        protected CompressionMetadata metadata(String path, long overrideLength, boolean isFinal)
         {
             if (writer == null)
                 return CompressionMetadata.create(path);
 
-            return writer.open(finishType);
+            return writer.open(overrideLength, isFinal);
         }
 
-        public SegmentedFile complete(String path, SSTableWriter.FinishType finishType)
+        public SegmentedFile complete(String path, long overrideLength, boolean isFinal)
         {
-            return new CompressedSegmentedFile(path, metadata(path, finishType));
+            assert !isFinal || overrideLength <= 0;
+            return new CompressedSegmentedFile(path, metadata(path, overrideLength, isFinal));
         }
     }
 
-    public FileDataInput getSegment(long position)
+    public void dropPageCache(long before)
     {
-        RandomAccessReader reader = CompressedRandomAccessReader.open(path, metadata, null);
-        reader.seek(position);
-        return reader;
+        if (before >= metadata.dataLength)
+            super.dropPageCache(0);
+        super.dropPageCache(metadata.chunkFor(before).offset);
+    }
+
+    public RandomAccessReader createReader()
+    {
+        return CompressedRandomAccessReader.open(path, metadata);
+    }
+
+    public RandomAccessReader createThrottledReader(RateLimiter limiter)
+    {
+        return CompressedThrottledReader.open(path, metadata, limiter);
     }
 
     public CompressionMetadata getMetadata()
     {
         return metadata;
-    }
-
-    public void cleanup()
-    {
-        metadata.close();
     }
 }

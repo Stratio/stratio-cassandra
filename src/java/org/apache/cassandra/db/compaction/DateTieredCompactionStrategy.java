@@ -54,7 +54,7 @@ public class DateTieredCompactionStrategy extends AbstractCompactionStrategy
 
         while (true)
         {
-            List<SSTableReader> latestBucket = getNextBackgroundSStables(gcBefore);
+            List<SSTableReader> latestBucket = getNextBackgroundSSTables(gcBefore);
 
             if (latestBucket.isEmpty())
                 return null;
@@ -69,16 +69,31 @@ public class DateTieredCompactionStrategy extends AbstractCompactionStrategy
      * @param gcBefore
      * @return
      */
-    private List<SSTableReader> getNextBackgroundSStables(final int gcBefore)
+    private List<SSTableReader> getNextBackgroundSSTables(final int gcBefore)
     {
         if (!isEnabled() || cfs.getSSTables().isEmpty())
             return Collections.emptyList();
 
+        Set<SSTableReader> uncompacting = Sets.intersection(sstables, cfs.getUncompactingSSTables());
+
+        // Find fully expired SSTables. Those will be included no matter what.
+        Set<SSTableReader> expired = CompactionController.getFullyExpiredSSTables(cfs, uncompacting, cfs.getOverlappingSSTables(uncompacting), gcBefore);
+        Set<SSTableReader> candidates = Sets.newHashSet(filterSuspectSSTables(uncompacting));
+
+        List<SSTableReader> compactionCandidates = new ArrayList<>(getNextNonExpiredSSTables(Sets.difference(candidates, expired), gcBefore));
+        if (!expired.isEmpty())
+        {
+            logger.debug("Including expired sstables: {}", expired);
+            compactionCandidates.addAll(expired);
+        }
+        return compactionCandidates;
+    }
+
+    private List<SSTableReader> getNextNonExpiredSSTables(Iterable<SSTableReader> nonExpiringSSTables, final int gcBefore)
+    {
         int base = cfs.getMinimumCompactionThreshold();
         long now = getNow();
-        Iterable<SSTableReader> candidates = filterSuspectSSTables(Sets.intersection(cfs.getUncompactingSSTables(), sstables));
-
-        List<SSTableReader> mostInteresting = getCompactionCandidates(candidates, now, base);
+        List<SSTableReader> mostInteresting = getCompactionCandidates(nonExpiringSSTables, now, base);
         if (mostInteresting != null)
         {
             return mostInteresting;
@@ -87,7 +102,7 @@ public class DateTieredCompactionStrategy extends AbstractCompactionStrategy
         // if there is no sstable to compact in standard way, try compacting single sstable whose droppable tombstone
         // ratio is greater than threshold.
         List<SSTableReader> sstablesWithTombstones = Lists.newArrayList();
-        for (SSTableReader sstable : candidates)
+        for (SSTableReader sstable : nonExpiringSSTables)
         {
             if (worthDroppingTombstones(sstable, gcBefore))
                 sstablesWithTombstones.add(sstable);
@@ -105,7 +120,11 @@ public class DateTieredCompactionStrategy extends AbstractCompactionStrategy
         List<List<SSTableReader>> buckets = getBuckets(createSSTableAndMinTimestampPairs(candidates), options.baseTime, base, now);
         logger.debug("Compaction buckets are {}", buckets);
         updateEstimatedCompactionsByTasks(buckets);
-        List<SSTableReader> mostInteresting = newestBucket(buckets, cfs.getMinimumCompactionThreshold(), cfs.getMaximumCompactionThreshold());
+        List<SSTableReader> mostInteresting = newestBucket(buckets,
+                                                           cfs.getMinimumCompactionThreshold(),
+                                                           cfs.getMaximumCompactionThreshold(),
+                                                           now,
+                                                           options.baseTime);
         if (!mostInteresting.isEmpty())
             return mostInteresting;
         return null;
@@ -309,12 +328,18 @@ public class DateTieredCompactionStrategy extends AbstractCompactionStrategy
      * @return a bucket (list) of sstables to compact.
      */
     @VisibleForTesting
-    static List<SSTableReader> newestBucket(List<List<SSTableReader>> buckets, int minThreshold, int maxThreshold)
+    static List<SSTableReader> newestBucket(List<List<SSTableReader>> buckets, int minThreshold, int maxThreshold, long now, long baseTime)
     {
-        // Skip buckets containing less than minThreshold sstables, and limit other buckets to maxThreshold sstables.
+        // If the "incoming window" has at least minThreshold SSTables, choose that one.
+        // For any other bucket, at least 2 SSTables is enough.
+        // In any case, limit to maxThreshold SSTables.
+        Target incomingWindow = getInitialTarget(now, baseTime);
         for (List<SSTableReader> bucket : buckets)
-            if (bucket.size() >= minThreshold)
+        {
+            if (bucket.size() >= minThreshold ||
+                    (bucket.size() >= 2 && !incomingWindow.onTarget(bucket.get(0).getMinTimestamp())))
                 return trimToThreshold(bucket, maxThreshold);
+        }
         return Collections.emptyList();
     }
 

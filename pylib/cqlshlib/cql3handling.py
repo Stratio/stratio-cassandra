@@ -468,7 +468,6 @@ def cf_prop_val_mapkey_completer(ctxt, cass):
             opts.add('min_threshold')
             opts.add('bucket_high')
             opts.add('bucket_low')
-            opts.add('cold_reads_to_omit')
         elif csc == 'LeveledCompactionStrategy':
             opts.add('sstable_size_in_mb')
         elif csc == 'DateTieredCompactionStrategy':
@@ -1001,7 +1000,7 @@ syntax_rules += r'''
                                cf=<columnFamilyName> "(" (
                                    col=<cident> |
                                    "keys(" col=<cident> ")" |
-                                   "fullCollection(" col=<cident> ")"
+                                   "full(" col=<cident> ")"
                                ) ")"
                                ( "USING" <stringLiteral> ( "WITH" "OPTIONS" "=" <mapLiteral> )? )?
                          ;
