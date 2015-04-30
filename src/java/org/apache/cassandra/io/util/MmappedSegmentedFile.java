@@ -47,8 +47,19 @@ public class MmappedSegmentedFile extends SegmentedFile
 
     public MmappedSegmentedFile(String path, long length, Segment[] segments)
     {
-        super(path, length);
+        super(new Cleanup(path, segments), path, length);
         this.segments = segments;
+    }
+
+    private MmappedSegmentedFile(MmappedSegmentedFile copy)
+    {
+        super(copy);
+        this.segments = copy.segments;
+    }
+
+    public MmappedSegmentedFile sharedCopy()
+    {
+        return new MmappedSegmentedFile(this);
     }
 
     /**
@@ -78,38 +89,49 @@ public class MmappedSegmentedFile extends SegmentedFile
             return new MappedFileDataInput(segment.right, path, segment.left, (int) (position - segment.left));
         }
 
-        // not mmap'd: open a braf covering the segment
+        // we can have single cells or partitions larger than 2Gb, which is our maximum addressable range in a single segment;
+        // in this case we open as a normal random access reader
         // FIXME: brafs are unbounded, so this segment will cover the rest of the file, rather than just the row
         RandomAccessReader file = RandomAccessReader.open(new File(path));
         file.seek(position);
         return file;
     }
 
-    public void cleanup()
+    private static final class Cleanup extends SegmentedFile.Cleanup
     {
-        if (!FileUtils.isCleanerAvailable())
-            return;
+        final Segment[] segments;
+        protected Cleanup(String path, Segment[] segments)
+        {
+            super(path);
+            this.segments = segments;
+        }
+
+        public void tidy()
+        {
+            if (!FileUtils.isCleanerAvailable())
+                return;
 
         /*
          * Try forcing the unmapping of segments using undocumented unsafe sun APIs.
          * If this fails (non Sun JVM), we'll have to wait for the GC to finalize the mapping.
          * If this works and a thread tries to access any segment, hell will unleash on earth.
          */
-        try
-        {
-            for (Segment segment : segments)
+            try
             {
-                if (segment.right == null)
-                    continue;
-                FileUtils.clean(segment.right);
+                for (Segment segment : segments)
+                {
+                    if (segment.right == null)
+                        continue;
+                    FileUtils.clean(segment.right);
+                }
+                logger.debug("All segments have been unmapped successfully");
             }
-            logger.debug("All segments have been unmapped successfully");
-        }
-        catch (Exception e)
-        {
-            JVMStabilityInspector.inspectThrowable(e);
-            // This is not supposed to happen
-            logger.error("Error while unmapping segments", e);
+            catch (Exception e)
+            {
+                JVMStabilityInspector.inspectThrowable(e);
+                // This is not supposed to happen
+                logger.error("Error while unmapping segments", e);
+            }
         }
     }
 
@@ -131,7 +153,7 @@ public class MmappedSegmentedFile extends SegmentedFile
         public Builder()
         {
             super();
-            boundaries = new ArrayList<Long>();
+            boundaries = new ArrayList<>();
             boundaries.add(0L);
         }
 
@@ -161,31 +183,38 @@ public class MmappedSegmentedFile extends SegmentedFile
             }
         }
 
-        public SegmentedFile complete(String path, SSTableWriter.FinishType finishType)
+        public SegmentedFile complete(String path, long overrideLength, boolean isFinal)
         {
-            long length = new File(path).length();
+            assert !isFinal || overrideLength <= 0;
+            long length = overrideLength > 0 ? overrideLength : new File(path).length();
             // create the segments
-            return new MmappedSegmentedFile(path, length, createSegments(path));
+            return new MmappedSegmentedFile(path, length, createSegments(path, length));
         }
 
-        private Segment[] createSegments(String path)
+        private Segment[] createSegments(String path, long length)
         {
             RandomAccessFile raf;
-            long length;
             try
             {
                 raf = new RandomAccessFile(path, "r");
-                length = raf.length();
             }
             catch (IOException e)
             {
                 throw new RuntimeException(e);
             }
 
+            // if we're early finishing a range that doesn't span multiple segments, but the finished file now does,
+            // we remove these from the end (we loop incase somehow this spans multiple segments, but that would
+            // be a loco dataset
+            while (length < boundaries.get(boundaries.size() - 1))
+                boundaries.remove(boundaries.size() -1);
+
             // add a sentinel value == length
             List<Long> boundaries = new ArrayList<>(this.boundaries);
             if (length != boundaries.get(boundaries.size() - 1))
                 boundaries.add(length);
+
+
             int segcount = boundaries.size() - 1;
             Segment[] segments = new Segment[segcount];
 

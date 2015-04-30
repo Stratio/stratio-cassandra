@@ -50,7 +50,8 @@ public class LazilyCompactedRow extends AbstractCompactedRow
 {
     private final List<? extends OnDiskAtomIterator> rows;
     private final CompactionController controller;
-    private final long maxPurgeableTimestamp;
+    private boolean hasCalculatedMaxPurgeableTimestamp = false;
+    private long maxPurgeableTimestamp;
     private final ColumnFamily emptyColumnFamily;
     private ColumnStats columnStats;
     private boolean closed;
@@ -77,17 +78,27 @@ public class LazilyCompactedRow extends AbstractCompactedRow
                 maxRowTombstone = rowTombstone;
         }
 
-        // tombstones with a localDeletionTime before this can be purged.  This is the minimum timestamp for any sstable
-        // containing `key` outside of the set of sstables involved in this compaction.
-        maxPurgeableTimestamp = controller.maxPurgeableTimestamp(key);
-
         emptyColumnFamily = ArrayBackedSortedColumns.factory.create(controller.cfs.metadata);
         emptyColumnFamily.delete(maxRowTombstone);
-        if (maxRowTombstone.markedForDeleteAt < maxPurgeableTimestamp)
+        if (!maxRowTombstone.isLive() && maxRowTombstone.markedForDeleteAt < getMaxPurgeableTimestamp())
             emptyColumnFamily.purgeTombstones(controller.gcBefore);
 
         reducer = new Reducer();
         merger = Iterators.filter(MergeIterator.get(rows, emptyColumnFamily.getComparator().onDiskAtomComparator(), reducer), Predicates.notNull());
+    }
+
+    /**
+     * tombstones with a localDeletionTime before this can be purged.  This is the minimum timestamp for any sstable
+     * containing `key` outside of the set of sstables involved in this compaction.
+     */
+    private long getMaxPurgeableTimestamp()
+    {
+        if (!hasCalculatedMaxPurgeableTimestamp)
+        {
+            hasCalculatedMaxPurgeableTimestamp = true;
+            maxPurgeableTimestamp = controller.maxPurgeableTimestamp(key);
+        }
+        return maxPurgeableTimestamp;
     }
 
     private static void removeDeleted(ColumnFamily cf, boolean shouldPurge, DecoratedKey key, CompactionController controller)
@@ -145,18 +156,27 @@ public class LazilyCompactedRow extends AbstractCompactedRow
         // blindly updating everything wouldn't be correct
         DataOutputBuffer out = new DataOutputBuffer();
 
+        // initialize indexBuilder for the benefit of its tombstoneTracker, used by our reducing iterator
+        indexBuilder = new ColumnIndex.Builder(emptyColumnFamily, key.getKey(), out);
+
         try
         {
             DeletionTime.serializer.serialize(emptyColumnFamily.deletionInfo().getTopLevelDeletion(), out);
-            digest.update(out.getData(), 0, out.getLength());
+
+            // do not update digest in case of missing or purged row level tombstones, see CASSANDRA-8979
+            // - digest for non-empty rows needs to be updated with deletion in any case to match digest with versions before patch
+            // - empty rows must not update digest in case of LIVE delete status to avoid mismatches with non-existing rows
+            //   this will however introduce in return a digest mismatch for versions before patch (which would update digest in any case)
+            if (merger.hasNext() || emptyColumnFamily.deletionInfo().getTopLevelDeletion() != DeletionTime.LIVE)
+            {
+                digest.update(out.getData(), 0, out.getLength());
+            }
         }
         catch (IOException e)
         {
             throw new AssertionError(e);
         }
 
-        // initialize indexBuilder for the benefit of its tombstoneTracker, used by our reducing iterator
-        indexBuilder = new ColumnIndex.Builder(emptyColumnFamily, key.getKey(), out);
         while (merger.hasNext())
             merger.next().updateDigest(digest);
         close();
@@ -251,7 +271,7 @@ public class LazilyCompactedRow extends AbstractCompactedRow
                 RangeTombstone t = tombstone;
                 tombstone = null;
 
-                if (t.timestamp() < maxPurgeableTimestamp && t.data.isGcAble(controller.gcBefore))
+                if (t.timestamp() < getMaxPurgeableTimestamp() && t.data.isGcAble(controller.gcBefore))
                 {
                     indexBuilder.tombstoneTracker().update(t, true);
                     return null;
@@ -269,11 +289,13 @@ public class LazilyCompactedRow extends AbstractCompactedRow
             }
             else
             {
-                boolean shouldPurge = container.getSortedColumns().iterator().next().timestamp() < maxPurgeableTimestamp;
                 // when we clear() the container, it removes the deletion info, so this needs to be reset each time
                 container.delete(maxRowTombstone);
-                removeDeleted(container, shouldPurge, key, controller);
                 Iterator<Cell> iter = container.iterator();
+                Cell c = iter.next();
+                boolean shouldPurge = c.getLocalDeletionTime() < Integer.MAX_VALUE && c.timestamp() < getMaxPurgeableTimestamp();
+                removeDeleted(container, shouldPurge, key, controller);
+                iter = container.iterator();
                 if (!iter.hasNext())
                 {
                     // don't call clear() because that resets the deletion time. See CASSANDRA-7808.

@@ -57,11 +57,6 @@ public class SSTableLoader implements StreamEventHandler
     private final List<SSTableReader> sstables = new ArrayList<>();
     private final Multimap<InetAddress, StreamSession.SSTableStreamingSections> streamingDetails = HashMultimap.create();
 
-    static
-    {
-        Config.setClientMode(true);
-    }
-
     public SSTableLoader(File directory, Client client, OutputHandler outputHandler)
     {
         this(directory, client, outputHandler, 1);
@@ -209,8 +204,8 @@ public class SSTableLoader implements StreamEventHandler
     {
         for (SSTableReader sstable : sstables)
         {
-            sstable.sharedRef().release();
-            assert sstable.sharedRef().globalCount() == 0;
+            sstable.selfRef().release();
+            assert sstable.selfRef().globalCount() == 0;
         }
     }
 

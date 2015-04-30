@@ -119,7 +119,7 @@ public class SSTableSimpleUnsortedWriter extends AbstractSSTableSimpleWriter
 
         // We don't want to sync in writeRow() only as this might blow up the bufferSize for wide rows.
         if (currentSize > bufferSize)
-            sync();
+            replaceColumnFamily();
     }
 
     protected ColumnFamily getColumnFamily() throws IOException
@@ -148,43 +148,50 @@ public class SSTableSimpleUnsortedWriter extends AbstractSSTableSimpleWriter
     public void close() throws IOException
     {
         sync();
+        put(SENTINEL);
         try
         {
-            writeQueue.put(SENTINEL);
             diskWriter.join();
         }
         catch (InterruptedException e)
         {
             throw new RuntimeException(e);
         }
-
-        checkForWriterException();
     }
 
-    private void sync() throws IOException
+    // This is overridden by CQLSSTableWriter to hold off replacing column family until the next iteration through
+    protected void replaceColumnFamily() throws IOException
+    {
+        sync();
+    }
+
+    protected void sync() throws IOException
     {
         if (buffer.isEmpty())
             return;
 
+        columnFamily = null;
+        put(buffer);
+        buffer = new Buffer();
+        currentSize = 0;
+        columnFamily = getColumnFamily();
+    }
+
+    private void put(Buffer buffer) throws IOException
+    {
         while (true)
         {
             checkForWriterException();
-
-            columnFamily = null;
             try
             {
-                if (writeQueue.offer(buffer, 1L, TimeUnit.SECONDS))
+                if (writeQueue.offer(buffer, 1, TimeUnit.SECONDS))
                     break;
             }
             catch (InterruptedException e)
             {
                 throw new RuntimeException(e);
-
             }
         }
-        buffer = new Buffer();
-        currentSize = 0;
-        columnFamily = getColumnFamily();
     }
 
     private void checkForWriterException() throws IOException
