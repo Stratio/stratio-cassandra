@@ -18,12 +18,14 @@ package com.stratio.cassandra.index.schema.mapping;
 import com.google.common.base.Objects;
 import com.stratio.cassandra.index.schema.analysis.PreBuiltAnalyzers;
 import org.apache.cassandra.db.marshal.*;
-import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.SortedDocValuesField;
+import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
+import org.apache.lucene.util.BytesRef;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
@@ -34,42 +36,50 @@ import org.codehaus.jackson.annotate.JsonProperty;
  */
 public class ColumnMapperText extends ColumnMapperSingle<String> {
 
+    public static final String DEFAULT_ANALYZER = PreBuiltAnalyzers.DEFAULT.name();
+
     /** The Lucene {@link Analyzer} to be used. */
     private final String analyzer;
 
     /**
      * Builds a new {@link ColumnMapperText} using the specified Lucene {@link Analyzer}.
      *
+     * @param indexed  If the field supports searching.
+     * @param sorted   If the field supports sorting.
      * @param analyzer The Lucene {@link Analyzer} to be used.
      */
     @JsonCreator
-    public ColumnMapperText(@JsonProperty("analyzer") String analyzer) {
-        super(new AbstractType<?>[]{AsciiType.instance,
-                                    UTF8Type.instance,
-                                    Int32Type.instance,
-                                    LongType.instance,
-                                    IntegerType.instance,
-                                    FloatType.instance,
-                                    DoubleType.instance,
-                                    BooleanType.instance,
-                                    UUIDType.instance,
-                                    TimeUUIDType.instance,
-                                    TimestampType.instance,
-                                    BytesType.instance,
-                                    InetAddressType.instance}, new AbstractType[]{});
-        this.analyzer = analyzer == null ? PreBuiltAnalyzers.DEFAULT.name() : analyzer;
+    public ColumnMapperText(@JsonProperty("indexed") Boolean indexed,
+                            @JsonProperty("sorted") Boolean sorted,
+                            @JsonProperty("analyzer") String analyzer) {
+        super(indexed,
+              sorted,
+              AsciiType.instance,
+              UTF8Type.instance,
+              Int32Type.instance,
+              LongType.instance,
+              IntegerType.instance,
+              FloatType.instance,
+              DoubleType.instance,
+              BooleanType.instance,
+              UUIDType.instance,
+              TimeUUIDType.instance,
+              TimestampType.instance,
+              BytesType.instance,
+              InetAddressType.instance);
+        this.analyzer = analyzer == null ? DEFAULT_ANALYZER : analyzer;
 
     }
 
     /** {@inheritDoc} */
     @Override
-    public String analyzer() {
+    public String getAnalyzer() {
         return analyzer;
     }
 
     /** {@inheritDoc} */
     @Override
-    public String indexValue(String name, Object value) {
+    public String base(String name, Object value) {
         if (value == null) {
             return null;
         } else {
@@ -79,15 +89,19 @@ public class ColumnMapperText extends ColumnMapperSingle<String> {
 
     /** {@inheritDoc} */
     @Override
-    public String queryValue(String name, Object value) {
-        return indexValue(name, value);
+    public Field indexedField(String name, String value) {
+        return new TextField(name, value, STORE);
     }
 
     /** {@inheritDoc} */
     @Override
-    public Field field(String name, Object value) {
-        String text = indexValue(name, value);
-        return new TextField(name, text, STORE);
+    public Field sortedField(String name, String value, boolean isCollection) {
+        BytesRef bytes = new BytesRef(value);
+        if (isCollection) {
+            return new SortedSetDocValuesField(name, bytes);
+        } else {
+            return new SortedDocValuesField(name, bytes);
+        }
     }
 
     /** {@inheritDoc} */

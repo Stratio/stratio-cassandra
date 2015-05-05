@@ -41,7 +41,7 @@ public class PrefixConditionTest extends AbstractConditionTest {
     public void testString() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
-        map.put("name", new ColumnMapperString());
+        map.put("name", new ColumnMapperString(true, true, null));
         Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         PrefixCondition prefixCondition = new PrefixCondition(0.5f, "name", "tr");
@@ -59,7 +59,7 @@ public class PrefixConditionTest extends AbstractConditionTest {
     public void testInteger() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
-        map.put("name", new ColumnMapperInteger(1f));
+        map.put("name", new ColumnMapperInteger(null, null, 1f));
         Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         PrefixCondition prefixCondition = new PrefixCondition(0.5f, "name", "2*");
@@ -70,7 +70,7 @@ public class PrefixConditionTest extends AbstractConditionTest {
     public void testInetV4() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
-        map.put("name", new ColumnMapperInet());
+        map.put("name", new ColumnMapperInet(null, null));
         Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         PrefixCondition wildcardCondition = new PrefixCondition(0.5f, "name", "192.168.");
@@ -88,7 +88,7 @@ public class PrefixConditionTest extends AbstractConditionTest {
     public void testInetV6() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
-        map.put("name", new ColumnMapperInet());
+        map.put("name", new ColumnMapperInet(null, null));
         Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         PrefixCondition wildcardCondition = new PrefixCondition(0.5f, "name", "2001:db8:2de:0:0:0:0:e");

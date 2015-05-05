@@ -16,23 +16,18 @@
 package com.stratio.cassandra.index.schema.mapping;
 
 import com.google.common.base.Objects;
-import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.BooleanType;
 import org.apache.cassandra.db.marshal.UTF8Type;
-import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.StringField;
-import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
+import org.codehaus.jackson.annotate.JsonProperty;
 
 /**
  * A {@link ColumnMapper} to map a boolean field.
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ColumnMapperBoolean extends ColumnMapperSingle<String> {
+public class ColumnMapperBoolean extends ColumnMapperKeyword {
 
     /** The {@code String} representation of a true value. */
     private static final String TRUE = "true";
@@ -42,15 +37,18 @@ public class ColumnMapperBoolean extends ColumnMapperSingle<String> {
 
     /**
      * Builds a new {@link ColumnMapperBlob}.
+     *
+     * @param indexed If the field supports searching.
+     * @param sorted  If the field supports sorting.
      */
     @JsonCreator
-    public ColumnMapperBoolean() {
-        super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, BooleanType.instance}, new AbstractType[]{});
+    public ColumnMapperBoolean(@JsonProperty("indexed") Boolean indexed, @JsonProperty("sorted") Boolean sorted) {
+        super(indexed, sorted, AsciiType.instance, UTF8Type.instance, BooleanType.instance);
     }
 
     /** {@inheritDoc} */
     @Override
-    public String indexValue(String name, Object value) {
+    public String base(String name, Object value) {
         if (value == null) {
             return null;
         } else if (value instanceof Boolean) {
@@ -63,37 +61,8 @@ public class ColumnMapperBoolean extends ColumnMapperSingle<String> {
                 return FALSE;
             }
         }
-        throw new IllegalArgumentException();
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public String queryValue(String name, Object value) {
-        if (value == null) {
-            return null;
-        } else if (value instanceof Boolean) {
-            return (Boolean) value ? TRUE : FALSE;
-        } else {
-            return value.toString();
-        }
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Field field(String name, Object value) {
-        return new StringField(name, indexValue(name, value), STORE);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public SortField sortField(String field, boolean reverse) {
-        return new SortField(field, Type.STRING, reverse);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Class<String> baseClass() {
-        return String.class;
+        String message = String.format("Field \"%s\" requires a boolean, but found \"%s\"", name, value);
+        throw new IllegalArgumentException(message);
     }
 
     /** {@inheritDoc} */

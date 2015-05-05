@@ -16,7 +16,6 @@
 package com.stratio.cassandra.index.geospatial;
 
 import com.google.common.base.Objects;
-import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.lucene.spatial.query.SpatialOperation;
 import org.codehaus.jackson.annotate.JsonCreator;
 

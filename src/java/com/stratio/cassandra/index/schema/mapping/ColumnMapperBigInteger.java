@@ -16,13 +16,12 @@
 package com.stratio.cassandra.index.schema.mapping;
 
 import com.google.common.base.Objects;
-import org.apache.cassandra.db.marshal.*;
+import org.apache.cassandra.db.marshal.AsciiType;
+import org.apache.cassandra.db.marshal.Int32Type;
+import org.apache.cassandra.db.marshal.IntegerType;
+import org.apache.cassandra.db.marshal.LongType;
+import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.StringField;
-import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
@@ -33,7 +32,7 @@ import java.math.BigInteger;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ColumnMapperBigInteger extends ColumnMapperSingle<String> {
+public class ColumnMapperBigInteger extends ColumnMapperKeyword {
 
     /** The default max number of digits. */
     public static final int DEFAULT_DIGITS = 32;
@@ -47,15 +46,21 @@ public class ColumnMapperBigInteger extends ColumnMapperSingle<String> {
     /**
      * Builds a new {@link ColumnMapperBigDecimal} using the specified max number of digits.
      *
-     * @param digits The max number of digits. If {@code null}, the {@link #DEFAULT_DIGITS} will be used.
+     * @param indexed If the field supports searching.
+     * @param sorted  If the field supports sorting.
+     * @param digits  The max number of digits. If {@code null}, the {@link #DEFAULT_DIGITS} will be used.
      */
     @JsonCreator
-    public ColumnMapperBigInteger(@JsonProperty("digits") Integer digits) {
-        super(new AbstractType<?>[]{AsciiType.instance,
-                                    UTF8Type.instance,
-                                    Int32Type.instance,
-                                    LongType.instance,
-                                    IntegerType.instance}, new AbstractType[]{});
+    public ColumnMapperBigInteger(@JsonProperty("indexed") Boolean indexed,
+                                  @JsonProperty("sorted") Boolean sorted,
+                                  @JsonProperty("digits") Integer digits) {
+        super(indexed,
+              sorted,
+              AsciiType.instance,
+              UTF8Type.instance,
+              Int32Type.instance,
+              LongType.instance,
+              IntegerType.instance);
 
         if (digits != null && digits <= 0) {
             throw new IllegalArgumentException("Positive digits required");
@@ -79,7 +84,7 @@ public class ColumnMapperBigInteger extends ColumnMapperSingle<String> {
 
     /** {@inheritDoc} */
     @Override
-    public String indexValue(String name, Object value) {
+    public String base(String name, Object value) {
 
         // Check not null
         if (value == null) {
@@ -114,31 +119,6 @@ public class ColumnMapperBigInteger extends ColumnMapperSingle<String> {
      */
     public int getDigits() {
         return digits;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public String queryValue(String name, Object value) {
-        return indexValue(name, value);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Field field(String name, Object value) {
-        String string = indexValue(name, value);
-        return new StringField(name, string, STORE);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public SortField sortField(String field, boolean reverse) {
-        return new SortField(field, Type.STRING, reverse);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Class<String> baseClass() {
-        return String.class;
     }
 
     /** {@inheritDoc} */

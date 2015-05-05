@@ -19,8 +19,11 @@ import com.google.common.base.Objects;
 import com.stratio.cassandra.index.schema.Schema;
 import com.stratio.cassandra.util.JsonSerializer;
 import com.stratio.cassandra.util.Log;
-import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.ConstantScoreQuery;
+import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.Query;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 

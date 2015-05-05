@@ -148,7 +148,7 @@ Analyzer definition options depend on the analyzer type. Details and default val
 }
 ```
 
-Field definition options depend on the field type. Details and default values are listed in the table below.
+Field mapping definition options depend on the field type. Details and default values are listed in the table below.
 
 <table>
     <thead>
@@ -161,43 +161,197 @@ Field definition options depend on the field type. Details and default values ar
     </thead>
     <tbody>
     <tr>
-        <td>bigdec</td>
+        <td rowspan="4">bigdec</td>
+        <td>indexed</td>
+        <td>boolean</td>
+        <td>true</td>
+    </tr>
+    <tr>
+        <td>sorted</td>
+        <td>boolean</td>
+        <td>true</td>
+    </tr>
+    <tr>
         <td>integer_digits</td>
         <td>positive integer</td>
         <td>32</td>
     </tr>
     <tr>
-        <td></td>
         <td>decimal_digits</td>
         <td>positive integer</td>
         <td>32</td>
     </tr>
     <tr>
-        <td>bigint</td>
+        <td rowspan="3">bigint</td>
+        <td>indexed</td>
+        <td>boolean</td>
+        <td>true</td>
+    </tr>
+    <tr>
+        <td>sorted</td>
+        <td>boolean</td>
+        <td>true</td>
+    </tr>
+    <tr>
         <td>digits</td>
         <td>positive integer</td>
         <td>32</td>
     </tr>
     <tr>
-        <td>date</td>
+        <td rowspan="2">blob</td>
+        <td>indexed</td>
+        <td>boolean</td>
+        <td>true</td>
+    </tr>
+    <tr>
+        <td>sorted</td>
+        <td>boolean</td>
+        <td>true</td>
+    </tr>
+    <tr>
+        <td rowspan="2">boolean</td>
+        <td>indexed</td>
+        <td>boolean</td>
+        <td>true</td>
+    </tr>
+    <tr>
+        <td>sorted</td>
+        <td>boolean</td>
+        <td>true</td>
+    </tr>
+    <tr>
+        <td rowspan="3">date</td>
+        <td>indexed</td>
+        <td>boolean</td>
+        <td>true</td>
+    </tr>
+    <tr>
+        <td>sorted</td>
+        <td>boolean</td>
+        <td>true</td>
+    </tr>
+    <tr>
         <td>pattern</td>
         <td>date format (string)</td>
         <td>yyyy/MM/dd HH:mm:ss.SSS</td>
     </tr>
     <tr>
-        <td>double, float, integer, long</td>
+        <td rowspan="3">double</td>
+        <td>indexed</td>
+        <td>boolean</td>
+        <td>true</td>
+    </tr>
+    <tr>
+        <td>sorted</td>
+        <td>boolean</td>
+        <td>true</td>
+    </tr>
+    <tr>
         <td>boost</td>
         <td>float</td>
         <td>0.1f</td>
     </tr>
     <tr>
-        <td>text</td>
+        <td rowspan="3">float</td>
+        <td>indexed</td>
+        <td>boolean</td>
+        <td>true</td>
+    </tr>
+    <tr>
+        <td>sorted</td>
+        <td>boolean</td>
+        <td>true</td>
+    </tr>
+    <tr>
+        <td>boost</td>
+        <td>float</td>
+        <td>0.1f</td>
+    </tr>
+    <tr>
+        <td rowspan="2">inet</td>
+        <td>indexed</td>
+        <td>boolean</td>
+        <td>true</td>
+    </tr>
+    <tr>
+        <td>sorted</td>
+        <td>boolean</td>
+        <td>true</td>
+    </tr>
+    <tr>
+        <td rowspan="3">integer</td>
+        <td>indexed</td>
+        <td>boolean</td>
+        <td>true</td>
+    </tr>
+    <tr>
+        <td>sorted</td>
+        <td>boolean</td>
+        <td>true</td>
+    </tr>
+    <tr>
+        <td>boost</td>
+        <td>float</td>
+        <td>0.1f</td>
+    </tr>
+    <tr>
+        <td rowspan="3">long</td>
+        <td>indexed</td>
+        <td>boolean</td>
+        <td>true</td>
+    </tr>
+    <tr>
+        <td>sorted</td>
+        <td>boolean</td>
+        <td>true</td>
+    </tr>
+    <tr>
+        <td>boost</td>
+        <td>float</td>
+        <td>0.1f</td>
+    </tr>
+    <tr>
+        <td rowspan="2">string</td>
+        <td>indexed</td>
+        <td>boolean</td>
+        <td>true</td>
+    </tr>
+    <tr>
+        <td>sorted</td>
+        <td>boolean</td>
+        <td>true</td>
+    </tr>
+    <tr>
+        <td rowspan="3">text</td>
+        <td>indexed</td>
+        <td>boolean</td>
+        <td>true</td>
+    </tr>
+    <tr>
+        <td>sorted</td>
+        <td>boolean</td>
+        <td>true</td>
+    </tr>
+    <tr>
         <td>analyzer</td>
         <td>class name (string)</td>
         <td>default_analyzer of the schema</td>
     </tr>
+    <tr>
+        <td rowspan="2">uuid</td>
+        <td>indexed</td>
+        <td>boolean</td>
+        <td>true</td>
+    </tr>
+    <tr>
+        <td>sorted</td>
+        <td>boolean</td>
+        <td>true</td>
+    </tr>
     </tbody>
 </table>
+
+All mapping definitions has an “**indexed**” option indicating if the field is searchable. There is also a “**sorted**” option specifying if it is possible to sort rows by the corresponding field. Both fields are true by default, but they should be set to false when no needed in order to have a smaller and faster index. 
 
 Note that Cassandra allows one custom index per table. On the other hand, Cassandra does not allow a modify 
 operation on indexes. To modify an index it needs to be deleted first and created again.
@@ -229,19 +383,17 @@ WITH OPTIONS = {
         default_analyzer : "english",
         fields : {
             name   : {type     : "string"},
-            gender : {type     : "string"},
+            gender : {type     : "string", sorted: "false"},
             animal : {type     : "string"},
             age    : {type     : "integer"},
             food   : {type     : "string"},
             number : {type     : "integer"},
             bool   : {type     : "boolean"},
-            date   : {type     : "date",
-                      pattern  : "yyyy/MM/dd"},
-            mapz   : {type     : "string"},
-            setz   : {type     : "string"},
+            date   : {type     : "date", pattern  : "yyyy/MM/dd"},
+            mapz   : {type     : "string", sorted: "false"},
+            setz   : {type     : "string", sorted: "false"},
             listz  : {type     : "string"},
-            phrase : {type     : "text",
-                      analyzer : "my_custom_analyzer"}
+            phrase : {type     : "text", analyzer : "my_custom_analyzer"}
         }
     }'
 };

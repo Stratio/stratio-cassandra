@@ -23,11 +23,15 @@ import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.dht.Token.TokenFactory;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.FieldComparator;
+import org.apache.lucene.search.FieldComparatorSource;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.BytesRef;
 
 import java.io.IOException;
@@ -57,14 +61,15 @@ public class TokenMapperGeneric extends TokenMapper {
     public void addFields(Document document, DecoratedKey partitionKey) {
         ByteBuffer bb = factory.toByteArray(partitionKey.getToken());
         String serialized = ByteBufferUtils.toString(bb);
-        Field field = new StringField(FIELD_NAME, serialized, Store.YES);
-        document.add(field);
+        BytesRef bytesRef = new BytesRef(serialized);
+        document.add(new StringField(FIELD_NAME, serialized, Store.NO));
+        document.add(new SortedDocValuesField(FIELD_NAME, bytesRef));
     }
 
     /** {@inheritDoc} */
     @Override
     protected Query makeQuery(Token lower, Token upper, boolean includeLower, boolean includeUpper) {
-        return new TokenRangeQuery(lower, upper, includeLower, includeUpper, this);
+        return new TokenQuery(lower, upper, includeLower, includeUpper, this);
     }
 
     /** {@inheritDoc} */
@@ -84,7 +89,12 @@ public class TokenMapperGeneric extends TokenMapper {
                                                     int hits,
                                                     int sort,
                                                     boolean reversed) throws IOException {
-                return new TokenMapperGenericSorter(TokenMapperGeneric.this, hits, field);
+                return new FieldComparator.TermOrdValComparator(hits, field, false) {
+                    @Override
+                    public int compareValues(BytesRef val1, BytesRef val2) {
+                        return token(val1).compareTo(token(val2));
+                    }
+                };
             }
         })};
     }

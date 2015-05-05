@@ -40,7 +40,7 @@ public class PhraseConditionTest extends AbstractConditionTest {
     public void testPhraseQuery() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
-        map.put("name", new ColumnMapperBoolean());
+        map.put("name", new ColumnMapperBoolean(null, null));
         Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         List<String> values = new ArrayList<>();

@@ -24,14 +24,12 @@ import org.apache.cassandra.db.marshal.MapType;
 import org.apache.cassandra.db.marshal.ReversedType;
 import org.apache.cassandra.db.marshal.SetType;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
-import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.search.SortField;
 import org.codehaus.jackson.annotate.JsonSubTypes;
 import org.codehaus.jackson.annotate.JsonTypeInfo;
-
-import java.util.Set;
 
 /**
  * Class for mapping between Cassandra's columns and Lucene documents.
@@ -61,16 +59,50 @@ public abstract class ColumnMapper {
     /** The store field in Lucene default option. */
     static final Store STORE = Store.NO;
 
+    /** If the field must be indexed when no specified. */
+    static final boolean DEFAULT_INDEXED = true;
+
+    /** If the field must be sorted when no specified. */
+    static final boolean DEFAULT_SORTED = true;
+
+    /** If the field must be indexed. */
+    protected final Boolean indexed;
+
+    /** If the field must be sorted. */
+    protected final Boolean sorted;
+
     /** The supported Cassandra types for indexing. */
     private final AbstractType<?>[] supportedTypes;
 
     /**
      * Builds a new {@link ColumnMapper} supporting the specified types for indexing.
      *
+     * @param indexed        If the field supports searching.
+     * @param sorted         If the field supports sorting.
      * @param supportedTypes The supported Cassandra types for indexing.
      */
-    protected ColumnMapper(AbstractType<?>[] supportedTypes) {
+    protected ColumnMapper(Boolean indexed, Boolean sorted, AbstractType<?>... supportedTypes) {
+        this.indexed = indexed == null ? DEFAULT_INDEXED : indexed;
+        this.sorted = sorted == null ? DEFAULT_SORTED : sorted;
         this.supportedTypes = supportedTypes;
+    }
+
+    /**
+     * Returns {@code true} if the columns must be searchable, {@code false} otherwise.
+     *
+     * @return {@code true} if the columns must be searchable, {@code false} otherwise.
+     */
+    public boolean isIndexed() {
+        return indexed;
+    }
+
+    /**
+     * Returns {@code true} if the columns must be sortable, {@code false} otherwise.
+     *
+     * @return {@code true} if the columns must be sortable, {@code false} otherwise.
+     */
+    public boolean isSorted() {
+        return sorted;
     }
 
     /**
@@ -78,19 +110,25 @@ public abstract class ColumnMapper {
      *
      * @return The name of the used {@link Analyzer}.
      */
-    public String analyzer() {
+    public String getAnalyzer() {
         return KEYWORD_ANALYZER;
     }
 
     /**
-     * Returns the Lucene {@link Field}s resulting from the mapping of the specified {@link
-     * com.stratio.cassandra.index.schema.Column}.
+     * Adds to the specified {@link Document} the Lucene {@link Field}s resulting from the mapping of the specified
+     * {@link Column}.
      *
-     * @param column The name of the {@link com.stratio.cassandra.index.schema.Column}.
-     * @return The Lucene {@link Field}s resulting from the mapping of the specified {@link
-     * com.stratio.cassandra.index.schema.Column}.
+     * @param document The {@link Document} where the {@link Field} are going to be added.
+     * @param column   The name of the {@link Column}.
      */
-    public abstract Set<IndexableField> fields(Column column);
+    public final void addFields(Document document, Column column) {
+        String name = column.getFullName();
+        Object value = column.getComposedValue();
+        boolean isCollection = column.isCollection();
+        addFields(document, name, value, isCollection);
+    }
+
+    public abstract void addFields(Document document, String name, Object value, boolean isCollection);
 
     /**
      * Returns the {@link SortField} resulting from the mapping of the specified object.

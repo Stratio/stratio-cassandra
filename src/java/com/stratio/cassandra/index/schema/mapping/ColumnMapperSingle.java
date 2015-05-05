@@ -17,12 +17,8 @@ package com.stratio.cassandra.index.schema.mapping;
 
 import com.stratio.cassandra.index.schema.Column;
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.index.IndexableField;
-import org.apache.lucene.search.SortField;
-
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * Class for mapping between Cassandra's columns and Lucene documents.
@@ -31,54 +27,27 @@ import java.util.Set;
  */
 public abstract class ColumnMapperSingle<BASE> extends ColumnMapper {
 
-    /** The supported Cassandra types as clustering key. */
-    private final AbstractType<?>[] supportedClusteringTypes;
-
     /**
-     * Builds a new {@link ColumnMapperSingle} supporting the specified types for
-     * indexing and clustering.
+     * Builds a new {@link ColumnMapperSingle} supporting the specified types for indexing and clustering.
      *
-     * @param supportedTypes           The supported Cassandra types for indexing.
-     * @param supportedClusteringTypes The supported Cassandra types as clustering key.
+     * @param indexed        If the field supports searching.
+     * @param sorted         If the field supports sorting.
+     * @param supportedTypes The supported Cassandra types for indexing.
      */
-    ColumnMapperSingle(AbstractType<?>[] supportedTypes, AbstractType<?>[] supportedClusteringTypes) {
-        super(supportedTypes);
-        this.supportedClusteringTypes = supportedClusteringTypes;
+    ColumnMapperSingle(Boolean indexed, Boolean sorted, AbstractType<?>... supportedTypes) {
+        super(indexed, sorted, supportedTypes);
     }
 
-    /**
-     * Returns {@code true} if the specified Cassandra type/marshaller can be used as clustering key, {@code false}.
-     * otherwise.
-     *
-     * @param type A Cassandra type/marshaller.
-     * @return {@code true} if the specified Cassandra type/marshaller can be used as clustering key, {@code false}.
-     * otherwise.
-     */
-    public boolean supportsClustering(final AbstractType<?> type) {
-        for (AbstractType<?> supportedClusteringType : supportedClusteringTypes) {
-            if (type.getClass() == supportedClusteringType.getClass()) {
-                return true;
-            }
-        }
-        return false;
+    @Override
+    public final void addFields(Document document, String name, Object value, boolean isCollection) {
+        BASE base = base(name, value);
+        if (indexed) document.add(indexedField(name, base));
+        if (sorted) document.add(sortedField(name, base, isCollection));
     }
 
-    public Set<IndexableField> fields(Column column) {
-        Field field = field(column.getFullName(), column.getComposedValue());
-        Set<IndexableField> set = new HashSet<>();
-        set.add(field);
-        return set;
-    }
+    public abstract Field indexedField(String name, BASE value);
 
-    /**
-     * Returns the Lucene {@link Field} resulting from the mapping of {@code value}, using {@code name} as field's
-     * name.
-     *
-     * @param name  The name of the Lucene {@link Field}.
-     * @param value The value of the Lucene {@link Field}.
-     * @return The Lucene {@link Field} resulting from the mapping of {@code value}, using {@code name} as field's name.
-     */
-    public abstract Field field(String name, Object value);
+    public abstract Field sortedField(String name, BASE value, boolean isCollection);
 
     /**
      * Returns the Lucene type for this mapper.
@@ -88,34 +57,12 @@ public abstract class ColumnMapperSingle<BASE> extends ColumnMapper {
     public abstract Class<BASE> baseClass();
 
     /**
-     * Returns the {@link com.stratio.cassandra.index.schema.Column} index value resulting from the mapping of the
-     * specified object.
+     * Returns the {@link Column} query value resulting from the mapping of the specified object.
      *
      * @param field The field name.
      * @param value The object to be mapped.
-     * @return The {@link com.stratio.cassandra.index.schema.Column} index value resulting from the mapping of the
-     * specified object.
+     * @return The {@link Column} index value resulting from the mapping of the specified object.
      */
-    public abstract BASE indexValue(String field, Object value);
-
-    /**
-     * Returns the {@link com.stratio.cassandra.index.schema.Column} query value resulting from the mapping of the
-     * specified object.
-     *
-     * @param field The field name.
-     * @param value The object to be mapped.
-     * @return The {@link com.stratio.cassandra.index.schema.Column} index value resulting from the mapping of the
-     * specified object.
-     */
-    public abstract BASE queryValue(String field, Object value);
-
-    /**
-     * Returns the {@link org.apache.lucene.search.SortField} resulting from the mapping of the specified object.
-     *
-     * @param field   The field name.
-     * @param reverse If the sort must be reversed.
-     * @return The {@link org.apache.lucene.search.SortField} resulting from the mapping of the specified object.
-     */
-    public abstract SortField sortField(String field, boolean reverse);
+    public abstract BASE base(String field, Object value);
 
 }

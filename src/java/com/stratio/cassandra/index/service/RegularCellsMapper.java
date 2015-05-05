@@ -101,12 +101,12 @@ public class RegularCellsMapper {
                     case SET: {
                         AbstractType<?> type = collectionType.nameComparator();
                         ByteBuffer value = cellName.collectionElement();
-                        columns.add(Column.fromDecomposed(name, value, type));
+                        columns.add(Column.fromDecomposed(name, value, type, true));
                         break;
                     }
                     case LIST: {
                         AbstractType<?> type = collectionType.valueComparator();
-                        columns.add(Column.fromDecomposed(name, cellValue, type));
+                        columns.add(Column.fromDecomposed(name, cellValue, type, true));
                         break;
                     }
                     case MAP: {
@@ -114,12 +114,12 @@ public class RegularCellsMapper {
                         ByteBuffer keyValue = cellName.collectionElement();
                         AbstractType<?> keyType = collectionType.nameComparator();
                         String nameSufix = keyType.compose(keyValue).toString();
-                        columns.add(Column.fromDecomposed(name, nameSufix, cellValue, type));
+                        columns.add(Column.fromDecomposed(name, nameSufix, cellValue, type, true));
                         break;
                     }
                 }
             } else {
-                columns.add(Column.fromDecomposed(name, cellValue, valueType));
+                columns.add(Column.fromDecomposed(name, cellValue, valueType, false));
             }
         }
 

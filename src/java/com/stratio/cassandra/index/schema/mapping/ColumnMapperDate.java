@@ -16,10 +16,18 @@
 package com.stratio.cassandra.index.schema.mapping;
 
 import com.google.common.base.Objects;
-import org.apache.cassandra.db.marshal.*;
-import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.cassandra.db.marshal.AsciiType;
+import org.apache.cassandra.db.marshal.DecimalType;
+import org.apache.cassandra.db.marshal.DoubleType;
+import org.apache.cassandra.db.marshal.FloatType;
+import org.apache.cassandra.db.marshal.Int32Type;
+import org.apache.cassandra.db.marshal.IntegerType;
+import org.apache.cassandra.db.marshal.LongType;
+import org.apache.cassandra.db.marshal.TimestampType;
+import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.LongField;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
@@ -49,21 +57,30 @@ public class ColumnMapperDate extends ColumnMapperSingle<Long> {
     /**
      * Builds a new {@link ColumnMapperDate} using the specified pattern.
      *
+     * @param indexed If the field supports searching.
+     * @param sorted  If the field supports sorting.
      * @param pattern The {@link SimpleDateFormat} pattern to be used.
      */
     @JsonCreator
-    public ColumnMapperDate(@JsonProperty("pattern") String pattern) {
-        super(new AbstractType<?>[]{AsciiType.instance,
-                                    UTF8Type.instance,
-                                    Int32Type.instance,
-                                    LongType.instance,
-                                    IntegerType.instance,
-                                    FloatType.instance,
-                                    DoubleType.instance,
-                                    DecimalType.instance,
-                                    TimestampType.instance},
-              new AbstractType[]{LongType.instance, TimestampType.instance});
+    public ColumnMapperDate(@JsonProperty("indexed") Boolean indexed,
+                            @JsonProperty("sorted") Boolean sorted,
+                            @JsonProperty("pattern") String pattern) {
+        super(indexed,
+              sorted,
+              AsciiType.instance,
+              UTF8Type.instance,
+              Int32Type.instance,
+              LongType.instance,
+              IntegerType.instance,
+              FloatType.instance,
+              DoubleType.instance,
+              DecimalType.instance,
+              TimestampType.instance);
         this.pattern = pattern == null ? DEFAULT_PATTERN : pattern;
+
+        // Validate pattern
+        new SimpleDateFormat(this.pattern);
+
         concurrentDateFormat = new ThreadLocal<DateFormat>() {
             @Override
             protected DateFormat initialValue() {
@@ -72,9 +89,13 @@ public class ColumnMapperDate extends ColumnMapperSingle<Long> {
         };
     }
 
+    public String getPattern() {
+        return pattern;
+    }
+
     /** {@inheritDoc} */
     @Override
-    public Long indexValue(String name, Object value) {
+    public Long base(String name, Object value) {
         if (value == null) {
             return null;
         } else if (value instanceof Date) {
@@ -85,23 +106,27 @@ public class ColumnMapperDate extends ColumnMapperSingle<Long> {
             try {
                 return concurrentDateFormat.get().parse(value.toString()).getTime();
             } catch (ParseException e) {
-                throw new IllegalArgumentException(e);
+                throw new IllegalArgumentException(String.format(
+                        "Field \"%s\" requires a date with format \"%s\", but found \"%s\"",
+                        name,
+                        DEFAULT_PATTERN,
+                        value));
             }
-        } else {
-            throw new IllegalArgumentException();
         }
+        String message = String.format("Field \"%s\" requires a date, but found \"%s\"", name, value);
+        throw new IllegalArgumentException(message);
     }
 
     /** {@inheritDoc} */
     @Override
-    public Long queryValue(String name, Object value) {
-        return indexValue(name, value);
+    public Field indexedField(String name, Long value) {
+        return new LongField(name, value, STORE);
     }
 
     /** {@inheritDoc} */
     @Override
-    public Field field(String name, Object value) {
-        return new LongField(name, indexValue(name, value), STORE);
+    public Field sortedField(String name, Long value, boolean isCollection) {
+        return new NumericDocValuesField(name, value);
     }
 
     /** {@inheritDoc} */

@@ -44,7 +44,6 @@ import org.apache.lucene.analysis.util.CharArraySet;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
-import java.io.Reader;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -104,8 +103,8 @@ public class SnowballAnalyzerBuilder extends AnalyzerBuilder {
      */
     private static Analyzer buildAnalyzer(final String language, final CharArraySet stopwords) {
         return new Analyzer() {
-            protected TokenStreamComponents createComponents(String field, Reader reader) {
-                final Tokenizer source = new StandardTokenizer(reader);
+            protected TokenStreamComponents createComponents(String fieldName) {
+                final Tokenizer source = new StandardTokenizer();
                 TokenStream result = new StandardFilter(source);
                 result = new LowerCaseFilter(result);
                 result = new StopFilter(result, stopwords);

@@ -18,7 +18,13 @@ package com.stratio.cassandra.index.query;
 import com.stratio.cassandra.index.query.builder.RangeConditionBuilder;
 import com.stratio.cassandra.index.query.builder.SearchBuilder;
 import com.stratio.cassandra.index.schema.Schema;
-import com.stratio.cassandra.index.schema.mapping.*;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapper;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperDouble;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperFloat;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperInet;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperInteger;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperLong;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperString;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.search.NumericRangeQuery;
 import org.apache.lucene.search.Query;
@@ -40,7 +46,7 @@ public class RangeConditionTest extends AbstractConditionTest {
     public void testStringClose() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
-        map.put("name", new ColumnMapperBoolean());
+        map.put("name", new ColumnMapperString(null, null, null));
         Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         RangeCondition rangeCondition = new RangeCondition(0.5f, "name", "alpha", "beta", true, true);
@@ -60,7 +66,7 @@ public class RangeConditionTest extends AbstractConditionTest {
     public void testStringOpen() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
-        map.put("name", new ColumnMapperBoolean());
+        map.put("name", new ColumnMapperString(null, null, null));
         Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         RangeCondition rangeCondition = new RangeCondition(0.5f, "name", "alpha", null, true, false);
@@ -81,7 +87,7 @@ public class RangeConditionTest extends AbstractConditionTest {
     public void testIntegerClose() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
-        map.put("name", new ColumnMapperInteger(1f));
+        map.put("name", new ColumnMapperInteger(null, null, 1f));
         Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         RangeCondition rangeCondition = new RangeCondition(0.5f, "name", 42, 43, false, false);
@@ -101,7 +107,7 @@ public class RangeConditionTest extends AbstractConditionTest {
     public void testIntegerOpen() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
-        map.put("name", new ColumnMapperInteger(1f));
+        map.put("name", new ColumnMapperInteger(null, null, 1f));
         Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         RangeCondition rangeCondition = new RangeCondition(0.5f, "name", 42, null, true, false);
@@ -121,7 +127,7 @@ public class RangeConditionTest extends AbstractConditionTest {
     public void testLongClose() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
-        map.put("name", new ColumnMapperLong(1f));
+        map.put("name", new ColumnMapperLong(true, true, 1f));
         Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         RangeCondition rangeCondition = new RangeCondition(0.5f, "name", 42L, 43, false, false);
@@ -141,7 +147,7 @@ public class RangeConditionTest extends AbstractConditionTest {
     public void testLongOpen() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
-        map.put("name", new ColumnMapperLong(1f));
+        map.put("name", new ColumnMapperLong(true, true, 1f));
         Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         RangeCondition rangeCondition = new RangeCondition(0.5f, "name", 42f, null, true, false);
@@ -161,7 +167,7 @@ public class RangeConditionTest extends AbstractConditionTest {
     public void testFloatClose() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
-        map.put("name", new ColumnMapperFloat(1f));
+        map.put("name", new ColumnMapperFloat(null, null, 1f));
         Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         RangeCondition rangeCondition = new RangeCondition(0.5f, "name", 42.42D, 43.42F, false, false);
@@ -181,7 +187,7 @@ public class RangeConditionTest extends AbstractConditionTest {
     public void testFloatOpen() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
-        map.put("name", new ColumnMapperFloat(1f));
+        map.put("name", new ColumnMapperFloat(null, null, 1f));
         Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         RangeCondition rangeCondition = new RangeCondition(0.5f, "name", 42.42f, null, true, false);
@@ -201,7 +207,7 @@ public class RangeConditionTest extends AbstractConditionTest {
     public void testDoubleClose() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
-        map.put("name", new ColumnMapperDouble(1f));
+        map.put("name", new ColumnMapperDouble(null, null, 1f));
         Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         RangeCondition rangeCondition = new RangeCondition(0.5f, "name", 42.42D, 43.42D, false, false);
@@ -221,7 +227,7 @@ public class RangeConditionTest extends AbstractConditionTest {
     public void testDoubleOpen() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
-        map.put("name", new ColumnMapperDouble(1f));
+        map.put("name", new ColumnMapperDouble(null, null, 1f));
         Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         RangeCondition rangeCondition = new RangeCondition(0.5f, "name", 42.42D, null, true, false);
@@ -241,7 +247,7 @@ public class RangeConditionTest extends AbstractConditionTest {
     public void testInetV4() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
-        map.put("name", new ColumnMapperInet());
+        map.put("name", new ColumnMapperInet(null, null));
         Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         RangeCondition rangeCondition = new RangeCondition(0.5f, "name", "192.168.0.01", "192.168.0.045", true, true);
@@ -261,7 +267,7 @@ public class RangeConditionTest extends AbstractConditionTest {
     public void testInetV6() {
 
         Map<String, ColumnMapper> map = new HashMap<>();
-        map.put("name", new ColumnMapperInet());
+        map.put("name", new ColumnMapperInet(null, null));
         Schema mappers = new Schema(map, null, EnglishAnalyzer.class.getName());
 
         RangeCondition rangeCondition = range("name").boost(0.5f)

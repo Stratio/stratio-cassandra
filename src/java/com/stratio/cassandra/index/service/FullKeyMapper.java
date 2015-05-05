@@ -88,7 +88,8 @@ public class FullKeyMapper {
      */
     public void addFields(Document document, DecoratedKey partitionKey, CellName clusteringKey) {
         ByteBuffer fullKey = byteBuffer(partitionKey, clusteringKey);
-        Field field = new StringField(FIELD_NAME, ByteBufferUtils.toString(fullKey), Store.NO);
+        String string = ByteBufferUtils.toString(fullKey);
+        Field field = new StringField(FIELD_NAME, string, Store.NO);
         document.add(field);
     }
 

@@ -20,9 +20,10 @@ import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.dht.Murmur3Partitioner;
 import org.apache.cassandra.dht.Token;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.LongField;
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.search.NumericRangeQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SortField;
@@ -36,6 +37,16 @@ import org.apache.lucene.search.SortField;
 public class TokenMapperMurmur extends TokenMapper {
 
     private static final String FIELD_NAME = "_token_murmur"; // The Lucene field name
+    private static final FieldType FIELD_TYPE = new FieldType();
+
+    static {
+        FIELD_TYPE.setTokenized(true);
+        FIELD_TYPE.setOmitNorms(true);
+        FIELD_TYPE.setIndexOptions(IndexOptions.DOCS);
+        FIELD_TYPE.setNumericType(FieldType.NumericType.LONG);
+        FIELD_TYPE.setDocValuesType(DocValuesType.NUMERIC);
+        FIELD_TYPE.freeze();
+    }
 
     /**
      * Builds a new {@link TokenMapperMurmur} using the specified {@link CFMetaData}.
@@ -50,8 +61,7 @@ public class TokenMapperMurmur extends TokenMapper {
     @Override
     public void addFields(Document document, DecoratedKey partitionKey) {
         Long value = (Long) partitionKey.getToken().getTokenValue();
-        Field tokenField = new LongField(FIELD_NAME, value, Store.NO);
-        document.add(tokenField);
+        document.add(new LongField(FIELD_NAME, value, FIELD_TYPE));
     }
 
     /** {@inheritDoc} */

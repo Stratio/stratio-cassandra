@@ -17,17 +17,12 @@ package com.stratio.cassandra.index.schema.mapping;
 
 import com.google.common.base.Objects;
 import com.stratio.cassandra.util.ByteBufferUtils;
-import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.BytesType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.utils.Hex;
-import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.StringField;
-import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
+import org.codehaus.jackson.annotate.JsonProperty;
 
 import java.nio.ByteBuffer;
 
@@ -36,19 +31,22 @@ import java.nio.ByteBuffer;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ColumnMapperBlob extends ColumnMapperSingle<String> {
+public class ColumnMapperBlob extends ColumnMapperKeyword {
 
     /**
      * Builds a new {@link ColumnMapperBlob}.
+     *
+     * @param indexed If the field supports searching.
+     * @param sorted  If the field supports sorting.
      */
     @JsonCreator
-    public ColumnMapperBlob() {
-        super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, BytesType.instance}, new AbstractType[]{});
+    public ColumnMapperBlob(@JsonProperty("indexed") Boolean indexed, @JsonProperty("sorted") Boolean sorted) {
+        super(indexed, sorted, AsciiType.instance, UTF8Type.instance, BytesType.instance);
     }
 
     /** {@inheritDoc} */
     @Override
-    public String indexValue(String name, Object value) {
+    public String base(String name, Object value) {
         if (value == null) {
             return null;
         } else if (value instanceof ByteBuffer) {
@@ -65,35 +63,6 @@ public class ColumnMapperBlob extends ColumnMapperSingle<String> {
         } else {
             throw new IllegalArgumentException(String.format("Value '%s' cannot be cast to byte array", value));
         }
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public String queryValue(String name, Object value) {
-        if (value == null) {
-            return null;
-        } else {
-            return value.toString().toLowerCase().replaceFirst("0x", "");
-        }
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Field field(String name, Object value) {
-        String string = indexValue(name, value);
-        return new StringField(name, string, STORE);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public SortField sortField(String field, boolean reverse) {
-        return new SortField(field, Type.STRING, reverse);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Class<String> baseClass() {
-        return String.class;
     }
 
     /** {@inheritDoc} */

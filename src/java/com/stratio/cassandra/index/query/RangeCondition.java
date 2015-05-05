@@ -16,9 +16,8 @@
 package com.stratio.cassandra.index.query;
 
 import com.google.common.base.Objects;
-import com.stratio.cassandra.index.schema.mapping.ColumnMapperSingle;
 import com.stratio.cassandra.index.schema.Schema;
-import org.apache.commons.lang3.builder.ToStringBuilder;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperSingle;
 import org.apache.lucene.search.NumericRangeQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermRangeQuery;
@@ -104,8 +103,8 @@ public class RangeCondition extends SingleFieldCondition {
         Class<?> clazz = columnMapper.baseClass();
         Query query;
         if (clazz == String.class) {
-            String lower = (String) columnMapper.queryValue(field, this.lower);
-            String upper = (String) columnMapper.queryValue(field, this.upper);
+            String lower = (String) columnMapper.base(field, this.lower);
+            String upper = (String) columnMapper.base(field, this.upper);
             if (lower != null) {
                 lower = analyze(field, lower, schema);
             }
@@ -114,20 +113,20 @@ public class RangeCondition extends SingleFieldCondition {
             }
             query = TermRangeQuery.newStringRange(field, lower, upper, includeLower, includeUpper);
         } else if (clazz == Integer.class) {
-            Integer lower = (Integer) columnMapper.queryValue(field, this.lower);
-            Integer upper = (Integer) columnMapper.queryValue(field, this.upper);
+            Integer lower = (Integer) columnMapper.base(field, this.lower);
+            Integer upper = (Integer) columnMapper.base(field, this.upper);
             query = NumericRangeQuery.newIntRange(field, lower, upper, includeLower, includeUpper);
         } else if (clazz == Long.class) {
-            Long lower = (Long) columnMapper.queryValue(field, this.lower);
-            Long upper = (Long) columnMapper.queryValue(field, this.upper);
+            Long lower = (Long) columnMapper.base(field, this.lower);
+            Long upper = (Long) columnMapper.base(field, this.upper);
             query = NumericRangeQuery.newLongRange(field, lower, upper, includeLower, includeUpper);
         } else if (clazz == Float.class) {
-            Float lower = (Float) columnMapper.queryValue(field, this.lower);
-            Float upper = (Float) columnMapper.queryValue(field, this.upper);
+            Float lower = (Float) columnMapper.base(field, this.lower);
+            Float upper = (Float) columnMapper.base(field, this.upper);
             query = NumericRangeQuery.newFloatRange(field, lower, upper, includeLower, includeUpper);
         } else if (clazz == Double.class) {
-            Double lower = (Double) columnMapper.queryValue(field, this.lower);
-            Double upper = (Double) columnMapper.queryValue(field, this.upper);
+            Double lower = (Double) columnMapper.base(field, this.lower);
+            Double upper = (Double) columnMapper.base(field, this.upper);
             query = NumericRangeQuery.newDoubleRange(field, lower, upper, includeLower, includeUpper);
         } else {
             String message = String.format("Range queries are not supported by %s mapper", clazz.getSimpleName());

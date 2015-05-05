@@ -17,7 +17,11 @@
 package com.stratio.cassandra.contrib;
 
 import java.io.Serializable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * <p> A ComparatorChain is a Comparator that wraps one or more Comparators in sequence. The ComparatorChain calls each

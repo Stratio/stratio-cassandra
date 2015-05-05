@@ -16,10 +16,17 @@
 package com.stratio.cassandra.index.schema.mapping;
 
 import com.google.common.base.Objects;
-import org.apache.cassandra.db.marshal.*;
-import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.cassandra.db.marshal.AsciiType;
+import org.apache.cassandra.db.marshal.DecimalType;
+import org.apache.cassandra.db.marshal.DoubleType;
+import org.apache.cassandra.db.marshal.FloatType;
+import org.apache.cassandra.db.marshal.Int32Type;
+import org.apache.cassandra.db.marshal.IntegerType;
+import org.apache.cassandra.db.marshal.LongType;
+import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntField;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
@@ -41,55 +48,61 @@ public class ColumnMapperInteger extends ColumnMapperSingle<Integer> {
     /**
      * Builds a new {@link ColumnMapperInteger} using the specified boost.
      *
-     * @param boost The boost to be used.
+     * @param indexed If the field supports searching.
+     * @param sorted  If the field supports sorting.
+     * @param boost   The boost to be used.
      */
     @JsonCreator
-    public ColumnMapperInteger(@JsonProperty("boost") Float boost) {
-        super(new AbstractType<?>[]{AsciiType.instance,
-                                    UTF8Type.instance,
-                                    Int32Type.instance,
-                                    LongType.instance,
-                                    IntegerType.instance,
-                                    FloatType.instance,
-                                    DoubleType.instance,
-                                    DecimalType.instance}, new AbstractType[]{Int32Type.instance});
+    public ColumnMapperInteger(@JsonProperty("indexed") Boolean indexed,
+                               @JsonProperty("sorted") Boolean sorted,
+                               @JsonProperty("boost") Float boost) {
+        super(indexed,
+              sorted,
+              AsciiType.instance,
+              UTF8Type.instance,
+              Int32Type.instance,
+              LongType.instance,
+              IntegerType.instance,
+              FloatType.instance,
+              DoubleType.instance,
+              DecimalType.instance);
         this.boost = boost == null ? DEFAULT_BOOST : boost;
+    }
+
+    public Float getBoost() {
+        return boost;
     }
 
     /** {@inheritDoc} */
     @Override
-    public Integer indexValue(String name, Object value) {
+    public Integer base(String name, Object value) {
         if (value == null) {
             return null;
         } else if (value instanceof Number) {
             return ((Number) value).intValue();
         } else if (value instanceof String) {
-            String svalue = (String) value;
             try {
-                return Double.valueOf(svalue).intValue();
+                return Double.valueOf((String) value).intValue();
             } catch (NumberFormatException e) {
-                String message = String.format("Field %s requires a base 10 integer, but found \"%s\"", name, svalue);
-                throw new IllegalArgumentException(message);
+                // Ignore to fail below
             }
-        } else {
-            String message = String.format("Field %s requires a base 10 integer, but found \"%s\"", name, value);
-            throw new IllegalArgumentException(message);
         }
+        String message = String.format("Field \"%s\" requires an integer, but found \"%s\"", name, value);
+        throw new IllegalArgumentException(message);
     }
 
     /** {@inheritDoc} */
     @Override
-    public Integer queryValue(String name, Object value) {
-        return indexValue(name, value);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Field field(String name, Object value) {
-        Integer number = indexValue(name, value);
-        Field field = new IntField(name, number, STORE);
+    public Field indexedField(String name, Integer value) {
+        IntField field = new IntField(name, value, STORE);
         field.setBoost(boost);
         return field;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Field sortedField(String name, Integer value, boolean isCollection) {
+        return new NumericDocValuesField(name, value);
     }
 
     /** {@inheritDoc} */

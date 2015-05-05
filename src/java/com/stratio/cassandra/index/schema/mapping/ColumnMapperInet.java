@@ -17,16 +17,11 @@ package com.stratio.cassandra.index.schema.mapping;
 
 import com.google.common.base.Objects;
 import com.stratio.cassandra.util.Log;
-import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.InetAddressType;
 import org.apache.cassandra.db.marshal.UTF8Type;
-import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.StringField;
-import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
+import org.codehaus.jackson.annotate.JsonProperty;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -37,26 +32,30 @@ import java.util.regex.Pattern;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ColumnMapperInet extends ColumnMapperSingle<String> {
+public class ColumnMapperInet extends ColumnMapperKeyword {
 
     private static final Pattern IPV4_PATTERN = Pattern.compile(
             "(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])");
+
     private static final Pattern IPV6_PATTERN = Pattern.compile("^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$");
+
     private static final Pattern IPV6_COMPRESSED_PATTERN = Pattern.compile(
             "^((?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4})*)?)::((?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4})*)?)$");
 
     /**
      * Builds a new {@link ColumnMapperInet}.
+     *
+     * @param indexed If the field supports searching.
+     * @param sorted  If the field supports sorting.
      */
     @JsonCreator
-    public ColumnMapperInet() {
-        super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance, InetAddressType.instance},
-              new AbstractType[]{});
+    public ColumnMapperInet(@JsonProperty("indexed") Boolean indexed, @JsonProperty("sorted") Boolean sorted) {
+        super(indexed, sorted, AsciiType.instance, UTF8Type.instance, InetAddressType.instance);
     }
 
     /** {@inheritDoc} */
     @Override
-    public String indexValue(String name, Object value) {
+    public String base(String name, Object value) {
         if (value == null) {
             return null;
         } else if (value instanceof InetAddress) {
@@ -75,50 +74,6 @@ public class ColumnMapperInet extends ColumnMapperSingle<String> {
             }
         }
         throw new IllegalArgumentException(String.format("Value '%s' cannot be cast to InetAddress", value));
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public String queryValue(String name, Object value) {
-        if (value == null) {
-            return null;
-        } else if (value instanceof InetAddress) {
-            InetAddress inetAddress = (InetAddress) value;
-            return inetAddress.getHostAddress();
-        } else if (value instanceof String) {
-            String svalue = (String) value;
-            if (IPV4_PATTERN.matcher(svalue).matches() ||
-                IPV6_PATTERN.matcher(svalue).matches() ||
-                IPV6_COMPRESSED_PATTERN.matcher(svalue).matches()) {
-                try {
-                    return InetAddress.getByName(svalue).getHostAddress();
-                } catch (UnknownHostException e) {
-                    Log.error(e, e.getMessage());
-                }
-            } else {
-                return svalue;
-            }
-        }
-        throw new IllegalArgumentException(String.format("Value '%s' cannot be cast to InetAddress", value));
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Field field(String name, Object value) {
-        String string = indexValue(name, value);
-        return new StringField(name, string, STORE);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public SortField sortField(String field, boolean reverse) {
-        return new SortField(field, Type.STRING, reverse);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Class<String> baseClass() {
-        return String.class;
     }
 
     /** {@inheritDoc} */

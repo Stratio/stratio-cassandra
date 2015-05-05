@@ -27,9 +27,9 @@ public class SchemaTest {
 
         Map<String, ColumnMapper> columnMappers = new HashMap<>();
 
-        ColumnMapperString columnMapper1 = new ColumnMapperString();
-        ColumnMapperString columnMapper2 = new ColumnMapperString();
-        ColumnMapperString columnMapper3 = new ColumnMapperString();
+        ColumnMapperString columnMapper1 = new ColumnMapperString(true, true, null);
+        ColumnMapperString columnMapper2 = new ColumnMapperString(true, true, null);
+        ColumnMapperString columnMapper3 = new ColumnMapperString(true, true, null);
 
         columnMappers.put("a", columnMapper1);
         columnMappers.put("a.b", columnMapper2);
@@ -61,6 +61,27 @@ public class SchemaTest {
         Analyzer analyzer = schema.getDefaultAnalyzer();
         Assert.assertEquals(PreBuiltAnalyzers.DEFAULT.get(), analyzer);
         schema.close();
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testGetAnalyzerNotExistent() {
+        Map<String, ColumnMapper> columnMappers = new HashMap<>();
+        Schema schema = new Schema(columnMappers, null, "English");
+        schema.getAnalyzer("custom");
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testGetAnalyzerNull() {
+        Map<String, ColumnMapper> columnMappers = new HashMap<>();
+        Schema schema = new Schema(columnMappers, null, "English");
+        schema.getAnalyzer(null);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testGetAnalyzerEmpty() {
+        Map<String, ColumnMapper> columnMappers = new HashMap<>();
+        Schema schema = new Schema(columnMappers, null, "English");
+        schema.getAnalyzer(" \t");
     }
 
     @Test
@@ -95,11 +116,11 @@ public class SchemaTest {
 
         ColumnMapper spanishMapper = schema.getMapper("spanish_text");
         Assert.assertTrue(spanishMapper instanceof ColumnMapperText);
-        Assert.assertEquals("spanish_analyzer", spanishMapper.analyzer());
+        Assert.assertEquals("spanish_analyzer", spanishMapper.getAnalyzer());
 
         ColumnMapper snowballMapper = schema.getMapper("snowball_text");
         Assert.assertTrue(snowballMapper instanceof ColumnMapperText);
-        Assert.assertEquals("snowball_analyzer", snowballMapper.analyzer());
+        Assert.assertEquals("snowball_analyzer", snowballMapper.getAnalyzer());
 
         schema.close();
     }
@@ -130,11 +151,11 @@ public class SchemaTest {
 
         ColumnMapper spanishMapper = schema.getMapper("spanish_text");
         Assert.assertTrue(spanishMapper instanceof ColumnMapperText);
-        Assert.assertEquals(SpanishAnalyzer.class.getName(), spanishMapper.analyzer());
+        Assert.assertEquals(SpanishAnalyzer.class.getName(), spanishMapper.getAnalyzer());
 
         ColumnMapper snowballMapper = schema.getMapper("snowball_text");
         Assert.assertTrue(snowballMapper instanceof ColumnMapperText);
-        Assert.assertEquals(EnglishAnalyzer.class.getName(), snowballMapper.analyzer());
+        Assert.assertEquals(EnglishAnalyzer.class.getName(), snowballMapper.getAnalyzer());
 
         schema.close();
     }
@@ -164,11 +185,11 @@ public class SchemaTest {
 
         ColumnMapper spanishMapper = schema.getMapper("spanish_text");
         Assert.assertTrue(spanishMapper instanceof ColumnMapperText);
-        Assert.assertEquals(SpanishAnalyzer.class.getName(), spanishMapper.analyzer());
+        Assert.assertEquals(SpanishAnalyzer.class.getName(), spanishMapper.getAnalyzer());
 
         ColumnMapper snowballMapper = schema.getMapper("snowball_text");
         Assert.assertTrue(snowballMapper instanceof ColumnMapperText);
-        Assert.assertEquals(EnglishAnalyzer.class.getName(), snowballMapper.analyzer());
+        Assert.assertEquals(EnglishAnalyzer.class.getName(), snowballMapper.getAnalyzer());
 
         schema.close();
     }

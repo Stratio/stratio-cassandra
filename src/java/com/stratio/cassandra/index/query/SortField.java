@@ -17,11 +17,10 @@ package com.stratio.cassandra.index.query;
 
 import com.google.common.base.Objects;
 import com.stratio.cassandra.index.schema.Column;
-import com.stratio.cassandra.index.schema.mapping.ColumnMapper;
 import com.stratio.cassandra.index.schema.Columns;
 import com.stratio.cassandra.index.schema.Schema;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapper;
 import org.apache.cassandra.db.marshal.AbstractType;
-import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 

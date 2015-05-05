@@ -19,17 +19,21 @@ import com.stratio.cassandra.util.Log;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.index.*;
-import org.apache.lucene.index.sorter.EarlyTerminatingSortingCollector;
-import org.apache.lucene.index.sorter.SortingMergePolicy;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.SortingMergePolicy;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.index.TieredMergePolicy;
+import org.apache.lucene.index.TrackingIndexWriter;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.NRTCachingDirectory;
-import org.apache.lucene.util.Version;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -54,6 +58,7 @@ public class LuceneIndex {
     private IndexWriter indexWriter;
     private SearcherManager searcherManager;
     private ControlledRealTimeReopenThread<IndexSearcher> searcherReopener;
+    private SortingMergePolicy sortingMergePolicy;
 
     private Sort sort;
 
@@ -104,15 +109,17 @@ public class LuceneIndex {
             file = new File(path);
 
             // Open or create directory
-            FSDirectory fsDirectory = FSDirectory.open(file);
+            FSDirectory fsDirectory = FSDirectory.open(Paths.get(path));
             directory = new NRTCachingDirectory(fsDirectory, maxMergeMB, maxCachedMB);
 
+            sortingMergePolicy = new SortingMergePolicy(new TieredMergePolicy(), sort);
+
             // Setup index writer
-            IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_48, analyzer);
+            IndexWriterConfig config = new IndexWriterConfig(analyzer);
             config.setRAMBufferSizeMB(ramBufferMB);
             config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
             config.setUseCompoundFile(true);
-            config.setMergePolicy(new SortingMergePolicy(config.getMergePolicy(), sort));
+            config.setMergePolicy(sortingMergePolicy);
             indexWriter = new IndexWriter(directory, config);
 
             // Setup NRT search
@@ -289,8 +296,8 @@ public class LuceneIndex {
         if (sort == null) {
             if (!usesRelevance) {
                 FieldDoc start = after == null ? null : (FieldDoc) after;
-                TopFieldCollector tfc = TopFieldCollector.create(this.sort, count, start, true, false, false, false);
-                Collector collector = new EarlyTerminatingSortingCollector(tfc, this.sort, count);
+                TopFieldCollector tfc = TopFieldCollector.create(this.sort, count, start, true, false, false);
+                Collector collector = new EarlyTerminatingSortingCollector(tfc, this.sort, count, sortingMergePolicy);
                 searcher.search(query, collector);
                 return tfc.topDocs();
             } else {

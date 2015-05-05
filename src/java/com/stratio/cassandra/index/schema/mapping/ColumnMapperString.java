@@ -17,11 +17,6 @@ package com.stratio.cassandra.index.schema.mapping;
 
 import com.google.common.base.Objects;
 import org.apache.cassandra.db.marshal.*;
-import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.StringField;
-import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
@@ -30,7 +25,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  *
  * @author Andres de la Pena <adelapena@stratio.com>
  */
-public class ColumnMapperString extends ColumnMapperSingle<String> {
+public class ColumnMapperString extends ColumnMapperKeyword {
 
     /** The default case sensitive option. */
     public static final boolean DEFAULT_CASE_SENSITIVE = true;
@@ -41,67 +36,45 @@ public class ColumnMapperString extends ColumnMapperSingle<String> {
     /**
      * Builds a new {@link ColumnMapperString}.
      *
+     * @param indexed       If the field supports searching.
+     * @param sorted        If the field supports sorting.
      * @param caseSensitive If the getAnalyzer must be case sensitive.
      */
     @JsonCreator
-    public ColumnMapperString(@JsonProperty("case_sensitive") Boolean caseSensitive) {
-        super(new AbstractType<?>[]{AsciiType.instance,
-                                    UTF8Type.instance,
-                                    Int32Type.instance,
-                                    LongType.instance,
-                                    IntegerType.instance,
-                                    FloatType.instance,
-                                    DoubleType.instance,
-                                    BooleanType.instance,
-                                    UUIDType.instance,
-                                    TimeUUIDType.instance,
-                                    TimestampType.instance,
-                                    BytesType.instance,
-                                    InetAddressType.instance}, new AbstractType[]{UTF8Type.instance});
+    public ColumnMapperString(@JsonProperty("indexed") Boolean indexed,
+                              @JsonProperty("sorted") Boolean sorted,
+                              @JsonProperty("case_sensitive") Boolean caseSensitive) {
+        super(indexed,
+              sorted,
+              AsciiType.instance,
+              UTF8Type.instance,
+              Int32Type.instance,
+              LongType.instance,
+              IntegerType.instance,
+              FloatType.instance,
+              DoubleType.instance,
+              BooleanType.instance,
+              UUIDType.instance,
+              TimeUUIDType.instance,
+              TimestampType.instance,
+              BytesType.instance,
+              InetAddressType.instance);
         this.caseSensitive = caseSensitive == null ? DEFAULT_CASE_SENSITIVE : caseSensitive;
     }
 
-    /**
-     * Builds a new {@link ColumnMapperString} using {@link #DEFAULT_CASE_SENSITIVE}.
-     */
-    public ColumnMapperString() {
-        this(DEFAULT_CASE_SENSITIVE);
+    public boolean isCaseSensitive() {
+        return caseSensitive;
     }
 
     /** {@inheritDoc} */
     @Override
-    public String indexValue(String name, Object value) {
+    public String base(String name, Object value) {
         if (value == null) {
             return null;
         } else {
             String string = value.toString();
             return caseSensitive ? string : string.toLowerCase();
         }
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public String queryValue(String name, Object value) {
-        return indexValue(name, value);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Field field(String name, Object value) {
-        String string = indexValue(name, value);
-        return new StringField(name, string, STORE);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public SortField sortField(String field, boolean reverse) {
-        return new SortField(field, Type.STRING, reverse);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Class<String> baseClass() {
-        return String.class;
     }
 
     /** {@inheritDoc} */

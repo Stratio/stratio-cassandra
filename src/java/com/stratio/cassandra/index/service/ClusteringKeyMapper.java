@@ -34,6 +34,7 @@ import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.FieldComparatorSource;
@@ -109,8 +110,9 @@ public class ClusteringKeyMapper {
      */
     public final void addFields(Document document, CellName cellName) {
         String serializedKey = ByteBufferUtils.toString(cellName.toByteBuffer());
-        Field field = new StringField(FIELD_NAME, serializedKey, Field.Store.YES);
-        document.add(field);
+        BytesRef bytesRef = new BytesRef(serializedKey);
+        document.add(new StringField(FIELD_NAME, serializedKey, Field.Store.YES));
+        document.add(new SortedDocValuesField(FIELD_NAME, bytesRef));
     }
 
     /**
@@ -154,7 +156,7 @@ public class ClusteringKeyMapper {
             components[i] = cellName.get(i);
         }
         components[numClusteringColumns] = ByteBufferUtil.EMPTY_BYTE_BUFFER;
-        return cellNameType.makeCellName((Object[])components);
+        return cellNameType.makeCellName((Object[]) components);
     }
 
     protected final boolean isStatic(CellName cellName) {
@@ -265,7 +267,7 @@ public class ClusteringKeyMapper {
                     ColumnDefinition columnDefinition = metadata.clusteringColumns().get(i);
                     String name = columnDefinition.name.toString();
                     AbstractType<?> valueType = columnDefinition.type;
-                    columns.add(Column.fromDecomposed(name, value, valueType));
+                    columns.add(Column.fromDecomposed(name, value, valueType, false));
                 }
             }
         }
@@ -330,7 +332,14 @@ public class ClusteringKeyMapper {
                                                     int hits,
                                                     int sort,
                                                     boolean reversed) throws IOException {
-                return new ClusteringKeySorter(ClusteringKeyMapper.this, hits, field);
+                return new FieldComparator.TermOrdValComparator(hits, field, false) {
+                    @Override
+                    public int compareValues(BytesRef val1, BytesRef val2) {
+                        CellName bb1 = clusteringKey(val1);
+                        CellName bb2 = clusteringKey(val2);
+                        return cellNameType.compare(bb1, bb2);
+                    }
+                };
             }
         })};
     }

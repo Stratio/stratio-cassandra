@@ -18,11 +18,11 @@ package com.stratio.cassandra.index.geospatial;
 import com.google.common.base.Objects;
 import com.spatial4j.core.context.SpatialContext;
 import com.spatial4j.core.shape.Shape;
-import com.stratio.cassandra.index.schema.Column;
 import com.stratio.cassandra.index.schema.mapping.ColumnMapper;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.UTF8Type;
+import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
@@ -33,11 +33,8 @@ import org.apache.lucene.spatial.prefix.tree.SpatialPrefixTree;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * A {@link ColumnMapper} to map geographical shapes.
@@ -58,20 +55,21 @@ public class GeoShapeMapper extends ColumnMapper {
      * Builds a new {@link GeoShapeMapper}.
      */
     @JsonCreator
-    public GeoShapeMapper(@JsonProperty("max_levels") Integer maxLevels) {
-        super(new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance});
+    public GeoShapeMapper(@JsonProperty("indexed") Boolean indexed,
+                          @JsonProperty("sorted") Boolean sorted,
+                          @JsonProperty("max_levels") Integer maxLevels) {
+        super(indexed, sorted, new AbstractType<?>[]{AsciiType.instance, UTF8Type.instance});
         this.maxLevels = maxLevels == null ? DEFAULT_MAX_LEVELS : maxLevels;
         this.grid = new GeohashPrefixTree(spatialContext, this.maxLevels);
     }
 
-    public Set<IndexableField> fields(Column column) {
-        String fieldName = column.getFullName();
-        SpatialStrategy strategy = getStrategy(fieldName);
-        GeoShape geoShape = GeoShape.fromJson((String) column.getComposedValue());
+    public void addFields(Document document, String name, Object value, boolean isCollection) {
+        SpatialStrategy strategy = getStrategy(name);
+        GeoShape geoShape = GeoShape.fromJson((String) value);
         Shape shape = geoShape.toSpatial4j(spatialContext);
-        Set<IndexableField> fields = new HashSet<>();
-        Collections.addAll(fields, strategy.createIndexableFields(shape));
-        return fields;
+        for (IndexableField field : strategy.createIndexableFields(shape)) {
+            document.add(field);
+        }
     }
 
     public SpatialStrategy getStrategy(String fieldName) {

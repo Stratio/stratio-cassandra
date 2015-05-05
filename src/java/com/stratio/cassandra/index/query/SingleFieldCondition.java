@@ -15,8 +15,8 @@
  */
 package com.stratio.cassandra.index.query;
 
-import com.stratio.cassandra.index.schema.mapping.ColumnMapperSingle;
 import com.stratio.cassandra.index.schema.Schema;
+import com.stratio.cassandra.index.schema.mapping.ColumnMapperSingle;
 
 /**
  * The abstract base class for queries.

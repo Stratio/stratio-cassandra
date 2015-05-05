@@ -16,10 +16,18 @@
 package com.stratio.cassandra.index.schema.mapping;
 
 import com.google.common.base.Objects;
-import org.apache.cassandra.db.marshal.*;
-import org.apache.commons.lang3.builder.ToStringBuilder;
+import com.stratio.cassandra.util.Log;
+import org.apache.cassandra.db.marshal.AsciiType;
+import org.apache.cassandra.db.marshal.DecimalType;
+import org.apache.cassandra.db.marshal.DoubleType;
+import org.apache.cassandra.db.marshal.FloatType;
+import org.apache.cassandra.db.marshal.Int32Type;
+import org.apache.cassandra.db.marshal.IntegerType;
+import org.apache.cassandra.db.marshal.LongType;
+import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.lucene.document.DoubleField;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
 import org.codehaus.jackson.annotate.JsonCreator;
@@ -33,7 +41,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
 public class ColumnMapperDouble extends ColumnMapperSingle<Double> {
 
     /** The default boost. */
-    public static final Float DEFAULT_BOOST = 1.0f;
+    public static final float DEFAULT_BOOST = 1.0f;
 
     /** The boost. */
     private final Float boost;
@@ -41,55 +49,61 @@ public class ColumnMapperDouble extends ColumnMapperSingle<Double> {
     /**
      * Builds a new {@link ColumnMapperDouble} using the specified boost.
      *
-     * @param boost The boost to be used.
+     * @param indexed If the field supports searching.
+     * @param sorted  If the field supports sorting.
+     * @param boost   The boost to be used.
      */
     @JsonCreator
-    public ColumnMapperDouble(@JsonProperty("boost") Float boost) {
-        super(new AbstractType<?>[]{AsciiType.instance,
-                                    UTF8Type.instance,
-                                    Int32Type.instance,
-                                    LongType.instance,
-                                    IntegerType.instance,
-                                    FloatType.instance,
-                                    DoubleType.instance,
-                                    DecimalType.instance}, new AbstractType[]{DoubleType.instance});
+    public ColumnMapperDouble(@JsonProperty("indexed") Boolean indexed,
+                              @JsonProperty("sorted") Boolean sorted,
+                              @JsonProperty("boost") Float boost) {
+        super(indexed,
+              sorted,
+              AsciiType.instance,
+              UTF8Type.instance,
+              Int32Type.instance,
+              LongType.instance,
+              IntegerType.instance,
+              FloatType.instance,
+              DoubleType.instance,
+              DecimalType.instance);
         this.boost = boost == null ? DEFAULT_BOOST : boost;
+    }
+
+    public float getBoost() {
+        return boost;
     }
 
     /** {@inheritDoc} */
     @Override
-    public Double indexValue(String name, Object value) {
+    public Double base(String name, Object value) {
         if (value == null) {
             return null;
         } else if (value instanceof Number) {
             return ((Number) value).doubleValue();
         } else if (value instanceof String) {
-            String svalue = (String) value;
             try {
-                return Double.valueOf(svalue);
+                return Double.valueOf((String) value);
             } catch (NumberFormatException e) {
-                String message = String.format("Field %s requires a base 10 double, but found \"%s\"", name, svalue);
-                throw new IllegalArgumentException(message);
+                Log.error(e, e.getMessage());
             }
-        } else {
-            String message = String.format("Field %s requires a base 10 double, but found \"%s\"", name, value);
-            throw new IllegalArgumentException(message);
         }
+        String message = String.format("Field \"%s\" requires a double, but found \"%s\"", name, value);
+        throw new IllegalArgumentException(message);
     }
 
     /** {@inheritDoc} */
     @Override
-    public Double queryValue(String name, Object value) {
-        return indexValue(name, value);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Field field(String name, Object value) {
-        Double number = indexValue(name, value);
-        Field field = new DoubleField(name, number, STORE);
+    public Field indexedField(String name, Double value) {
+        DoubleField field = new DoubleField(name, value, STORE);
         field.setBoost(boost);
         return field;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Field sortedField(String name, Double value, boolean isCollection) {
+        return new NumericDocValuesField(name, Double.doubleToLongBits(value));
     }
 
     /** {@inheritDoc} */

@@ -20,7 +20,6 @@ import com.stratio.cassandra.index.geospatial.GeoDistanceCondition;
 import com.stratio.cassandra.index.geospatial.GeoDistanceRangeCondition;
 import com.stratio.cassandra.index.geospatial.GeoShapeCondition;
 import com.stratio.cassandra.index.schema.Schema;
-import com.stratio.cassandra.index.schema.analysis.Analysis;
 import com.stratio.cassandra.index.schema.analysis.AnalysisUtils;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.search.Filter;

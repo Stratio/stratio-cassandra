@@ -148,7 +148,7 @@ public class PartitionKeyMapper {
             int position = columnDefinition.position();
             ByteBuffer value = components[position];
             AbstractType<?> valueType = rawKeyType.getComponents().get(position);
-            columns.add(Column.fromDecomposed(name, value, valueType));
+            columns.add(Column.fromDecomposed(name, value, valueType, false));
         }
         return columns;
     }

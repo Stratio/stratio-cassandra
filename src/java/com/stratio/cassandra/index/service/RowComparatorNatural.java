@@ -51,6 +51,7 @@ public class RowComparatorNatural implements RowComparator {
 
     /**
      * Builds a new {@link RowComparatorNatural} to be used with wide rows tables.
+     *
      * @param clusteringKeyMapper The used {@link ClusteringKeyMapper}.
      */
     public RowComparatorNatural(final ClusteringKeyMapper clusteringKeyMapper) {
