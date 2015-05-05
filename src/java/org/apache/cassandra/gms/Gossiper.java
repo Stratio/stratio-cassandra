@@ -29,6 +29,7 @@ import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.Uninterruptibles;
 
 import org.apache.cassandra.utils.Pair;
@@ -48,8 +49,6 @@ import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.JVMStabilityInspector;
-
-import com.google.common.collect.ImmutableList;
 
 /**
  * This module is responsible for Gossiping information for the local endpoint. This abstraction
@@ -73,6 +72,11 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
     static final ApplicationState[] STATES = ApplicationState.values();
     static final List<String> DEAD_STATES = Arrays.asList(VersionedValue.REMOVING_TOKEN, VersionedValue.REMOVED_TOKEN,
                                                           VersionedValue.STATUS_LEFT, VersionedValue.HIBERNATE);
+    static ArrayList<String> SILENT_SHUTDOWN_STATES = new ArrayList<>();
+    static {
+        SILENT_SHUTDOWN_STATES.addAll(DEAD_STATES);
+        SILENT_SHUTDOWN_STATES.add(VersionedValue.STATUS_BOOTSTRAPPING);
+    }
 
     private ScheduledFuture<?> scheduledGossipTask;
     private static final ReentrantLock taskLock = new ReentrantLock();
@@ -303,6 +307,20 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
             return 0L;
     }
 
+    private boolean isShutdown(InetAddress endpoint)
+    {
+        EndpointState epState = endpointStateMap.get(endpoint);
+        if (epState == null)
+            return false;
+        if (epState.getApplicationState(ApplicationState.STATUS) == null)
+            return false;
+        String value = epState.getApplicationState(ApplicationState.STATUS).value;
+        String[] pieces = value.split(VersionedValue.DELIMITER_STR, -1);
+        assert (pieces.length > 0);
+        String state = pieces[0];
+        return state.equals(VersionedValue.SHUTDOWN);
+    }
+
     /**
      * This method is part of IFailureDetectionEventListener interface. This is invoked
      * by the Failure Detector when it convicts an end point.
@@ -314,12 +332,31 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         EndpointState epState = endpointStateMap.get(endpoint);
         if (epState == null)
             return;
-        if (epState.isAlive() && !isDeadState(epState))
+        if (isShutdown(endpoint) && epState.isAlive())
+        {
+            markAsShutdown(endpoint);
+        }
+        else if (epState.isAlive() && !isDeadState(epState))
         {
             markDead(endpoint, epState);
         }
         else
             epState.markDead();
+    }
+
+    /**
+     * This method is used to mark a node as shutdown; that is it gracefully exited on its own and told us about it
+     * @param endpoint endpoint that has shut itself down
+     */
+    protected void markAsShutdown(InetAddress endpoint)
+    {
+        EndpointState epState = endpointStateMap.get(endpoint);
+        if (epState == null)
+            return;
+        epState.addApplicationState(ApplicationState.STATUS, StorageService.instance.valueFactory.shutdown(true));
+        epState.getHeartBeatState().forceHighestPossibleVersionUnsafe();
+        markDead(endpoint, epState);
+        FailureDetector.instance.forceConviction(endpoint);
     }
 
     /**
@@ -900,13 +937,14 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
                 realMarkAlive(addr, localState);
             }
         };
+
         MessagingService.instance().sendRR(echoMessage, addr, echoHandler);
     }
 
     private void realMarkAlive(final InetAddress addr, final EndpointState localState)
     {
         if (logger.isTraceEnabled())
-                logger.trace("marking as alive {}", addr);
+            logger.trace("marking as alive {}", addr);
         localState.markAlive();
         localState.updateTimestamp(); // prevents doStatusCheck from racing us and evicting if it was down > aVeryLongTime
         liveEndpoints.add(addr);
@@ -917,7 +955,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         for (IEndpointStateChangeSubscriber subscriber : subscribers)
             subscriber.onAlive(addr, localState);
         if (logger.isTraceEnabled())
-                logger.trace("Notified " + subscribers);
+            logger.trace("Notified " + subscribers);
     }
 
     private void markDead(InetAddress addr, EndpointState localState)
@@ -942,9 +980,10 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
      */
     private void handleMajorStateChange(InetAddress ep, EndpointState epState)
     {
+        EndpointState localEpState = endpointStateMap.get(ep);
         if (!isDeadState(epState))
         {
-            if (endpointStateMap.get(ep) != null)
+            if (localEpState != null)
                 logger.info("Node {} has restarted, now UP", ep);
             else
                 logger.info("Node {} is now part of the cluster", ep);
@@ -953,9 +992,11 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
             logger.trace("Adding endpoint state for " + ep);
         endpointStateMap.put(ep, epState);
 
-        // the node restarted: it is up to the subscriber to take whatever action is necessary
-        for (IEndpointStateChangeSubscriber subscriber : subscribers)
-            subscriber.onRestart(ep, epState);
+        if (localEpState != null)
+        {   // the node restarted: it is up to the subscriber to take whatever action is necessary
+            for (IEndpointStateChangeSubscriber subscriber : subscribers)
+                subscriber.onRestart(ep, localEpState);
+        }
 
         if (!isDeadState(epState))
             markAlive(ep, epState);
@@ -966,6 +1007,9 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         }
         for (IEndpointStateChangeSubscriber subscriber : subscribers)
             subscriber.onJoin(ep, epState);
+        // check this at the end so nodes will learn about the endpoint
+        if (isShutdown(ep))
+            markAsShutdown(ep);
     }
 
     public boolean isDeadState(EndpointState epState)
@@ -977,6 +1021,22 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         assert (pieces.length > 0);
         String state = pieces[0];
         for (String deadstate : DEAD_STATES)
+        {
+            if (state.equals(deadstate))
+                return true;
+        }
+        return false;
+    }
+
+    public boolean isSilentShutdownState(EndpointState epState)
+    {
+        if (epState.getApplicationState(ApplicationState.STATUS) == null)
+            return false;
+        String value = epState.getApplicationState(ApplicationState.STATUS).value;
+        String[] pieces = value.split(VersionedValue.DELIMITER_STR, -1);
+        assert (pieces.length > 0);
+        String state = pieces[0];
+        for (String deadstate : SILENT_SHUTDOWN_STATES)
         {
             if (state.equals(deadstate))
                 return true;
@@ -1000,6 +1060,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
 
             EndpointState localEpStatePtr = endpointStateMap.get(ep);
             EndpointState remoteState = entry.getValue();
+
             /*
                 If state does not exist just add it. If it does then add it if the remote generation is greater.
                 If there is a generation tie, attempt to break it by heartbeat version.
@@ -1035,6 +1096,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
                     }
                     else if (logger.isTraceEnabled())
                             logger.trace("Ignoring remote version " + remoteMaxVersion + " <= " + localMaxVersion + " for " + ep);
+
                     if (!localEpStatePtr.isAlive() && !isDeadState(localEpStatePtr)) // unless of course, it was dead
                         markAlive(ep, localEpStatePtr);
                 }
@@ -1270,6 +1332,12 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         endpointStateMap.putIfAbsent(FBUtilities.getBroadcastAddress(), localState);
     }
 
+    public void forceNewerGeneration()
+    {
+        EndpointState epstate = endpointStateMap.get(FBUtilities.getBroadcastAddress());
+        epstate.getHeartBeatState().forceNewerGenerationUnsafe();
+    }
+
 
     /**
      * Add an endpoint we knew about previously, but whose state is unknown
@@ -1336,13 +1404,20 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
 
     public void stop()
     {
-    	if (scheduledGossipTask != null)
-    		scheduledGossipTask.cancel(false);
-        logger.info("Announcing shutdown");
-        Uninterruptibles.sleepUninterruptibly(intervalInMillis * 2, TimeUnit.MILLISECONDS);
-        MessageOut message = new MessageOut(MessagingService.Verb.GOSSIP_SHUTDOWN);
-        for (InetAddress ep : liveEndpoints)
-            MessagingService.instance().sendOneWay(message, ep);
+        EndpointState mystate = endpointStateMap.get(FBUtilities.getBroadcastAddress());
+        if (mystate != null && !isSilentShutdownState(mystate))
+        {
+            logger.info("Announcing shutdown");
+            addLocalApplicationState(ApplicationState.STATUS, StorageService.instance.valueFactory.shutdown(true));
+            MessageOut message = new MessageOut(MessagingService.Verb.GOSSIP_SHUTDOWN);
+            for (InetAddress ep : liveEndpoints)
+                MessagingService.instance().sendOneWay(message, ep);
+            Uninterruptibles.sleepUninterruptibly(Integer.getInteger("cassandra.shutdown_announce_in_ms", 2000), TimeUnit.MILLISECONDS);
+        }
+        else
+            logger.warn("No local state or state is in silent shutdown, not announcing shutdown");
+        if (scheduledGossipTask != null)
+            scheduledGossipTask.cancel(false);
     }
 
     public boolean isEnabled()

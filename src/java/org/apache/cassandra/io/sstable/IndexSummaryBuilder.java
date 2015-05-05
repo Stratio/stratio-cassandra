@@ -17,33 +17,72 @@
  */
 package org.apache.cassandra.io.sstable;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collections;
+import java.nio.ByteOrder;
+import java.util.Map;
+import java.util.TreeMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.cassandra.cache.RefCountedMemory;
 import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.TypeSizes;
 import org.apache.cassandra.dht.IPartitioner;
+import org.apache.cassandra.io.util.Memory;
+import org.apache.cassandra.io.util.SafeMemoryWriter;
 
 import static org.apache.cassandra.io.sstable.Downsampling.BASE_SAMPLING_LEVEL;
-import static org.apache.cassandra.io.sstable.SSTable.getMinimalKey;
 
-public class IndexSummaryBuilder
+public class IndexSummaryBuilder implements AutoCloseable
 {
     private static final Logger logger = LoggerFactory.getLogger(IndexSummaryBuilder.class);
 
-    private final ArrayList<Long> positions;
-    private final ArrayList<DecoratedKey> keys;
+    // the offset in the keys memory region to look for a given summary boundary
+    private final SafeMemoryWriter offsets;
+    private final SafeMemoryWriter entries;
+
     private final int minIndexInterval;
     private final int samplingLevel;
     private final int[] startPoints;
     private long keysWritten = 0;
     private long indexIntervalMatches = 0;
-    private long offheapSize = 0;
+    private long nextSamplePosition;
+
+    // for each ReadableBoundary, we map its dataLength property to itself, permitting us to lookup the
+    // last readable boundary from the perspective of the data file
+    // [data file position limit] => [ReadableBoundary]
+    private TreeMap<Long, ReadableBoundary> lastReadableByData = new TreeMap<>();
+    // for each ReadableBoundary, we map its indexLength property to itself, permitting us to lookup the
+    // last readable boundary from the perspective of the index file
+    // [index file position limit] => [ReadableBoundary]
+    private TreeMap<Long, ReadableBoundary> lastReadableByIndex = new TreeMap<>();
+    // the last synced data file position
+    private long dataSyncPosition;
+    // the last synced index file position
+    private long indexSyncPosition;
+
+    // the last summary interval boundary that is fully readable in both data and index files
+    private ReadableBoundary lastReadableBoundary;
+
+    /**
+     * Represents a boundary that is guaranteed fully readable in the summary, index file and data file.
+     * The key contained is the last key readable if the index and data files have been flushed to the
+     * stored lengths.
+     */
+    public static class ReadableBoundary
+    {
+        final DecoratedKey lastKey;
+        final long indexLength;
+        final long dataLength;
+        final int summaryCount;
+        final long entriesLength;
+        public ReadableBoundary(DecoratedKey lastKey, long indexLength, long dataLength, int summaryCount, long entriesLength)
+        {
+            this.lastKey = lastKey;
+            this.indexLength = indexLength;
+            this.dataLength = dataLength;
+            this.summaryCount = summaryCount;
+            this.entriesLength = entriesLength;
+        }
+    }
 
     public IndexSummaryBuilder(long expectedKeys, int minIndexInterval, int samplingLevel)
     {
@@ -67,109 +106,137 @@ public class IndexSummaryBuilder
         }
 
         // for initializing data structures, adjust our estimates based on the sampling level
-        maxExpectedEntries = (maxExpectedEntries * samplingLevel) / BASE_SAMPLING_LEVEL;
-        positions = new ArrayList<>((int)maxExpectedEntries);
-        keys = new ArrayList<>((int)maxExpectedEntries);
+        maxExpectedEntries = Math.max(1, (maxExpectedEntries * samplingLevel) / BASE_SAMPLING_LEVEL);
+        offsets = new SafeMemoryWriter(4 * maxExpectedEntries).withByteOrder(ByteOrder.nativeOrder());
+        entries = new SafeMemoryWriter(40 * maxExpectedEntries).withByteOrder(ByteOrder.nativeOrder());
+
+        // the summary will always contain the first index entry (downsampling will never remove it)
+        nextSamplePosition = 0;
+        indexIntervalMatches++;
     }
 
-    // finds the last (-offset) decorated key that can be guaranteed to occur fully in the index file before the provided file position
-    public DecoratedKey getMaxReadableKey(long position, int offset)
+    // the index file has been flushed to the provided position; stash it and use that to recalculate our max readable boundary
+    public void markIndexSynced(long upToPosition)
     {
-        int i = Collections.binarySearch(positions, position);
-        if (i < 0)
+        indexSyncPosition = upToPosition;
+        refreshReadableBoundary();
+    }
+
+    // the data file has been flushed to the provided position; stash it and use that to recalculate our max readable boundary
+    public void markDataSynced(long upToPosition)
+    {
+        dataSyncPosition = upToPosition;
+        refreshReadableBoundary();
+    }
+
+    private void refreshReadableBoundary()
+    {
+        // grab the readable boundary prior to the given position in either the data or index file
+        Map.Entry<?, ReadableBoundary> byData = lastReadableByData.floorEntry(dataSyncPosition);
+        Map.Entry<?, ReadableBoundary> byIndex = lastReadableByIndex.floorEntry(indexSyncPosition);
+        if (byData == null || byIndex == null)
+            return;
+
+        // take the lowest of the two, and stash it
+        lastReadableBoundary = byIndex.getValue().indexLength < byData.getValue().indexLength
+                               ? byIndex.getValue() : byData.getValue();
+
+        // clear our data prior to this, since we no longer need it
+        lastReadableByData.headMap(lastReadableBoundary.dataLength, false).clear();
+        lastReadableByIndex.headMap(lastReadableBoundary.indexLength, false).clear();
+    }
+
+    public ReadableBoundary getLastReadableBoundary()
+    {
+        return lastReadableBoundary;
+    }
+
+    public IndexSummaryBuilder maybeAddEntry(DecoratedKey decoratedKey, long indexStart)
+    {
+        return maybeAddEntry(decoratedKey, indexStart, 0, 0);
+    }
+
+    /**
+     *
+     * @param decoratedKey the key for this record
+     * @param indexStart the position in the index file this record begins
+     * @param indexEnd the position in the index file we need to be able to read to (exclusive) to read this record
+     * @param dataEnd the position in the data file we need to be able to read to (exclusive) to read this record
+     *                a value of 0 indicates we are not tracking readable boundaries
+     */
+    public IndexSummaryBuilder maybeAddEntry(DecoratedKey decoratedKey, long indexStart, long indexEnd, long dataEnd)
+    {
+        if (keysWritten == nextSamplePosition)
         {
-            i = -1 - i;
-            if (i == positions.size())
-                i -= 2;
-            else
-                i -= 1;
+            assert entries.length() <= Integer.MAX_VALUE;
+            offsets.writeInt((int) entries.length());
+            entries.write(decoratedKey.getKey());
+            entries.writeLong(indexStart);
+            setNextSamplePosition(keysWritten);
         }
-        else
-            i -= 1;
-        i -= offset;
-        // we don't want to return any key if there's only 1 item in the summary, to make sure the sstable range is non-empty
-        if (i <= 0)
-            return null;
-        return keys.get(i);
-    }
-
-    public IndexSummaryBuilder maybeAddEntry(DecoratedKey decoratedKey, long indexPosition)
-    {
-        if (keysWritten % minIndexInterval == 0)
+        else if (dataEnd != 0 && keysWritten + 1 == nextSamplePosition)
         {
-            // see if we should skip this key based on our sampling level
-            boolean shouldSkip = false;
-            for (int start : startPoints)
-            {
-                if ((indexIntervalMatches - start) % BASE_SAMPLING_LEVEL == 0)
-                {
-                    shouldSkip = true;
-                    break;
-                }
-            }
-
-            if (!shouldSkip)
-            {
-                keys.add(getMinimalKey(decoratedKey));
-                offheapSize += decoratedKey.getKey().remaining();
-                positions.add(indexPosition);
-                offheapSize += TypeSizes.NATIVE.sizeof(indexPosition);
-            }
-
-            indexIntervalMatches++;
+            // this is the last key in this summary interval, so stash it
+            ReadableBoundary boundary = new ReadableBoundary(decoratedKey, indexEnd, dataEnd, (int)(offsets.length() / 4), entries.length());
+            lastReadableByData.put(dataEnd, boundary);
+            lastReadableByIndex.put(indexEnd, boundary);
         }
         keysWritten++;
 
         return this;
     }
 
+    // calculate the next key we will store to our summary
+    private void setNextSamplePosition(long position)
+    {
+        tryAgain: while (true)
+        {
+            position += minIndexInterval;
+            long test = indexIntervalMatches++;
+            for (int start : startPoints)
+                if ((test - start) % BASE_SAMPLING_LEVEL == 0)
+                    continue tryAgain;
+
+            nextSamplePosition = position;
+            return;
+        }
+    }
+
     public IndexSummary build(IPartitioner partitioner)
     {
+        // this method should only be called when we've finished appending records, so we truncate the
+        // memory we're using to the exact amount required to represent it before building our summary
+        entries.setCapacity(entries.length());
+        offsets.setCapacity(offsets.length());
         return build(partitioner, null);
     }
 
-    public IndexSummary build(IPartitioner partitioner, DecoratedKey exclusiveUpperBound)
+    // build the summary up to the provided boundary; this is backed by shared memory between
+    // multiple invocations of this build method
+    public IndexSummary build(IPartitioner partitioner, ReadableBoundary boundary)
     {
-        assert keys.size() > 0;
-        assert keys.size() == positions.size();
+        assert entries.length() > 0;
 
-        int length;
-        if (exclusiveUpperBound == null)
-            length = keys.size();
-        else
-            length = Collections.binarySearch(keys, exclusiveUpperBound);
-
-        assert length > 0;
-
-        long offheapSize = this.offheapSize;
-        if (length < keys.size())
-            for (int i = length ; i < keys.size() ; i++)
-                offheapSize -= keys.get(i).getKey().remaining() + TypeSizes.NATIVE.sizeof(positions.get(i));
-
-        // first we write out the position in the *summary* for each key in the summary,
-        // then we write out (key, actual index position) pairs
-        RefCountedMemory memory = new RefCountedMemory(offheapSize + (length * 4));
-        int idxPosition = 0;
-        int keyPosition = length * 4;
-        for (int i = 0; i < length; i++)
+        int count = (int) (offsets.length() / 4);
+        long entriesLength = entries.length();
+        if (boundary != null)
         {
-            // write the position of the actual entry in the index summary (4 bytes)
-            memory.setInt(idxPosition, keyPosition);
-            idxPosition += TypeSizes.NATIVE.sizeof(keyPosition);
-
-            // write the key
-            ByteBuffer keyBytes = keys.get(i).getKey();
-            memory.setBytes(keyPosition, keyBytes);
-            keyPosition += keyBytes.remaining();
-
-            // write the position in the actual index file
-            long actualIndexPosition = positions.get(i);
-            memory.setLong(keyPosition, actualIndexPosition);
-            keyPosition += TypeSizes.NATIVE.sizeof(actualIndexPosition);
+            count = boundary.summaryCount;
+            entriesLength = boundary.entriesLength;
         }
-        assert keyPosition == offheapSize + (length * 4);
+
         int sizeAtFullSampling = (int) Math.ceil(keysWritten / (double) minIndexInterval);
-        return new IndexSummary(partitioner, memory, length, sizeAtFullSampling, minIndexInterval, samplingLevel);
+        assert count > 0;
+        return new IndexSummary(partitioner, offsets.currentBuffer().sharedCopy(),
+                                count, entries.currentBuffer().sharedCopy(), entriesLength,
+                                sizeAtFullSampling, minIndexInterval, samplingLevel);
+    }
+
+    // close the builder and release any associated memory
+    public void close()
+    {
+        entries.close();
+        offsets.close();
     }
 
     public static int entriesAtSamplingLevel(int samplingLevel, int maxSummarySize)
@@ -217,26 +284,25 @@ public class IndexSummaryBuilder
         int[] startPoints = Downsampling.getStartPoints(currentSamplingLevel, newSamplingLevel);
 
         // calculate new off-heap size
-        int removedKeyCount = 0;
-        long newOffHeapSize = existing.getOffHeapSize();
+        int newKeyCount = existing.size();
+        long newEntriesLength = existing.getEntriesLength();
         for (int start : startPoints)
         {
             for (int j = start; j < existing.size(); j += currentSamplingLevel)
             {
-                removedKeyCount++;
-                newOffHeapSize -= existing.getEntry(j).length;
+                newKeyCount--;
+                long length = existing.getEndInSummary(j) - existing.getPositionInSummary(j);
+                newEntriesLength -= length;
             }
         }
 
-        int newKeyCount = existing.size() - removedKeyCount;
-
-        // Subtract (removedKeyCount * 4) from the new size to account for fewer entries in the first section, which
-        // stores the position of the actual entries in the summary.
-        RefCountedMemory memory = new RefCountedMemory(newOffHeapSize - (removedKeyCount * 4));
+        Memory oldEntries = existing.getEntries();
+        Memory newOffsets = Memory.allocate(newKeyCount * 4);
+        Memory newEntries = Memory.allocate(newEntriesLength);
 
         // Copy old entries to our new Memory.
-        int idxPosition = 0;
-        int keyPosition = newKeyCount * 4;
+        int i = 0;
+        int newEntriesOffset = 0;
         outer:
         for (int oldSummaryIndex = 0; oldSummaryIndex < existing.size(); oldSummaryIndex++)
         {
@@ -249,15 +315,15 @@ public class IndexSummaryBuilder
             }
 
             // write the position of the actual entry in the index summary (4 bytes)
-            memory.setInt(idxPosition, keyPosition);
-            idxPosition += TypeSizes.NATIVE.sizeof(keyPosition);
-
-            // write the entry itself
-            byte[] entry = existing.getEntry(oldSummaryIndex);
-            memory.setBytes(keyPosition, entry, 0, entry.length);
-            keyPosition += entry.length;
+            newOffsets.setInt(i * 4, newEntriesOffset);
+            i++;
+            long start = existing.getPositionInSummary(oldSummaryIndex);
+            long length = existing.getEndInSummary(oldSummaryIndex) - start;
+            newEntries.put(newEntriesOffset, oldEntries, start, length);
+            newEntriesOffset += length;
         }
-        return new IndexSummary(partitioner, memory, newKeyCount, existing.getMaxNumberOfEntries(),
-                                minIndexInterval, newSamplingLevel);
+        assert newEntriesOffset == newEntriesLength;
+        return new IndexSummary(partitioner, newOffsets, newKeyCount, newEntries, newEntriesLength,
+                                existing.getMaxNumberOfEntries(), minIndexInterval, newSamplingLevel);
     }
 }

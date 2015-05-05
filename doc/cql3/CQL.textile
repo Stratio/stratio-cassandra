@@ -131,6 +131,8 @@ CQL supports _prepared statements_. Prepared statement is an optimization that a
 
 In a statement, each time a column value is expected (in the data manipulation and query statements), a @<variable>@ (see above) can be used instead. A statement with bind variables must then be _prepared_. Once it has been prepared, it can executed by providing concrete values for the bind variables. The exact procedure to prepare a statement and execute a prepared statement depends on the CQL driver used and is beyond the scope of this document.
 
+In addition to providing column values, bind markers may be used to provide values for @LIMIT@, @TIMESTAMP@, and @TTL@ clauses.  If anonymous bind markers are used, the names for the query parameters will be @[limit]@, @[timestamp]@, and @[ttl]@, respectively.
+
 
 h2(#dataDefinition). Data Definition
 
@@ -192,7 +194,7 @@ ALTER KEYSPACE Excelsior
           WITH replication = {'class': 'SimpleStrategy', 'replication_factor' : 4};
 
 p. 
-The @ALTER KEYSPACE@ statement alter the properties of an existing keyspace. The supported @<properties>@ are the same that for the "@CREATE TABLE@":#createKeyspaceStmt statement.
+The @ALTER KEYSPACE@ statement alters the properties of an existing keyspace. The supported @<properties>@ are the same as for the "@CREATE KEYSPACE@":#createKeyspaceStmt statement.
 
 
 h3(#dropKeyspaceStmt). DROP KEYSPACE

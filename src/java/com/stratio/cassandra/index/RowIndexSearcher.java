@@ -107,7 +107,7 @@ public class RowIndexSearcher extends SecondaryIndexSearcher {
      * {@inheritDoc}
      */
     @Override
-    public IndexExpression highestSelectivityPredicate(List<IndexExpression> clause) {
+    public IndexExpression highestSelectivityPredicate(List<IndexExpression> clause, boolean trace) {
         for (IndexExpression expression : clause) {
             ByteBuffer columnName = expression.column;
             boolean sameName = indexedColumnName.equals(columnName);

@@ -26,7 +26,7 @@ import java.net.UnknownHostException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.RMIServerSocketFactory;
 import java.util.*;
-    import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeUnit;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 import javax.management.StandardMBean;
@@ -88,7 +88,7 @@ public class CassandraDaemon
             }
             else
             {
-                System.setProperty("java.rmi.server.hostname","127.0.0.1");
+                System.setProperty("java.rmi.server.hostname", InetAddress.getLoopbackAddress().getHostAddress());
 
                 try
                 {
@@ -422,7 +422,10 @@ public class CassandraDaemon
             waitForGossipToSettle();
 
         // schedule periodic dumps of table size estimates into SystemKeyspace.SIZE_ESTIMATES_CF
-        // ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(SizeEstimatesRecorder.instance, 30, 5 * 60, TimeUnit.SECONDS);
+        // set cassandra.size_recorder_interval to 0 to disable
+        int sizeRecorderInterval = Integer.getInteger("cassandra.size_recorder_interval", 5 * 60);
+        if (sizeRecorderInterval > 0)
+            ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(SizeEstimatesRecorder.instance, 30, sizeRecorderInterval, TimeUnit.SECONDS);
 
         // Thrift
         InetAddress rpcAddr = DatabaseDescriptor.getRpcAddress();

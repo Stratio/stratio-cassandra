@@ -18,42 +18,36 @@
 package org.apache.cassandra.io.compress;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
+import com.google.common.annotations.VisibleForTesting;
 
 import net.jpountz.lz4.LZ4Exception;
 import net.jpountz.lz4.LZ4Factory;
-
-import static org.apache.cassandra.io.compress.CompressionParameters.USE_HC;
 
 public class LZ4Compressor implements ICompressor
 {
 
     private static final int INTEGER_BYTES = 4;
-    private static final Map<String, LZ4Compressor> instances = new HashMap<String, LZ4Compressor>();
+
+    @VisibleForTesting
+    public static final LZ4Compressor instance = new LZ4Compressor();
 
     public static LZ4Compressor create(Map<String, String> args)
     {
-        if (!instances.containsKey(args.toString())){
-            instances.put(args.toString(), new LZ4Compressor(args));
-        }
-        return instances.get(args.toString());
+        return instance;
     }
 
     private final net.jpountz.lz4.LZ4Compressor compressor;
     private final net.jpountz.lz4.LZ4Decompressor decompressor;
 
-    private LZ4Compressor(Map<String, String> args)
+    private LZ4Compressor()
     {
         final LZ4Factory lz4Factory = LZ4Factory.fastestInstance();
-
-        Boolean use_hc = Boolean.parseBoolean(args.get(USE_HC));
-
-        if (use_hc){
-            compressor = lz4Factory.highCompressor();
-        } else {
-            compressor = lz4Factory.fastCompressor();
-        }
-
+        compressor = lz4Factory.fastCompressor();
         decompressor = lz4Factory.decompressor();
     }
 
@@ -109,6 +103,6 @@ public class LZ4Compressor implements ICompressor
 
     public Set<String> supportedOptions()
     {
-        return new HashSet<String>(Arrays.asList(CompressionParameters.CRC_CHECK_CHANCE, USE_HC));
+        return new HashSet<String>(Arrays.asList(CompressionParameters.CRC_CHECK_CHANCE));
     }
 }
