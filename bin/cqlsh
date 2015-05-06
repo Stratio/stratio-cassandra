@@ -526,7 +526,7 @@ class Shell(cmd.Cmd):
     use_paging = True
     csv_dialect_defaults = dict(delimiter=',', doublequote=False,
                                 escapechar='\\', quotechar='"')
-    default_page_size = 100
+    default_page_size = 1000
 
     def __init__(self, hostname, port, color=False,
                  username=None, password=None, encoding=None, stdin=None, tty=True,
