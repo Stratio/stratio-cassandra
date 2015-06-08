@@ -1,3 +1,6 @@
+
+*This project has been discontinued in favour of [Cassandra Lucene Index](https://github.com/Stratio/cassandra-lucene-index), which maintains exactly the same features being a plugin of Apache Cassandra instead of a fork. It is worth noting that plugin distribution is rather preferred than a fork, which is harder to maintain. This have been possible thanks to [CASSANDRA-8717](https://issues.apache.org/jira/browse/CASSANDRA-8717), among others.*
+
 Stratio Cassandra
 =================
 
